@@ -30,12 +30,13 @@ const VendorAllocation = () => {
   ]);
   const [selectedTripType, setSelectedTripType] = useState("P");
   const [shiftTimeOptions, setShiftTimeOptions] = useState([]);
-  const [selectedShiftTime, setSelectedShiftTime] = useState([]);
+  const [selectedShiftTime, setSelectedShiftTime] = useState("");
   useEffect(() => {
     fetchFacilities();
-   
     fetchShiftTimeByFacility();
     fetchShiftTimeByFacility(selectedFacility);
+    setSelectedShiftTime(""); // facility/trip type change pe reset
+
   }, [selectedFacility, selectedTripType]);
 
   // Dummy data for DataTable
@@ -230,7 +231,8 @@ const VendorAllocation = () => {
             <div className="field col-2 mb-3">
               <label>Shift Time</label>
               <Dropdown
-                options={shiftTimeOptions} 
+                options={shiftTimeOptions}
+                optionLabel="name" // Assuming shiftTime is the field you want to display
                 onChange={(e) => setSelectedShiftTime(e.value)}
                 placeholder="Select Shift Time"
                 value={selectedShiftTime}

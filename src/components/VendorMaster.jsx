@@ -69,10 +69,16 @@ const VendorMaster = () => {
       const response = await apiService.SelectFacility({
         Userid: sessionManager.getUserSession().ID,
       });
-      console.log("FacilityData", response);
       setfacilityList(response);
 
-      // setfacilityListNew(response);
+      const userFacilityId = sessionManager.getUserSession().FacilityID;
+      if (response && response.some(f => f.Id === userFacilityId)) {
+        setSelectedfacility(userFacilityId);
+        BindVendorGrid(userFacilityId);
+      } else if (response && response.length > 0) {
+        setSelectedfacility(response[0].Id);
+        BindVendorGrid(response[0].Id);
+      }
     } catch (error) {
       console.error("Error fetching locationlist:", error);
     }
@@ -102,11 +108,11 @@ const VendorMaster = () => {
       if (!selectedVendor) {
         toastService.warn("Please select a vendor to update.");
         return;
-      }  if (!selectedVendor.vendorName) {
+      } if (!selectedVendor.vendorName) {
         toastService.warn("Please enter vendor name");
         return;
-      
-      }if (!selectedVendor.vendorContact) {
+
+      } if (!selectedVendor.vendorContact) {
         toastService.warn("Please enter vendor contact");
         return;
       } else if (!/^\d+$/.test(selectedVendor.vendorContact)) {
@@ -116,24 +122,25 @@ const VendorMaster = () => {
         toastService.warn("Contact number must not exceed 15 digits");
         return;
       }
-      if(!selectedVendor.EmailId) {
+      if (!selectedVendor.EmailId) {
         toastService.warn("Please enter EmailId");
         return;
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(selectedVendor.EmailId))   {
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(selectedVendor.EmailId)) {
         toastService.warn("Please enter a valid EmailId");
-        return ; 
+        return;
       }
       if (!selectedVendor.vendorStrength) {
         toastService.warn("Please enter Fleet Strength");
-        return; 
+        return;
       }
       if (!selectedVendor.vendorStrength2) {
         toastService.warn("Please enter Fleet Strength2");
-        return;}   
-    if (!selectedVendor.vendorStrength3) {
+        return;
+      }
+      if (!selectedVendor.vendorStrength3) {
         toastService.warn("Please enter Fleet Strength3");
         return;
-    }
+      }
 
       const response = await apiService.UpdateVendor({
         ID: selectedVendor.Id,
@@ -179,26 +186,26 @@ const VendorMaster = () => {
       if (!newVendor.vendorContact) {
         toastService.warn("Please enter vendor contact");
         return;
-      } 
-      
+      }
+
       // Check if contact contains only numbers
       if (!/^\d+$/.test(newVendor.vendorContact)) {
         toastService.warn("Contact number must be numeric only");
         return;
       }
-      
+
       // Validate contact length
       if (newVendor.vendorContact.length > 15) {
-        toastService.warn("Contact number must not exceed 15 digits"); 
+        toastService.warn("Contact number must not exceed 15 digits");
         return;
       }
 
       // Validate email presence
-      if(!newVendor.EmailId?.trim()) {
+      if (!newVendor.EmailId?.trim()) {
         toastService.warn("Please enter Email Id");
         return;
       }
-      
+
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(newVendor.EmailId)) {
@@ -208,11 +215,11 @@ const VendorMaster = () => {
 
       if (!newVendor.vendorStrength) {
         toastService.warn("Please enter Fleet Strength");
-        return; 
+        return;
       }
       if (!newVendor.vendorStrength2) {
         toastService.warn("Please enter Fleet Strength 2");
-        return; 
+        return;
       }
       if (!newVendor.vendorStrength3) {
         toastService.warn("Please enter Fleet Strength 3");
@@ -312,9 +319,9 @@ const VendorMaster = () => {
                 rows={10}
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 rowClassName={(rowData) => {
-                    console.log("row data",rowData);
-                    return rowData[0].attrited === "1" ? 'bg-danger-subtle' : '';
-                  }}
+                  console.log("row data", rowData);
+                  // return rowData[0].attrited === "1" ? 'bg-danger-subtle' : '';
+                }}
               >
                 <Column field="facilityName" header="Facility" />
                 <Column
@@ -343,9 +350,9 @@ const VendorMaster = () => {
                 <Column field="vendorStrength3" header="Fleet Strength3" />
                 <Column field="vendorType" header="Vendor Type" />
                 <Column
-                    field="attrited"
-                    header="Attrited"
-                    body={(rowData) => (rowData.attrited === "0" ? "No" : "Yes")}
+                  field="attrited"
+                  header="Attrited"
+                  body={(rowData) => (rowData.attrited === "0" ? "No" : "Yes")}
                 />
 
 

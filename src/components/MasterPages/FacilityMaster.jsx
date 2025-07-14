@@ -17,7 +17,7 @@ import { Sidebar as PrimeSidebar } from "primereact/sidebar"; // Renamed to avoi
 import { Button } from "primereact/button";
 
 const FacilityMaster = () => {
-    const [addFacility, setAddFacility ] = useState(false);
+    const [addFacility, setAddFacility] = useState(false);
     const [facilityData, setFacilityData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showOffcanvas, setShowOffcanvas] = useState(false);
@@ -304,17 +304,20 @@ const FacilityMaster = () => {
             setLoading(false);
         }
 
-         // Open sidebar with employee data
-    const openEditSidebar = (guardData) => {
-        setAddFacility(guardData); // Set the selected guard data
-        setVisibleLeft(true); // Open sidebar
-        console.log("Selected Guard Details -->", guardData);
-    };
+        // Open sidebar with employee data
+        const openEditSidebar = (guardData) => {
+            setAddFacility(guardData); // Set the selected guard data
+            setVisibleLeft(true); // Open sidebar
+            console.log("Selected Guard Details -->", guardData);
+        };
     };
 
+    const handleNewButtonClick = () => {
+        setShowOffcanvas(true);
+    };
     return (
         <div className="container-fluid p-0">
-            <Header pageTitle={"Facility Master"} showNewButton={true} onNewClick={handleNewFacility} />
+            <Header pageTitle={"Facility Master"} showNewButton={true} onNewButtonClick={handleNewButtonClick} />
             <Sidebar />
 
             <div className="middle">
@@ -384,9 +387,9 @@ const FacilityMaster = () => {
                                                         </a>
                                                     </td>
                                                     <td className="text-center"> <a href="#!"
-                                                            data-bs-toggle="offcanvas"
-                                                            data-bs-target="#LocationMap"
-                                                            aria-controls="offcanvasRight">{`${facility.geoX} : ${facility.geoY}`}</a> </td>
+                                                        data-bs-toggle="offcanvas"
+                                                        data-bs-target="#LocationMap"
+                                                        aria-controls="offcanvasRight">{`${facility.geoX} : ${facility.geoY}`}</a> </td>
                                                     <td className="text-center">{facility.locationName}</td>
                                                     <td className="text-center">{facility.tptContactNo}</td>
                                                     <td className="text-center">{facility.tptEmail}</td>
@@ -408,7 +411,7 @@ const FacilityMaster = () => {
                                                                 setExpandedRows(newExpandedRows);
                                                             }}
                                                         >
-{expandedRows.includes(index) ? <span className="material-icons">remove_circle</span> : <span className="material-icons">add_circle</span>}
+                                                            {expandedRows.includes(index) ? <span className="material-icons">remove_circle</span> : <span className="material-icons">add_circle</span>}
                                                         </a>
                                                     </td>
                                                 </tr>
@@ -419,27 +422,27 @@ const FacilityMaster = () => {
                                                             <div className="expanded-content">
                                                                 <div className="table-responsive">
                                                                     <DataTable value={facilityContactData} loading={loading}>
-<Column field="locationName" header="Location" body={(rowData) => (
-    <a 
-        href="#!"
-        className="btn-text text-decoration-none"
-        data-bs-toggle="offcanvas" 
-        data-bs-target="#editSubLevel" 
-        aria-controls="offcanvasRight"
-        onClick={() => {
-            // Set values to form fields when clicked
-            setTimeout(() => {
-                document.getElementById('ddlManagerLocation').value = rowData.locationName || '';
-                document.getElementById('ddlManagerLevel').value = rowData.Level || '';
-                document.getElementById('txtManagerName').value = rowData.ContactName || '';
-                document.getElementById('txtManagerContactNo').value = rowData.ContactNo || '';
-                document.getElementById('txtManagerEmail').value = rowData.Email || '';
-            }, 100);
-        }}
-    >
-        {rowData.locationName}
-    </a>
-)}></Column>
+                                                                        <Column field="locationName" header="Location" body={(rowData) => (
+                                                                            <a
+                                                                                href="#!"
+                                                                                className="btn-text text-decoration-none"
+                                                                                data-bs-toggle="offcanvas"
+                                                                                data-bs-target="#editSubLevel"
+                                                                                aria-controls="offcanvasRight"
+                                                                                onClick={() => {
+                                                                                    // Set values to form fields when clicked
+                                                                                    setTimeout(() => {
+                                                                                        document.getElementById('ddlManagerLocation').value = rowData.locationName || '';
+                                                                                        document.getElementById('ddlManagerLevel').value = rowData.Level || '';
+                                                                                        document.getElementById('txtManagerName').value = rowData.ContactName || '';
+                                                                                        document.getElementById('txtManagerContactNo').value = rowData.ContactNo || '';
+                                                                                        document.getElementById('txtManagerEmail').value = rowData.Email || '';
+                                                                                    }, 100);
+                                                                                }}
+                                                                            >
+                                                                                {rowData.locationName}
+                                                                            </a>
+                                                                        )}></Column>
                                                                         <Column field="Level" header="Level"></Column>
                                                                         <Column field="ContactName" header="Name"></Column>
                                                                         <Column field="ContactNo" header="Contact No"></Column>
@@ -475,7 +478,7 @@ const FacilityMaster = () => {
                                     <Column field="ContactName" header="Name"></Column>
                                     <Column field="ContactNo" header="Contact No"></Column>
                                     <Column field="Email" header="Email"></Column>
-                                </DataTable>                                
+                                </DataTable>
                             </div>
                         </div>
                     </div>
@@ -484,118 +487,118 @@ const FacilityMaster = () => {
             </div>
 
             {/* Add New Facility */}
-            <PrimeSidebar visible={addFacility} position="right" onHide={() => setAddFacility(false)} showCloseIcon={false} dismissable={false} style={{width: '40%'}}>
-                        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-                            <h6 className="sidebarTitle">Add Facility</h6>
-                            <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setAddFacility(false)} />
-                        </div>
-                        <div className="sidebarBody">
-                            1
-                            </div>
-                        </PrimeSidebar>
+            <PrimeSidebar visible={addFacility} position="right" onHide={() => setAddFacility(false)} showCloseIcon={false} dismissable={false} style={{ width: '40%' }}>
+                <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
+                    <h6 className="sidebarTitle">Add Facility</h6>
+                    <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setAddFacility(false)} />
+                </div>
+                <div className="sidebarBody">
+                    1
+                </div>
+            </PrimeSidebar>
 
             {/* Offcanvas Component */}
             <div
                 tabIndex="-1"
-                className="offcanvas offcanvas-end"
+                className={`offcanvas offcanvas-end${showOffcanvas ? ' show' : ''}`}
                 id="raise_Feedback"
-                aria-labelledby="offcanvasRightLabel"  style={{width: '40%'}}>
+                aria-labelledby="offcanvasRightLabel" style={{ width: '40%' }}>
                 <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
                     <h5 className="subtitle fw-normal">Add New Facility</h5>
                     <button type="button" className="btn-close btn-close-white" onClick={() => setShowOffcanvas(false)} data-bs-dismiss="offcanvas" aria-label="Close"></button>
                 </div>
                 <div className="offcanvas-body">
                     <div className="row">
-                    <div className="col-6 mb-3">
-                        <label htmlFor="facilityName" className="form-label">Facility Name <span>*</span></label>
-                        <input
-                            type="text"
-                            className="form-control"
-                            id="txtfacilityName"
-                            value={newFacility}
-                            onChange={(e) => setNewFacility(e.target.value)}
-                            placeholder="Enter facility name"
-                        />
+                        <div className="col-6 mb-3">
+                            <label htmlFor="facilityName" className="form-label">Facility Name <span>*</span></label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                id="txtfacilityName"
+                                value={newFacility}
+                                onChange={(e) => setNewFacility(e.target.value)}
+                                placeholder="Enter facility name"
+                            />
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label htmlFor="ContactNo" className="form-label">Contact No</label>
+                            <input
+                                type="number"
+                                className="form-control"
+                                id="txtContactNo"
+                                placeholder="Enter Contact No"
+                            />
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label htmlFor="Location" className="form-label">Location <span>*</span></label>
+                            <select
+                                className="form-control"
+                                id="ddlLocation"
+                                placeholder="Enter Location"
+                            >
+                                <option value="0">Select Location</option>
+                                {location.map((loc, index) => (
+                                    <option key={index} value={loc.Id}>{loc.locationName}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label htmlFor="HelpdeskEmail" className="form-label">Add New Location</label>
+                            <input
+                                type="email"
+                                className="form-control"
+                                id="txtHelpdeskemail"
+                                placeholder="Enter Help desk Email"
+                            />
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label htmlFor="HelpdeskEmail" className="form-label">Helpdesk Email</label>
+                            <input
+                                type="email"
+                                className="form-control"
+                                id="txtHelpdeskemail"
+                                placeholder="Enter Help desk Email"
+                            />
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label htmlFor="TeamLeadEmail" className="form-label">Team Lead Email</label>
+                            <input
+                                type="email"
+                                className="form-control"
+                                id="txtTeamLeademail"
+                                placeholder="Enter Team Lead Email"
+                            />
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label htmlFor="ManagerEmail" className="form-label">Manager Email</label>
+                            <input
+                                type="email"
+                                className="form-control"
+                                id="txtManageremail"
+                                placeholder="Enter Manager Email"
+                            />
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label htmlFor="SiteLeadEmail" className="form-label">Site Lead Email</label>
+                            <input
+                                type="email"
+                                className="form-control"
+                                id="txtSiteLeadEmail"
+                                placeholder="Enter Site Lead Email"
+                            />
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label className="form-label">Location geoX</label>
+                            <input type="text" className="form-control" placeholder="Location geoX" />
+                        </div>
+                        <div className="col-6 mb-3">
+                            <label className="form-label">Location geoY</label>
+                            <input type="text" className="form-control" placeholder="Location geoY" />
+                        </div>
                     </div>
-                    <div className="col-6 mb-3">
-                        <label htmlFor="ContactNo" className="form-label">Contact No</label>
-                        <input
-                            type="number"
-                            className="form-control"
-                            id="txtContactNo"
-                            placeholder="Enter Contact No"
-                        />
-                    </div>
-                    <div className="col-6 mb-3">
-                        <label htmlFor="Location" className="form-label">Location <span>*</span></label>
-                        <select
-                            className="form-control"
-                            id="ddlLocation"
-                            placeholder="Enter Location"
-                        >
-                            <option value="0">Select Location</option>
-                            {location.map((loc, index) => (
-                                <option key={index} value={loc.Id}>{loc.locationName}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="col-6 mb-3">
-                        <label htmlFor="HelpdeskEmail" className="form-label">Add New Location</label>
-                        <input
-                            type="email"
-                            className="form-control"
-                            id="txtHelpdeskemail"
-                            placeholder="Enter Help desk Email"
-                        />
-                    </div>
-                    <div className="col-6 mb-3">
-                        <label htmlFor="HelpdeskEmail" className="form-label">Helpdesk Email</label>
-                        <input
-                            type="email"
-                            className="form-control"
-                            id="txtHelpdeskemail"
-                            placeholder="Enter Help desk Email"
-                        />
-                    </div>
-                    <div className="col-6 mb-3">
-                        <label htmlFor="TeamLeadEmail" className="form-label">Team Lead Email</label>
-                        <input
-                            type="email"
-                            className="form-control"
-                            id="txtTeamLeademail"
-                            placeholder="Enter Team Lead Email"
-                        />
-                    </div>
-                    <div className="col-6 mb-3">
-                        <label htmlFor="ManagerEmail" className="form-label">Manager Email</label>
-                        <input
-                            type="email"
-                            className="form-control"
-                            id="txtManageremail"
-                            placeholder="Enter Manager Email"
-                        />
-                    </div>
-                    <div className="col-6 mb-3">
-                        <label htmlFor="SiteLeadEmail" className="form-label">Site Lead Email</label>
-                        <input
-                            type="email"
-                            className="form-control"
-                            id="txtSiteLeadEmail"
-                            placeholder="Enter Site Lead Email"
-                        />
-                    </div>
-                    <div className="col-6 mb-3">
-                                <label className="form-label">Location geoX</label>
-                                <input type="text" className="form-control" placeholder="Location geoX" />
-                            </div>
-                            <div className="col-6 mb-3">
-                                <label className="form-label">Location geoY</label>
-                                <input type="text" className="form-control" placeholder="Location geoY" />
-                            </div>
-                </div>
                 </div>
                 <div className="offcanvas-footer">
-                    <button className="btn btn-outline-secondary" data-bs-dismiss="offcanvas">
+                    <button className="btn btn-outline-secondary" data-bs-dismiss="offcanvas" aria-label="Close" onClick={() => setShowOffcanvas(false)}>
                         Cancel
                     </button>
                     <button
@@ -612,7 +615,7 @@ const FacilityMaster = () => {
                 tabIndex="-1"
                 id="FacilityEdit"
                 aria-labelledby="offcanvasRightLabel"
-                style={{ width: '40%'}}
+                style={{ width: '40%' }}
             >
                 <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
                     <h5 className="subtitle fw-normal">Edit Facility</h5>
@@ -730,8 +733,8 @@ const FacilityMaster = () => {
                     </button>
                 </div>
             </div>
-            
-            
+
+
 
 
             {/* Offcanvas Component for Facility Contact Level*/}
@@ -825,7 +828,7 @@ const FacilityMaster = () => {
                 tabIndex="-1"
                 id="LocationMap"
                 aria-labelledby="offcanvasRightLabel"
-                style={{ width: '50%'}}
+                style={{ width: '50%' }}
             >
                 <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
                     <h5 className="subtitle fw-normal">Location Map</h5>
@@ -838,31 +841,31 @@ const FacilityMaster = () => {
                     ></button>
                 </div>
                 <div className="offcanvas-body">
-                <iframe 
-    id="facilityMapIframe"
-    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3507.566981326748!2d77.08477762601186!3d28.462466941782356!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d18db2555f1df%3A0xccacb888e56ca6c4!2sSupermart-1%2C%20DLF%20Phase%20IV%2C%20Gurugram%2C%20Haryana%20122022!5e0!3m2!1sen!2sin!4v1745579796798!5m2!1sen!2sin" 
-    width="100%" 
-    height="100%" 
-    style={{border: 0}} 
-    allowFullScreen="" 
-    loading="lazy" 
-    referrerPolicy="no-referrer-when-downgrade"
-    title="Facility Location Map"
-></iframe>
+                    <iframe
+                        id="facilityMapIframe"
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3507.566981326748!2d77.08477762601186!3d28.462466941782356!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d18db2555f1df%3A0xccacb888e56ca6c4!2sSupermart-1%2C%20DLF%20Phase%20IV%2C%20Gurugram%2C%20Haryana%20122022!5e0!3m2!1sen!2sin!4v1745579796798!5m2!1sen!2sin"
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title="Facility Location Map"
+                    ></iframe>
                 </div>
                 <div className="offcanvas-footer">
                     <div className="d-flex align-items-center p-3 w-100">
-                        <InputText 
-                            type="text" 
-                            className="form-control me-2" 
-                            placeholder="Latitude" 
+                        <InputText
+                            type="text"
+                            className="form-control me-2"
+                            placeholder="Latitude"
                             id="txtLatitude"
                             defaultValue="28.4624669"
                         />
-                        <InputText 
-                            type="text" 
-                            className="form-control me-2" 
-                            placeholder="Longitude" 
+                        <InputText
+                            type="text"
+                            className="form-control me-2"
+                            placeholder="Longitude"
                             id="txtLongitude"
                             defaultValue="77.0847776"
                         />
@@ -874,13 +877,13 @@ const FacilityMaster = () => {
                 </div>
             </div>
 
-                        {/* Edit Manager Offcanvas */}
-                        <div
+            {/* Edit Manager Offcanvas */}
+            <div
                 className="offcanvas offcanvas-end"
                 tabIndex="-1"
                 id="editSubLevel"
                 aria-labelledby="offcanvasRightLabel"
-                style={{ width: '30%'}}
+                style={{ width: '30%' }}
             >
                 <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
                     <h5 className="subtitle fw-normal">GGN</h5>
@@ -895,18 +898,18 @@ const FacilityMaster = () => {
                 <div className="offcanvas-body">
                     <div className="mb-3">
                         <label htmlFor="Location" className="form-label">Location <span>*</span></label>
-<input
-    type="text" 
-    className="form-control"
-    id="ddlManagerLocation"
-    placeholder="Enter Location"
-/>
+                        <input
+                            type="text"
+                            className="form-control"
+                            id="ddlManagerLocation"
+                            placeholder="Enter Location"
+                        />
                     </div>
                     <div className="mb-3">
                         <label htmlFor="Level" className="form-label">Level <span>*</span></label>
                         <input
                             type="text"
-                            className="form-control" 
+                            className="form-control"
                             id="ddlManagerLevel"
                             placeholder="Enter Level"
                         />
@@ -953,17 +956,17 @@ const FacilityMaster = () => {
                             const contactNo = document.getElementById('txtManagerContactNo').value;
                             const email = document.getElementById('txtManagerEmail').value;
                             const contactId = document.getElementById('editSubLevel').getAttribute('data-contact-id') || '0';
-                            
+
                             // Find the location ID based on location name
                             const locationObj = facContactLocation.find(loc => loc.FullName === locationName);
                             const locationId = locationObj ? locationObj.Id : 0;
-                            
+
                             // Validate inputs
                             if (!name.trim()) {
                                 toastService.warn('Please Enter Contact Name');
                                 return;
                             }
-                            
+
                             // Call API to update the contact level
                             apiService.AddLevelDetails({
                                 Id: contactId,

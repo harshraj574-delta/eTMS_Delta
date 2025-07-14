@@ -159,7 +159,7 @@ const SidebarMenu = () => {
       path: "https://etmsonline.in/etmsaccen/RouteUploadExl.aspx",
       name: "Route Excel Upload",
     },
-    // { path: "/VendorAllocation", name: "Vendor Allocation" },
+    { path: "/VendorAllocation", name: "Vendor Allocation" },
   ];
 
   const reportMenuItems = [

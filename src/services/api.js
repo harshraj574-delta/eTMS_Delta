@@ -769,5 +769,327 @@ export const apiService = {
       throw error.response?.data || error.message;
     }
   },
+  //facility master and location master
+  locationid: async (params) => {
+    try {
+      const response = await api.post("/GetGeoCityByRS", {
+        locationid: params.locationid,
+      });
+      //console.log("locationid--xx-->:", response.data);
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  //Select Facility
+  // selectFacility: async (params) => {
+  //   try {
+  //     const response = await api.post("/SelectFacility", {
+  //       Userid: params.Userid,
+  //     });
+  //     return JSON.parse(response.data);
+  //   } catch (error) {
+  //     console.error("API Error:", error);
+  //     throw error.response?.data || error.message;
+  //   }
+  // },
+
+  //Select All Facility
+  // selectAllFacility: async (params) => {
+  //   try {
+  //     const response = await api.post("/SelectAllFacility", {
+  //       Userid: params.Userid,
+  //     });
+  //     return JSON.parse(response.data);
+  //   } catch (error) {
+  //     console.error("API Error:", error);
+  //     throw error.response?.data || error.message;
+  //   }
+  // },
+
+  // Deepak Kumar
+
+  SelectLocation: async (params) => {
+    try {
+      const response = await api.post("/SelectLocation", {
+        Userid: params.Userid,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  InsertLocation: async (params) => {
+    try {
+      const response = await api.post("/InsertLocation", {
+        locationname: params.locationname,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  UpdateLocation: async (params) => {
+    try {
+      const response = await api.post("/UpdateLocation", {
+        locationname: params.locationname,
+        id: params.id,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // UpdateLocation: async (params) => {
+  //   try {
+  //     const response = await api.post("/UpdateLocation", {
+  //       locationname: params.locationname,
+  //       id:params.id,
+  //     });
+  //     return JSON.parse(response.data);
+  //   } catch (error) {
+  //     console.error("API Error:", error);
+  //     throw error.response?.data || error.message;
+  //   }
+  // },
+
+  GetFacility: async (params) => {
+    try {
+      const response = await api.post("/GetFacility", {
+        locationid: params.locationid,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  SelectAllFacility: async (params) => {
+    try {
+      const response = await api.post("/SelectAllFacility");
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  SelectFacility: async (params) => {
+    try {
+      const response = await api.post("/SelectFacility", {
+        Userid: params.Userid,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+
+  InsertFacility: async (params) => {
+    try {
+      const response = await api.post("/InsertFacility", {
+        facility: params.facility,
+        geoX: params.geoX,
+        geoY: params.geoY,
+        tptEmail: params.tptEmail,
+        tptContactNo: params.tptContactNo,
+        locationId: params.locationId,
+        locationName: params.locationName,
+        ShiftInchargeMail: params.ShiftInchargeMail,
+        SiteLeadMail: params.SiteLeadMail,
+        CityLeadMail: params.CityLeadMail,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  UpdateFacility: async (params) => {
+    try {
+      const response = await api.post("/UpdateFacility", {
+        facility: params.facility,
+        geoX: params.geoX,
+        geoY: params.geoY,
+        tptEmail: params.tptEmail,
+        tptContactNo: params.tptContactNo,
+        Id: params.Id,
+        locationId: params.locationId,
+        locationName: params.locationName,
+        ShiftInchargeMail: params.ShiftInchargeMail,
+        SiteLeadMail: params.SiteLeadMail,
+        CityLeadMail: params.CityLeadMail,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  GetLevelDetail: async (params) => {
+    try {
+      const response = await api.post("/GetLevelDetail", {
+        locationid: params.locationid,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  AddLevelDetails: async (params) => {
+    try {
+      const response = await api.post("/AddLevelDetails", {
+        ContactName: params.ContactName,
+        ContactNo: params.ContactNo,
+        Email: params.Email,
+        LocationId: params.LocationId,
+        Level: params.Level,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+  //vendor master
+  GetVendorByFacility: async (params) => {
+  try {
+    const response = await api.post("/GetVendorByFacility", {
+      facilityid: params.facilityid,
+    });
+    return JSON.parse(response.data);
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error.response?.data || error.message;
+  }
+},
+ 
+UpdateVendor: async (params) => {
+  try {
+    const response = await api.post("/UpdateVendor", {
+      vendorName: params.vendorName,
+      vendorStrength: params.vendorStrength,
+      vendorContact: params.vendorContact,
+      vendorInfo: params.vendorInfo,
+      facilityId: params.facilityId,
+      vendorType:params.vendorType,
+      attrited: params.attrited,
+      ID: params.ID,
+      EmailId: params.EmailId,
+      vendorStrength2: params.vendorStrength2,
+      vendorStrength3: params.vendorStrength3,
+      Updatedby: params.Updatedby
+    });
+    return JSON.parse(response.data);
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error.response?.data || error.message;
+  }
+},
+ 
+InsertVendor: async (params) => {
+  try {
+    const response = await api.post("/InsertVendor", {
+      vendorName: params.vendorName,
+      vendorStrength: params.vendorStrength,
+      vendorContact: params.vendorContact,
+      vendorInfo: params.vendorInfo,
+      facilityId: params.facilityId,
+      vendorType:params.vendorType,
+      attrited: params.attrited,  
+      EmailId: params.EmailId,
+      vendorStrength2: params.vendorStrength2,
+      vendorStrength3: params.vendorStrength3,
+      Updatedby: params.Updatedby
+    });
+    return JSON.parse(response.data);
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error.response?.data || error.message;
+  }
+},
+ 
+SelectVehicleTypeFacility: async (params) => {
+  try {
+    const response = await api.post("/SelectVehicleTypeFacility?vendorid="+params.vendorid+"&facilityid="+params.facilityid);
+    return JSON.parse(response.data);
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error.response?.data || error.message;
+  }
+},
+ 
+UpdateVehicleType: async (params) => {
+  try {
+    const response = await api.post("/UpdateVehicleType", {
+      vehicle: params.vehicle,
+      cost_ac: params.cost_ac,
+      cost_nonac: params.cost_nonac, 
+      occupancy: params.occupancy,
+      vendorId: params.vendorId,
+      updatedBy: params.updatedBy, 
+      updatedAt: params.updatedAt,
+      scheme: params.scheme,
+      Id: params.Id, 
+    })  
+ 
+    return JSON.parse(response.data);
+  } 
+  catch(error){
+    console.error("API Error:", error);
+    throw error.response?.data || error.message;
+  }
+},
+ 
+ 
+GetSelectedVendor: async (params) => {
+  try {
+    const response = await api.post("/GetSelectedVendor", {
+      vendorid: params.vendorid,
+    });
+    return JSON.parse(response.data);
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error.response?.data || error.message;
+  }
+},
+ 
+ 
+sp_getvehicledetails: async (params) => {
+  try {
+    const response = await api.post("/sp_getvehicledetails", params);
+    return JSON.parse(response.data);
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error.response?.data || error.message;
+  }
+},
+ 
+ 
+SelectVehicleType: async (param) => {
+  try{
+    const response = await api.post("/SelectVehicleType",param);
+    return JSON.parse(response.data);
+  }
+  catch (error) {
+    console.error("API Error:", error);
+    throw error.response?.data || error.message;
+  }
+},
 
 };

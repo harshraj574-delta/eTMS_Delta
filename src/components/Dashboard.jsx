@@ -167,7 +167,7 @@ const Dashboard = () => {
   // const [cities, setCities] = useState([]);
 
   const [cities, setCities] = useState([]);
-  const [selCity, setSelCity] = useState(null);
+  const [selCity, setSelCity] = useState({ name: "All Cities", value: { Id: "all", locationName: "All Cities" } });
 
   const [selFacility, setSelFacility] = useState(1);
   const [selVendor, setSelVendor] = useState(null);
@@ -197,6 +197,7 @@ const Dashboard = () => {
   }, []);
 
   // Separate function for fetching all cities
+  // Separate function for fetching all cities
   const fetchAllCities = async () => {
     try {
       const response = await apiService.sp_getAllLocation();
@@ -213,64 +214,52 @@ const Dashboard = () => {
 
       // Add "All Cities" option at the top
       const formatted = [
-        { name: "All Cities", value: "all" },
+        { name: "All Cities", value: { Id: "all", locationName: "All Cities" } },
         ...rawList.map((city) => ({
           name: city.locationName || city.name || "Unknown",
-          value: city,
-        })),
+          value: city
+        }))
       ];
 
       setCities(formatted);
-      setSelCity("all"); // Default to "All Cities"
-
+      setSelCity(formatted[0]); // Yahi "All Cities" ko default select karta hai
       // If "All Cities" is selected, fetch all facilities
       fetchFacilitiesByCity("all");
     } catch (err) {
       console.error("Error fetching cities:", err);
-      setCities([
-        {
-          name: "All Cities",
-          value: { Id: "all", locationName: "All Cities" },
-        },
-      ]);
-      setSelCity({
-        name: "All Cities",
-        value: { Id: "all", locationName: "All Cities" },
-      });
+      setCities([{ name: "All Cities", value: { Id: "all", locationName: "All Cities" } }]);
+      setSelCity({ name: "All Cities", value: { Id: "all", locationName: "All Cities" } });
     }
   };
 
   const changeCity = (e) => {
     console.log("Selected city:", facilities, e.value, e.value.Id);
-
-    setSelCity(e.value);
-
+    setSelCity(e.value); // Always set as object
     // Fetch facilities based on selected city
-
     if (e.value.Id === "all") {
-      setfilterFacilities(facilities);
+      // Always fetch all facilities for the user when 'All Cities' is selected
+      driverMasterService.getFacilitiesByUserId(userId)
+        .then((res) => {
+          const data = JSON.parse(res.data) || [];
+          setFacilities(data);
+          setfilterFacilities(data);
+          setSelFacility(data[0] || null);
+        })
+        .catch((err) => {
+          console.log("Error fetching all facilities:", err);
+          setFacilities([]);
+          setfilterFacilities([]);
+          setSelFacility(null);
+        });
     } else {
-      let filterfacility = facilities.filter((data) => {
+      let filterfacility = facilities.filter(data => {
         return data.locationId === e?.value?.Id;
       });
       console.log("Filtered facilities:", filterfacility);
-
       setfilterFacilities(filterfacility);
+      setSelFacility(filterfacility[0] || null);
     }
-
-    //     Id
-    // LocLeadMail
-    // ShiftInchargeMail
-    // SiteLeadMail
-    // facility
-    // facilityName
-    // geoX
-    // geoY
-    // locationId
-    // locationName
-    // tptContactNo
-    // tptEmail
-  };
+  }
   const fetchFacilities = () => {
     driverMasterService
       .getFacilitiesByUserId(userId)
@@ -285,7 +274,6 @@ const Dashboard = () => {
         console.log("Error", err);
       });
   };
-
   const fetchVenders = (id) => {
     driverMasterService
       .getVenders({ facilityid: id })
@@ -612,9 +600,8 @@ const Dashboard = () => {
           <div className="col-12">
             {/* <div className={`cardx mt-3 p-3 border-0 p-3 ${scrolled ? "filterFix" : ""}`}> */}
             <div
-              className={`cardx mt-3 p-3 border-0 ${
-                scrolled ? "filterFix shadow" : "hidden"
-              }`}
+              className={`cardx mt-3 p-3 border-0 ${scrolled ? "filterFix shadow" : "hidden"
+                }`}
             >
               <div className="row d-flex align-items-center">
                 <div className="col-4 d-none">
@@ -656,11 +643,10 @@ const Dashboard = () => {
                                   {periodOptions1.map((option) => (
                                     <li
                                       key={option.value}
-                                      className={`time-filter-item ${
-                                        pendingPeriod1 === option.value
-                                          ? "active"
-                                          : ""
-                                      }`}
+                                      className={`time-filter-item ${pendingPeriod1 === option.value
+                                        ? "active"
+                                        : ""
+                                        }`}
                                       onClick={() =>
                                         setPendingPeriod1(option.value)
                                       }
@@ -678,13 +664,13 @@ const Dashboard = () => {
                                 value={
                                   pendingDateFrom
                                     ? pendingDateFrom.toLocaleDateString(
-                                        "en-GB",
-                                        {
-                                          day: "2-digit",
-                                          month: "long",
-                                          year: "numeric",
-                                        }
-                                      )
+                                      "en-GB",
+                                      {
+                                        day: "2-digit",
+                                        month: "long",
+                                        year: "numeric",
+                                      }
+                                    )
                                     : ""
                                 }
                                 readOnly
@@ -704,13 +690,13 @@ const Dashboard = () => {
                                 value={
                                   pendingDateTo
                                     ? pendingDateTo.toLocaleDateString(
-                                        "en-GB",
-                                        {
-                                          day: "2-digit",
-                                          month: "long",
-                                          year: "numeric",
-                                        }
-                                      )
+                                      "en-GB",
+                                      {
+                                        day: "2-digit",
+                                        month: "long",
+                                        year: "numeric",
+                                      }
+                                    )
                                     : ""
                                 }
                                 readOnly
@@ -721,7 +707,7 @@ const Dashboard = () => {
                                   setPendingPeriod1("custom");
                                 }}
                                 value={pendingDateTo}
-                                // activeStartDate={new Date(2025, 7, 1)} // <-- yeh August 2025 dikhata hai
+                              // activeStartDate={new Date(2025, 7, 1)} // <-- yeh August 2025 dikhata hai
                               />
                             </div>
                             <div className="col-12 mt-3 text-end">
@@ -741,13 +727,13 @@ const Dashboard = () => {
                                     ...prev,
                                     sDate: pendingDateFrom
                                       ? pendingDateFrom
-                                          .toISOString()
-                                          .split("T")[0]
+                                        .toISOString()
+                                        .split("T")[0]
                                       : null,
                                     eDate: pendingDateTo
                                       ? pendingDateTo
-                                          .toISOString()
-                                          .split("T")[0]
+                                        .toISOString()
+                                        .split("T")[0]
                                       : null,
                                   }));
                                 }}
@@ -759,36 +745,27 @@ const Dashboard = () => {
                         </div>
                       )}
                     </div>
-                    <div className="col-2">
+                    <div className="col">
                       <Dropdown
-                        value={selCity}
+                        value={selCity || cities[0] || null} // <-- yeh line change karein
                         optionLabel="name"
                         onChange={(e) => {
                           console.log("Selected city:", e.value);
-                          setSelCity(e.value);
-                          changeCity(e);
-                          // Fetch facilities based on selected city
-                          // fetchFacilitiesByCity(e.value?.Id === "all" ? "all" : e.value?.Id);
+                          changeCity(e); // Only call changeCity, it sets selCity
                         }}
                         options={cities}
                         placeholder="Select City"
                         className="w-100"
                       />
                     </div>
-                    <div className="col-2">
+                    <div className="col">
                       <Dropdown
                         value={selFacility || 1}
                         onChange={(e) => {
                           console.log("Selected facility:", e.value);
                           setSelFacility(e.value);
-                          if (e.value && e.value.Id) {
-                            fetchCitiesByFacility(e.value.Id);
-                          } else {
-                            console.warn(
-                              "Selected facility has no Id:",
-                              e.value
-                            );
-                          }
+                          // Do NOT call fetchCitiesByFacility here, so city selection is preserved
+                          // If you need to update cities, do it based on business logic, but keep selCity unchanged
                         }}
                         options={filterFacilities}
                         optionLabel="facilityName"
@@ -796,6 +773,7 @@ const Dashboard = () => {
                         className="w-100"
                       />
                     </div>
+
                     <div className="col-2">
                       {/* <Dropdown
                         id="tripType"
@@ -1103,7 +1081,7 @@ const Dashboard = () => {
           <LeafletHeatMap filter={filter} />
         </div>
       </Dialog>
-    </div>
+    </div >
   );
 };
 export default Dashboard;
