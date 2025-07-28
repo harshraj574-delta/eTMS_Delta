@@ -10,32 +10,6 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import { Offcanvas } from "bootstrap";
 
-const formatDateTime = (dateStr, timeStr) => {
-  if (!dateStr || !timeStr || timeStr === 'null' || timeStr.trim().toUpperCase() === 'N/A') {
-    console.warn(`Skipping time parsing for 'N/A' or null`);
-    return null;
-  }
-  try {
-    if (!/^\d{4}$/.test(timeStr.trim())) {
-      console.error(`Unrecognized time format: '${timeStr}'`);
-      return null;
-    }
-    const formattedTime = `${timeStr.slice(0, 2)}:${timeStr.slice(2)}`;
-    const combined = `${dateStr.slice(0, 10)}T${formattedTime}`;
-    const parsed = new Date(combined);
-    if (isNaN(parsed.getTime())) {
-      console.error(`Invalid ISO format: '${combined}'`);
-      return null;
-    }
-    return parsed;
-  } catch (error) {
-    console.error(`Error parsing datetime from '${dateStr}' and '${timeStr}':`, error);
-    return null;
-  }
-};
-
-
-
 
 const addDay = (dateString, days) => {
   if (!dateString) return "";
@@ -76,10 +50,9 @@ const generateWeekDays = (fromDate) => {
       fullDate: currentDate.toISOString().split("T")[0],
     });
   }
+
   return days;
 };
-
-
 
 const MySchedule = () => {
   const navigate = useNavigate();
@@ -89,11 +62,11 @@ const MySchedule = () => {
   const [selectedShiftDate, setSelectedShiftDate] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [shiftLockStatus, setShiftLockStatus] = useState({
-    loginFacilityDisabled: true,
+    loginFacilityDisabled: false,
     loginTimeDisabled: false,
     loginTimeVisible: false,
     loginTimeLabel: "",
-    logoutFacilityDisabled: true,
+    logoutFacilityDisabled: false,
     logoutTimeDisabled: false,
     logoutTimeVisible: false,
     logoutTimeLabel: "",
@@ -185,7 +158,6 @@ const MySchedule = () => {
   // useEffect(() => {
 
   // }, []);
-
   // Fetch data on component mount
   useEffect(() => {
     fetchMgrSchedule();
@@ -557,259 +529,191 @@ const MySchedule = () => {
       setIsSubmitting(false); // Loader OFF
     }
   };
-    const handleEmployeeShiftClick = async (employee, day) => {
-      try {
-        // 1. Get sel
-        setSelectedEmployeeId(employee.empCode);
-        const selectedDate = weekDays[day]?.fullDate;
-        setSelectedShiftDate(selectedDate); // <-- Add this
-        const fromDateInput = document.getElementById("fromDate");
-        if (fromDateInput && selectedDate) {
-          fromDateInput.value = selectedDate;
-        }
-
-        // 2. Get shift times
-        const seTimeData = employee[`SETime${day}`];
-        const [timeInfo] = seTimeData.split("!");
-        const [loginTime, logoutTime] = timeInfo.split("<BR>").map((time) => {
-          const match = time.match(/\d{4}$/);
-          return match ? match[0] : time.trim();
-        });
-        console.log("Clicked Employee:", employee.EmployeeID);
-        console.log("Day Index:", day);
-        console.log("Raw SETime Data:", seTimeData);
-        console.log("Extracted Login Time:", loginTime);
-        console.log("Extracted Logout Time:", logoutTime);
-        // 3. Get schedule and lock details
-        let scheduleData = await fetchEmployeeSchedule(employee.EmployeeID);
-        let schedule = (scheduleData && scheduleData[0]) || {};
-        const lockPickTime = new Date(lockDetails.pickLockDateTime);
-        const lockDropTime = new Date(lockDetails.dropLockDateTime);
-
-        // 4. Compose DateTime for comparison
-
-        const sanitizeTime = (time) => {
-          const match = time?.match(/\d{4}/);
-          return match ? match[0] : null;
-        };
-
-        const loginTimeSanitized = sanitizeTime(loginTime);
-        const logoutTimeSanitized = sanitizeTime(logoutTime);
-
-        const loginDateTime = formatDateTime(schedule.startDate, loginTimeSanitized);
-        const logoutDateTime = formatDateTime(schedule.endDate, logoutTimeSanitized);
-
-
-        // ✅ Now safe to get day names
-        const isWeekend = (dayName) => ["Saturday", "Sunday"].includes(dayName);
-
-
-        const loginDayName = loginDateTime ? loginDateTime.toLocaleString("en-US", { weekday: "long" }) : "N/A";
-        const logoutDayName = logoutDateTime ? logoutDateTime.toLocaleString("en-US", { weekday: "long" }) : "N/A";
-
-
-
-        // ✅ Safe to adjust lock time if weekend
-        if (isWeekend(loginDayName) && lockDetails.lockweekendpick) {
-          lockPickTime.setMinutes(lockPickTime.getMinutes() + Number(lockDetails.lockweekendpick));
-        }
-        if (isWeekend(logoutDayName) && lockDetails.lockweekenddrop) {
-          lockDropTime.setMinutes(lockDropTime.getMinutes() + Number(lockDetails.lockweekenddrop));
-        }
-        // // 5. Lock logic (C# mapping)
-        let loginFacilityDisabled = true;
-        let logoutFacilityDisabled = true;
-        let loginTimeVisible = true;
-        let loginTimeLabel = "";
-        let loginTimeDisabled = false;
-        let logoutTimeVisible = true;
-        let logoutTimeLabel = "";
-        let logoutTimeDisabled = false;
-        let saveButtonVisible = true;
-        let tptForMessage = "";
-        let tptForType = 0;
-
-        console.log("loginDateTime: ", loginDateTime);
-        // console.log("lockPickTime: ", lockPickTime);
-        console.log("loginTime: ", loginTime);
-        // console.log(typeof loginTime);
-        console.log("logoutDateTime: ", logoutDateTime);
-        // console.log("lockDropTime: ", lockDropTime);
-        console.log("logoutTime: ", logoutTime);
-        // console.log(typeof logoutTime);
-        // if (loginDateTime <= lockPickTime && loginTime) {
-        //   loginTimeVisible = false;
-        //   loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
-        //   loginTimeDisabled = true;
-        // }
-        // else {
-        //   loginTimeVisible = true;
-        //   loginTimeDisabled = false;
-        // }
-
-        // if (logoutDateTime <= lockDropTime && logoutTime) {
-        //   logoutTimeVisible = false;
-        //   logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
-        //   logoutTimeDisabled = true;
-        //   saveButtonVisible = false;
-        // }
-        // else {
-        //   logoutTimeVisible = true;
-        //   logoutTimeDisabled = false;
-        //   saveButtonVisible = true;
-        // }
-        // Shift logic (with time check)
-        const todayStr = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
-
-        if (selectedDate < todayStr) {
-          // ✅ Backdated: force locked
-          loginTimeVisible = false;
-          loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
-          loginTimeDisabled = true;
-
-          logoutTimeVisible = false;
-          logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
-          logoutTimeDisabled = true;
-
-          saveButtonVisible = false;
-        } else {
-          // ✅ Today or future: apply C#-style lock logic
-
-          if (loginTime && loginDateTime && loginDateTime <= lockPickTime) {
-            loginTimeVisible = false;
-            loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
-            loginTimeDisabled = true;
-          } else {
-            loginTimeVisible = true;
-            loginTimeLabel = "";
-            loginTimeDisabled = false;
-          }
-
-          if (logoutTime && logoutDateTime && logoutDateTime <= lockDropTime) {
-            logoutTimeVisible = false;
-            logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
-            logoutTimeDisabled = true;
-            saveButtonVisible = false;
-          } else {
-            logoutTimeVisible = true;
-            logoutTimeLabel = "";
-            logoutTimeDisabled = false;
-            saveButtonVisible = true;
-          }
-        }
-        if (schedule.TPTFor === 1) {
-          tptForType = 1;
-          tptForMessage = "You are not allowed to update drop shift.";
-          logoutTimeVisible = false;
-          logoutTimeDisabled = true;
-          loginFacilityDisabled = false;
-          loginTimeDisabled = false;
-        } else if (schedule.TPTFor === 2) {
-          tptForType = 2;
-          tptForMessage = "You are not allowed to update pickup shift.";
-          loginTimeVisible = false;
-          loginTimeDisabled = true;
-          logoutFacilityDisabled = false;
-          logoutTimeDisabled = false;
-        } else {
-          tptForType = 0;
-          tptForMessage = "";
-          loginFacilityDisabled = false;
-          loginTimeDisabled = false;
-          logoutFacilityDisabled = false;
-          logoutTimeDisabled = false;
-        }
-
-        setShiftLockStatus({
-          loginFacilityDisabled,
-          loginTimeVisible,
-          loginTimeLabel,
-          loginTimeDisabled,
-          logoutFacilityDisabled,
-          logoutTimeVisible,
-          logoutTimeLabel,
-          logoutTimeDisabled,
-          saveButtonVisible,
-          tptForMessage,
-          tptForType,
-        });
-
-        // 8. Set facility dropdowns (matches: ddlInFacility.SelectedIndex, ddlOutFacility.SelectedIndex)
-        let loginFacilityId =
-          schedule.pickFacilityID || employee.pickFacilityID || "";
-        let logoutFacilityId =
-          schedule.dropFacilityID || employee.dropFacilityID || "";
-
-        // If not found, try to extract from SETime data
-        if ((!loginFacilityId || !logoutFacilityId) && seTimeData.includes("!")) {
-          const facilityInfo = seTimeData.split("!")[1];
-          if (facilityInfo) {
-            const facilityParts = facilityInfo.split("|");
-            if (facilityParts.length >= 2) {
-              loginFacilityId = facilityParts[0] || loginFacilityId;
-              logoutFacilityId = facilityParts[1] || logoutFacilityId;
-            }
-          }
-        }
-
-        setSelectedloginfacility(loginFacilityId);
-        setSelectedlogoutfacility(logoutFacilityId);
-
-        // 9. Open the offcanvas/modal
-        setIsEmployeeShiftOpen(true);
-
-        // 10. Set the login/logout time values
-        setSelectedShiftTime(loginTime);
-        setSelectedLogoutShiftTime(logoutTime);
-
-        // 11. Fetch available shift times for dropdowns
-        if (loginFacilityId) {
-          await fetchPickShiftTimes(employee.EmployeeID, loginFacilityId);
-        }
-        if (logoutFacilityId) {
-          await fetchDropShiftTimes(employee.EmployeeID, logoutFacilityId);
-        }
-
-        // 12. Set dropdown values after a short delay (to ensure options are loaded)
-        setTimeout(() => {
-          const loginDropdown = document.getElementById("loginShiftDropdown");
-          if (loginDropdown) {
-            const existingOptions = Array.from(loginDropdown.options);
-            const matchingOption = existingOptions.find((opt) =>
-              opt.text.includes(loginTime)
-            );
-            if (matchingOption) {
-              loginDropdown.value = matchingOption.value;
-            } else {
-              setSelectedShiftTime(loginTime);
-            }
-          }
-          const logoutDropdown = document.getElementById("logoutShiftDropdown");
-          if (logoutDropdown) {
-            const existingOptions = Array.from(logoutDropdown.options);
-            const matchingOption = existingOptions.find((opt) =>
-              opt.text.includes(logoutTime)
-            );
-            if (matchingOption) {
-              logoutDropdown.value = matchingOption.value;
-            } else {
-              setSelectedLogoutShiftTime(logoutTime);
-            }
-          }
-        }, 300);
-
-        // 13. Show the offcanvas if not already visible
-        const offcanvasElement = document.getElementById("Employee_Shift");
-        if (offcanvasElement && !offcanvasElement.classList.contains("show")) {
-          const offcanvasInstance = new window.bootstrap.Offcanvas(
-            offcanvasElement
-          );
-          offcanvasInstance.show();
-        }
-      } catch (error) {
-        console.error("Error handling employee shift click:", error);
+  const handleEmployeeShiftClick = async (employee, day) => {
+    try {
+      // 1. Get sel
+      setSelectedEmployeeId(employee.empCode);
+      const selectedDate = weekDays[day]?.fullDate;
+      setSelectedShiftDate(selectedDate); // <-- Add this
+      const fromDateInput = document.getElementById("fromDate");
+      if (fromDateInput && selectedDate) {
+        fromDateInput.value = selectedDate;
       }
-    };
+
+      // 2. Get shift times
+      const seTimeData = employee[`SETime${day}`];
+      const [timeInfo] = seTimeData.split("!");
+      const [loginTime, logoutTime] = timeInfo.split("<BR>").map((time) => {
+        const match = time.match(/\d{4}$/);
+        return match ? match[0] : time.trim();
+      });
+
+      // 3. Get schedule and lock details
+      let scheduleData = await fetchEmployeeSchedule(employee.EmployeeID);
+      let schedule = (scheduleData && scheduleData[0]) || {};
+      const lockPickTime = new Date(lockDetails.pickLockDateTime);
+      const lockDropTime = new Date(lockDetails.dropLockDateTime);
+
+      // 4. Compose DateTime for comparison
+      const loginDateTime = new Date(
+        `${schedule.startDate}T${(loginTime || "00:00").replace(
+          /(\d{2})(\d{2})/,
+          "$1:$2"
+        )}`
+      );
+      const logoutDateTime = new Date(
+        `${schedule.endDate}T${(logoutTime || "00:00").replace(
+          /(\d{2})(\d{2})/,
+          "$1:$2"
+        )}`
+      );
+
+      // 5. Lock logic (C# mapping)
+      let loginFacilityDisabled = true;
+      let logoutFacilityDisabled = true;
+      let loginTimeVisible = true;
+      let loginTimeLabel = "";
+      let loginTimeDisabled = false;
+      let logoutTimeVisible = true;
+      let logoutTimeLabel = "";
+      let logoutTimeDisabled = false;
+      let saveButtonVisible = true;
+      let tptForMessage = "";
+      let tptForType = 0;
+
+      if (loginDateTime <= lockPickTime && loginTime) {
+        loginTimeVisible = false;
+        loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
+        loginTimeDisabled = true;
+      } else {
+        loginTimeVisible = true;
+        loginTimeDisabled = false;
+      }
+
+      if (logoutDateTime <= lockDropTime && logoutTime) {
+        logoutTimeVisible = false;
+        logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
+        logoutTimeDisabled = true;
+        saveButtonVisible = false;
+      } else {
+        logoutTimeVisible = true;
+        logoutTimeDisabled = false;
+        saveButtonVisible = true;
+      }
+
+      if (schedule.TPTFor === 1) {
+        tptForType = 1;
+        tptForMessage = "You are not allowed to update drop shift.";
+        logoutTimeVisible = false;
+        logoutTimeDisabled = true;
+        loginFacilityDisabled = false;
+        loginTimeDisabled = false;
+      } else if (schedule.TPTFor === 2) {
+        tptForType = 2;
+        tptForMessage = "You are not allowed to update pickup shift.";
+        loginTimeVisible = false;
+        loginTimeDisabled = true;
+        logoutFacilityDisabled = false;
+        logoutTimeDisabled = false;
+      } else {
+        tptForType = 0;
+        tptForMessage = "";
+        loginFacilityDisabled = false;
+        loginTimeDisabled = false;
+        logoutFacilityDisabled = false;
+        logoutTimeDisabled = false;
+      }
+
+      setShiftLockStatus({
+        loginFacilityDisabled,
+        loginTimeVisible,
+        loginTimeLabel,
+        loginTimeDisabled,
+        logoutFacilityDisabled,
+        logoutTimeVisible,
+        logoutTimeLabel,
+        logoutTimeDisabled,
+        saveButtonVisible,
+        tptForMessage,
+        tptForType,
+      });
+
+      // 8. Set facility dropdowns (matches: ddlInFacility.SelectedIndex, ddlOutFacility.SelectedIndex)
+      let loginFacilityId =
+        schedule.pickFacilityID || employee.pickFacilityID || "";
+      let logoutFacilityId =
+        schedule.dropFacilityID || employee.dropFacilityID || "";
+
+      // If not found, try to extract from SETime data
+      if ((!loginFacilityId || !logoutFacilityId) && seTimeData.includes("!")) {
+        const facilityInfo = seTimeData.split("!")[1];
+        if (facilityInfo) {
+          const facilityParts = facilityInfo.split("|");
+          if (facilityParts.length >= 2) {
+            loginFacilityId = facilityParts[0] || loginFacilityId;
+            logoutFacilityId = facilityParts[1] || logoutFacilityId;
+          }
+        }
+      }
+
+      setSelectedloginfacility(loginFacilityId);
+      setSelectedlogoutfacility(logoutFacilityId);
+
+      // 9. Open the offcanvas/modal
+      setIsEmployeeShiftOpen(true);
+
+      // 10. Set the login/logout time values
+      setSelectedShiftTime(loginTime);
+      setSelectedLogoutShiftTime(logoutTime);
+
+      // 11. Fetch available shift times for dropdowns
+      if (loginFacilityId) {
+        await fetchPickShiftTimes(employee.EmployeeID, loginFacilityId);
+      }
+      if (logoutFacilityId) {
+        await fetchDropShiftTimes(employee.EmployeeID, logoutFacilityId);
+      }
+
+      // 12. Set dropdown values after a short delay (to ensure options are loaded)
+      setTimeout(() => {
+        const loginDropdown = document.getElementById("loginShiftDropdown");
+        if (loginDropdown) {
+          const existingOptions = Array.from(loginDropdown.options);
+          const matchingOption = existingOptions.find((opt) =>
+            opt.text.includes(loginTime)
+          );
+          if (matchingOption) {
+            loginDropdown.value = matchingOption.value;
+          } else {
+            setSelectedShiftTime(loginTime);
+          }
+        }
+        const logoutDropdown = document.getElementById("logoutShiftDropdown");
+        if (logoutDropdown) {
+          const existingOptions = Array.from(logoutDropdown.options);
+          const matchingOption = existingOptions.find((opt) =>
+            opt.text.includes(logoutTime)
+          );
+          if (matchingOption) {
+            logoutDropdown.value = matchingOption.value;
+          } else {
+            setSelectedLogoutShiftTime(logoutTime);
+          }
+        }
+      }, 300);
+
+      // 13. Show the offcanvas if not already visible
+      const offcanvasElement = document.getElementById("Employee_Shift");
+      if (offcanvasElement && !offcanvasElement.classList.contains("show")) {
+        const offcanvasInstance = new window.bootstrap.Offcanvas(
+          offcanvasElement
+        );
+        offcanvasInstance.show();
+      }
+    } catch (error) {
+      console.error("Error handling employee shift click:", error);
+    }
+  };
   // const handleEmployeeShiftClick = async (employee, day) => {
   //   try {
   //     // Get the selected date from weekDays array using the day index
@@ -1654,8 +1558,8 @@ const MySchedule = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              <div className="row mb-3">
-                <div className="col-3">
+              <div class="row mb-3">
+                <div class="col-3">
                   {/* <div className="col-1"> */}
                   <label className="form-label">Manager</label>
                   {/* </div>
@@ -2099,17 +2003,18 @@ const MySchedule = () => {
               )}
             </div> */}
             <div className="col-6">
-              <label className="form-label">Login Shift Time</label>
-              {(shiftLockStatus.loginTimeVisible && shiftLockStatus.tptForType !== 2) ? (
+              {/* Login Shift Time */}
+              {shiftLockStatus.loginTimeVisible && !shiftLockStatus.loginTimeDisabled && shiftLockStatus.tptForType !== 2 ? (
                 <select
                   className="form-select"
                   id="loginShiftDropdown"
                   value={selectedShiftTime}
                   onChange={(e) => setSelectedShiftTime(e.target.value)}
-                  disabled={shiftLockStatus.loginTimeDisabled}
+                  disabled={shiftLockStatus.loginTimeDisabled || shiftLockStatus.tptForType === 2}
                 >
-                  <option value="N/A">N/A</option>
+                  <option value="">NA</option>
                   {Array.isArray(availableShiftTimes) &&
+                    availableShiftTimes.length > 0 &&
                     availableShiftTimes.map((shift) => (
                       <option
                         key={shift.shiftTime}
@@ -2118,42 +2023,43 @@ const MySchedule = () => {
                         {shift.shiftTime}
                       </option>
                     ))}
+                  {/* If selectedShiftTime is not in options, add it */}
                   {selectedShiftTime &&
                     !availableShiftTimes.some(
-                      (shift) => (shift.ShiftValue || shift.shiftTime) === selectedShiftTime
+                      (shift) =>
+                        (shift.ShiftValue || shift.shiftTime) === selectedShiftTime
                     ) && (
-
-
-                      <option value={selectedShiftTime} disabled>
-                        {selectedShiftTime}
-                      </option>
-
+                      <option value={selectedShiftTime}>{selectedShiftTime}</option>
                     )}
                 </select>
               ) : (
                 <div
-                  className="form-control-plaintext bg-light border rounded py-2 px-3"
-                  style={{ minHeight: "38px" }}
+                  className="form-control-plaintext"
+                  style={{
+                    minHeight: "38px",
+                    padding: "8px 12px",
+                    background: "#f8f9fa",
+                    borderRadius: "4px",
+                    border: "1px solid #ced4da",
+                  }}
                 >
-                  {shiftLockStatus.loginTimeLabel || selectedShiftTime || "Locked"}
+                  {selectedShiftTime ? selectedShiftTime : "Locked"}
                 </div>
               )}
             </div>
-
             <div className="col-6">
-              <label className="form-label">Logout Shift Time</label>
-
-              {(shiftLockStatus.logoutTimeVisible && shiftLockStatus.tptForType !== 1) ? (
-
+              {/* Logout Shift Time */}
+              {shiftLockStatus.logoutTimeVisible && !shiftLockStatus.logoutTimeDisabled && shiftLockStatus.tptForType !== 1 ? (
                 <select
                   className="form-select"
                   id="logoutShiftDropdown"
                   value={selectedLogoutShiftTime}
                   onChange={(e) => setSelectedLogoutShiftTime(e.target.value)}
-                  disabled={shiftLockStatus.logoutTimeDisabled}
+                  disabled={shiftLockStatus.logoutTimeDisabled || shiftLockStatus.tptForType === 1}
                 >
-                  <option value="N/A">N/A</option>
+                  <option value="">NA</option>
                   {Array.isArray(availableLogoutShiftTimes) &&
+                    availableLogoutShiftTimes.length > 0 &&
                     availableLogoutShiftTimes.map((shift) => (
                       <option
                         key={shift.shiftTime}
@@ -2162,23 +2068,32 @@ const MySchedule = () => {
                         {shift.shiftTime}
                       </option>
                     ))}
+                  {/* If selectedLogoutShiftTime is not in options, add it */}
                   {selectedLogoutShiftTime &&
                     !availableLogoutShiftTimes.some(
-                      (shift) => (shift.ShiftValue || shift.shiftTime) === selectedLogoutShiftTime
+                      (shift) =>
+                        (shift.ShiftValue || shift.shiftTime) === selectedLogoutShiftTime
                     ) && (
-                      <option value={selectedLogoutShiftTime} disabled>{selectedLogoutShiftTime} </option>
+                      <option value={selectedLogoutShiftTime}>
+                        {selectedLogoutShiftTime}
+                      </option>
                     )}
                 </select>
               ) : (
                 <div
-                  className="form-control-plaintext bg-light border rounded py-2 px-3"
-                  style={{ minHeight: "38px" }}
+                  className="form-control-plaintext"
+                  style={{
+                    minHeight: "38px",
+                    padding: "8px 12px",
+                    background: "#f8f9fa",
+                    borderRadius: "4px",
+                    border: "1px solid #ced4da",
+                  }}
                 >
-                  {shiftLockStatus.logoutTimeLabel || selectedLogoutShiftTime || "Locked"}
+                  {selectedLogoutShiftTime ? selectedLogoutShiftTime : "Locked"}
                 </div>
               )}
             </div>
-
             {shiftLockStatus.tptForMessage && (
               <div className="col-12">
                 <span className="text-danger">

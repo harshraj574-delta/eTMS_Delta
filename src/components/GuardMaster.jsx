@@ -307,7 +307,7 @@ const GuardMaster = () => {
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 emptyMessage="No guard data available"
                 rowClassName={(rowData) => {
-                  return rowData[0].status === "Y" ? "bg-danger-subtle" : "";
+                  // return rowData[0].status === "Y" ? "bg-danger-subtle" : "";
                 }}
               >
                 <Column

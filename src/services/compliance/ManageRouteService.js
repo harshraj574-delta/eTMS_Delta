@@ -197,6 +197,23 @@ class ManageRouteService {
       throw error;
     }
   }
+  async UpdateCutPaste(params) {
+    try {
+
+      const response = await api.post("/UpdateCutPaste", {
+        OldRouteid: params.OldRouteid,
+        oldemployeeid: params.oldemployeeid,
+        newrouteid: params.newrouteid,
+        stopno: params.stopno,
+        userid: params.userid,
+      })
+      confirm.log("UpdateCutPaste response:", response.data);
+      return response.data; // Return the actual data from the response
+    } catch (error) {
+      console.error("Error in UpdateCutPaste:", error);
+      throw error;
+    }
+  }
 }
 
 export default new ManageRouteService();

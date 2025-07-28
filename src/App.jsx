@@ -35,6 +35,7 @@ import SystemSetting from "./components/SystemSetting";
 import ShiftTimeMaster from "./components/ShiftTimeMaster";
 import MyProfile from "./components/MyProfile";
 import VendorAllocation from "./components/VendorAllocation";
+import AdminSchedule from "./components/AdminSchedule";
 
 
 // Deepak
@@ -62,8 +63,8 @@ function App() {
       />
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/myfeedback" element={<MyFeedback />} />
-        <Route path="/mynoshow" element={<MyNoShow />} />
+        <Route path="/MyFeedback" element={<MyFeedback />} />
+        <Route path="/MyNoShow" element={<MyNoShow />} />
         <Route path="/Dashboard" element={<Dashboard />} />
         <Route path="/MySchedule" element={<MySchedule />} />
         <Route path="/ManageEmployee" element={<ManageEmployee />} />
@@ -94,6 +95,7 @@ function App() {
         <Route path="/ShiftTimeMaster" element={<ShiftTimeMaster />} />
         <Route path="/MyProfile" element={<MyProfile />} />
         <Route path="/VendorAllocation" element={<VendorAllocation />} />
+        <Route path="/AdminSchedule" element={<AdminSchedule />} />
 
       </Routes>
     </>

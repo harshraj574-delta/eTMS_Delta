@@ -22,7 +22,7 @@ const MyProfile = () => {
         console.log("Raw API Response Profile:", data);
 
         const parsedData = typeof data === "string" ? JSON.parse(data) : data;
-        console.log("Parsed Data:", parsedData);
+        console.log("Profile Data:", parsedData);
 
         setProfileData(Array.isArray(parsedData) ? parsedData[0] : parsedData);
       } catch (err) {

@@ -136,8 +136,7 @@ const ManageRoute = () => {
   const [vendorAllocated, setVendorAllocated] = useState(false);
   const [vendorSummary, setVendorSummary] = useState([]);
   const [isFinalizing, setIsFinalizing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [draggedEmployee, setDraggedEmployee] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
   const tripTypeOptions = [
     { label: "Pick", value: "P" },
     { label: "Drop", value: "D" },
@@ -167,8 +166,6 @@ const ManageRoute = () => {
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   });
-
-  
   // Define queryParams in the component scope so it's available for the link
   // It will re-calculate whenever its dependencies change
   const queryParams = new URLSearchParams({
@@ -299,7 +296,7 @@ const ManageRoute = () => {
   };
 
   const confirmAutoVendorAllocation = async () => {
-    setIsSubmitting(true);
+      setIsSubmitting(true);
     try {
       setShowAutoVendorAllocationDialog(false);
       setIsLoading(true);
@@ -366,9 +363,9 @@ const ManageRoute = () => {
       // Ensure we have an array and map it correctly
       const formattedData = Array.isArray(parsedResponse)
         ? parsedResponse.map((item) => ({
-          label: item.facility || item.facilityName, // Using facility or facilityName from your API response
-          value: item.Id, // Using Id from your API response
-        }))
+            label: item.facility || item.facilityName, // Using facility or facilityName from your API response
+            value: item.Id, // Using Id from your API response
+          }))
         : [];
 
       // console.log("Formatted Data:", formattedData);
@@ -400,9 +397,9 @@ const ManageRoute = () => {
         // Format the shift data according to the API structure
         const formattedShifts = Array.isArray(parsedResponse)
           ? parsedResponse.map((shift) => ({
-            label: shift.shiftTime || shift.ShiftTime, // Handle both cases
-            value: shift.shiftTime || shift.ShiftTime, // Using shiftTime as value too
-          }))
+              label: shift.shiftTime || shift.ShiftTime, // Handle both cases
+              value: shift.shiftTime || shift.ShiftTime, // Using shiftTime as value too
+            }))
           : [];
 
         //console.log("Formatted Shifts:", formattedShifts);
@@ -649,7 +646,7 @@ const ManageRoute = () => {
         progress: 50,
       }));
       // Step 2: Call local OSRM server for route generation
-      const osrmResponse = await fetch(
+     const osrmResponse = await fetch(
         "https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/generate",
         {
           method: "POST",
@@ -783,7 +780,6 @@ const ManageRoute = () => {
 
   const handleSubmit = async () => {
     try {
-      setIsSubmitting(true);
       setVendorSummary([]); // Clear previous vendor summary
       setTableData([]); // Clear previous table data
       setStatsDetails([]); // Clear previous stats
@@ -918,9 +914,6 @@ const ManageRoute = () => {
       toastService.error("Failed to process request");
       setShowButtons(false);
     }
-    finally {
-      setIsSubmitting(false);
-    }
   };
   // const stopEditor = (options) => {
   //     return (
@@ -969,20 +962,12 @@ const ManageRoute = () => {
             value={routeDetails[rowData.RouteID] || []}
             emptyMessage="No Record Found."
             editMode="cell"
-            dataKey="empID"
-            rowClassName={() => 'draggable-row'}
           >
             <coloumn
               field=""
               header=""
               body={(rowData) => (
-                <div className="d-flex gap-2"
-                  // draggable
-                  // onDragStart={() => handleDragStart(empRowData, rowData.RouteID)}
-                  // onDragOver={(e) => e.preventDefault()}
-                  // onDrop={() => handleDrop(rowData.RouteID, empRowData.stopNo)}
-                  // style={{ display: "flex", gap: "8px", cursor: "move" }}
-                >
+                <div className="d-flex gap-2">
                   {rowData.isPWD && (
                     <img
                       src="images/icons/pwd.png"
@@ -1180,29 +1165,29 @@ const ManageRoute = () => {
   return (
     <>
       {isSubmitting && (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          background: "rgba(255,255,255,0.7)",
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(255,255,255,0.7)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className="spinner-border text-primary"
+          style={{ width: 60, height: 60, fontSize: 32 }}
+          role="status"
         >
-          <div
-            className="spinner-border text-primary"
-            style={{ width: 60, height: 60, fontSize: 32 }}
-            role="status"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
+          <span className="visually-hidden">Loading...</span>
         </div>
-      )}
+      </div>
+    )}  
       {/* <style>{overlayStyles}</style> */}
       {/* Add the loading overlay */}
       {/* {isLoading && (
@@ -1531,7 +1516,7 @@ const ManageRoute = () => {
                 emptyMessage="No Record Found."
                 paginator
                 rows={50}
-                rowsPerPageOptions={[50, 100, 150, 200, 250]}
+                rowsPerPageOptions={[50,100,150,200,250]}
                 sortField={sortField}
                 sortOrder={sortOrder}
                 onSort={(e) => {
@@ -1539,9 +1524,9 @@ const ManageRoute = () => {
                   setSortOrder(e.sortOrder);
                   handleSubmit(); // Trigger API call with new sorting
                 }}
-              // rowClassName={(data) => ({
-              //   'bg-fleet-exhausted': data.afterFleetExhaustion === true
-              // })}
+                // rowClassName={(data) => ({
+                //   'bg-fleet-exhausted': data.afterFleetExhaustion === true
+                // })}
               >
                 <Column expander style={{ width: "3rem" }} />
                 <column
@@ -1674,7 +1659,6 @@ const ManageRoute = () => {
                 <coloumn
                   fields=""
                   header="Vehicle"
-                  sortable
                   body={(rowData) => (
                     <div className="d-flex gap-2">
                       {rowData.varvehicleType === "s" && (
@@ -1731,7 +1715,7 @@ const ManageRoute = () => {
       />
       <Dialog
         visible={showProgressDialog}
-        onHide={() => { }}
+        onHide={() => {}}
         closable={false}
         draggable={false}
         resizable={false}
@@ -1771,8 +1755,9 @@ const ManageRoute = () => {
             <div className="flex justify-content-center gap-2">
               {progressStatus.step > 0 && (
                 <div
-                  className={`step-indicator ${progressStatus.step >= 1 ? "active" : ""
-                    }`}
+                  className={`step-indicator ${
+                    progressStatus.step >= 1 ? "active" : ""
+                  }`}
                 >
                   {/* <i className="pi pi-database"></i>
                   <span></span> */}
@@ -1780,8 +1765,9 @@ const ManageRoute = () => {
               )}
               {progressStatus.step > 1 && (
                 <div
-                  className={`step-indicator ${progressStatus.step >= 2 ? "active" : ""
-                    }`}
+                  className={`step-indicator ${
+                    progressStatus.step >= 2 ? "active" : ""
+                  }`}
                 >
                   {/* <i className="pi pi-map"></i>
                   <span></span> */}
@@ -1789,8 +1775,9 @@ const ManageRoute = () => {
               )}
               {progressStatus.step > 2 && (
                 <div
-                  className={`step-indicator ${progressStatus.step >= 3 ? "active" : ""
-                    }`}
+                  className={`step-indicator ${
+                    progressStatus.step >= 3 ? "active" : ""
+                  }`}
                 >
                   {/* <i className="pi pi-save"></i>
                   <span>Save</span> */}
@@ -1798,8 +1785,9 @@ const ManageRoute = () => {
               )}
               {progressStatus.step > 3 && (
                 <div
-                  className={`step-indicator ${progressStatus.step >= 4 ? "active" : ""
-                    }`}
+                  className={`step-indicator ${
+                    progressStatus.step >= 4 ? "active" : ""
+                  }`}
                 >
                   {/* <i className="pi pi-check"></i> */}
                   {/* <span>Complete</span> */}
@@ -1931,7 +1919,7 @@ const ManageRoute = () => {
                           src="images/icons/transport.png"
                           className="img20"
                         />{" "}
-                        Unallocated
+                        Unrouted
                       </div>
                     </div>
                     <span className="fw-bold">

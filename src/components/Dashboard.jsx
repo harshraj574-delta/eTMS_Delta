@@ -62,6 +62,10 @@ const Dashboard = () => {
       date = new Date();
       date.setDate(date.getDate() - 30);
     }
+    else if (value === "last_90_days") {
+      date = new Date();
+      date.setDate(date.getDate() - 90);
+    }
     // ...add logic for other options if needed
 
     setSelectedDate(date);

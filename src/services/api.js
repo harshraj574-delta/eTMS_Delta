@@ -76,7 +76,46 @@ export const apiService = {
       throw error.response?.data || error.message;
     }
   },
+ Spr_GetMenuItem_V2: async (credentials) => {
+    try {
+      const response = await api.post("/Spr_GetMenuItem_V2", {
+        UserName: credentials.userID,
+      });
 
+      console.log("Raw API Response:", response.data);
+
+      // If it's a string, parse it
+      let rawItems = response.data;
+      if (typeof rawItems === "string") {
+        try {
+          rawItems = JSON.parse(rawItems);
+        } catch (e) {
+          console.error("JSON parse error:", e);
+          rawItems = [];
+        }
+      }
+
+      if (!Array.isArray(rawItems)) {
+        console.warn("Expected array but got:", typeof rawItems);
+        rawItems = [];
+      }
+
+      const menuItems = rawItems.map((item) => ({
+        MenuId: item.MenuID,
+        MenuName: item.Text,
+        MenuURL: item.NavigateUrl || "#",
+        ParentId: item.ParentID ?? 0,
+        IconClass: item.Description || "",
+        IsActive: true,
+        OrderNo: item.RowNo || 0,
+      }));
+
+      return menuItems;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
   GetSpocAssignedProcess: async (params) => {
     try {
       const response = await api.post("/GetSpocAssignedProcess", {

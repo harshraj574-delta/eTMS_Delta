@@ -1,251 +1,140 @@
-import { Path } from "leaflet";
-import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { apiService } from '../../services/api';
+
 
 const SidebarMenu = () => {
-  const [activeMenu, setActiveMenu] = useState(null);
+  const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const location = useLocation();
-  const navigate = useNavigate();
+  const [openSubmenu, setOpenSubmenu] = useState(null);
 
-  // Determine which menu should be active based on current path
+  const currentPath = location.pathname;
   useEffect(() => {
-    const path = location.pathname;
-    // Check if current path matches any menu category
-    if ([
-      "/MySchedule",
-      "/MyProfile",
-      "/AdhocManagement",
-      "/MyFeedback",
-      // "/ViewMyRoutes",
-      // "/dashboard",
-      // "/ReplicateSchedule",
-      // "/MyAdhocRequest",
-    ].includes(path)) {
-      setActiveMenu("etms");
-    } else if ([
-      "/ManageEmployee",
-      "/FacilityMaster",
-      "/DriverMaster",
-      "/VehicleMaster",
-      "/VehicleTypeMaster",
-      "/VendorMaster",
-      "/GuardMaster",
-      "/Location",
-    ].includes(path)) {
-      setActiveMenu("master");
-    } else if ([
-      "/ManageRoute",
-      // "/CostMaster",
-      // "/CostMasterPackage",
-      // "/VendorWiseBilling",
-      // "/SummaryPackageReport",
-      // "/PenaltyMaster",
-      // "/ComplianceCheck",
-      // "/DetailedBillingReport",
-      // "/EmployeeWiseBillingReport",
-      "/VendorAllocation",
+    const fetchMenuItems = async () => {
+      try {
+        const userID = sessionStorage.getItem('ID');
+        const menuItems = await apiService.Spr_GetMenuItem_V2({ userID });
+        console.log("User ID:", userID); // 👈 Check user ID
+        console.log("Fetched menuItems:", menuItems); // 👈 Check what’s coming
 
-    ].includes(path)) {
-      setActiveMenu("transport");
-    } else if ([
-      "/ShiftTimeMaster",
-      "/SystemSetting",
-    ].includes(path)) {
-      setActiveMenu("Super Admin");
-    } else if (
-      ["/report1",
-        "/report2", "/CostMaster",
-        "/CostMasterPackage",
-        "/VendorWiseBilling",
-        "/SummaryPackageReport",
-        "/PenaltyMaster",
-        "/ComplianceCheck",
-        "/DetailedBillingReport",
-        "/EmployeeWiseBillingReport",].includes(path)
-    ) {
-      setActiveMenu("reports");
+        const organizedMenu = organizeMenuItems(menuItems);
+        console.log("Organized menu:", organizedMenu); // 👈 Check structure
+        setMenuItems(organizedMenu);
+      } catch (err) {
+        console.error('Failed to fetch menu items:', err);
+        setError('Failed to load menu items');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMenuItems();
+  }, []);
+ // ✅ ADDED: Automatically expand parent menu based on current route
+  useEffect(() => {
+    const matchedParent = menuItems.find(parent =>
+      parent.subItems?.some(
+        sub => `/${sub.MenuURL?.replace(/^\/+/, '')}` === location.pathname
+      )
+    );
+    if (matchedParent) {
+      setOpenSubmenu(matchedParent.MenuId);
     }
+  }, [location.pathname, menuItems]);
+  // Function to organize menu items into parent-child hierarchy
+  const organizeMenuItems = (items) => {
+    const mainMenu = items.filter(item =>
+      item.ParentId === null || item.ParentId === "null" || item.ParentId === 0 || item.ParentId === "0"
+    );
 
+    const subMenus = items.filter(item =>
+      item.ParentId !== null && item.ParentId !== "null"
+    );
 
-  }, [location.pathname]);
+    console.log("Main Menu:", mainMenu);
+    console.log("Sub Menus:", subMenus);
 
-  // Check if URL is external
-  const isExternalUrl = (url) => {
-    return url.startsWith("http://") || url.startsWith("https://");
+    return mainMenu.map(menuItem => ({
+      ...menuItem,
+      subItems: subMenus.filter(
+        subItem => subItem.ParentId == menuItem.MenuId // safe comparison
+      )
+    }));
   };
 
-  const handleNavigation = (path) => {
-    // Check if it's an external URL
-    if (isExternalUrl(path)) {
-      // Open external URL in new window
-      window.open(path, "_blank", "noopener,noreferrer");
-      return;
-    }
+  // Render submenu items
+ const renderSubMenuItems = (subItems) => {
+    if (!subItems || subItems.length === 0) return null;
 
-    // Store the current active menu before navigation
-    const currentActiveMenu = activeMenu;
+    return (
+      <ul className="submenu">
+        {subItems.map(subItem => {
+          const path = `/${subItem.MenuURL?.replace(/^\/+/, '')}`; // ✅ CHANGED
+          const isActive = location.pathname === path; // ✅ ADDED
 
-    // Navigate to the new path
-    navigate(path);
-
-    // Ensure the menu stays open after navigation by restoring the active menu state
-    setTimeout(() => {
-      setActiveMenu(currentActiveMenu);
-    }, 50);
-  };
-
-  // Toggle menu function
-  const toggleMenu = (menuId) => {
-    setActiveMenu(activeMenu === menuId ? null : menuId);
-  };
-
-  // ETMS menu items
-  const etmsMenuItems = [
-    // { path: "/dashboard", name: "Dashboard" },
-    { path: "/MySchedule", name: "My Schedule" },
-    { path: "/MyProfile", name: "My Profile" },
-    { path: "/AdhocManagement", name: "Adhoc Management" },
-    { path: "/MyFeedback", name: "My Feedback" },
-    // { path: "/MyAdhocRequest", name: "My Adhoc Request" },
-    // { path: "/ReplicateSchedule", name: "Replicate Schedule" },
-    // { path: "/ViewMyRoutes", name: "View My Routes" },
-  ];
-
-  // Master menu items
-  const masterMenuItems = [
-    // { path: "/ManageEmployee", name: "Employee Master" },
-    { path: "/FacilityMaster", name: "Facility Master" },
-    { path: "/DriverMaster", name: "Driver Master" },
-    { path: "/VehicleMaster", name: "Vehicle Master" },
-    { path: "/VehicleTypeMaster", name: "Vehicle Type Master" },
-    { path: "/VendorMaster", name: "Vendor Master" },
-    { path: "/GuardMaster", name: "Guard Master" },
-    { path: "/Location", name: "Location" },
-  ];
-
-  const superAdminMenuItems = [
-    {
-      path: "/ShiftTimeMaster", name: "Shift Time Master"
-    },
-    { path: "/SystemSetting", name: "System Setting" },
-
-  ];
-
-  // Transport menu items
-  // const transpMenuItems = [
-  //   { path: "/ManageRoute", name: "Manage Route" },
-  //   { path: "/CostMaster", name: "Trip Rate Master" },
-  //   { path: "/CostMasterPackage", name: "Cost Master Package" },
-  //   { path: "/VendorWiseBilling", name: "Vendor Wise Billing" },
-  //   { path: "/SummaryPackageReport", name: "Summary Package Report" },
-  //   { path: "/PenaltyMaster", name: "Penalty Master" },
-  //   { path: "/ComplianceCheck", name: "Compliance Check" },
-  //   { path: "/DetailedBillingReport", name: "Detailed Billing Report" },
-  //   {
-  //     path: "/EmployeeWiseBillingReport",
-  //     name: "Employee Wise Billing Report",
-  //   },
-  //   {
-  //     path: "https://etmsonline.in/etmsaccen/RouteUploadExl.aspx",
-  //     name: "Route Excel Upload",
-  //   },
-  //   { path: "/VendorAllocation", name: "Vendor Allocation" },
-
-  // ];
-  const transpMenuItems = [
-    { path: "/ManageRoute", name: "Manage Route" },
-
-    {
-      path: "https://etmsonline.in/etmsaccen/RouteUploadExl.aspx",
-      name: "Route Excel Upload",
-    },
-    { path: "/VendorAllocation", name: "Vendor Allocation" },
-  ];
-
-  const reportMenuItems = [
-    { path: "/dashboard", name: "Dashboard" },
-    { path: "/CostMaster", name: "Trip Rate Master" },
-    { path: "/CostMasterPackage", name: "Cost Master Package" },
-    { path: "/VendorWiseBilling", name: "Vendor Wise Billing" },
-    { path: "/SummaryPackageReport", name: "Summary Package Report" },
-    { path: "/PenaltyMaster", name: "Penalty Master" },
-    { path: "/ComplianceCheck", name: "Compliance Check" },
-    { path: "/DetailedBillingReport", name: "Detailed Billing Report" },
-    { path: "/EmployeeWiseBillingReport", name: "Employee Wise Billing Report" },
-  ];
-
-
-  // Render menu section
-  const renderMenuSection = (menuId, title, icon, menuItems) => (
-    <div className="accordion-item border-0">
-      <a
-        href="#!"
-        className={`accordion-button overline_textB ${activeMenu === menuId ? "" : "collapsed"
-          }`}
-        onClick={(e) => {
-          e.preventDefault();
-          toggleMenu(menuId);
-        }}
-      >
-        <span className="material-icons">{icon}</span> {title}
-      </a>
-      <div
-        className={`accordion-collapse collapse-smooth ${activeMenu === menuId ? "show" : ""
-          }`}
-      >
-        <ul className="submenu">
-          {menuItems.map((item, index) => (
-            <li key={index}>
-              <a
-                href="#!"
-                className={
-                  !isExternalUrl(item.path) && location.pathname === item.path
-                    ? "active"
-                    : ""
-                }
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation(); // Stop event from bubbling up
-                  handleNavigation(item.path);
-                }}
+          return (
+            <li key={subItem.MenuId}>
+              <Link
+                to={path}
+                className={isActive ? 'active' : ''} // ✅ CHANGED
               >
-                {item.name}
-                {isExternalUrl(item.path) && (
-                  <span className="material-icons ms-1" style={{ fontSize: "16px" }}>
-                    open_in_new
-                  </span>
-                )}
-              </a>
+                {subItem.MenuName}
+              </Link>
             </li>
-          ))}
-        </ul>
+          );
+        })}
+      </ul>
+    );
+  };
+
+  // Render main menu items with their submenus
+   const renderMenuItems = (items) => {
+    return items.map((item) => (
+      <div key={item.MenuId} className="menu-item">
+        <div className="accordion-item border-0">
+          <a
+            href="#!"
+            className={`accordion-button ${item.subItems?.length ? '' : 'no-submenu'} overline_textB ${openSubmenu === item.MenuId ? '' : 'collapsed'}`} // ✅ CHANGED
+            onClick={() => {
+              if (item.subItems?.length) {
+                setOpenSubmenu(openSubmenu === item.MenuId ? null : item.MenuId); // ✅ CHANGED
+              }
+            }}
+            aria-expanded={openSubmenu === item.MenuId} // ✅ ADDED
+          >
+            {item.IconClass && <span className="material-icons">{item.IconClass}</span>}
+            {item.MenuName}
+          </a>
+
+          {item.subItems?.length > 0 && (
+            <div
+              id={`collapse${item.MenuId}`}
+              className={`accordion-collapse collapse ${openSubmenu === item.MenuId ? 'show' : ''}`} // ✅ CHANGED
+            >
+              {renderSubMenuItems(item.subItems)}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    ));
+  };
+
+  if (loading) return <div>Loading menu...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div className="sidebar">
       <div className="accordion mb-5" id="accordionExample">
-        {renderMenuSection("etms", "My ETMS", "switch_account", etmsMenuItems)}
-        {renderMenuSection("master", "Master", "settings", masterMenuItems)}
-        {renderMenuSection(
-          "transport",
-          "Transport",
-          "directions_car",
-          transpMenuItems
-        )}
-        {renderMenuSection("Super Admin", "Super Admin", "admin_panel_settings", superAdminMenuItems)}
-        {renderMenuSection("reports", "Reports", "assignment", reportMenuItems)}
+        {renderMenuItems(menuItems)}
 
       </div>
 
-      {/* Help Card */}
       <div className="cardx help p-3">
         <span className="material-icons mb-3">help</span>
         <p className="overline_text_sm">Need help?</p>
-        <p className="small mt-2 mb-3">
-          Please connect with our support team.
-        </p>
+        <p className="small mt-2 mb-3">Please connect with our support team.</p>
         <div className="d-grid">
           <button className="btn btn-sm btn-outline-secondary fw-bold">
             <small>GET IN TOUCH</small>

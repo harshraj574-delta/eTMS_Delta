@@ -34,8 +34,8 @@ const Header = ({ mainTitle, pageTitle, showAdhocButton = false, showNewButton =
         {/* <li><a href="#!" onClick={sidebarToggle} className="text-dark">{sidebarToggle ? '<span className="material-icons">menu</span>' : '<span className="material-icons">add</span>'}</a></li> */}
         <li><a href="#!" onClick={sidebarToggle} className="text-dark">
           {isSidebarCollapsed ?
-            <span className="material-icons">close</span> :
-            <span className="material-icons">menu</span>}
+            <span className="material-icons">menu</span> :
+            <span className="material-icons">close</span>}
         </a></li>
       </ul>
       <div className="logo"><img src="images/logo.svg" alt="" /></div>
