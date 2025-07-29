@@ -200,7 +200,7 @@ const ReplicateSchedule = () => {
         backupmgrid: empid,
       };
       const response = await apiService.GetBackupMgrId(params);
-      console.log("Managers response:", response);
+      //console.log("Managers response:", response);
       if (response && response.length > 0) {
         setManagers(response);
         setSelectedManager(empid);
@@ -226,7 +226,7 @@ const ReplicateSchedule = () => {
         mgrid: managerId,
         sdate: fromDate,
       });
-      console.log("Managers response Data:", mgrscheduledata);
+     // console.log("Managers response Data:", mgrscheduledata);
       setMgrscheduledata(mgrscheduledata);
     } catch (error) {
       console.error("Error fetching manager schedule:", error);
@@ -235,8 +235,8 @@ const ReplicateSchedule = () => {
     }
   };
   const handleManagerChange = (e) => {
-    console.log("Selected Manager Value:", e.value);
-    console.log("Selected Manager Event:", e);
+    // console.log("Selected Manager Value:", e.value);
+    // console.log("Selected Manager Event:", e);
     setSelectedManager(e.value);
     fetchMgrSchedule(e.value);
   };
@@ -255,13 +255,13 @@ const ReplicateSchedule = () => {
   };
   const handleReplicate = async () => {
     try {
-      console.log('Button clicked');
+      //console.log('Button clicked');
       const checkedEmployees = mgrscheduledata
         .filter(item => item.isChecked)
         .map(item => item.EmployeeID)
         .join(',');
 
-      console.log('Checked employees:', checkedEmployees);
+     // console.log('Checked employees:', checkedEmployees);
       if (!checkedEmployees) {
         toastService.warn('Please select at least one employee.');
         return;
@@ -283,10 +283,10 @@ const ReplicateSchedule = () => {
           updatedBy: sessionManager.getUserSession().ID
         };
 
-        console.log('Replication params:', params);
+        //console.log('Replication params:', params);
         response = await apiService.ReplicateSchedule(params);
         response = 1;
-        console.log('Replication response:', response);
+        //console.log('Replication response:', response);
       } else {
         response = 2;
       }

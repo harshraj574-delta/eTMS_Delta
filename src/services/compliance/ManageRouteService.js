@@ -50,7 +50,7 @@ class ManageRouteService {
         RouteID: params.RouteID,
         isAdd: params.isAdd,
       });
-      console.log("GetRoutesDetailsnew response:", response.data);
+      //console.log("GetRoutesDetailsnew response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in GetRoutesDetailsnew:", error);
@@ -65,7 +65,7 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttime: params.shifttime,
       });
-      console.log("sp_validateEmpRoster response:", response.data);
+      //console.log("sp_validateEmpRoster response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in sp_validateEmpRoster:", error);
@@ -81,7 +81,7 @@ class ManageRouteService {
         facilityid: params.facilityid,
         shifttime: params.shifttime,
       });
-      console.log("GetRoutesStatistics response:", response.data);
+      //console.log("GetRoutesStatistics response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in GetRoutesStatistics:", error);
@@ -98,7 +98,7 @@ class ManageRouteService {
         locationID: params.locationID,
         updatedBy: params.updatedBy,
       });
-      console.log(" GetRouteInputJson", response.data);
+      //console.log(" GetRouteInputJson", response.data);
       return response.data;
     } catch (err) {
       console.log("Error in GetRouteInputJson", err);
@@ -114,7 +114,7 @@ class ManageRouteService {
         jsonstring: params.jsonstring,
         updatedBy: params.updatedBy,
       });
-      console.log("save_routesMapBasedNew", response.data);
+      //console.log("save_routesMapBasedNew", response.data);
       return response.data;
     } catch (err) {
       console.log("Error in save_routesMapBasedNew", err);
@@ -125,7 +125,7 @@ class ManageRouteService {
       const response = await api.post("/Get_RouteGeometry", {
         RouteID: params.RouteID,
       });
-      console.log("this is data for geometry", response.data);
+      //console.log("this is data for geometry", response.data);
       return response.data;
     } catch (err) {
       console.log("this is error in Get_RouteGeometry", err);
@@ -142,7 +142,7 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttimes: params.shifttimes,
       });
-      console.log("GetRoutesExportExcel response:", response.data);
+     // console.log("GetRoutesExportExcel response:", response.data);
       return response.data; // Return the actual data from the response
     } catch (err) {
       console.log("this is error in Get_RouteGeometry", err);
@@ -158,7 +158,7 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttime: params.shifttime,
       });
-      console.log("AutoVendorAllocationNew response:", response.data);
+      //console.log("AutoVendorAllocationNew response:", response.data);
       return response.data;
     } catch (err) {
       console.log("Error in AutoVendorAllocationNew", err);
@@ -174,7 +174,7 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttimes: params.shifttimes,
       });
-      console.log("WBS_GetBulkRouteData response:", response.data);
+      //console.log("WBS_GetBulkRouteData response:", response.data);
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in WBS_GetBulkRouteData:", error);
@@ -190,7 +190,7 @@ class ManageRouteService {
         facilityid: params.facilityid,
         shifttime: params.shifttime,
       });
-      console.log("getvehtypeCountVendorwise response:", response.data);
+     // console.log("getvehtypeCountVendorwise response:", response.data);
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in getvehtypeCountVendorwise:", error);

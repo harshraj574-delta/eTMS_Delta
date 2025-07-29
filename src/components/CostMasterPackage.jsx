@@ -204,7 +204,7 @@ const CostMasterPackage = () => {
     };
     try {
       const response = await CostMasterPackageService.PackageGetCost(params);
-      console.log("PackageGetCost response:", response);
+      //console.log("PackageGetCost response:", response);
       let parsedData = [];
       if (typeof response === "string") {
         parsedData = JSON.parse(response);
@@ -306,7 +306,7 @@ const CostMasterPackage = () => {
         fueltype: "0",
       };
       const responce = CostMasterPackageService.AddNewPackageCost(params);
-      console.log("Add Cost Package Response:", responce);
+      //console.log("Add Cost Package Response:", responce);
       if (responce) {
         toastService.success("Cost package added successfully");
         setAddNewCost(false);
@@ -336,7 +336,7 @@ const CostMasterPackage = () => {
         hrs: hrsEdit,
       };
       const res = await CostMasterPackageService.sprUpdatePackageCost(params);
-      console.log("Update Cost Response:", res);
+      //console.log("Update Cost Response:", res);
       if (typeof res === "string") {
         try {
           res = JSON.parse(res);

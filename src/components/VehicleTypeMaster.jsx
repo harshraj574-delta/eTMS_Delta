@@ -62,7 +62,7 @@ const VehicleTypeMaster = () => {
         const response = await apiService.SelectFacility({
             Userid: sessionManager.getUserSession().ID,
         });
-        console.log("FacilityData",response);
+        //console.log("FacilityData",response);
         setfacilityList(response);
 
        // setfacilityListNew(response);
@@ -77,7 +77,7 @@ const BindVendorDropdownlist= async(facilityid) =>{
         const response = await apiService.GetVendorByFacility({
             facilityid: facilityid, 
         })   
-        console.log("VendorData",selectedFacility);
+        //console.log("VendorData",selectedFacility);
         setVendorList(response);
     }
     catch (error) {
@@ -96,7 +96,7 @@ const BindVehicleTypeList= async(vendorid,facilityid) =>{
             vendorid: vendorid,
             facilityid: facilityid,
         })
-        console.log("VehicleTypeData",response);
+       //console.log("VehicleTypeData",response);
         setVehicleTypeList(response);
     }
     catch (error) {

@@ -103,11 +103,11 @@ const MyFeedback = () => {
 
   const fetchTicketReplies = async (ticketNo) => {
     try {
-      console.log("Fetching replies for ticket:", ticketNo); // Added log
+     // console.log("Fetching replies for ticket:", ticketNo); // Added log
       const replies = await apiService.Spr_sprSelectReply({
         ticketNo: ticketNo,
       });
-      console.log("Received replies:", replies); // Added log
+      // console.log("Received replies:", replies); // Added log
       setTicketReplies(replies);
       setSelectedTicket(ticketNo);
     } catch (error) {
@@ -118,7 +118,7 @@ const MyFeedback = () => {
     try {
       const facID = sessionStorage.getItem("FacilityID"); // assuming facID is stored in sessionStorage
       const result = await apiService.Spr_GetComplaintCategory({ facID });
-      console.log("Category DropDown Data:", result);
+      //console.log("Category DropDown Data:", result);
       setCategoryDropDown(result);
       // Set the first category ID as ComplaintCategoryID
       if (result.length > 0) {
@@ -143,7 +143,7 @@ const MyFeedback = () => {
       const result = await apiService.Spr_GetComplaintType({
         ComplaintCategoryID,
       });
-      console.log("Complaint Type DropDown Data:", result);
+      //console.log("Complaint Type DropDown Data:", result);
       setComplaintTypeDropDown(result); // Update the complaint type dropdown
     } catch (error) {
       console.error("Error fetching complaint types:", error);
@@ -212,7 +212,7 @@ const MyFeedback = () => {
 
     try {
       const response = await apiService.sprInsertFeedBackDetails(params);
-      console.log("Feedback submitted successfully:", response);
+      //console.log("Feedback submitted successfully:", response);
       toastService.success("Feedback submitted successfully!");
       const offcanvasElement = document.getElementById("raise_Reopen");
       const closeButton = offcanvasElement.querySelector(
@@ -238,7 +238,7 @@ const MyFeedback = () => {
 
     try {
       const response = await apiService.Spr_sprInsertReopen(params);
-      console.log("Reopen Remark submitted successfully:", response);
+      //console.log("Reopen Remark submitted successfully:", response);
       // Reset the remark state
       setReopenRemark("");
       setIsOffcanvasOpen(false); // Close the offcanvas
@@ -287,7 +287,7 @@ const MyFeedback = () => {
       if (typeof resultArr === "string") {
         try {
           resultArr = JSON.parse(resultArr);
-          console.log("Parsed Feedback Count Result:", resultArr);
+          //console.log("Parsed Feedback Count Result:", resultArr);
         } catch (parseError) {
           console.error("Error parsing feedback count JSON:", parseError);
           resultArr = [];

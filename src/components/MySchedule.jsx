@@ -221,7 +221,7 @@ const MySchedule = () => {
         triptype: trip.triptype,
         Reason: "", // You can make this dynamic if needed
       };
-      console.log("Cancel params", params);
+      // console.log("Cancel params", params);
       const response = await apiService.CancelTrip(params);
 
       if (response) {
@@ -246,7 +246,7 @@ const MySchedule = () => {
         mgrId: empid,
         ProcessId: document.getElementById("ddlProcess").value,
       });
-      console.log("Mgr Associate", response);
+      // console.log("Mgr Associate", response);
       setMgrassociate(response);
     } catch (error) {
       console.error("Error fetching manager associates:", error);
@@ -309,14 +309,14 @@ const MySchedule = () => {
         empid: empid,
       });
 
-      console.log("Facility Details", response);
+      // console.log("Facility Details", response);
       if (response) {
         setLoginFacilities(response); // Set login facilities
         setLogoutFacilities(response); // Set logout facilities
         setloginfacility(response);
         setSelectedloginfacility(response[0]?.Id || ""); // Set default value for login facility
         setSelectedlogoutfacility(response[0]?.Id || ""); // Set default value for logout facility
-        console.log("loginfacility", response);
+        // console.log("loginfacility", response);
       }
     } catch (error) {
       console.error("Error fetching facility details:", error);
@@ -466,7 +466,7 @@ const MySchedule = () => {
     // Add any validation logic here if needed
     setToDate(e.target.value);
 
-    console.log("To date changed:", e.target.value);
+    // console.log("To date changed:", e.target.value);
   };
 
   
@@ -527,7 +527,7 @@ const handleLogoutFacilityChange = (e) => {
       };
 
       let response = await apiService.UpdateEmpSchedule(params);
-      console.log("Update response:", response);
+      // console.log("Update response:", response);
 
       if (typeof response === "string") {
         try {
@@ -585,11 +585,11 @@ const handleLogoutFacilityChange = (e) => {
           const match = time.match(/\d{4}$/);
           return match ? match[0] : time.trim();
         });
-        console.log("Clicked Employee:", employee.EmployeeID);
-        console.log("Day Index:", day);
-        console.log("Raw SETime Data:", seTimeData);
-        console.log("Extracted Login Time:", loginTime);
-        console.log("Extracted Logout Time:", logoutTime);
+        // console.log("Clicked Employee:", employee.EmployeeID);
+        // console.log("Day Index:", day);
+        // console.log("Raw SETime Data:", seTimeData);
+        // console.log("Extracted Login Time:", loginTime);
+        // console.log("Extracted Logout Time:", logoutTime);
         // 3. Get schedule and lock details
         let scheduleData = await fetchEmployeeSchedule(employee.EmployeeID);
         let schedule = (scheduleData && scheduleData[0]) || {};
@@ -639,13 +639,13 @@ const handleLogoutFacilityChange = (e) => {
         let tptForMessage = "";
         let tptForType = 0;
 
-        console.log("loginDateTime: ", loginDateTime);
-        // console.log("lockPickTime: ", lockPickTime);
-        console.log("loginTime: ", loginTime);
-        // console.log(typeof loginTime);
-        console.log("logoutDateTime: ", logoutDateTime);
-        // console.log("lockDropTime: ", lockDropTime);
-        console.log("logoutTime: ", logoutTime);
+        // console.log("loginDateTime: ", loginDateTime);
+        // // console.log("lockPickTime: ", lockPickTime);
+        // console.log("loginTime: ", loginTime);
+        // // console.log(typeof loginTime);
+        // console.log("logoutDateTime: ", logoutDateTime);
+        // // console.log("lockDropTime: ", lockDropTime);
+        // console.log("logoutTime: ", logoutTime);
         // console.log(typeof logoutTime);
         // if (loginDateTime <= lockPickTime && loginTime) {
         //   loginTimeVisible = false;
@@ -1071,7 +1071,7 @@ const handleLogoutFacilityChange = (e) => {
         sdate: fromDate,
       });
 
-      console.log("Fetched Employee Schedule Response:", response);
+      // console.log("Fetched Employee Schedule Response:", response);
 
       // Check if response exists and parse it if needed
       let scheduleData = response;
@@ -1115,13 +1115,13 @@ const handleLogoutFacilityChange = (e) => {
         setSelectedEmployeeId(formattedSchedule[0].empCode);
 
         // Log the formatted data
-        console.log("Formatted Employee Schedule:", formattedSchedule);
+        // console.log("Formatted Employee Schedule:", formattedSchedule);
 
         // Return the formatted data for immediate use if needed
         return formattedSchedule;
       } else {
         setEmployeeSchedule([]);
-        console.log("No schedule data found");
+        // console.log("No schedule data found");
         return [];
       }
     } catch (error) {
@@ -1157,7 +1157,7 @@ const handleLogoutFacilityChange = (e) => {
         processid: "0", // Using "0" as the default process ID
       });
 
-      console.log("Available Shift Times`:", response);
+      // console.log("Available Shift Times`:", response);
 
       // Parse the JSON string if response is a string
       let parsedResponse = response;
@@ -1210,7 +1210,7 @@ const handleLogoutFacilityChange = (e) => {
         processid: processId,
       });
 
-      console.log("Available Logout Shift Times:", response);
+      // console.log("Available Logout Shift Times:", response);
 
       // Parse the JSON string if response is a string
       let parsedResponse = response;
@@ -1264,12 +1264,12 @@ const handleLogoutFacilityChange = (e) => {
         }
       }
 
-      console.log(
-        "Fetching trips for employee:",
-        employeeId,
-        "date:",
-        formattedDate
-      );
+      // console.log(
+      //   "Fetching trips for employee:",
+      //   employeeId,
+      //   "date:",
+      //   formattedDate
+      // );
 
       const response = await apiService.GetMyTrips({
         empid: employeeId,
@@ -1277,7 +1277,7 @@ const handleLogoutFacilityChange = (e) => {
         eDate: formattedDate, // Using same date for start and end to get trips for a specific day
       });
 
-      console.log("Employee Trips API Response:", response);
+      // console.log("Employee Trips API Response:", response);
 
       // Parse the response if it's a string
       let tripsData = response;
@@ -1308,7 +1308,7 @@ const handleLogoutFacilityChange = (e) => {
     try {
       // Get the date for the selected day from weekDays array
       const selectedDate = weekDays[day]?.fullDate;
-      console.log("Selected date for trips:", selectedDate);
+      // console.log("Selected date for trips:", selectedDate);
 
       // Set the selected employee
       setSelectedEmployeeForTrips({
@@ -1349,10 +1349,10 @@ const handleLogoutFacilityChange = (e) => {
     try {
       let data = await apiService.GetMyRoutesDetails(params);
       data = JSON.parse(data);
-      console.log("Fetched GetMyRoutesDetails :", data);
+      // console.log("Fetched GetMyRoutesDetails :", data);
       // Check if the response contains the expected data
       if (data && Array.isArray(data)) {
-        console.log("this is data", data);
+        // console.log("this is data", data);
         setRouteDetails(data); // Set the state with the correct property
       } else {
         setRouteDetails([]); // Set to empty array if no details found
@@ -1542,7 +1542,7 @@ const handleLogoutFacilityChange = (e) => {
 
     try {
       const response = await apiService.InsertNewSchedule(params);
-      console.log("Schedule saved successfully:", response);
+      // console.log("Schedule saved successfully:", response);
       // //alert("Record saved successfully!"); // Alert for successful save
       // toastService.success("Record Saved successfully!"); // Show success toast
       // const offcanvasElement = document.getElementById("Employee_Shift");
@@ -1560,10 +1560,10 @@ const handleLogoutFacilityChange = (e) => {
           "Roster insert failed, due to difference between login and logout time is less than 9 hours."
         )
       ) {
-        console.log(
-          "Roster insert failed: Login and logout time ",
-          response[0].res2
-        );
+        // console.log(
+        //   "Roster insert failed: Login and logout time ",
+        //   response[0].res2
+        // );
 
         toastService.error(
           "Roster insertion failed: login and logout time must differ by at least 9 hours."

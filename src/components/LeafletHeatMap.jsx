@@ -85,7 +85,7 @@ const LeafletHeatMap = ({ facilityid = 1, sDate = "2025-05-29", triptype = "P", 
         let data = await response.json();
         if (typeof data === "string") data = JSON.parse(data);
         if (Array.isArray(data)) {
-          console.log(`Fetched ${data.length} employees`);
+         // console.log(`Fetched ${data.length} employees`);
           // Filter out invalid geocodes here for heatmap as well
           const validData = data.filter(
             (emp) =>

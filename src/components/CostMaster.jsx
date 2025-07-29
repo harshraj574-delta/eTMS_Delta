@@ -299,7 +299,7 @@ const CostMaster = () => {
     };
     CostMasterService.AddNewCost(params)
       .then((response) => {
-        console.log("AddNewCost response:", response);
+        //console.log("AddNewCost response:", response);
         if (response) {
           toastService.success("Cost added successfully");
           setAddNewCost(false);
@@ -331,7 +331,7 @@ const CostMaster = () => {
     };
     try {
       const response = await CostMasterService.GetCost(params);
-      console.log("GetCost", response);
+      //console.log("GetCost", response);
       let parsedData = [];
       if (typeof response === "string") {
         parsedData = JSON.parse(response);
@@ -371,7 +371,7 @@ const CostMaster = () => {
         fuelrate: editFuelRate,
       };
       let res = await CostMasterService.sprUpdateCost(params);
-      console.log("sprUpdateCost response:", res);
+      //console.log("sprUpdateCost response:", res);
       // If response is string, parse it
       if (typeof res === "string") {
         try {

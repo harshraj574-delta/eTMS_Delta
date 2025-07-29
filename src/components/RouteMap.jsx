@@ -370,7 +370,7 @@ export default function RouteMap() {
             "Invalid response from GetRoutesByOrder: expected array"
           );
         }
-        console.log("Parsed Routes Meta:", parsedRoutesMeta);
+       // console.log("Parsed Routes Meta:", parsedRoutesMeta);
         setAllRouteMetas(parsedRoutesMeta);
         if (parsedRoutesMeta.length > 0) {
           const firstRouteMeta = parsedRoutesMeta[0];
@@ -1089,7 +1089,7 @@ export default function RouteMap() {
                 route.stops.map((stop, sidx) => {
                   const lat = parseFloat(stop.locationY);
                   const lng = parseFloat(stop.locationX);
-                  console.log("Stop Coordinates:", stop);
+                  //console.log("Stop Coordinates:", stop);
                   if (isNaN(lat) || isNaN(lng)) return null;
                   return (
                     <Marker

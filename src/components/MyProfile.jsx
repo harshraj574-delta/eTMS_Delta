@@ -19,10 +19,10 @@ const MyProfile = () => {
     const fetchProfile = async () => {
       try {
         const data = await apiService.GetEmpGeoCodeDetails({ empid: userId });
-        console.log("Raw API Response Profile:", data);
+        //console.log("Raw API Response Profile:", data);
 
         const parsedData = typeof data === "string" ? JSON.parse(data) : data;
-        console.log("Profile Data:", parsedData);
+        //console.log("Profile Data:", parsedData);
 
         setProfileData(Array.isArray(parsedData) ? parsedData[0] : parsedData);
       } catch (err) {

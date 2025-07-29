@@ -30,7 +30,7 @@ const Location = () => {
       const locationData = await apiService.SelectLocation({
         Userid: sessionManager.getUserSession().Userid,
       });
-      console.log("Location Data:", locationData); // Add this line to log the location data t
+     // console.log("Location Data:", locationData); // Add this line to log the location data t
       setLocationData(locationData);
     } catch (error) {
       console.error("Error fetching locations:", error);

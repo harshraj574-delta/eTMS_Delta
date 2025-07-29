@@ -16,7 +16,7 @@ const retryAsync = async (asyncFn, args, maxRetries = 3, delay = 1000) => {
       lastError = error;
       console.error(`Request failed (attempt ${i + 1}/${maxRetries}):`, error);
       if (i < maxRetries - 1) {
-        console.log(`Retrying in ${delay}ms (attempt ${i + 2}/${maxRetries})...`);
+        // console.log(`Retrying in ${delay}ms (attempt ${i + 2}/${maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, delay * (i + 1))); // Exponential backoff
       }
     }
@@ -130,7 +130,7 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
   useEffect(() => {
     const params = getQueryParams();
     setQueryParams(params);
-    console.log("Offcanvas query parameters:", params);
+   // console.log("Offcanvas query parameters:", params);
   }, []);
 
   useEffect(() => {
@@ -155,14 +155,14 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
           occ_seater: -2      // Keep occ_seater fixed
         };
 
-        console.log("Offcanvas API parameters:", apiParams);
+       // console.log("Offcanvas API parameters:", apiParams);
 
         // Fetch route info using ManageRouteService with retry
         const routeResponse = await retryAsync(
           ManageRouteService.GetRoutesByOrder,
           apiParams
         );
-        console.log("Route response:", routeResponse);
+        //console.log("Route response:", routeResponse);
         // Parse response if needed
         let routeData = typeof routeResponse === 'string' ? JSON.parse(routeResponse) : routeResponse;
         if (typeof routeData === 'string') routeData = JSON.parse(routeData);
@@ -199,7 +199,7 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
           parsedGeometry = parsedGeometry[0];
         }
 
-        console.log("Details data:", parsedDetails);
+       // console.log("Details data:", parsedDetails);
 
         // Set the route with all data
         setRoute({
@@ -392,7 +392,7 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
           attributionControl={false}
           whenReady={() => {
             // When map is ready, we'll use the timeout set above for full loading
-            console.log("Map is ready");
+            // console.log("Map is ready");
           }}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />

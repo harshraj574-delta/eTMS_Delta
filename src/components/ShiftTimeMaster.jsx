@@ -345,7 +345,7 @@ const ShiftTimeMaster = () => {
 
       setProcesses(formattedData);
       setProcessNew(formattedData);
-      console.log("Processes:", formattedData);
+      //console.log("Processes:", formattedData);
     } catch (error) {
       console.error("Failed to fetch processes:", error);
     }
@@ -422,7 +422,7 @@ const ShiftTimeMaster = () => {
       ShiftType: selectedNewType,
     });
 
-    console.log("Shift Time Updated:", response);
+    //console.log("Shift Time Updated:", response);
 
     let parsedResponse = typeof response === "string" ? JSON.parse(response) : response;
 

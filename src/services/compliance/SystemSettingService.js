@@ -5,7 +5,7 @@ class SystemSettingService {
       const response = await api.post("/GetConfiguration", {
         facilityid: params.facilityid,
       });
-      console.log("GetConfiguration response:", response.data);
+      //console.log("GetConfiguration response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in GetConfiguration:", error);
@@ -18,7 +18,7 @@ class SystemSettingService {
         configname: params.configname,
         facilityid: params.facilityid,
       });
-      console.log("GetRegex response:", response.data);
+      //console.log("GetRegex response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in GetRegex:", error);
@@ -34,7 +34,7 @@ class SystemSettingService {
         id: params.id,
         userid: params.userid,
       });
-      console.log("AddSetting response:", response.data);
+      //console.log("AddSetting response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in AddSetting:", error);

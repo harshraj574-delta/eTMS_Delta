@@ -29,7 +29,7 @@ class AdhocmanagementService {
       const response = await api.post("/GetBackupMgrId", {
         backupmgrid: params.backupmgrid,
       });
-      console.log("GetBackupMgrId response:", response.data);
+      // console.log("GetBackupMgrId response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in GetBackupMgrId:", error);
@@ -39,7 +39,7 @@ class AdhocmanagementService {
   async SelectFacilityByGroup(params) {
     try {
       const response = await api.post("/SelectFacilityByGroup", params);
-      console.log("SelectFacilityByGroup response:", response.data); // Log the response data
+      // console.log("SelectFacilityByGroup response:", response.data); // Log the response data
       let data = response.data;
       if (typeof data === "string") {
         try {
@@ -61,7 +61,7 @@ class AdhocmanagementService {
         id: params.id.toString(), // Convert to string as per API requirement
         userid: parseInt(params.userid), // Ensure it's an integer
       });
-      console.log("DeleteAdhoc response:", response.data); // Log the response data
+      // console.log("DeleteAdhoc response:", response.data); // Log the response data
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in DeleteAdhoc:", error);
@@ -76,8 +76,8 @@ class AdhocmanagementService {
         type: params.type,
         processid: params.processid,
       });
-      console.log("getpickshiftAdhoc raw response:", response);
-      console.log("getpickshiftAdhoc data:", response.data); // Log the response data
+      // console.log("getpickshiftAdhoc raw response:", response);
+      // console.log("getpickshiftAdhoc data:", response.data); // Log the response data
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in getpickshiftAdhoc:", error);
@@ -92,8 +92,8 @@ class AdhocmanagementService {
         type: params.type,
         processid: params.processid,
       });
-      console.log("getdropshiftadhoc raw response:", response);
-      console.log("getdropshiftadhoc data:", response.data); // Log the response data
+      // console.log("getdropshiftadhoc raw response:", response);
+      // console.log("getdropshiftadhoc data:", response.data); // Log the response data
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in getdropshiftadhoc:", error);
@@ -106,7 +106,7 @@ class AdhocmanagementService {
         facilityid: params.facilityid,
         triptype: params.triptype,
       });
-      console.log("GetAdhocReason response:", response.data); // Log the response data
+      // console.log("GetAdhocReason response:", response.data); // Log the response data
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in GetAdhocReason:", error);
@@ -126,7 +126,7 @@ class AdhocmanagementService {
         reasonid: params.reasonid,
         AdhocType: params.AdhocType,
       });
-      console.log("AddAdhocRequest response:", response.data); // Log the response data
+      // console.log("AddAdhocRequest response:", response.data); // Log the response data
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in AddAdhocRequest:", error);
@@ -140,7 +140,7 @@ class AdhocmanagementService {
         sdate: params.sdate,
         edate: params.edate,
       });
-      console.log("getTotalAdhocCount response:", response.data); // Log the response data
+      // console.log("getTotalAdhocCount response:", response.data); // Log the response data
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in getTotalAdhocCount:", error);
@@ -154,7 +154,7 @@ class AdhocmanagementService {
         sdate: params.sdate,
         edate: params.edate,
       });
-      console.log("getAdhocRequestCount response:", response.data); // Log the response data
+      // console.log("getAdhocRequestCount response:", response.data); // Log the response data
       return response.data; // Return the actual data from the response
     } catch (error) {
       console.error("Error in getAdhocRequestCount:", error);

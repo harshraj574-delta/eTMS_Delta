@@ -94,7 +94,7 @@ const AdhocManagement = () => {
         sdate: formattedStartDate,
         edate: formattedEndDate,
       });
-      console.log("Adhoc Request Count Response:", response);
+      //console.log("Adhoc Request Count Response:", response);
       if (typeof response === "string") {
         response = JSON.parse(response);
       }
@@ -138,7 +138,7 @@ const AdhocManagement = () => {
         sdate: formattedStartDate,
         edate: formattedEndDate,
       });
-      console.log("Total Adhoc Count Response:", response);
+      //console.log("Total Adhoc Count Response:", response);
       // If response is a string, parse it
       if (typeof response === "string") {
         response = JSON.parse(response);
@@ -165,7 +165,7 @@ const AdhocManagement = () => {
           facilityid: selectedFacility,
           triptype: e.value,
         });
-        console.log("GetAdhocReason Response:", response);
+       // console.log("GetAdhocReason Response:", response);
         const data =
           typeof response === "string" ? JSON.parse(response) : response;
         setReasonData(data || []);
@@ -183,14 +183,14 @@ const AdhocManagement = () => {
         type: value === "Pick Up" ? "P" : "D",
         processid: 0, // Default processid as 0
       };
-      console.log("Fetching shift data with params:", params);
+      //console.log("Fetching shift data with params:", params);
       let response;
       if (value === "Pick Up") {
         response = await AdhocmanagementService.getpickshiftAdhoc(params);
       } else {
         response = await AdhocmanagementService.getdropshiftadhoc(params);
       }
-      console.log("Shift Data Response Adhoc:", response);
+      //console.log("Shift Data Response Adhoc:", response);
       const data =
         typeof response === "string" ? JSON.parse(response) : response;
       setShiftData(data || []);
@@ -218,7 +218,7 @@ const AdhocManagement = () => {
         status: "emp",
       };
 
-      console.log("Sending params Adhoc Data:", params);
+      //console.log("Sending params Adhoc Data:", params);
 
       const response = await AdhocmanagementService.SelectEmpAdhocRequest(
         params
@@ -226,7 +226,7 @@ const AdhocManagement = () => {
       // console.log("API Response:", response);
       const respData = JSON.parse(response);
 
-      console.log("AdhocManagement Details", respData);
+      //console.log("AdhocManagement Details", respData);
       setAdhocData(respData);
       // Set counts for all cards
       setTotalAdhocs(respData.length);
@@ -278,10 +278,10 @@ const AdhocManagement = () => {
         locationid: locationid,
         managerID: managerID,
       };
-      console.log("Employee Params", params);
+      //console.log("Employee Params", params);
       const response = await AdhocmanagementService.EmpSearchManager(params);
       const data = JSON.parse(response);
-      console.log("fetchEmployeeData list:", data);
+      //console.log("fetchEmployeeData list:", data);
       setEmployeeData(data);
     } catch (error) {
       console.error("Error fetching employee data:", error);
@@ -302,7 +302,7 @@ const AdhocManagement = () => {
       const response = await AdhocmanagementService.SelectFacilityByGroup(
         params
       );
-      console.log("Facility API Response:", response);
+      //console.log("Facility API Response:", response);
 
       // Ensure we have an array of data
       let facilities = [];
@@ -313,7 +313,7 @@ const AdhocManagement = () => {
         facilities = [response];
       }
 
-      console.log("Processed Facilities:", facilities);
+      //console.log("Processed Facilities:", facilities);
       setFacilityData(facilities);
 
       // Set default facility if available
@@ -340,7 +340,7 @@ const AdhocManagement = () => {
       };
       const response = await AdhocmanagementService.GetBackupMgrId(params);
       // Remove JSON.parse since response is already an object
-      console.log("Manager Data:", response);
+      //console.log("Manager Data:", response);
       setManagerData(response);
 
       // Set default manager if available
@@ -406,7 +406,7 @@ const AdhocManagement = () => {
         reasonid: selectedReason,
         AdhocType: selectedRequestType,
       };
-      console.log("Save change params ", params);
+      //console.log("Save change params ", params);
       // Call the AddAdhocRequest API
       const response = await AdhocmanagementService.AddAdhocRequest(params);
       // Handle success

@@ -8,7 +8,7 @@ class AdminScheduleService {
                 StartDate: params.StartDate,
                 locationid: params.locationid,
             })
-            console.log("Admin Schedule Response:", response.data);
+            // console.log("Admin Schedule Response:", response.data);
             return response.data;
         } catch (error) {
             console.error("Error fetching admin schedule:", error);

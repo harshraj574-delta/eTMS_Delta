@@ -90,7 +90,7 @@ const VendorMaster = () => {
       const response = await apiService.GetVendorByFacility({
         facilityid: facilityid,
       });
-      console.log("VendorList", response);
+      //console.log("VendorList", response);
       setVendorList(response);
     } catch (error) {
       console.error("Error fetching locationlist:", error);
@@ -173,7 +173,7 @@ const VendorMaster = () => {
 
   const handleSaveVendor = async () => {
     try {
-      console.log("newVendor", newVendor);
+      //console.log("newVendor", newVendor);
 
       if (!newVendor) {
         toastService.warn("Please select a vendor to update.");
@@ -319,7 +319,7 @@ const VendorMaster = () => {
                 rows={10}
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 rowClassName={(rowData) => {
-                  console.log("row data", rowData);
+                  //console.log("row data", rowData);
                   // return rowData[0].attrited === "1" ? 'bg-danger-subtle' : '';
                 }}
               >

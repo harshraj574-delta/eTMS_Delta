@@ -33,7 +33,7 @@ class ShiftTimeMasterService {
         processid: params.processid,
         weekday: params.weekday,
       })
-      console.log("GetSelectedShiftTime:", response.data);
+      //console.log("GetSelectedShiftTime:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in GetSelectedShiftTime:", error);
@@ -46,7 +46,7 @@ class ShiftTimeMasterService {
         shiftid: params.shiftid,
         status: params.status,
       })
-      console.log("UpdateShiftStatus:", response.data);
+      //console.log("UpdateShiftStatus:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in UpdateShiftStatus:", error);
@@ -67,7 +67,7 @@ class ShiftTimeMasterService {
         UpdatedBy: params.UpdatedBy,
         ShiftType: params.ShiftType,
       })
-      console.log("UpdateShiftTimeGrid:", response.data);
+      //console.log("UpdateShiftTimeGrid:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in UpdateShiftTimeGrid:", error);

@@ -9,7 +9,7 @@ class CostMasterPackageService {
         vehicleStatus: params.vehicleStatus,
         fueltype: params.fueltype,
       });
-      console.log("PackageGetCost response:", response.data);
+      // console.log("PackageGetCost response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in PackageGetCost:", error);
@@ -33,7 +33,7 @@ class CostMasterPackageService {
         vendorid: params.vendorid,
         fueltype: params.fueltype,
       });
-      console.log("AddNewPackageCost response:", response.data);
+      // console.log("AddNewPackageCost response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in AddNewPackageCost:", error);
@@ -52,7 +52,7 @@ class CostMasterPackageService {
         kms: params.kms,
         hrs: params.hrs,
       });
-      console.log("sprUpdatePackageCost response:", response.data);
+      // console.log("sprUpdatePackageCost response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in sprUpdatePackageCost:", error);

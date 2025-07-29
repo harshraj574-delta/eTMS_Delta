@@ -82,7 +82,7 @@ export const apiService = {
         UserName: credentials.userID,
       });
 
-      console.log("Raw API Response:", response.data);
+      //console.log("Raw API Response:", response.data);
 
       // If it's a string, parse it
       let rawItems = response.data;
@@ -212,7 +212,7 @@ export const apiService = {
       });
 
       if (response && response.data) {
-        console.log("InsertNewSchedule:", response.data);
+        //console.log("InsertNewSchedule:", response.data);
         return JSON.parse(response.data);
       } else {
         throw new Error("Invalid response from server");
@@ -236,7 +236,7 @@ export const apiService = {
         dropadflag: params.dropadflag,
         remark: params.remark,
       });
-      console.log("UpdateEmpSchedule:", response.data);
+      //console.log("UpdateEmpSchedule:", response.data);
       return JSON.parse(response.data);
     } catch (error) {
       console.error("API Error:", error);
@@ -249,7 +249,7 @@ export const apiService = {
         empid: params.empid,
         sDate: params.sdate,
       });
-      console.log("GetOneEmployeeSchedule:", response.data);
+      //console.log("GetOneEmployeeSchedule:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -264,7 +264,7 @@ export const apiService = {
         empid: params.empid,
         processid: params.processid,
       });
-      console.log("GetPickShiftTime", response.data);
+      //console.log("GetPickShiftTime", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -280,7 +280,7 @@ export const apiService = {
         empid: params.empid,
         processid: params.processid,
       });
-      console.log("GetDropShiftTime", response.data);
+      //console.log("GetDropShiftTime", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -294,7 +294,7 @@ export const apiService = {
         sDate: params.sDate,
         eDate: params.eDate,
       });
-      console.log("GetMyTrips Data:", response.data);
+      //console.log("GetMyTrips Data:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -309,7 +309,7 @@ export const apiService = {
         triptype: params.triptype,
         routeid: params.routeid,
       });
-      console.log("GetMyRoutesDetaails List:", response.data);
+      //console.log("GetMyRoutesDetaails List:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Response", error);
@@ -326,7 +326,7 @@ export const apiService = {
         triptype: params.triptype,
         Reason: params.Reason,
       });
-      console.log("CancelTrip Response:", response.data);
+      //console.log("CancelTrip Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -357,16 +357,16 @@ export const apiService = {
         updatedBy: params.updatedBy,
       };
 
-      console.log("ReplicateSchedule request params:", requestBody);
+      //console.log("ReplicateSchedule request params:", requestBody);
 
       const response = await api.post("/ReplicateSchedule", requestBody);
-      console.log("ReplicateSchedule raw response:", response);
+      //console.log("ReplicateSchedule raw response:", response);
 
       if (!response.data) {
         throw new Error("No data received from server");
       }
 
-      console.log("ReplicateSchedule data:", response.data);
+      //console.log("ReplicateSchedule data:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in ReplicateSchedule:", error);
@@ -418,7 +418,7 @@ export const apiService = {
         StatusText: item.StatusText || "",
       }));
 
-      console.log("Formatted Response:", formattedData);
+      //console.log("Formatted Response:", formattedData);
       return formattedData;
     } catch (error) {
       console.error("API Error:", error);
@@ -446,7 +446,7 @@ export const apiService = {
         }))
         : [];
 
-      console.log("Reply Data:", formattedData);
+      //console.log("Reply Data:", formattedData);
       return formattedData;
     } catch (error) {
       console.error("API Error:", error);
@@ -465,7 +465,7 @@ export const apiService = {
           Category: item.Category || "",
         }))
         : [];
-      console.log("Category DropDown Data:", DropDown);
+      //console.log("Category DropDown Data:", DropDown);
       return DropDown;
     } catch (error) {
       console.error("API Error:", error);
@@ -487,7 +487,7 @@ export const apiService = {
           severity: item.severity || 0,
         }))
         : [];
-      console.log("Type DropDown Data:", DropDown);
+      //console.log("Type DropDown Data:", DropDown);
       return DropDown;
     } catch (error) {
       console.error("API Error:", error);
@@ -502,7 +502,7 @@ export const apiService = {
         sdate: credentials.sdate,
         edate: credentials.edate,
       });
-      console.log("Feedback Count Response:", response.data);
+      //console.log("Feedback Count Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -521,7 +521,7 @@ export const apiService = {
         RaisedById: credentials.RaisedById,
         RouteId: credentials.RouteId,
       });
-      console.log("Insert Feedback Response:", response.data);
+     // console.log("Insert Feedback Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -537,7 +537,7 @@ export const apiService = {
         actionid: credentials.actionid,
         statusid: credentials.statusid,
       });
-      console.log("Reopen Response:", response.data);
+      //console.log("Reopen Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -609,10 +609,10 @@ export const apiService = {
         triptype: credentials.triptype || "",
       });
 
-      console.log(
-        "Get Normal Adhoc Shiftwise Response -------->:",
-        response.data
-      );
+      // //console.log(
+      //   "Get Normal Adhoc Shiftwise Response -------->:",
+      //   response.data
+      // );
 
       return response.data;
     } catch (error) {
@@ -715,7 +715,7 @@ export const apiService = {
         vendorid: body.vendorid || 0,
         triptype: body.triptype || "",
       });
-      console.log("Shift Completion Vs Pending -------->:", response.data);
+     // console.log("Shift Completion Vs Pending -------->:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -745,10 +745,10 @@ export const apiService = {
         vendorid: body.vendorid || 0,
         triptype: body.triptype || "",
       });
-      console.log(
-        "Shift/Employee/Occupancy per Trip -------->:",
-        response.data
-      );
+      // console.log(
+      //   "Shift/Employee/Occupancy per Trip -------->:",
+      //   response.data
+      // );
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -764,7 +764,7 @@ export const apiService = {
         triptype: params.triptype,
         type: params.type,
       });
-      console.log("Get Routed Emp Geocode Response:", response.data);
+      //console.log("Get Routed Emp Geocode Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error: map", error);
@@ -783,7 +783,7 @@ export const apiService = {
         triptype: credentials.triptype,
       });
 
-      console.log("VP Route Count -------->:", response.data);
+      //console.log("VP Route Count -------->:", response.data);
 
       return response.data;
     } catch (error) {
@@ -801,7 +801,7 @@ export const apiService = {
         vendorid: credentials.vendorid,
         triptype: credentials.triptype
       });
-      console.log("GetChart_VUcount Response:", response.data);
+      //console.log("GetChart_VUcount Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);

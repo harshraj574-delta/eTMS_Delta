@@ -80,7 +80,7 @@ const DriverMaster = () => {
     const fetchVenders = (id) => {
         driverMasterService.getVenders({ facilityid: id }).then((res) => {
             const data = JSON.parse(res.data) || [];
-            console.log("Venders", data);
+            //console.log("Venders", data);
 
             setVenders(data);
         }).catch((err) => {

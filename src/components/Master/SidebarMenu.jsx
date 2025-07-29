@@ -16,8 +16,8 @@ const SidebarMenu = () => {
       try {
         const userID = sessionStorage.getItem('ID');
         const menuItems = await apiService.Spr_GetMenuItem_V2({ userID });
-        console.log("User ID:", userID); // 👈 Check user ID
-        console.log("Fetched menuItems:", menuItems); // 👈 Check what’s coming
+        //console.log("User ID:", userID); // 👈 Check user ID
+        //console.log("Fetched menuItems:", menuItems); // 👈 Check what’s coming
 
         const organizedMenu = organizeMenuItems(menuItems);
         // Flatten and extract all sub-menu paths
@@ -26,7 +26,7 @@ const SidebarMenu = () => {
           .map(item => `/${item.MenuURL?.replace(/^\/+/, '')}`);
 
         sessionStorage.setItem("allowedPaths", JSON.stringify(allowedPaths));
-        console.log("Organized menu:", organizedMenu); // 👈 Check structure
+       // console.log("Organized menu:", organizedMenu); // 👈 Check structure
         setMenuItems(organizedMenu);
       } catch (err) {
         console.error('Failed to fetch menu items:', err);
@@ -59,8 +59,8 @@ const SidebarMenu = () => {
       item.ParentId !== null && item.ParentId !== "null"
     );
 
-    console.log("Main Menu:", mainMenu);
-    console.log("Sub Menus:", subMenus);
+    //console.log("Main Menu:", mainMenu);
+    //console.log("Sub Menus:", subMenus);
 
     return mainMenu.map(menuItem => ({
       ...menuItem,

@@ -249,7 +249,7 @@ const ManageRoute = () => {
       if (bulkRouteData && bulkRouteData.length > 0) {
         // Assuming bulkRouteData is already in the format expected by UpdateTripsheetDetail
         await pushDataToUpdateTripsheetDetail(bulkRouteData);
-        console.log("Bulk route data pushed successfully:", bulkRouteData);
+        //console.log("Bulk route data pushed successfully:", bulkRouteData);
         toastService.success(
           "Route finalization and data push completed successfully."
         );
@@ -278,7 +278,7 @@ const ManageRoute = () => {
       });
 
       if (response.status === 201) {
-        console.log("Data pushed successfully:", response.data);
+        //console.log("Data pushed successfully:", response.data);
         //toastService.success("Data pushed successfully!");
       } else {
         console.error(
@@ -317,7 +317,7 @@ const ManageRoute = () => {
       toastService.success("Vendor allocation process completed successfully.");
       setVendorAllocated(true);
       await handleSubmit(); // Refresh the routes after allocation
-      console.log("Vendor allocation response:", response);
+      //console.log("Vendor allocation response:", response);
     } catch (error) {
       console.error("Error during auto vendor allocation:", error);
       toastService.error("Vendor allocation process failed to complete.");
@@ -639,7 +639,7 @@ const ManageRoute = () => {
           typeof routeInputResponse === "string"
             ? JSON.parse(routeInputResponse)
             : routeInputResponse;
-        console.log("Parsed Route Input Data:", routeInputData);
+        //console.log("Parsed Route Input Data:", routeInputData);
       } catch (parseError) {
         console.error("Error parsing route input JSON:", parseError);
         throw new Error("Invalid route input data format");
@@ -835,7 +835,7 @@ const ManageRoute = () => {
           Routeid: "",
           occ_seater: -2,
         });
-        console.log("Routes Response:", response);
+       // console.log("Routes Response:", response);
         const parsedResponse =
           typeof response === "string" ? JSON.parse(response) : response;
         setTableData(parsedResponse || []);
@@ -858,7 +858,7 @@ const ManageRoute = () => {
             vendorData = [];
           }
         }
-        console.log("Vendor Summary Data:", vendorData);
+        //console.log("Vendor Summary Data:", vendorData);
         setVendorSummary(vendorData);
         // Fetch route statistics
         const statsResponse = await ManageRouteService.GetRoutesStatistics({

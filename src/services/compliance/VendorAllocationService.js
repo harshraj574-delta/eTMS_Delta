@@ -7,7 +7,7 @@ class VendorAllocationService {
                 facid: params.facid,
                 type: params.type,
             });
-            console.log("GetShiftByFacilityType response:", response.data);
+            //console.log("GetShiftByFacilityType response:", response.data);
             return response.data;
         } catch (error) {
             console.error("Error in GetShiftByFacilityType:", error);

@@ -57,7 +57,7 @@ const Login = () => {
     if (validateForm()) {
       try {
         const response = await apiService.login(formData);
-        console.log('Login response:', response);
+        // console.log('Login response:', response);
 
         if (response[0] === '1') {
           // Store user data if needed

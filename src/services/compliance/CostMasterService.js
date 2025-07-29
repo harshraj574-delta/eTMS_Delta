@@ -6,7 +6,7 @@ class CostMasterService {
       const response = await api.post("/SelectFacility", {
         Userid: params.Userid,
       });
-      console.log("SelectFacility response:", response.data);
+      // console.log("SelectFacility response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in SelectFacility:", error);
@@ -18,7 +18,7 @@ class CostMasterService {
       const response = await api.post("/GetVendorByFac", {
         facilityid: params.facilityid,
       });
-      console.log("GetVendorByFac response:", response.data);
+      //console.log("GetVendorByFac response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in GetVendorByFac:", error);
@@ -30,7 +30,7 @@ class CostMasterService {
       const response = await api.post("/SelectZoneByFac", {
         facilityid: params.facilityid,
       });
-      console.log("SelectZoneByFac response:", response.data);
+      //console.log("SelectZoneByFac response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in SelectZoneByFac:", error);
@@ -48,7 +48,7 @@ class CostMasterService {
         zone: params.zone,
         fueltype: params.fueltype,
       });
-      console.log("GetCost response:", response.data);
+      //console.log("GetCost response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in GetCost:", error);
@@ -72,7 +72,7 @@ class CostMasterService {
         vendorid: params.vendorid,
         fueltype: params.fueltype,
       });
-      console.log("AddNewCost response:", response.data);
+     // console.log("AddNewCost response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in AddNewCost:", error);
@@ -89,7 +89,7 @@ class CostMasterService {
         guardcost: params.guardcost,
         fuelrate: params.fuelrate,
       });
-      console.log("sprUpdateCost response:", response.data);
+      //console.log("sprUpdateCost response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Error in sprUpdateCost:", error);

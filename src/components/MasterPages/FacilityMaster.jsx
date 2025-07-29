@@ -96,19 +96,19 @@ const FacilityMaster = () => {
     const fetchFacilityData = async () => {
         try {
             setLoading(true);
-            console.log(sessionManager.getUserSession());
+            //console.log(sessionManager.getUserSession());
 
             if (sessionManager.getUserSession().ISadmin === "Y") {
                 const response = await apiService.SelectAllFacility({
                 });
-                console.log(response);
+               // console.log(response);
                 setFacilityData(response);
             }
             else {
                 const response = await apiService.SelectFacility({
                     Userid: sessionManager.getUserSession().Userid,
                 });
-                console.log(response);
+                //console.log(response);
                 setFacilityData(response);
             }
 
@@ -308,7 +308,7 @@ const FacilityMaster = () => {
         const openEditSidebar = (guardData) => {
             setAddFacility(guardData); // Set the selected guard data
             setVisibleLeft(true); // Open sidebar
-            console.log("Selected Guard Details -->", guardData);
+            //console.log("Selected Guard Details -->", guardData);
         };
     };
 

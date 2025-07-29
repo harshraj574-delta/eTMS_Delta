@@ -37,7 +37,7 @@ const GuardMaster = () => {
   const openEditSidebar = (guardData) => {
     setSelectedGuard(guardData); // Set the selected guard data
     setVisibleLeft(true); // Open sidebar
-    console.log("Selected Guard Details -->", guardData);
+    //console.log("Selected Guard Details -->", guardData);
   };
 
   useEffect(() => {
