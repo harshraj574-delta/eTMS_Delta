@@ -16,13 +16,16 @@ import { ProgressBar } from "primereact/progressbar";
 import { Dialog } from "primereact/dialog";
 import { point, Point } from "leaflet";
 import axios from "axios"; // Import axios here
-
 import { OverlayPanel } from "primereact/overlaypanel";
-
 import { Tooltip } from "primereact/tooltip";
-
 import * as XLSX from "xlsx";
 import { set } from "lodash";
+import {
+  DndContext,
+  useDraggable,
+  useDroppable,
+  closestCenter,
+} from '@dnd-kit/core';
 
 const AddressColumnTemplate = (rowData) => {
   const maxLength = 40;
@@ -168,7 +171,6 @@ const ManageRoute = () => {
     return `${year}-${month}-${day}`;
   });
 
-  
   // Define queryParams in the component scope so it's available for the link
   // It will re-calculate whenever its dependencies change
   const queryParams = new URLSearchParams({
@@ -969,19 +971,19 @@ const ManageRoute = () => {
             value={routeDetails[rowData.RouteID] || []}
             emptyMessage="No Record Found."
             editMode="cell"
-            dataKey="empID"
-            rowClassName={() => 'draggable-row'}
+            // dataKey="empID"
+            // rowClassName={() => 'draggable-row'}
           >
             <coloumn
               field=""
               header=""
               body={(rowData) => (
                 <div className="d-flex gap-2"
-                  // draggable
-                  // onDragStart={() => handleDragStart(empRowData, rowData.RouteID)}
-                  // onDragOver={(e) => e.preventDefault()}
-                  // onDrop={() => handleDrop(rowData.RouteID, empRowData.stopNo)}
-                  // style={{ display: "flex", gap: "8px", cursor: "move" }}
+                // draggable
+                // onDragStart={() => handleDragStart(empRowData, rowData.RouteID)}
+                // onDragOver={(e) => e.preventDefault()}
+                // onDrop={() => handleDrop(rowData.RouteID, empRowData.stopNo)}
+                // style={{ display: "flex", gap: "8px", cursor: "move" }}
                 >
                   {rowData.isPWD && (
                     <img

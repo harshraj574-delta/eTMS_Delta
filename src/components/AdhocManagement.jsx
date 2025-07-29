@@ -183,14 +183,14 @@ const AdhocManagement = () => {
         type: value === "Pick Up" ? "P" : "D",
         processid: 0, // Default processid as 0
       };
-
+      console.log("Fetching shift data with params:", params);
       let response;
       if (value === "Pick Up") {
         response = await AdhocmanagementService.getpickshiftAdhoc(params);
       } else {
         response = await AdhocmanagementService.getdropshiftadhoc(params);
       }
-
+      console.log("Shift Data Response Adhoc:", response);
       const data =
         typeof response === "string" ? JSON.parse(response) : response;
       setShiftData(data || []);
@@ -556,9 +556,8 @@ const AdhocManagement = () => {
         <div className="row mt-3">
           <div className="col">
             <div
-              className={`cardNew p-4 ${
-                adhocFilter === "total" ? "bg-secondary text-white" : "bg-white"
-              }`}
+              className={`cardNew p-4 ${adhocFilter === "total" ? "bg-secondary text-white" : "bg-white"
+                }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("total")}
             >
@@ -568,9 +567,8 @@ const AdhocManagement = () => {
                 {totalAdhocs}
               </h3>
               <span
-                className={`subtitle_sm ${
-                  adhocFilter === "total" ? "text-white" : "text-dark"
-                }`}
+                className={`subtitle_sm ${adhocFilter === "total" ? "text-white" : "text-dark"
+                  }`}
               >
                 Total Adhocs
               </span>
@@ -578,11 +576,10 @@ const AdhocManagement = () => {
           </div>
           <div className="col">
             <div
-              className={`cardNew p-4 ${
-                adhocFilter === "myRequests"
+              className={`cardNew p-4 ${adhocFilter === "myRequests"
                   ? "bg-secondary text-white"
                   : "bg-white"
-              }`}
+                }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("myRequests")}
             >
@@ -596,9 +593,8 @@ const AdhocManagement = () => {
                 </strong>
               </h3>
               <span
-                className={`subtitle_sm ${
-                  adhocFilter === "myRequests" ? "text-white" : "text-dark"
-                }`}
+                className={`subtitle_sm ${adhocFilter === "myRequests" ? "text-white" : "text-dark"
+                  }`}
               >
                 My Requests
               </span>
@@ -606,11 +602,10 @@ const AdhocManagement = () => {
           </div>
           <div className="col">
             <div
-              className={`cardNew p-4 ${
-                adhocFilter === "pending"
+              className={`cardNew p-4 ${adhocFilter === "pending"
                   ? "bg-secondary text-white"
                   : "bg-white"
-              }`}
+                }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("pending")}
             >
@@ -622,9 +617,8 @@ const AdhocManagement = () => {
                 {pending}
               </h3>
               <span
-                className={`subtitle_sm ${
-                  adhocFilter === "pending" ? "text-white" : "text-dark"
-                }`}
+                className={`subtitle_sm ${adhocFilter === "pending" ? "text-white" : "text-dark"
+                  }`}
               >
                 Pendings
               </span>
@@ -632,11 +626,10 @@ const AdhocManagement = () => {
           </div>
           <div className="col">
             <div
-              className={`cardNew p-4 ${
-                adhocFilter === "approved"
+              className={`cardNew p-4 ${adhocFilter === "approved"
                   ? "bg-secondary text-white"
                   : "bg-white"
-              }`}
+                }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("approved")}
             >
@@ -648,9 +641,8 @@ const AdhocManagement = () => {
                 {approved}
               </h3>
               <span
-                className={`subtitle_sm ${
-                  adhocFilter === "approved" ? "text-white" : "text-dark"
-                }`}
+                className={`subtitle_sm ${adhocFilter === "approved" ? "text-white" : "text-dark"
+                  }`}
               >
                 Approved
               </span>
@@ -658,11 +650,10 @@ const AdhocManagement = () => {
           </div>
           <div className="col">
             <div
-              className={`cardNew p-4 ${
-                adhocFilter === "rejected"
+              className={`cardNew p-4 ${adhocFilter === "rejected"
                   ? "bg-secondary text-white"
                   : "bg-white"
-              }`}
+                }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("rejected")}
             >
@@ -674,9 +665,8 @@ const AdhocManagement = () => {
                 {rejected}
               </h3>
               <span
-                className={`subtitle_sm ${
-                  adhocFilter === "rejected" ? "text-white" : "text-dark"
-                }`}
+                className={`subtitle_sm ${adhocFilter === "rejected" ? "text-white" : "text-dark"
+                  }`}
               >
                 Rejected
               </span>
@@ -684,11 +674,10 @@ const AdhocManagement = () => {
           </div>
           <div className="col">
             <div
-              className={`cardNew p-4 ${
-                adhocFilter === "cancelled"
+              className={`cardNew p-4 ${adhocFilter === "cancelled"
                   ? "bg-secondary text-white"
                   : "bg-white"
-              }`}
+                }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("cancelled")}
             >
@@ -700,9 +689,8 @@ const AdhocManagement = () => {
                 {cancelled}
               </h3>
               <span
-                className={`subtitle_sm ${
-                  adhocFilter === "cancelled" ? "text-white" : "text-dark"
-                }`}
+                className={`subtitle_sm ${adhocFilter === "cancelled" ? "text-white" : "text-dark"
+                  }`}
               >
                 Cancelled
               </span>
@@ -722,12 +710,12 @@ const AdhocManagement = () => {
                     adhocFilter === "total"
                       ? adhocData
                       : adhocData.filter((item) =>
-                          adhocFilter === "myRequests"
-                            ? item.Status &&
-                              item.Status.toLowerCase() === "myrequest"
-                            : item.Status &&
-                              item.Status.toLowerCase() === adhocFilter
-                        )
+                        adhocFilter === "myRequests"
+                          ? item.Status &&
+                          item.Status.toLowerCase() === "myrequest"
+                          : item.Status &&
+                          item.Status.toLowerCase() === adhocFilter
+                      )
                   }
                   paginator
                   rows={10}

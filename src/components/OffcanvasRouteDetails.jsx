@@ -495,7 +495,7 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
                 ]}
                 icon={
                   new L.Icon({
-                    iconUrl: "public/images/icons/facility.png",
+                    iconUrl: "/images/icons/facility.png",
                     iconSize: [36, 36],
                     iconAnchor: [18, 36],
                     popupAnchor: [0, -36],

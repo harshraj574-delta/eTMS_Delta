@@ -20,6 +20,12 @@ const SidebarMenu = () => {
         console.log("Fetched menuItems:", menuItems); // 👈 Check what’s coming
 
         const organizedMenu = organizeMenuItems(menuItems);
+        // Flatten and extract all sub-menu paths
+        const allowedPaths = menuItems
+          .filter(item => item.MenuURL) // filter only usable URLs
+          .map(item => `/${item.MenuURL?.replace(/^\/+/, '')}`);
+
+        sessionStorage.setItem("allowedPaths", JSON.stringify(allowedPaths));
         console.log("Organized menu:", organizedMenu); // 👈 Check structure
         setMenuItems(organizedMenu);
       } catch (err) {
@@ -32,7 +38,7 @@ const SidebarMenu = () => {
 
     fetchMenuItems();
   }, []);
- // ✅ ADDED: Automatically expand parent menu based on current route
+  // ✅ ADDED: Automatically expand parent menu based on current route
   useEffect(() => {
     const matchedParent = menuItems.find(parent =>
       parent.subItems?.some(
@@ -65,7 +71,7 @@ const SidebarMenu = () => {
   };
 
   // Render submenu items
- const renderSubMenuItems = (subItems) => {
+  const renderSubMenuItems = (subItems) => {
     if (!subItems || subItems.length === 0) return null;
 
     return (
@@ -90,7 +96,7 @@ const SidebarMenu = () => {
   };
 
   // Render main menu items with their submenus
-   const renderMenuItems = (items) => {
+  const renderMenuItems = (items) => {
     return items.map((item) => (
       <div key={item.MenuId} className="menu-item">
         <div className="accordion-item border-0">

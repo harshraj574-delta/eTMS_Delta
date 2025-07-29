@@ -2,9 +2,15 @@ import React, { useState } from "react";
 import PropTypes from 'prop-types';
 import sessionManager from '../../utils/SessionManager';
 import { FiLogOut } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
+
 const Header = ({ mainTitle, pageTitle, showAdhocButton = false, showNewButton = false, onNewButtonClick }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    sessionStorage.clear();
+    navigate("/login"); // or "/"
+  };
   // Get user data from SessionManager
   const userData = sessionManager.getUserSession();
   const employeeName = userData.empName || 'Guest';
@@ -71,7 +77,7 @@ const Header = ({ mainTitle, pageTitle, showAdhocButton = false, showNewButton =
 
           </li>
           <li>
-            <a href="/" className="text-dark">
+            <a href="/" onClick={handleLogout} className="text-dark">
               <FiLogOut />
             </a>
           </li>

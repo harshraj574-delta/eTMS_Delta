@@ -19,24 +19,24 @@ const Login = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Username validation
     if (!formData.username) {
       newErrors.username = 'User Name is required';
-    } 
+    }
     // else if (!/\S+@\S+\.\S+/.test(formData.username)) {
     //   newErrors.username = 'Email is invalid';
     // }
-    
+
     // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } 
+    }
     //else if (formData.password.length < 6) {
     //   newErrors.password = 'Password must be at least 6 characters';
     // }
 
- 
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -59,154 +59,172 @@ const Login = () => {
         const response = await apiService.login(formData);
         console.log('Login response:', response);
 
-        if (response[0]==='1') {
+        if (response[0] === '1') {
           // Store user data if needed
           const userdetails = await apiService.Spr_GetuserId(formData);
-         // console.log('User Details:', userdetails[0]);
+          // console.log('User Details:', userdetails[0]);
 
           //localStorage.setItem('userdetails', JSON.stringify(userdetails[0]));
-        if(userdetails[0].empCode!==null){
-          sessionManager.setUserSession(userdetails);
-          //sessionStorage.setItem('FacilityID', userdetails[0].FacilityID);
-          //sessionStorage.setItem('FacilityName', userdetails[0].FacilityName);
-          //sessionStorage.setItem('FirstTimeLogin', userdetails[0].FirstTimeLogin);
-          //sessionStorage.setItem('UserID', userdetails[0].ID);
-          //sessionStorage.setItem('ISadmin', userdetails[0].ISadmin);
-          //sessionStorage.setItem('IsBackupManager', userdetails[0].IsBackupManager);
-          //sessionStorage.setItem('IsNormalUser', userdetails[0].IsNormalUser);
-          //sessionStorage.setItem('LocationName', userdetails[0].LocationName);
-          //sessionStorage.setItem('ManagerId', userdetails[0].ManagerId);
-          //sessionStorage.setItem('empCode', userdetails[0].empCode);
-          //sessionStorage.setItem('empName', userdetails[0].empName);
-          //sessionStorage.setItem('isSpoc', userdetails[0].isSpoc);
-          //sessionStorage.setItem('locationId', userdetails[0].locationId);
-          //sessionStorage.setItem('ManagerId', userdetails[0].ManagerId);
-          //sessionStorage.setItem('userName', userdetails[0].userName);
-          // Navigate to dashboard
-          navigate('/MySchedule');
-        }
-        else{
-          setSubmitError(response.Message || 'User Not found!!');
-        }
+          if (userdetails[0].empCode !== null) {
+            sessionManager.setUserSession(userdetails);
+            //sessionStorage.setItem('FacilityID', userdetails[0].FacilityID);
+            //sessionStorage.setItem('FacilityName', userdetails[0].FacilityName);
+            //sessionStorage.setItem('FirstTimeLogin', userdetails[0].FirstTimeLogin);
+            //sessionStorage.setItem('UserID', userdetails[0].ID);
+            //sessionStorage.setItem('ISadmin', userdetails[0].ISadmin);
+            //sessionStorage.setItem('IsBackupManager', userdetails[0].IsBackupManager);
+            //sessionStorage.setItem('IsNormalUser', userdetails[0].IsNormalUser);
+            //sessionStorage.setItem('LocationName', userdetails[0].LocationName);
+            //sessionStorage.setItem('ManagerId', userdetails[0].ManagerId);
+            //sessionStorage.setItem('empCode', userdetails[0].empCode);
+            //sessionStorage.setItem('empName', userdetails[0].empName);
+            //sessionStorage.setItem('isSpoc', userdetails[0].isSpoc);
+            //sessionStorage.setItem('locationId', userdetails[0].locationId);
+            //sessionStorage.setItem('ManagerId', userdetails[0].ManagerId);
+            //sessionStorage.setItem('userName', userdetails[0].userName);
+            // Navigate to dashboard
+            sessionStorage.setItem("isLoggedIn", "true");
+            // 👇 Fetch allowed menus for the user
+            const menus = await apiService.Spr_GetMenuItem_V2({ userID: userdetails[0].ID });
+            // Manually add 'ReplicateSchedule' if not already included
+            if (!menus.some(menu => menu.MenuURL === "ReplicateSchedule")) {
+              menus.push({ MenuURL: "ReplicateSchedule" });
+            }
 
-        } else {
-          setSubmitError(response.Message || 'Invalid credentials!!');
+            const allowedPaths = menus
+              .filter(item => item.MenuURL)
+              .map(item => item.MenuURL.replace(/^\/+/, "")); // Clean leading slash if any
+
+            sessionStorage.setItem("allowedMenus", JSON.stringify(allowedPaths));
+            sessionStorage.setItem("ID", userdetails[0].ID);
+
+            // 👇 Navigate only if MySchedule is one of the allowed paths
+            if (allowedPaths.includes("MySchedule")) {
+              navigate("/MySchedule");
+            } else if (allowedPaths.length > 0) {
+              navigate(`/${allowedPaths[0]}`); // navigate to first allowed page
+            } else {
+              setSubmitError(response.Message || 'User Not found!!');
+            }
+          }
+          } else {
+            setSubmitError(response.Message || 'Invalid credentials!!');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          setSubmitError('Failed to connect to the server. Please try again.');
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Login error:', error);
-        setSubmitError('Failed to connect to the server. Please try again.');
-      } finally {
+      } else {
         setIsLoading(false);
       }
-    } else {
-      setIsLoading(false);
-    }
-  };
+    };
 
-  return (
-    <div className="container-fluid" id="loginBg">
-      <div className="container">
-        <div className="row menu_mb">
-          <div className="col-lg-12">
-            <nav id="menu" className="d-flex justify-content-between">  
-              <a href="/"><img src="/images/logo.svg" alt="ETMS Logo" /></a>
+    return (
+      <div className="container-fluid" id="loginBg">
+        <div className="container">
+          <div className="row menu_mb">
+            <div className="col-lg-12">
+              <nav id="menu" className="d-flex justify-content-between">
+                <a href="/"><img src="/images/logo.svg" alt="ETMS Logo" /></a>
 
-              <div className="d-flex justify-content-between align-items-center">
-                {/* <ul className="d-flex">
+                <div className="d-flex justify-content-between align-items-center">
+                  {/* <ul className="d-flex">
                   <a href="#!">FAQ'S</a>
                   <a href="#!">Contact Us</a>
                   <a href="#!">Transport Policy</a>
                 </ul> */}
-                <button className="btn btn-primary btn-sm">Need Help?</button>
-              </div>
-            </nav>
+                  <button className="btn btn-primary btn-sm">Need Help?</button>
+                </div>
+              </nav>
+            </div>
           </div>
-        </div>      
-        
-        <div className="loginMiddle">
-          <div className="row">
-            <div className="col-12 col-lg-6">
-              <div className="loginBx">
-                <h3>Login</h3>
-                <p className="overline_text">Enter your user name and password to sign in</p>
-                <div className="loginLeft">
-                  <Form onSubmit={handleSubmit}>
-                    {submitError && <Alert variant="danger">{submitError}</Alert>}
-                    
-                    <Form.Group className="mb-3">
-                      <Form.Label>User Name</Form.Label>
-                      <Form.Control
-                        type="text"
-                        name="username"
-                        placeholder='Enter your user name'
-                        value={formData.username}
-                        onChange={handleChange}
-                        isInvalid={!!errors.username}
-                        disabled={isLoading}
-                      />
-                      <Form.Control.Feedback type="invalid">
-                        {errors.username}
-                      </Form.Control.Feedback>
-                    </Form.Group>
 
-                    <Form.Group className="mb-3">
-                      <Form.Label>Password</Form.Label>
-                      <Form.Control
-                        type="password"
-                        name="password"
-                        placeholder='Enter your password'
-                        value={formData.password}
-                        onChange={handleChange}
-                        isInvalid={!!errors.password}
-                        disabled={isLoading}
-                      />
-                      <Form.Control.Feedback type="invalid">
-                        {errors.password}
-                      </Form.Control.Feedback>
-                    </Form.Group>
+          <div className="loginMiddle">
+            <div className="row">
+              <div className="col-12 col-lg-6">
+                <div className="loginBx">
+                  <h3>Login</h3>
+                  <p className="overline_text">Enter your user name and password to sign in</p>
+                  <div className="loginLeft">
+                    <Form onSubmit={handleSubmit}>
+                      {submitError && <Alert variant="danger">{submitError}</Alert>}
 
-                    <div className="form-check form-switch mb-3">
-                      <input 
-                        className="form-check-input" 
-                        type="checkbox" 
-                        role="switch" 
-                        id="RememberMe" 
-                        defaultChecked
-                      />
-                      <label className="form-check-label text1-body" htmlFor="RememberMe">
-                        Remember me
-                      </label>
-                    </div>
-                    <div className="d-grid">
-                      <button 
-                        type="submit" 
-                        className="btn btn-primary btn-nor"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? 'Logging in...' : 'Login'}
-                      </button>
-                    </div>
-                  </Form>
+                      <Form.Group className="mb-3">
+                        <Form.Label>User Name</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="username"
+                          placeholder='Enter your user name'
+                          value={formData.username}
+                          onChange={handleChange}
+                          isInvalid={!!errors.username}
+                          disabled={isLoading}
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {errors.username}
+                        </Form.Control.Feedback>
+                      </Form.Group>
+
+                      <Form.Group className="mb-3">
+                        <Form.Label>Password</Form.Label>
+                        <Form.Control
+                          type="password"
+                          name="password"
+                          placeholder='Enter your password'
+                          value={formData.password}
+                          onChange={handleChange}
+                          isInvalid={!!errors.password}
+                          disabled={isLoading}
+                        />
+                        <Form.Control.Feedback type="invalid">
+                          {errors.password}
+                        </Form.Control.Feedback>
+                      </Form.Group>
+
+                      <div className="form-check form-switch mb-3">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          id="RememberMe"
+                          defaultChecked
+                        />
+                        <label className="form-check-label text1-body" htmlFor="RememberMe">
+                          Remember me
+                        </label>
+                      </div>
+                      <div className="d-grid">
+                        <button
+                          type="submit"
+                          className="btn btn-primary btn-nor"
+                          disabled={isLoading}
+                        >
+                          {isLoading ? 'Logging in...' : 'Login'}
+                        </button>
+                      </div>
+                    </Form>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-lg-6">
+                <div className="loginRight">
+                  <img src="/images/icon.svg" alt="ETMS Icon" />
+                  <h2 className="text-white">e-Transport Management System</h2>
                 </div>
               </div>
             </div>
-            <div className="col-12 col-lg-6">
-              <div className="loginRight">
-                <img src="/images/icon.svg" alt="ETMS Icon" />
-                <h2 className="text-white">e-Transport Management System</h2>
-              </div>
+          </div>
+
+          <div className="row">
+            <div className="col-12">
+              <p className="text1-body">Copyright © {new Date().getFullYear()}, etms.</p>
             </div>
           </div>
         </div>
-
-        <div className="row">
-          <div className="col-12">
-            <p className="text1-body">Copyright © {new Date().getFullYear()}, etms.</p>
-          </div>
-        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-export default Login;
+  export default Login;

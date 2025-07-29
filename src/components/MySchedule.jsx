@@ -469,13 +469,23 @@ const MySchedule = () => {
     console.log("To date changed:", e.target.value);
   };
 
-  const handleLoginFacilityChange = (e) => {
-    setSelectedloginfacility(e.target.value);
-  };
+  
+const handleLoginFacilityChange = (e) => {
+  const facilityId = e.target.value;
+  const processId = selectedProcess;
+  setSelectedloginfacility(facilityId);
+  fetchAllShiftData(processId, facilityId);
+};
 
-  const handleLogoutFacilityChange = (e) => {
-    setSelectedlogoutfacility(e.target.value);
-  };
+
+  
+const handleLogoutFacilityChange = (e) => {
+  const facilityId = e.target.value;
+  const processId = selectedProcess;
+  setSelectedlogoutfacility(facilityId);
+  fetchAllShiftData(processId, facilityId);
+};
+
   const handleUpdateEmpSchedule = async () => {
     setIsSubmitting(true); // Loader ON
     try {
