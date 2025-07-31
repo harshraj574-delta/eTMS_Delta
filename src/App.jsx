@@ -36,7 +36,8 @@ import ShiftTimeMaster from "./components/ShiftTimeMaster";
 import MyProfile from "./components/MyProfile";
 import VendorAllocation from "./components/VendorAllocation";
 import AdminSchedule from "./components/AdminSchedule";
-import PrivateRoute from "./PrivateRoute";
+import PrivateRoute from "./components/PrivateRoute";
+import Unauthorized from "./components/Unauthorized"; // Make sure path matches
 
 // Deepak
 import Location from "./components/MasterPages/Location";
@@ -63,6 +64,7 @@ function App() {
       />
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/MyFeedback" element={<PrivateRoute element={<MyFeedback />} />} />
         <Route path="/MyNoShow" element={<PrivateRoute element={<MyNoShow />} />} />
         <Route path="/Dashboard" element={<PrivateRoute element={<Dashboard />} />} />
@@ -70,7 +72,7 @@ function App() {
         <Route path="/ManageEmployee" element={<PrivateRoute element={<ManageEmployee />} />} />
         <Route path="/ReplicateSchedule" element={<PrivateRoute element={<ReplicateSchedule />} />} />
         <Route path="/DriverMaster" element={<PrivateRoute element={<DriverMaster />} />} />
-        <Route path="/VehicleMaster" element={<PrivateRoute element={<VehicleMaster />} />} />  
+        <Route path="/VehicleMaster" element={<PrivateRoute element={<VehicleMaster />} />} />
         <Route path="/VendorMaster" element={<PrivateRoute element={<VendorMaster />} />} />
         <Route path="/GuardMaster" element={<PrivateRoute element={<GuardMaster />} />} />
         <Route path="/VehicleTypeMaster" element={<PrivateRoute element={<VehicleTypeMaster />} />} />
@@ -78,11 +80,13 @@ function App() {
         <Route path="/MyAdhocRequest" element={<PrivateRoute element={<MyAdhocRequest />} />} />
         <Route path="/ViewMyRoutes" element={<PrivateRoute element={<ViewMyRoutes />} />} />
         <Route path="/ManageRoute" element={<PrivateRoute element={<ManageRoute />} />} />
-        <Route path="/RouteMap" element={<PrivateRoute element={<RouteMap />} />} />
+        {/* <Route path="/RouteMap" element={<PrivateRoute element={<RouteMap />} />} /> */}
+        <Route path="/RouteMap" element={<RouteMap />} />
+
         {/* Deepak */}
         <Route path="/Location" element={<PrivateRoute element={<Location />} />} />
         <Route path="/FacilityMaster" element={<PrivateRoute element={<FacilityMaster />} />} />
-        {/* New Pages */}
+        {/* New Pages */} 
         <Route path="/CostMaster" element={<PrivateRoute element={<CostMaster />} />} />
         <Route path="/CostMasterPackage" element={<PrivateRoute element={<CostMasterPackage />} />} />
         <Route path="/VendorWiseBilling" element={<PrivateRoute element={<VendorWiseBilling />} />} />

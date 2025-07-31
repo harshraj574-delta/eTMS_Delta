@@ -86,10 +86,16 @@ const Login = () => {
             sessionStorage.setItem("isLoggedIn", "true");
             // 👇 Fetch allowed menus for the user
             const menus = await apiService.Spr_GetMenuItem_V2({ userID: userdetails[0].ID });
+            // ✅ Manually push RouteMap if not already included
+            if (!menus.some(menu => menu.MenuURL === "RouteMap")) {
+              menus.push({ MenuURL: "RouteMap" });
+            }
             // Manually add 'ReplicateSchedule' if not already included
             if (!menus.some(menu => menu.MenuURL === "ReplicateSchedule")) {
               menus.push({ MenuURL: "ReplicateSchedule" });
             }
+
+            //menus.push({ MenuURL: "RouteMap" });
 
             const allowedPaths = menus
               .filter(item => item.MenuURL)
@@ -107,124 +113,124 @@ const Login = () => {
               setSubmitError(response.Message || 'User Not found!!');
             }
           }
-          } else {
-            setSubmitError(response.Message || 'Invalid credentials!!');
-          }
-        } catch (error) {
-          console.error('Login error:', error);
-          setSubmitError('Failed to connect to the server. Please try again.');
-        } finally {
-          setIsLoading(false);
+        } else {
+          setSubmitError(response.Message || 'Invalid credentials!!');
         }
-      } else {
+      } catch (error) {
+        console.error('Login error:', error);
+        setSubmitError('Failed to connect to the server. Please try again.');
+      } finally {
         setIsLoading(false);
       }
-    };
+    } else {
+      setIsLoading(false);
+    }
+  };
 
-    return (
-      <div className="container-fluid" id="loginBg">
-        <div className="container">
-          <div className="row menu_mb">
-            <div className="col-lg-12">
-              <nav id="menu" className="d-flex justify-content-between">
-                <a href="/"><img src="/images/logo.svg" alt="ETMS Logo" /></a>
+  return (
+    <div className="container-fluid" id="loginBg">
+      <div className="container">
+        <div className="row menu_mb">
+          <div className="col-lg-12">
+            <nav id="menu" className="d-flex justify-content-between">
+              <a href="/"><img src="/images/logo.svg" alt="ETMS Logo" /></a>
 
-                <div className="d-flex justify-content-between align-items-center">
-                  {/* <ul className="d-flex">
+              <div className="d-flex justify-content-between align-items-center">
+                {/* <ul className="d-flex">
                   <a href="#!">FAQ'S</a>
                   <a href="#!">Contact Us</a>
                   <a href="#!">Transport Policy</a>
                 </ul> */}
-                  <button className="btn btn-primary btn-sm">Need Help?</button>
-                </div>
-              </nav>
-            </div>
-          </div>
-
-          <div className="loginMiddle">
-            <div className="row">
-              <div className="col-12 col-lg-6">
-                <div className="loginBx">
-                  <h3>Login</h3>
-                  <p className="overline_text">Enter your user name and password to sign in</p>
-                  <div className="loginLeft">
-                    <Form onSubmit={handleSubmit}>
-                      {submitError && <Alert variant="danger">{submitError}</Alert>}
-
-                      <Form.Group className="mb-3">
-                        <Form.Label>User Name</Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="username"
-                          placeholder='Enter your user name'
-                          value={formData.username}
-                          onChange={handleChange}
-                          isInvalid={!!errors.username}
-                          disabled={isLoading}
-                        />
-                        <Form.Control.Feedback type="invalid">
-                          {errors.username}
-                        </Form.Control.Feedback>
-                      </Form.Group>
-
-                      <Form.Group className="mb-3">
-                        <Form.Label>Password</Form.Label>
-                        <Form.Control
-                          type="password"
-                          name="password"
-                          placeholder='Enter your password'
-                          value={formData.password}
-                          onChange={handleChange}
-                          isInvalid={!!errors.password}
-                          disabled={isLoading}
-                        />
-                        <Form.Control.Feedback type="invalid">
-                          {errors.password}
-                        </Form.Control.Feedback>
-                      </Form.Group>
-
-                      <div className="form-check form-switch mb-3">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          role="switch"
-                          id="RememberMe"
-                          defaultChecked
-                        />
-                        <label className="form-check-label text1-body" htmlFor="RememberMe">
-                          Remember me
-                        </label>
-                      </div>
-                      <div className="d-grid">
-                        <button
-                          type="submit"
-                          className="btn btn-primary btn-nor"
-                          disabled={isLoading}
-                        >
-                          {isLoading ? 'Logging in...' : 'Login'}
-                        </button>
-                      </div>
-                    </Form>
-                  </div>
-                </div>
+                <button className="btn btn-primary btn-sm">Need Help?</button>
               </div>
-              <div className="col-12 col-lg-6">
-                <div className="loginRight">
-                  <img src="/images/icon.svg" alt="ETMS Icon" />
-                  <h2 className="text-white">e-Transport Management System</h2>
-                </div>
-              </div>
-            </div>
+            </nav>
           </div>
+        </div>
 
+        <div className="loginMiddle">
           <div className="row">
-            <div className="col-12">
-              <p className="text1-body">Copyright © {new Date().getFullYear()}, etms.</p>
+            <div className="col-12 col-lg-6">
+              <div className="loginBx">
+                <h3>Login</h3>
+                <p className="overline_text">Enter your user name and password to sign in</p>
+                <div className="loginLeft">
+                  <Form onSubmit={handleSubmit}>
+                    {submitError && <Alert variant="danger">{submitError}</Alert>}
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>User Name</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="username"
+                        placeholder='Enter your user name'
+                        value={formData.username}
+                        onChange={handleChange}
+                        isInvalid={!!errors.username}
+                        disabled={isLoading}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.username}
+                      </Form.Control.Feedback>
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>Password</Form.Label>
+                      <Form.Control
+                        type="password"
+                        name="password"
+                        placeholder='Enter your password'
+                        value={formData.password}
+                        onChange={handleChange}
+                        isInvalid={!!errors.password}
+                        disabled={isLoading}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.password}
+                      </Form.Control.Feedback>
+                    </Form.Group>
+
+                    <div className="form-check form-switch mb-3">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        id="RememberMe"
+                        defaultChecked
+                      />
+                      <label className="form-check-label text1-body" htmlFor="RememberMe">
+                        Remember me
+                      </label>
+                    </div>
+                    <div className="d-grid">
+                      <button
+                        type="submit"
+                        className="btn btn-primary btn-nor"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Logging in...' : 'Login'}
+                      </button>
+                    </div>
+                  </Form>
+                </div>
+              </div>
+            </div>
+            <div className="col-12 col-lg-6">
+              <div className="loginRight">
+                <img src="/images/icon.svg" alt="ETMS Icon" />
+                <h2 className="text-white">e-Transport Management System</h2>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
-  };
 
-  export default Login;
+        <div className="row">
+          <div className="col-12">
+            <p className="text1-body">Copyright © {new Date().getFullYear()}, etms.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Login;

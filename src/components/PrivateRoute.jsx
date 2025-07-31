@@ -15,7 +15,7 @@ const PrivateRoute = ({ element }) => {
   const isAllowed = allowedMenus.includes(currentPath);
 
   if (!isAllowed) {
-    return <Navigate to="/" replace />; // unauthorized redirect to login
+    return <Navigate to="/Unauthorized" replace />;
   }
 
   return element;

@@ -48,13 +48,15 @@ const AdminSchedule = () => {
   const [adminSchedule, setAdminSchedule] = useState([]);
   const [employeeIds, setEmployeeIds] = useState("");
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchAdminSchedule = async () => {
     try {
+      const formattedDate = selectedDate?.toISOString().split("T")[0]; // yyyy-mm-dd
+
       const response = await apiService.GetAdminSchedule({
         EmpIds: employeeIds, // Use the employeeIds state
-        StartDate: selectedDate,
+        StartDate: formattedDate,
         locationid: LocationId,
       });
       console.log("Admin Schedule Data:", response);
@@ -74,25 +76,59 @@ const AdminSchedule = () => {
   //   fetchAdminSchedule();
   // }, []);
 
-  const handleUpdateVendor = () => {
+  const handleUpdateVendor = async () => {
+    setIsSubmitting(true); // Show loader
+
+    const effectiveDate = selectedDate || new Date();
     if (!employeeIds) {
       console.error("Employee IDs are required");
+      setIsSubmitting(false);
       return;
     }
+
     try {
       const empIdsArray = employeeIds.split(",").map(id => id.trim());
       if (empIdsArray.length === 0) {
         console.error("No valid Employee IDs provided");
+        setIsSubmitting(false);
         return;
       }
-      fetchAdminSchedule();
+
+      setSelectedDate(effectiveDate);
+      await fetchAdminSchedule(); // <-- Wait here for the data
     } catch (error) {
       console.error("Error processing Employee IDs:", error);
+    } finally {
+      setIsSubmitting(false); // Hide loader only after data is fetched
     }
   };
-
   return (
     <>
+
+      {isSubmitting && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(255,255,255,0.7)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            className="spinner-border text-primary"
+            style={{ width: 60, height: 60, fontSize: 32 }}
+            role="status"
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      )}
       <style>{`
         .first_tb tr td,
         .first_tb tr th {
@@ -115,9 +151,12 @@ const AdminSchedule = () => {
                 className="w-100"
                 name="shiftDate"
                 placeholder="From Date"
-                dateFormat="dd-mm-yy"
+                dateFormat="dd-mm-yy" // UI display format
                 value={selectedDate}
-              onChange={(e) => setSelectedDate(e.value)}
+                onChange={(e) => {
+                  if (e.value) setSelectedDate(e.value);
+                }}
+                showIcon
               />
             </div>
             {/* <div className="field col-2 mb-3">
@@ -355,9 +394,11 @@ const AdminSchedule = () => {
                               onClick={() => setSidebarVisible(true)}
                               className="d-block"
                             >
-                              {line}
+                              {line.length===0?"N/A":line}
                             </a>
-                          ) : null
+                          ) : (
+                            <span className="text-muted">N/A</span>
+                          )
                         )}
                       </td>
                     );
