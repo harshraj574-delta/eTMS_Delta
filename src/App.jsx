@@ -64,6 +64,7 @@ function App() {
       />
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/PrivateRoute" element={<PrivateRoute />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/MyFeedback" element={<PrivateRoute element={<MyFeedback />} />} />
         <Route path="/MyNoShow" element={<PrivateRoute element={<MyNoShow />} />} />
