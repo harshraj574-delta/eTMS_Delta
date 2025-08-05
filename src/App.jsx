@@ -36,6 +36,7 @@ import ShiftTimeMaster from "./components/ShiftTimeMaster";
 import MyProfile from "./components/MyProfile";
 import VendorAllocation from "./components/VendorAllocation";
 import AdminSchedule from "./components/AdminSchedule";
+import EmpDump from "./components/EmpDump";
 import PrivateRoute from "./components/PrivateRoute";
 import Unauthorized from "./components/Unauthorized"; // Make sure path matches
 
@@ -101,7 +102,8 @@ function App() {
         <Route path="/MyProfile" element={<PrivateRoute element={<MyProfile />} />} />
         <Route path="/VendorAllocation" element={<PrivateRoute element={<VendorAllocation />} />} />
         <Route path="/AdminSchedule" element={<PrivateRoute element={<AdminSchedule />} />} />
-
+        <Route path="/EmpDump" element={<PrivateRoute element={<EmpDump />} />} />
+        {/* <Route path="/EmpDump" element={<EmpDump />} /> */}
       </Routes>
     </>
   );

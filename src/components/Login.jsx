@@ -86,6 +86,7 @@ const Login = () => {
             sessionStorage.setItem("isLoggedIn", "true");
             // 👇 Fetch allowed menus for the user
             const menus = await apiService.Spr_GetMenuItem_V2({ userID: userdetails[0].ID });
+          
             // ✅ Manually push RouteMap if not already included
             if (!menus.some(menu => menu.MenuURL === "RouteMap")) {
               menus.push({ MenuURL: "RouteMap" });
