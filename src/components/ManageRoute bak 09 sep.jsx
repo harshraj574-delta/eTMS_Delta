@@ -25,12 +25,10 @@ import axios from "axios";
 import { OverlayPanel } from "primereact/overlaypanel";
 import { Tooltip } from "primereact/tooltip";
 import { DataView } from "primereact/dataview";
-import { DataScroller } from 'primereact/datascroller';
 import { Badge } from "primereact/badge";
 import * as XLSX from "xlsx";
 import { set, throttle } from "lodash";
 import { useSmoothDraggable } from "./useSmoothDraggable";
-
 import {
   DndContext,
   useDraggable,
@@ -46,7 +44,6 @@ import {
   MeasuringStrategy,
 } from "@dnd-kit/core";
 import SwipeToDeleteBackground from "./SwipeToDeleteBackground";
-import Draggable, {DraggableCore} from 'react-draggable';
 
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 const getOrdinalSuffix = (num) => {
@@ -64,7 +61,7 @@ const getOrdinalSuffix = (num) => {
   return "th";
 };
 
-// Enhanced Floating Selection Panel Component with Action Selection
+// New Floating Selection Panel Component
 const FloatingSelectionPanel = React.memo(
   ({
     selectedEmployees,
@@ -73,25 +70,12 @@ const FloatingSelectionPanel = React.memo(
     onToggleHold,
     isHeld,
     isVisible,
-    selectedAction,
-    onActionChange,
-    onSplitRoute,
-    onDeleteEmployee, // New prop for handling deletion
   }) => {
+    // ✅ Smooth draggable hook
     const { position, isDragging, elementRef, handleMouseDown } =
-      useSmoothDraggable(100, 150, 350, 500);
+      useSmoothDraggable(100, 150, 350, 400);
 
-    // New handler to prevent drag on button clicks
-    const handlePanelMouseDown = (e) => {
-      // Check if the click originated on any button inside the panel
-      if (e.target.closest('button, .p-button')) {
-        // If it's a button, do not initiate the drag
-        return;
-      }
-      // Otherwise, call the original drag handler
-      handleMouseDown(e);
-    };
-
+    // ✅ Get selected employee details
     const selectedEmployeeDetails = useMemo(() => {
       const details = [];
       if (selectedEmployees) {
@@ -115,43 +99,18 @@ const FloatingSelectionPanel = React.memo(
       return details;
     }, [selectedEmployees, routeDetails]);
 
-    // Check if all selected employees are from the same route (for split mode)
-    const allFromSameRoute = useMemo(() => {
-      const routeIds = selectedEmployeeDetails.map(emp => emp.sourceRouteId);
-      return routeIds.length > 0 && new Set(routeIds).size === 1;
-    }, [selectedEmployeeDetails]);
-
-    const firstRouteId = selectedEmployeeDetails[0]?.sourceRouteId;
-
+    // ✅ Employee item template
     const employeeItemTemplate = (employee) => {
       const key = `${employee.sourceRouteId}-${employee.id || employee.empID}`;
       return (
         <div key={key} className="d-flex align-items-center p-2 border-bottom">
-          <div className="flex-grow-1" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <p className="fw-bold mb-0">
-                {employee.empCode} - {employee.empName}
-              </p>
-              <p className="mb-0" style={{ fontSize: "11px" }}>
-                {employee.Location}
-              </p>
-            </div>
-            <div className="d-flex align-items-center">
-              <p className="ms-3 mb-0" style={{ fontSize: "11px", color: "#555" }}>
-                {employee.routeid}
-              </p>
-              {/* Delete button added here */}
-              <Button
-                icon="pi pi-trash"
-                className="p-button-sm p-button-danger p-button-text ms-2"
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent row selection
-                  onDeleteEmployee(employee, employee.sourceRouteId);
-                }}
-                tooltip="Remove from Route"
-                tooltipOptions={{ position: 'top' }}
-              />
-            </div>
+          <div className="flex-grow-1">
+            <p className="fw-bold">
+              {employee.empCode} - {employee.empName}
+            </p>
+            <p className="" style={{ fontSize: "11px" }}>
+              {employee.Location}
+            </p>
           </div>
         </div>
       );
@@ -168,38 +127,46 @@ const FloatingSelectionPanel = React.memo(
           left: position.x,
           top: position.y,
           zIndex: 1100,
-          width: "600px",
-          maxHeight: "400px",
+          width: "692px",
+          maxHeight: "420px",
           backgroundColor: "#fff",
+          //border: "2px solid #2196F3",
+          //borderRadius: "12px",
+          //boxShadow: "0 8px 32px rgba(33, 150, 243, 0.3)",
           cursor: isDragging ? "grabbing" : "grab",
           display: "flex",
           flexDirection: "column",
           boxShadow:
             "0px 11px 15px -7px rgba(0, 0, 0, 0.2), 0px 24px 38px 3px rgba(0, 0, 0, 0.14), 0px 9px 46px 8px rgba(0, 0, 0, 0.12)",
         }}
-        onMouseDown={handlePanelMouseDown} // Use the new, smarter handler
+        onMouseDown={handleMouseDown}
       >
-        {/* Header */}
+        {/* --- Header --- */}
         <div
           className="d-flex justify-content-between align-items-center w-100 p-2 draggable-panel-header"
-          style={{ color: "#333" }}
+          style={{
+            //backgroundColor: "#2196F3",
+            color: "#333",
+            //borderTopLeftRadius: "10px",
+            //borderTopRightRadius: "10px",
+          }}
         >
           <div className="d-flex align-items-center">
+            {/* <span className="material-icons me-2">people</span> */}
             <span style={{ fontSize: "16px", fontWeight: "600" }}>
               Selected ({selectedEmployees.size})
             </span>
           </div>
           <div className="d-flex gap-2">
             <Tooltip target=".hold-button" />
-            {selectedAction === 'multiSelect' && (
-              <Button
-                icon={`pi ${isHeld ? "pi-lock" : "pi-unlock"}`}
-                className="p-button-sm hold-button"
-                onClick={onToggleHold}
-                data-pr-tooltip={isHeld ? "Release Hold" : "Hold Selection"}
-                data-pr-position="top"
-              />
-            )}
+            <Button
+              icon={`pi ${isHeld ? "pi-lock" : "pi-unlock"}`}
+              className="p-button-sm hold-button"
+              //severity={isHeld ? "warning" : "secondary"}
+              onClick={onToggleHold}
+              data-pr-tooltip={isHeld ? "Release Hold" : "Hold Selection"}
+              data-pr-position="top"
+            />
             <Tooltip target=".clear-button" />
             <Button
               icon="pi pi-times"
@@ -211,77 +178,35 @@ const FloatingSelectionPanel = React.memo(
           </div>
         </div>
 
-        {/* Action Selection Buttons */}
-        <div className="p-2 border-bottom bg-light">
-          <div className="d-flex flex-column gap-2">
-            <span className="fw-bold text-dark mb-2">Choose Action:</span>
-            <div className="d-flex gap-2">
-              <Button
-                label="Multi-Employee Drag & Drop"
-                icon="pi pi-arrows-alt"
-                className={`flex-fill ${selectedAction === 'multiSelect' ? 'p-button-primary' : 'p-button-outlined'}`}
-                onClick={() => onActionChange('multiSelect')}
-                disabled={selectedEmployees.size === 0}
-              />
-              <Button
-                label="Split Route"
-                icon="pi pi-sitemap"
-                className={`flex-fill ${selectedAction === 'split' ? 'p-button-info' : 'p-button-outlined'}`}
-                onClick={() => onActionChange('split')}
-                disabled={!allFromSameRoute || selectedEmployees.size === 0}
-              />
-            </div>
-          </div>
-
-          {/* Action-specific controls */}
-          {selectedAction === 'multiSelect' && (
-            <div className="mt-3 p-2 bg-primary-subtle rounded">
-              <div className="d-flex align-items-center justify-content-between">
-                <span className="text-primary fw-bold">Multi-Select Mode Active</span>
-                {isHeld && (
-                  <span className="badge bg-warning text-dark">Selection Held - Click routes to drop</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {selectedAction === 'split' && (
-            <div className="mt-3">
-              {allFromSameRoute ? (
-                <div className="d-flex gap-2">
-                  <Button
-                    label={`Split ${selectedEmployees.size} employee(s) to ${firstRouteId}S`}
-                    className="btn btn-info"
-                    onClick={onSplitRoute}
-                    disabled={selectedEmployees.size === 0}
-                  />
-                </div>
-              ) : (
-                <div className="alert alert-warning py-2">
-                  <small>All selected employees must be from the same route to split</small>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Employee List */}
+        {/* --- Body --- */}
         <div style={{ flex: 1, overflowY: "auto" }}>
-          <DataScroller
+          <DataView
             value={selectedEmployeeDetails}
             itemTemplate={employeeItemTemplate}
             emptyMessage="No employees selected."
-            rows={100}
-            buffer={0.4}
-            inline scrollHeight="500px"
           />
+        </div>
+
+        {/* --- Footer --- */}
+        <div
+          className="text-center w-100 p-2 bg-light border-top"
+          style={{
+            borderBottomLeftRadius: "10px",
+            borderBottomRightRadius: "10px",
+          }}
+        >
+          <small className="text-muted">
+            {isHeld
+              ? "Selection held - click on any route to drop"
+              : "Drag to move panel, hold to pin"}
+          </small>
         </div>
       </div>
     );
   }
 );
 
-// Route Selection Panel Component (unchanged)
+// Route Selection Panel Component - UPDATED
 const FloatingRouteSelectionPanel = React.memo(
   ({
     selectedRoutes,
@@ -291,9 +216,11 @@ const FloatingRouteSelectionPanel = React.memo(
     isVisible,
     routeSelectionOrder,
   }) => {
+    // ✅ Smooth draggable hook
     const { position, isDragging, elementRef, handleMouseDown } =
       useSmoothDraggable(20, 100, 350, 420);
 
+    // ✅ Get route details in the order they were selected
     const selectedRouteDetails = useMemo(() => {
       return routeSelectionOrder.map((routeId) => {
         const route = tableData.find((r) => r.RouteID === routeId);
@@ -301,7 +228,7 @@ const FloatingRouteSelectionPanel = React.memo(
       });
     }, [routeSelectionOrder, tableData]);
 
-    const targetRoute = selectedRouteDetails[0];
+    const targetRoute = selectedRouteDetails[0]; // first = target
     const sourceRoutes = selectedRouteDetails.slice(1);
 
     if (!isVisible || selectedRoutes.size === 0) return null;
@@ -315,9 +242,12 @@ const FloatingRouteSelectionPanel = React.memo(
           left: position.x,
           top: position.y,
           zIndex: 1100,
-          width: "600px",
-          maxHeight: "400px",
+          width: "692px",
+          maxHeight: "420px",
           backgroundColor: "#fff",
+          //border: "2px solid #2196F3", // ✅ unified to same blue tone
+          //borderRadius: "12px",
+          //boxShadow: "0 8px 32px rgba(33, 150, 243, 0.3)", // ✅ same soft shadow
           cursor: isDragging ? "grabbing" : "grab",
           display: "flex",
           flexDirection: "column",
@@ -326,12 +256,18 @@ const FloatingRouteSelectionPanel = React.memo(
         }}
         onMouseDown={handleMouseDown}
       >
-        {/* Header */}
+        {/* --- Header --- */}
         <div
           className="d-flex justify-content-between align-items-center w-100 p-2 draggable-panel-header"
-          style={{ color: "#333" }}
+          style={{
+            //backgroundColor: "#2196F3", // ✅ unified to blue
+            color: "#333",
+            //borderTopLeftRadius: "10px",
+            //borderTopRightRadius: "10px",
+          }}
         >
           <div className="d-flex align-items-center p-3 pb-0">
+            {/* <span className="material-icons me-2">merge_type</span> */}
             <span style={{ fontSize: "1.25rem" }}>
               Route Merge ({selectedRoutes.size})
             </span>
@@ -365,7 +301,7 @@ const FloatingRouteSelectionPanel = React.memo(
           </div>
         </div>
 
-        {/* Content */}
+        {/* --- Content --- */}
         <div className="p-3" style={{ flex: 1, overflowY: "auto" }}>
           {selectedRoutes.size >= 2 && (
             <div className="alert alert-light">
@@ -376,7 +312,10 @@ const FloatingRouteSelectionPanel = React.memo(
                 <div className="mt-1">
                   <span className="badge bg-success me-2">Target</span>
                   <strong>{targetRoute?.RouteID}</strong>
-                  <span className="badge bg-success ms-2">
+                  <span
+                    className="badge bg-success ms-2"
+                    //style={{ fontSize: "10px" }}
+                  >
                     First Selected
                   </span>
                   <div className="small mt-3">
@@ -421,6 +360,7 @@ const FloatingRouteSelectionPanel = React.memo(
                     className={`badge p-2 ${
                       isTarget ? "bg-success" : "bg-danger"
                     }`}
+                    // style={{ fontSize: "10px" }}
                   >
                     {isTarget ? "Target" : "Source"}
                   </span>
@@ -453,7 +393,7 @@ const FloatingRouteSelectionPanel = React.memo(
           })}
         </div>
 
-        {/* Footer */}
+        {/* --- Footer --- */}
         <div
           className="text-center w-100 p-2 bg-light border-top"
           style={{
@@ -471,6 +411,7 @@ const FloatingRouteSelectionPanel = React.memo(
     );
   }
 );
+
 // Enhanced Drop Zone Component for cross-page drops
 const CrossPageDropZone = React.memo(
   ({ routeId, position, isActive, onDrop, selectedEmployees }) => {
@@ -539,6 +480,7 @@ const DropZoneIndicator = React.memo(({ routeId, position, isOver }) => {
     },
   });
 
+  // Memoize styles for better performance
   const style = useMemo(
     () => ({
       height: isOver ? "40px" : "8px",
@@ -570,7 +512,7 @@ const DropZoneIndicator = React.memo(({ routeId, position, isOver }) => {
   );
 });
 
-// [MODIFIED] DraggableEmployeeRow now returns a DIV instead of a TR
+// Enhanced Draggable Employee Row Component with Multi-Select
 const DraggableEmployeeRow = React.memo(
   ({
     employee,
@@ -578,11 +520,12 @@ const DraggableEmployeeRow = React.memo(
     index,
     isSelected,
     onSelectionChange,
+    isMultiSelectMode,
     selectedCount,
     activeId,
     selectedEmployees,
     isDragInProgress,
-    selectedAction,
+    isSplitMode,
     onDeleteEmployee,
   }) => {
     const employeeKey = `${routeId}-${employee.id || employee.empID}`;
@@ -600,38 +543,45 @@ const DraggableEmployeeRow = React.memo(
           isMultiSelect: isSelected && selectedCount > 1,
           selectedCount: isSelected ? selectedCount : 1,
         },
-        disabled: selectedAction === 'split',
+        disabled: isSplitMode,
       });
 
     const shouldAppearDragged =
       isDragging ||
       (isDragInProgress && isSelected && selectedEmployees.size > 1);
 
+    // We only care about horizontal movement for the swipe effect
     const swipeTranslateX = transform ? transform.x : 0;
 
+    // Style for the swipeable foreground content
     const foregroundStyle = useMemo(
       () => ({
-        transform: `translateX(${swipeTranslateX}px)`,
+        transform: `translateX(${swipeTranslateX}px)`, // Only apply horizontal transform for swipe
         backgroundColor: isSelected
-          ? selectedAction === 'split'
+          ? isSplitMode
             ? "#d1ecf1"
             : "#e3f2fd"
           : "#fff",
         position: "relative",
-        zIndex: 2,
+        zIndex: 2, // Must be on top of the background
         transition: isDragging ? "none" : "transform 0.3s ease",
         willChange: "transform",
       }),
-      [swipeTranslateX, isSelected, selectedAction, isDragging]
+      [swipeTranslateX, isSelected, isSplitMode, isDragging]
     );
 
+    // Style for the main <tr> container
     const rowStyle = useMemo(
       () => ({
-        position: "relative",
+        position: "relative", // Necessary for the absolute positioned background
         opacity: shouldAppearDragged ? 0.3 : 1,
-        cursor: isDragging ? "grabbing" : "pointer",
+        cursor: isDragging
+          ? "grabbing"
+          : isMultiSelectMode || isSplitMode
+          ? "pointer"
+          : "grab",
         border: isSelected
-          ? selectedAction === 'split'
+          ? isSplitMode
             ? "2px solid #17a2b8"
             : "2px solid #2196F3"
           : "1px solid transparent",
@@ -639,12 +589,18 @@ const DraggableEmployeeRow = React.memo(
           ? "none"
           : "opacity 0.2s ease-out, border-color 0.2s ease-out",
         boxShadow: isSelected
-          ? selectedAction === 'split'
+          ? isSplitMode
             ? "0 2px 8px rgba(23, 162, 184, 0.3)"
             : "0 2px 8px rgba(33, 150, 243, 0.3)"
           : "none",
       }),
-      [isDragging, isSelected, shouldAppearDragged, selectedAction]
+      [
+        isDragging,
+        isSelected,
+        isMultiSelectMode,
+        shouldAppearDragged,
+        isSplitMode,
+      ]
     );
 
     const handleRowClick = useCallback(
@@ -667,152 +623,164 @@ const DraggableEmployeeRow = React.memo(
     );
 
     return (
-      <div
+      <tr
         style={rowStyle}
         className={`draggable-row ${
           shouldAppearDragged ? "dragging-multi" : ""
         } ${isSelected ? "selected" : ""}`}
         onClick={handleRowClick}
       >
-        <SwipeToDeleteBackground
-          isActive={isDragging}
-          swipeProgress={swipeTranslateX}
-        />
-        <div
-          ref={setNodeRef}
-          style={foregroundStyle}
-          className="row d-flex align-items-center justify-content-start py-2"
-        >
-          {/* Column 1: Actions - Always show checkbox */}
-          <div className="col-1">
-            <div className="d-flex gap-2 align-items-center">
-              {/* Always show checkbox */}
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={handleCheckboxChange}
-                className="form-check-input me-2"
-                onClick={(e) => e.stopPropagation()}
-              />
-              
-              {/* Show drag handle only when not in split mode */}
-              {selectedAction !== 'split' && (
-                <span
-                  className="material-icons drag-handle"
-                  style={{ fontSize: "20px", cursor: "grab" }}
-                  {...attributes}
-                  {...listeners}
-                >
-                  drag_indicator
-                </span>
-              )}
-              
-              {/* Icons */}
-              <div className="d-flex gap-1">
-                {employee.isPWD && (
-                  <img
-                    src="images/icons/pwd.png"
-                    alt="PWD"
-                    style={{ width: "16px", height: "16px" }}
-                    title="PWD"
+        <td colSpan="9" style={{ padding: 0, overflow: "hidden" }}>
+          <SwipeToDeleteBackground
+            isActive={isDragging}
+            swipeProgress={swipeTranslateX}
+          />
+          <div
+            ref={setNodeRef}
+            style={foregroundStyle}
+            className="d-flex align-items-center w-100"
+          >
+            {/* Recreate the table cells using divs with flexbox */}
+            {/* Use the same widths as your <thead> in rowExpansionTemplate */}
+
+            {/* Column 1: Actions */}
+            <div
+              className="p-2"
+              style={{
+                width: isMultiSelectMode || isSplitMode ? "120px" : "80px",
+              }}
+            >
+              <div className="d-flex gap-2 align-items-center">
+                {(isMultiSelectMode || isSplitMode) && (
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={handleCheckboxChange}
+                    className="form-check-input me-2"
+                    onClick={(e) => e.stopPropagation()}
                   />
                 )}
-                {employee.isOOB && (
-                  <img
-                    src="images/icons/oob.png"
-                    alt="OOB"
-                    style={{ width: "16px", height: "16px" }}
-                    title="OOB"
-                  />
+                {!isSplitMode && (
+                  <span
+                    className="material-icons drag-handle"
+                    style={{ fontSize: "20px", cursor: "grab" }}
+                    {...attributes}
+                    {...listeners}
+                  >
+                    drag_indicator
+                  </span>
                 )}
-                {employee.isNMT && (
-                  <img
-                    src="images/icons/non-motorable.png"
-                    alt="NMT"
-                    style={{ width: "16px", height: "16px" }}
-                    title="Non Motorable"
-                  />
-                )}
-                {employee.isMedical && (
-                  <img
-                    src="images/icons/medical.png"
-                    alt="Medical"
-                    style={{ width: "16px", height: "16px" }}
-                    title="Medical Required"
-                  />
-                )}
+                {/* Icons */}
+                <div className="d-flex gap-1">
+                  {employee.isPWD && (
+                    <img
+                      src="images/icons/pwd.png"
+                      alt="PWD"
+                      style={{ width: "16px", height: "16px" }}
+                      title="PWD"
+                    />
+                  )}
+                  {employee.isOOB && (
+                    <img
+                      src="images/icons/oob.png"
+                      alt="OOB"
+                      style={{ width: "16px", height: "16px" }}
+                      title="OOB"
+                    />
+                  )}
+                  {employee.isNMT && (
+                    <img
+                      src="images/icons/non-motorable.png"
+                      alt="NMT"
+                      style={{ width: "16px", height: "16px" }}
+                      title="Non Motorable"
+                    />
+                  )}
+                  {employee.isMedical && (
+                    <img
+                      src="images/icons/medical.png"
+                      alt="Medical"
+                      style={{ width: "16px", height: "16px" }}
+                      title="Medical Required"
+                    />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Column 2: Employee */}
-          <div className="col-2">
-            
-            <span className="me-2">
+            {/* Column 2: Employee */}
+            <div className="p-2 flex-grow-1" style={{ minWidth: "150px" }}>
+              {`${employee.empCode} - ${employee.empName}`}
+            </div>
+
+            {/* Column 3: Gender */}
+            <div className="p-2" style={{ width: "50px" }}>
               {employee.Gender === "M" ? (
-              <span className="badge bg-primary-subtle rounded-pill text-dark">
-                M
+                <span className="badge bg-primary-subtle rounded-pill text-dark">
+                  M
+                </span>
+              ) : employee.Gender === "F" ? (
+                <span className="badge bg-danger-subtle rounded-pill text-dark">
+                  F
+                </span>
+              ) : null}
+            </div>
+
+            {/* Column 4 & 5: Address & Location (Combined for simplicity, you can split them) */}
+            <div
+              className="p-2"
+              style={{
+                minWidth: "200px",
+                maxWidth: "300px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              <span title={employee.address || ""}>
+                {employee.address || ""}
               </span>
-            ) : employee.Gender === "F" ? (
-              <span className="badge bg-danger-subtle rounded-pill text-dark">
-                F
+            </div>
+            <div
+              className="p-2"
+              style={{
+                minWidth: "200px",
+                maxWidth: "300px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              <span title={employee.Location || ""}>
+                {employee.Location || ""}
               </span>
-            ) : null}
-            </span>
-            {`${employee.empCode} - ${employee.empName}`}
-          </div>
+            </div>
 
-          {/* Column 3: Gender */}
-          {/* <div className="col">
-            
-          </div> */}
+            {/* Column 6 & 7: Shift & Trip */}
+            <div className="p-2">{employee.Shift}</div>
+            <div className="p-2">{employee.tripType}</div>
 
-          {/* Column 4 & 5: Address & Location */}
-          <div className="col-3">
-            <span title={employee.address || ""} style={{
-              width: "100%",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              display: "inline-block",
-              // backgroundColor: employee.address && employee.address.length > 40 ? '#fff3cd' : 'transparent',
-            }}>
-              {employee.address || ""}
-            </span>
-          </div>
-          <div className="col-2">
-            <span title={employee.Location || ""} style={{
-              width: "100%",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}>
-              {employee.Location || ""}
-            </span>
-          </div>
+            {/* Column 8: Stop */}
+            <div className="p-2" style={{ width: "70px" }}>
+              <InputText
+                value={employee.stopNo}
+                style={{ width: "50px" }}
+                readOnly
+              />
+            </div>
 
-          {/* Column 6 & 7: Shift & Trip */}
-          <div className="col-1">{employee.Shift}</div>
-          <div className="col-1">{employee.tripType}</div>
-
-          {/* Column 8: Stop */}
-          <div className="col-1">
-            <InputText
-              value={employee.stopNo} className="w-100"
-              readOnly
-            />
+            {/* Column 9: ETA & Original Delete Button (will be removed) */}
+            <div className="p-2" style={{ width: "120px" }}>
+              <InputText
+                value={`${employee.ETAhh || "00"}:${employee.ETAmm || "00"}`}
+                style={{ width: "85px" }}
+                readOnly
+              />
+              {/* The original button is now replaced by the swipe gesture */}
+            </div>
           </div>
-
-          {/* Column 9: ETA */}
-          <div className="col-1">
-            <InputText
-              value={`${employee.ETAhh || "00"}:${employee.ETAmm || "00"}`}
-              style={{ width: "85px" }}
-              readOnly
-            />
-          </div>
-        </div>
-      </div>
+        </td>
+      </tr>
     );
   }
 );
@@ -871,20 +839,14 @@ const addressColumnTemplate = React.memo((rowData) => {
     </span>
   );
 });
-const ManageRoute = () => {
-  // Constants
-  const SWIPE_DELETE_THRESHOLD = 150;
-  const userID = sessionStorage.getItem("ID");
-  
-  // Refs
-  const toast = useRef(null);
-  const fileInputRef = useRef(null);
-  const selectedRouteForSplitRef = useRef(null);
 
-  // Core states
+const ManageRoute = () => {
+  // First, add a state for sorting
+  const SWIPE_DELETE_THRESHOLD = 150; // Swipe 100px to the left to delete
   const [sortField, setSortField] = useState("");
   const [sortOrder, setSortOrder] = useState(1);
   const [expandedRows, setExpandedRows] = useState(null);
+  const toast = useRef(null);
   const [facilities, setFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [selectedTripType, setSelectedTripType] = useState("P");
@@ -892,6 +854,7 @@ const ManageRoute = () => {
   const [selectedShifts, setSelectedShifts] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [routeDetails, setRouteDetails] = useState({});
+  const userID = sessionStorage.getItem("ID");
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [showOffcanvas, setShowOffcanvas] = useState(false);
   const [showDetailsSidebar, setShowDetailsSidebar] = useState(false);
@@ -900,7 +863,8 @@ const ManageRoute = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showGenerateRouteDialog, setShowGenerateRouteDialog] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
-  const [showAutoVendorAllocationDialog, setShowAutoVendorAllocationDialog] = useState(false);
+  const [showAutoVendorAllocationDialog, setShowAutoVendorAllocationDialog] =
+    useState(false);
   const [vendorAllocated, setVendorAllocated] = useState(false);
   const [vendorSummary, setVendorSummary] = useState([]);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -909,30 +873,38 @@ const ManageRoute = () => {
   const [draggedEmployee, setDraggedEmployee] = useState(null);
   const [hoveredDropZone, setHoveredDropZone] = useState(null);
 
-  // UPDATED: Employee selection states with action selection
+  // Multi-select states
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
-  const [selectedAction, setSelectedAction] = useState(null); // 'multiSelect' or 'split'
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectionStartRoute, setSelectionStartRoute] = useState(null);
 
-  // Route selection states
+  // Route selection states - UPDATED
   const [selectedRoutes, setSelectedRoutes] = useState(new Set());
   const [isRouteSelectMode, setIsRouteSelectMode] = useState(false);
   const [showFloatingRoutePanel, setShowFloatingRoutePanel] = useState(false);
   const [showRouteMergeDialog, setShowRouteMergeDialog] = useState(false);
   const [pendingMergeOperation, setPendingMergeOperation] = useState(null);
-  const [routeSelectionOrder, setRouteSelectionOrder] = useState([]);
+  const [routeSelectionOrder, setRouteSelectionOrder] = useState([]); // NEW: Track selection order
 
-  // Split operation states (simplified)
+  // NEW: Route Split states
+  const [isSplitMode, setIsSplitMode] = useState(false);
+  const [selectedRouteForSplit, setSelectedRouteForSplit] = useState(null);
   const [showSplitConfirmDialog, setShowSplitConfirmDialog] = useState(false);
   const [pendingSplitOperation, setPendingSplitOperation] = useState(null);
+  const selectedRouteForSplitRef = useRef(null);
+  const [splitModeEmployees, setSplitModeEmployees] = useState(new Set());
 
-  // Drag and drop states
-  const [showDragDropConfirmDialog, setShowDragDropConfirmDialog] = useState(false);
+  // Add new state for drag and drop confirmation
+  const [showDragDropConfirmDialog, setShowDragDropConfirmDialog] =
+    useState(false);
   const [pendingDragOperation, setPendingDragOperation] = useState(null);
 
-  // Employee management states
-  const [showDeleteEmployeeDialog, setShowDeleteEmployeeDialog] = useState(false);
+  // Add new state for employee delete functionality
+  const [showDeleteEmployeeDialog, setShowDeleteEmployeeDialog] =
+    useState(false);
   const [pendingDeleteEmployee, setPendingDeleteEmployee] = useState(null);
+
+  // Add Employee Modal States
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [employeeSearchQuery, setEmployeeSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -945,31 +917,13 @@ const ManageRoute = () => {
   // Auto-expand states
   const [autoExpandTimer, setAutoExpandTimer] = useState(null);
   const [hoveredRouteId, setHoveredRouteId] = useState(null);
-  const AUTO_EXPAND_DELAY = 800;
+  const AUTO_EXPAND_DELAY = 800; // 800ms delay before auto-expand
 
-  // Cross-page functionality states
+  // New states for cross-page functionality
   const [isSelectionHeld, setIsSelectionHeld] = useState(false);
   const [showFloatingPanel, setShowFloatingPanel] = useState(false);
   const [crossPageDropMode, setCrossPageDropMode] = useState(false);
 
-   const [scrolled, setScrolled] = useState(false);
-    useEffect(() => {
-       const handleScroll = () => {
-         if (window.scrollY > 200) {
-           setScrolled(true);
-         } else {
-           setScrolled(false);
-         }
-       };
-   
-       window.addEventListener("scroll", handleScroll);
-   
-       return () => {
-         window.removeEventListener("scroll", handleScroll);
-       };
-     }, []);
-
-  // Date state
   const [shiftDate, setShiftDate] = useState(() => {
     const today = new Date();
     const year = today.getFullYear();
@@ -978,7 +932,7 @@ const ManageRoute = () => {
     return `${year}-${month}-${day}`;
   });
 
-  // Progress dialog states
+  // Add state for progress dialog
   const [showProgressDialog, setShowProgressDialog] = useState(false);
   const [progressStatus, setProgressStatus] = useState({
     step: 0,
@@ -989,17 +943,19 @@ const ManageRoute = () => {
     errorMessage: "",
   });
 
-  // Additional states
   const [routeStats, setRouteStats] = useState({
     TotalEmps: 0,
     TotalRoutes: 0,
     AvgOccupancy: 0,
   });
   const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
   const [offcanvasRefreshKey, setOffcanvasRefreshKey] = useState(0);
-  const [showRecalcBeforeFinalizeDialog, setShowRecalcBeforeFinalizeDialog] = useState(false);
+  const [showRecalcBeforeFinalizeDialog, setShowRecalcBeforeFinalizeDialog] =
+    useState(false);
   const [isRecalcBeforeFinalize, setIsRecalcBeforeFinalize] = useState(false);
-  // Memoized values
+
+  // ✅ FIX 1: Memoize queryParams to prevent re-renders
   const queryParams = useMemo(() => {
     return new URLSearchParams({
       sDate: shiftDate,
@@ -1011,6 +967,7 @@ const ManageRoute = () => {
     }).toString();
   }, [shiftDate, selectedFacility, selectedTripType, selectedShifts]);
 
+  // ✅ FIX 2: Create stable throttledHandleDragOver
   const throttledHandleDragOver = useMemo(
     () =>
       throttle((event) => {
@@ -1024,25 +981,15 @@ const ManageRoute = () => {
         } else {
           setHoveredDropZone(null);
         }
-      }, 16),
+      }, 16), // ~60fps
     []
   );
-
-  const tripTypeOptions = useMemo(
-    () => [
-      { label: "Pick", value: "P" },
-      { label: "Drop", value: "D" },
-    ],
-    []
-  );
-
-  const memoizedTableData = useMemo(() => tableData, [tableData]);
 
   // Optimized sensors configuration
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 3,
+        distance: 3, // Reduced for more responsive dragging
       },
     }),
     useSensor(MouseSensor, {
@@ -1058,6 +1005,7 @@ const ManageRoute = () => {
     })
   );
 
+  // Optimized collision detection
   const customCollisionDetection = useCallback((args) => {
     const pointerIntersections = pointerWithin(args);
 
@@ -1068,439 +1016,15 @@ const ManageRoute = () => {
     return closestCenter(args);
   }, []);
 
-  // UPDATED: Employee selection handler
-  const handleEmployeeSelection = useCallback(
-    (employeeKey, routeId) => {
-      setSelectedEmployees((prev) => {
-        const newSelection = new Set(prev);
-
-        if (newSelection.has(employeeKey)) {
-          newSelection.delete(employeeKey);
-          if (newSelection.size === 0) {
-            setSelectionStartRoute(null);
-            setShowFloatingPanel(false);
-            setIsSelectionHeld(false);
-            setCrossPageDropMode(false);
-            setSelectedAction(null);
-          }
-        } else {
-          newSelection.add(employeeKey);
-          if (!selectionStartRoute) {
-            setSelectionStartRoute(routeId);
-          }
-          setShowFloatingPanel(true);
-        }
-
-        return newSelection;
-      });
-    },
-    [selectionStartRoute]
+  // ✅ FIX 3: Memoize tripTypeOptions
+  const tripTypeOptions = useMemo(
+    () => [
+      { label: "Pick", value: "P" },
+      { label: "Drop", value: "D" },
+    ],
+    []
   );
 
-  // NEW: Action change handler
-  const handleActionChange = useCallback((action) => {
-    setSelectedAction(action);
-    
-    if (action === 'multiSelect') {
-      setIsSelectionHeld(false);
-      setCrossPageDropMode(false);
-    } else if (action === 'split') {
-      setIsSelectionHeld(false);
-      setCrossPageDropMode(false);
-    }
-  }, []);
-
-  // Toggle hold functionality
-  const handleToggleHold = useCallback(() => {
-    setIsSelectionHeld((prev) => {
-      const newHeld = !prev;
-      setCrossPageDropMode(newHeld);
-      if (newHeld) {
-        toastService.info(
-          "Selection held - click on any route to drop employees"
-        );
-      } else {
-        toastService.info("Selection released");
-      }
-      return newHeld;
-    });
-  }, []);
-
-  // Clear selection handler
-  const handleClearSelection = useCallback(() => {
-    setSelectedEmployees(new Set());
-    setSelectionStartRoute(null);
-    setShowFloatingPanel(false);
-    setIsSelectionHeld(false);
-    setCrossPageDropMode(false);
-    setSelectedAction(null);
-  }, []);
-
-  // NEW: Handle split route with updated logic
-  const handleSplitRoute = useCallback(() => {
-    if (selectedEmployees.size === 0) {
-      toastService.warn("Please select employees to split");
-      return;
-    }
-
-    // Get route ID from first selected employee
-    const firstEmployeeKey = Array.from(selectedEmployees)[0];
-    const routeId = firstEmployeeKey.split("-")[0];
-
-    // Check if all employees are from the same route
-    const allFromSameRoute = Array.from(selectedEmployees).every(
-      employeeKey => employeeKey.startsWith(`${routeId}-`)
-    );
-
-    if (!allFromSameRoute) {
-      toastService.warn("All selected employees must be from the same route to split");
-      return;
-    }
-
-    // Check if trying to split all employees
-    const routeEmployees = routeDetails[routeId] || [];
-    if (selectedEmployees.size >= routeEmployees.length) {
-      toastService.warn(
-        "Cannot split all employees. At least one employee must remain in the original route."
-      );
-      return;
-    }
-
-    // Prepare employee IDs for the API
-    const employeeIds = Array.from(selectedEmployees).map((employeeKey) => {
-      const [, employeeId] = employeeKey.split("-");
-      return employeeId;
-    });
-
-    // Get employee details for confirmation dialog
-    const selectedEmployeeDetails = [];
-    employeeIds.forEach((employeeId) => {
-      const employee = routeEmployees.find(
-        (emp) => (emp.id || emp.empID || emp.empId) === employeeId
-      );
-      if (employee) {
-        selectedEmployeeDetails.push(employee);
-      }
-    });
-
-    setPendingSplitOperation({
-      routeId: routeId,
-      employeeIds: employeeIds,
-      employeeDetails: selectedEmployeeDetails,
-      newRouteId: routeId + "S",
-    });
-
-    setShowSplitConfirmDialog(true);
-  }, [selectedEmployees, routeDetails]);
-
-  // Route selection handlers (unchanged)
-  const handleRouteSelection = useCallback((routeId) => {
-    setSelectedRoutes((prev) => {
-      const newSelection = new Set(prev);
-
-      if (newSelection.has(routeId)) {
-        newSelection.delete(routeId);
-        setRouteSelectionOrder((prevOrder) =>
-          prevOrder.filter((id) => id !== routeId)
-        );
-        if (newSelection.size === 0) {
-          setShowFloatingRoutePanel(false);
-        }
-      } else {
-        newSelection.add(routeId);
-        setRouteSelectionOrder((prevOrder) => [...prevOrder, routeId]);
-        setShowFloatingRoutePanel(true);
-      }
-
-      return newSelection;
-    });
-  }, []);
-
-  const handleClearRouteSelection = useCallback(() => {
-    setSelectedRoutes(new Set());
-    setRouteSelectionOrder([]);
-    setShowFloatingRoutePanel(false);
-  }, []);
-
-  // Cross-page drop handler
-  const handleCrossPageDrop = useCallback(
-    async (targetRouteId, targetPosition) => {
-      if (!isSelectionHeld || selectedEmployees.size === 0) return;
-
-      const employeeData = [];
-      const routeIds = [];
-      const selectedEmployeeDetails = [];
-
-      for (const employeeKey of selectedEmployees) {
-        const [routeId, employeeId] = employeeKey.split("-");
-        employeeData.push(employeeId);
-        routeIds.push(routeId);
-
-        const routeEmployees = routeDetails[routeId] || [];
-        const emp = routeEmployees.find(
-          (e) => (e.id || e.empID || e.empId) === employeeId
-        );
-        if (emp) {
-          selectedEmployeeDetails.push(emp);
-        }
-      }
-
-      const mockActiveData = {
-        employee: selectedEmployeeDetails[0],
-        sourceRouteId: routeIds[0],
-        type: "employee",
-        isMultiSelect: selectedEmployees.size > 1,
-        selectedCount: selectedEmployees.size,
-      };
-
-      const mockOverData = {
-        targetRouteId: targetRouteId,
-        targetPosition: targetPosition,
-        type: "position",
-      };
-
-      setPendingDragOperation({
-        employeeKeys: Array.from(selectedEmployees),
-        targetRouteId: targetRouteId,
-        targetPosition: targetPosition,
-        activeData: mockActiveData,
-        overData: mockOverData,
-        isCrossPageDrop: true,
-      });
-
-      setShowDragDropConfirmDialog(true);
-    },
-    [isSelectionHeld, selectedEmployees, routeDetails]
-  );
-
-  // Auto-expand handlers
-  const handleRouteRowEnter = useCallback(
-    (event) => {
-      if (!activeId) return;
-
-      const routeId = event.data.RouteID;
-      setHoveredRouteId(routeId);
-
-      if (autoExpandTimer) {
-        clearTimeout(autoExpandTimer);
-      }
-
-      if (expandedRows && expandedRows[routeId]) {
-        return;
-      }
-
-      const timer = setTimeout(() => {
-        setExpandedRows((prev) => ({
-          ...prev,
-          [routeId]: true,
-        }));
-
-        toastService.info(`Route ${routeId} expanded for dropping`);
-      }, AUTO_EXPAND_DELAY);
-
-      setAutoExpandTimer(timer);
-    },
-    [activeId, expandedRows, autoExpandTimer]
-  );
-
-  const handleRouteRowLeave = useCallback(
-    (event) => {
-      if (autoExpandTimer) {
-        clearTimeout(autoExpandTimer);
-        setAutoExpandTimer(null);
-      }
-      setHoveredRouteId(null);
-    },
-    [autoExpandTimer]
-  );
-
-  // Fetch functions
-  const fetchFacilities = useCallback(async () => {
-    try {
-      const response = await ManageRouteService.SelectBaseFacility({
-        userid: userID,
-      });
-
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.facility || item.facilityName,
-            value: item.Id,
-          }))
-        : [];
-
-      setFacilities(formattedData);
-    } catch (error) {
-      console.error("Failed to fetch facilities:", error);
-      toastService.error("An error occurred while loading facilities.");
-    }
-  }, [userID]);
-
-  const fetchShifts = useCallback(async () => {
-    try {
-      if (selectedFacility && selectedTripType) {
-        const response = await ManageRouteService.GetShiftByFacilityType({
-          facid: selectedFacility,
-          type: selectedTripType,
-        });
-
-        const parsedResponse =
-          typeof response === "string" ? JSON.parse(response) : response;
-
-        const formattedShifts = Array.isArray(parsedResponse)
-          ? parsedResponse.map((shift) => ({
-              label: shift.shiftTime || shift.ShiftTime,
-              value: shift.shiftTime || shift.ShiftTime,
-            }))
-          : [];
-
-        setShifts(formattedShifts);
-      }
-    } catch (error) {
-      console.error("Failed to fetch shifts:", error);
-      toastService.error("An error occurred while loading shifts.");
-    }
-  }, [selectedFacility, selectedTripType]);
-
-  const refreshRouteDetails = useCallback(async (routeId) => {
-    try {
-      const response = await ManageRouteService.GetRoutesDetailsnew({
-        RouteID: routeId,
-        isAdd: 0,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      setRouteDetails((prev) => ({
-        ...prev,
-        [routeId]: parsedResponse,
-      }));
-    } catch (error) {
-      console.error(`Error refreshing route details for ${routeId}:`, error);
-    }
-  }, []);
-
-  const getRowClassName = useCallback(
-    (rowData) => {
-      let className = "";
-      if (activeId && hoveredRouteId === rowData.RouteID) {
-        className += "route-hover-drag ";
-      }
-      if (activeId) {
-        className += "drag-in-progress ";
-      }
-      if (crossPageDropMode) {
-        className += "cross-page-mode ";
-      }
-      if (isSelectionHeld) {
-        className += "held-selection-active ";
-      }
-      if (selectedRoutes.has(rowData.RouteID)) {
-        className += "route-selected ";
-        if (
-          routeSelectionOrder.length > 0 &&
-          routeSelectionOrder[0] === rowData.RouteID
-        ) {
-          className += "first-selected ";
-        }
-      }
-      if (isRouteSelectMode) {
-        className += "route-merge-mode ";
-      }
-
-      return className;
-    },
-    [
-      activeId,
-      hoveredRouteId,
-      crossPageDropMode,
-      isSelectionHeld,
-      selectedRoutes,
-      routeSelectionOrder,
-      isRouteSelectMode,
-    ]
-  );
-
-  // Effects
-  useEffect(() => {
-    fetchFacilities();
-  }, [fetchFacilities]);
-
-  useEffect(() => {
-    if (selectedFacility && selectedTripType) {
-      fetchShifts();
-    }
-  }, [selectedFacility, selectedTripType, fetchShifts]);
-
-  useEffect(() => {
-    return () => {
-      if (autoExpandTimer) {
-        clearTimeout(autoExpandTimer);
-      }
-    };
-  }, [autoExpandTimer]);
-
-  const handleSortChange = useCallback(async () => {
-    if (
-      !selectedFacility ||
-      selectedShifts.length === 0 ||
-      !sortField ||
-      !sortOrder
-    ) {
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const response = await ManageRouteService.GetRoutesByOrder({
-        sDate: shiftDate,
-        eDate: shiftDate,
-        FacilityID: selectedFacility,
-        TripType: selectedTripType,
-        Shifttimes: selectedShifts,
-        OrderBy: sortField,
-        Direction: sortOrder === 1 ? "ASC" : "DESC",
-        Routeid: "",
-        occ_seater: -2,
-      });
-
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      setTableData(parsedResponse || []);
-    } catch (error) {
-      console.error("Failed to sort data:", error);
-      toastService.error("Failed to sort data");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [
-    selectedFacility,
-    selectedShifts,
-    shiftDate,
-    selectedTripType,
-    sortField,
-    sortOrder,
-  ]);
-
-  const handleSort = useCallback((e) => {
-    setSortField(e.sortField);
-    setSortOrder(e.sortOrder);
-  }, []);
-
-  useEffect(() => {
-    if (
-      sortField &&
-      sortOrder &&
-      selectedFacility &&
-      selectedShifts.length > 0
-    ) {
-      handleSortChange();
-    }
-  }, [sortField, sortOrder, handleSortChange]);
-  // Template functions
-
-  // Main submit handler
   const handleSubmit = useCallback(async () => {
     try {
       setIsSubmitting(true);
@@ -1514,10 +1038,24 @@ const ManageRoute = () => {
         AvgOccupancy: 0,
       });
       setShowButtons(false);
-      
       // Clear all selections when submitting new data
-      handleClearSelection();
-      handleClearRouteSelection();
+      setSelectedEmployees(new Set());
+      setSelectionStartRoute(null);
+      setIsMultiSelectMode(false);
+      setShowFloatingPanel(false);
+      setIsSelectionHeld(false);
+      setCrossPageDropMode(false);
+
+      // Clear route selections
+      setSelectedRoutes(new Set());
+      setRouteSelectionOrder([]);
+      setIsRouteSelectMode(false);
+      setShowFloatingRoutePanel(false);
+
+      // Clear split mode selections
+      setIsSplitMode(false);
+      setSelectedRouteForSplit(null);
+      setSplitModeEmployees(new Set());
 
       if (!selectedFacility) {
         toastService.warn("Please select a facility.");
@@ -1527,14 +1065,12 @@ const ManageRoute = () => {
         toastService.warn("Please select at least one shift.");
         return;
       }
-
       const validateResponse = await ManageRouteService.sp_validateEmpRoster({
         facilityid: selectedFacility,
         sDate: shiftDate,
         triptype: selectedTripType,
         shifttime: selectedShifts,
       });
-
       let parsedValidateResponse;
       if (typeof validateResponse === "string") {
         if (validateResponse.includes("[") && validateResponse.includes("]")) {
@@ -1647,12 +1183,12 @@ const ManageRoute = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedFacility, selectedShifts, shiftDate, selectedTripType, userID, handleClearSelection, handleClearRouteSelection]);
+  }, [selectedFacility, selectedShifts, shiftDate, selectedTripType, userID]);
 
-  // Route click handler
   const handleRouteIdClick = useCallback(
     async (clickedRouteId) => {
       setIsSubmitting(true);
+      // toastService.info('Checking Route Status - Please wait...'); // ✅ Changed
 
       try {
         const inputJsonResponse =
@@ -1672,7 +1208,7 @@ const ManageRoute = () => {
         ) {
           toastService.info(
             "Recalculating Modified Route - Fetching latest ETA and distance..."
-          );
+          ); // ✅ Changed
 
           const recalculateResponse = await fetch(
             "https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/recalculate",
@@ -1703,12 +1239,14 @@ const ManageRoute = () => {
             updatedBy: userID,
           });
 
+          // Clear the route details for this specific route
           setRouteDetails((prev) => {
             const updated = { ...prev };
             delete updated[clickedRouteId];
             return updated;
           });
 
+          // Refresh route details immediately
           try {
             const updatedRouteDetailsResponse =
               await ManageRouteService.GetRoutesDetailsnew({
@@ -1729,6 +1267,7 @@ const ManageRoute = () => {
             console.error("Error refreshing route details:", detailsError);
           }
 
+          // Refresh table data
           try {
             const response = await ManageRouteService.GetRoutesByOrder({
               sDate: shiftDate,
@@ -1751,7 +1290,7 @@ const ManageRoute = () => {
 
           toastService.success(
             "Route updated with latest ETAs. Opening map..."
-          );
+          ); // ✅ Changed
         }
 
         setOffcanvasRefreshKey((prevKey) => prevKey + 1);
@@ -1759,7 +1298,7 @@ const ManageRoute = () => {
         setShowOffcanvas(true);
       } catch (error) {
         console.error("Error processing route click:", error);
-        toastService.error(`Failed to open route details: ${error.message}`);
+        toastService.error(`Failed to open route details: ${error.message}`); // ✅ Changed
       } finally {
         setIsSubmitting(false);
       }
@@ -1767,13 +1306,42 @@ const ManageRoute = () => {
     [selectedFacility, shiftDate, selectedTripType, selectedShifts, userID]
   );
 
-  // Template functions
+  const checkIfRecalculationNeeded = useCallback(async () => {
+    try {
+      // Use the same API call as handleRecalculateModifiedRoutes
+      const inputJsonResponse =
+        await ManageRouteService.GetInputJsonRecalculate({
+          shiftdate: shiftDate,
+          shifttime: selectedShifts,
+          facilityid: selectedFacility,
+          triptype: selectedTripType,
+        });
+
+      const inputJsonData =
+        typeof inputJsonResponse === "string"
+          ? JSON.parse(inputJsonResponse)
+          : inputJsonResponse;
+
+      // If there are routes to be recalculated, return true
+      return !!(
+        inputJsonData &&
+        inputJsonData.routes &&
+        inputJsonData.routes.length > 0
+      );
+    } catch (error) {
+      console.error("Error checking recalculation status:", error);
+      // On error, assume recalculation might be needed to be safe
+      return true;
+    }
+  }, [shiftDate, selectedShifts, selectedFacility, selectedTripType]);
+
+  // ✅ FIX 4: Memoize template functions
   const routeIdTemplate = useCallback(
     (rowData) => {
       return (
         <span
           className="cursor-pointer text-primary"
-          onClick={() => handleRouteIdClick(rowData.RouteID)}
+          onClick={() => handleRouteIdClick(rowData.RouteID)} // ✅ Changed to call the new handler
           style={{ cursor: "pointer", color: "#4285F4", fontWeight: "bold" }}
         >
           {rowData.RouteID}
@@ -1781,7 +1349,7 @@ const ManageRoute = () => {
       );
     },
     [handleRouteIdClick]
-  );
+  ); // ✅ Add the new handler as a dependency
 
   const durationTemplate = useCallback((rowData) => {
     const minutes = parseInt(rowData.duration);
@@ -1796,10 +1364,1017 @@ const ManageRoute = () => {
     return `${formattedHours}:${formattedMinutes}`;
   }, []);
 
-  // [MODIFIED] rowExpansionTemplate now uses a DIV/flexbox layout
+  // ✅ FIX 5: Memoize table data properly
+  const memoizedTableData = useMemo(() => tableData, [tableData]);
+
+  // ✅ FIX 6: Optimize getRowClassName
+  const getRowClassName = useCallback(
+    (rowData) => {
+      let className = "";
+      if (activeId && hoveredRouteId === rowData.RouteID) {
+        className += "route-hover-drag ";
+      }
+      if (activeId) {
+        className += "drag-in-progress ";
+      }
+      if (crossPageDropMode) {
+        className += "cross-page-mode ";
+      }
+      if (isSelectionHeld) {
+        className += "held-selection-active ";
+      }
+      if (selectedRoutes.has(rowData.RouteID)) {
+        className += "route-selected ";
+        // Add first-selected class for the first selected route
+        if (
+          routeSelectionOrder.length > 0 &&
+          routeSelectionOrder[0] === rowData.RouteID
+        ) {
+          className += "first-selected ";
+        }
+      }
+      if (isRouteSelectMode) {
+        className += "route-merge-mode ";
+      }
+
+      // Add split mode classes
+      if (isSplitMode) {
+        className += "route-split-mode ";
+        if (selectedRouteForSplit === rowData.RouteID) {
+          className += "split-selected ";
+        }
+        console.log("getRowClassName called:", { className, rowData });
+        // Highlight routes that can't be split
+        if (rowData.RouteID?.endsWith("S")) {
+          className += "split-disabled ";
+        }
+      }
+
+      return className;
+    },
+    [
+      activeId,
+      hoveredRouteId,
+      crossPageDropMode,
+      isSelectionHeld,
+      selectedRoutes,
+      routeSelectionOrder,
+      isRouteSelectMode,
+      isSplitMode,
+      selectedRouteForSplit,
+    ]
+  );
+
+  // ✅ FIX 7: Create separate sort handler
+  const handleSortChange = useCallback(async () => {
+    if (
+      !selectedFacility ||
+      selectedShifts.length === 0 ||
+      !sortField ||
+      !sortOrder
+    ) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await ManageRouteService.GetRoutesByOrder({
+        sDate: shiftDate,
+        eDate: shiftDate,
+        FacilityID: selectedFacility,
+        TripType: selectedTripType,
+        Shifttimes: selectedShifts,
+        OrderBy: sortField,
+        Direction: sortOrder === 1 ? "ASC" : "DESC",
+        Routeid: "",
+        occ_seater: -2,
+      });
+
+      const parsedResponse =
+        typeof response === "string" ? JSON.parse(response) : response;
+      setTableData(parsedResponse || []);
+    } catch (error) {
+      console.error("Failed to sort data:", error);
+      toastService.error("Failed to sort data");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    selectedFacility,
+    selectedShifts,
+    shiftDate,
+    selectedTripType,
+    sortField,
+    sortOrder,
+  ]);
+
+  // ✅ FIX 8: Stable onSort handler
+  const handleSort = useCallback((e) => {
+    setSortField(e.sortField);
+    setSortOrder(e.sortOrder);
+  }, []);
+
+  // NEW: Route Split Mode Handlers
+  const handleToggleSplitMode = useCallback(() => {
+    setIsSplitMode((prev) => {
+      const newMode = !prev;
+      if (!newMode) {
+        // Clear split mode selections when exiting
+        setSelectedRouteForSplit(null);
+        selectedRouteForSplitRef.current = null; // Clear the ref
+        setSplitModeEmployees(new Set());
+        setSelectedEmployees(new Set());
+      } else {
+        // When entering split mode, disable other modes
+        setIsMultiSelectMode(false);
+        setIsRouteSelectMode(false);
+        handleClearSelection();
+        handleClearRouteSelection();
+      }
+      return newMode;
+    });
+  }, []);
+
+  // Handle route selection for splitting
+  const handleRouteSelectionForSplit = useCallback(
+    (routeId) => {
+      if (!isSplitMode) return;
+
+      console.log("handleRouteSelectionForSplit called:", {
+        routeId,
+        currentSelectedRouteForSplit: selectedRouteForSplit,
+        currentSelectedRouteForSplitRef: selectedRouteForSplitRef.current,
+      });
+
+      // Check if route already ends with 'S'
+      if (routeId.endsWith("S")) {
+        toastService.warn('Cannot split a route that already ends with "S"');
+        return;
+      }
+
+      // Toggle route selection - if same route is clicked again, unselect it
+      if (selectedRouteForSplit === routeId) {
+        console.log("Unselecting route:", routeId);
+        setSelectedRouteForSplit(null);
+        selectedRouteForSplitRef.current = null;
+        setSplitModeEmployees(new Set());
+        setSelectedEmployees(new Set());
+        toastService.info(
+          "Route selection cleared. Click on a route to select it for splitting."
+        );
+      } else {
+        console.log("Selecting route:", routeId);
+        setSelectedRouteForSplit(routeId);
+        selectedRouteForSplitRef.current = routeId;
+        setSplitModeEmployees(new Set());
+        setSelectedEmployees(new Set());
+
+        // Auto-expand the selected route
+        setExpandedRows((prev) => ({
+          ...prev,
+          [routeId]: true,
+        }));
+
+        toastService.info(
+          `Route ${routeId} selected for splitting. Now select employees to move to the new route.`
+        );
+      }
+    },
+    [isSplitMode, selectedRouteForSplit]
+  );
+
+  // Handle employee selection in split mode
+  // Handle employee selection for split mode
+  const handleEmployeeSelectionForSplit = useCallback(
+    (employeeKey, routeId) => {
+      if (!isSplitMode) return;
+
+      console.log("handleEmployeeSelectionForSplit called:", {
+        employeeKey,
+        routeId,
+        selectedRouteForSplit,
+        selectedRouteForSplitRef: selectedRouteForSplitRef.current,
+      });
+
+      // If no route is selected yet, allow selecting from any route
+      if (!selectedRouteForSplit) {
+        // Auto-select the route for split when first employee is selected
+        setSelectedRouteForSplit(routeId);
+        selectedRouteForSplitRef.current = routeId;
+        setSplitModeEmployees(new Set([employeeKey]));
+        setSelectedEmployees(new Set([employeeKey]));
+        setExpandedRows((prev) => ({
+          ...prev,
+          [routeId]: true,
+        }));
+        toastService.info(
+          `Route ${routeId} selected for splitting. Now select employees to move to the new route.`
+        );
+        return;
+      }
+
+      // If a route is already selected, restrict selection to that route only
+      if (routeId !== selectedRouteForSplit) {
+        console.log("Restriction applied:", {
+          selectedRouteForSplit,
+          routeId,
+          condition: routeId !== selectedRouteForSplit,
+        });
+        toastService.warn(
+          `You can only select employees from Route ${selectedRouteForSplit} while splitting.`
+        );
+        return;
+      }
+
+      // Toggle employee selection within the selected route
+      setSplitModeEmployees((prev) => {
+        const newSelection = new Set(prev);
+        if (newSelection.has(employeeKey)) {
+          newSelection.delete(employeeKey);
+          // If this was the last employee being unselected, clear the route selection
+          if (newSelection.size === 0) {
+            console.log("All employees unselected, clearing route selection");
+            setSelectedRouteForSplit(null);
+            selectedRouteForSplitRef.current = null;
+            toastService.info(
+              "Route selection cleared. Click on a route or employee to start splitting."
+            );
+          }
+        } else {
+          newSelection.add(employeeKey);
+        }
+        return newSelection;
+      });
+
+      // Also update the main selected employees for visual consistency
+      setSelectedEmployees((prev) => {
+        const newSelection = new Set(prev);
+        if (newSelection.has(employeeKey)) {
+          newSelection.delete(employeeKey);
+        } else {
+          newSelection.add(employeeKey);
+        }
+        return newSelection;
+      });
+    },
+    [isSplitMode, selectedRouteForSplit]
+  ); // Added selectedRouteForSplit back to dependencies
+
+  // Handle route split execution
+  const handleSplitRoute = useCallback(() => {
+    if (!selectedRouteForSplit || splitModeEmployees.size === 0) {
+      toastService.warn(
+        "Please select a route and at least one employee to split"
+      );
+      return;
+    }
+
+    // Check if trying to split all employees (should leave at least one)
+    const routeEmployees = routeDetails[selectedRouteForSplit] || [];
+    if (splitModeEmployees.size >= routeEmployees.length) {
+      toastService.warn(
+        "Cannot split all employees. At least one employee must remain in the original route."
+      );
+      return;
+    }
+
+    // Prepare employee IDs for the API
+    const employeeIds = Array.from(splitModeEmployees).map((employeeKey) => {
+      const [, employeeId] = employeeKey.split("-");
+      return employeeId;
+    });
+
+    // Get employee details for confirmation dialog
+    const selectedEmployeeDetails = [];
+    employeeIds.forEach((employeeId) => {
+      const employee = routeEmployees.find(
+        (emp) => (emp.id || emp.empID || emp.empId) === employeeId
+      );
+      if (employee) {
+        selectedEmployeeDetails.push(employee);
+      }
+    });
+
+    setPendingSplitOperation({
+      routeId: selectedRouteForSplit,
+      employeeIds: employeeIds,
+      employeeDetails: selectedEmployeeDetails,
+      newRouteId: selectedRouteForSplit + "S",
+    });
+
+    setShowSplitConfirmDialog(true);
+  }, [selectedRouteForSplit, splitModeEmployees, routeDetails]);
+
+  // Confirm split operation
+  const confirmSplitOperation = useCallback(async () => {
+    if (!pendingSplitOperation) return;
+
+    try {
+      setShowSplitConfirmDialog(false);
+      setIsLoading(true);
+
+      const requestPayload = {
+        RouteIDs: pendingSplitOperation.routeId,
+        empIDs: pendingSplitOperation.employeeIds.join(","),
+      };
+
+      console.log("Route split payload:", requestPayload);
+
+      const response = await ManageRouteService.SplitRoute(requestPayload);
+
+      // Parse response - it comes as a string array
+      let result;
+      if (typeof response === "string") {
+        const parsedResponse = JSON.parse(response);
+        result = parsedResponse[0]?.result;
+      } else if (Array.isArray(response)) {
+        result = response[0]?.result;
+      } else {
+        result = response?.result;
+      }
+
+      switch (result) {
+        case 1:
+          toastService.success(
+            `Route split successful! ${pendingSplitOperation.employeeIds.length} employees moved to Route ${pendingSplitOperation.newRouteId}`
+          );
+
+          // Clear split mode selections
+          setSelectedRouteForSplit(null);
+          setSplitModeEmployees(new Set());
+          setSelectedEmployees(new Set());
+          setIsSplitMode(false);
+
+          // Refresh the table to show the new split route
+          await handleSubmit();
+          break;
+
+        case 0:
+          toastService.error(
+            `Split route ${pendingSplitOperation.newRouteId} already exists. Cannot split again.`
+          );
+          break;
+
+        case -1:
+          toastService.error('Cannot split a route that already ends with "S"');
+          break;
+
+        default:
+          toastService.error("Unexpected response from split operation");
+          break;
+      }
+    } catch (error) {
+      console.error("Error splitting route:", error);
+      toastService.error(`Failed to split route: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+      setPendingSplitOperation(null);
+    }
+  }, [pendingSplitOperation]);
+
+  // Cancel split operation
+  const cancelSplitOperation = useCallback(() => {
+    setShowSplitConfirmDialog(false);
+    setPendingSplitOperation(null);
+  }, []);
+
+  // Clear split mode selections
+  const handleClearSplitSelection = useCallback(() => {
+    setSelectedRouteForSplit(null);
+    setSplitModeEmployees(new Set());
+    setSelectedEmployees(new Set());
+  }, []);
+
+  // UPDATED Route Selection Handlers
+  const handleRouteSelection = useCallback((routeId) => {
+    setSelectedRoutes((prev) => {
+      const newSelection = new Set(prev);
+
+      if (newSelection.has(routeId)) {
+        newSelection.delete(routeId);
+        setRouteSelectionOrder((prevOrder) =>
+          prevOrder.filter((id) => id !== routeId)
+        );
+        if (newSelection.size === 0) {
+          setShowFloatingRoutePanel(false);
+        }
+      } else {
+        newSelection.add(routeId);
+        setRouteSelectionOrder((prevOrder) => [...prevOrder, routeId]);
+        setShowFloatingRoutePanel(true);
+      }
+
+      return newSelection;
+    });
+  }, []);
+
+  const handleClearRouteSelection = useCallback(() => {
+    setSelectedRoutes(new Set());
+    setRouteSelectionOrder([]);
+    setShowFloatingRoutePanel(false);
+  }, []);
+
+  // UPDATED: Changed to use first selected as target
+  const handleMergeRoutes = useCallback(() => {
+    if (selectedRoutes.size < 2) {
+      toastService.warn("Please select at least 2 routes to merge");
+      return;
+    }
+
+    const routeArray = Array.from(routeSelectionOrder); // Use order array
+    const targetRoute = routeArray[0]; // CHANGED: First selected becomes target
+    const sourceRoutes = routeArray.slice(1); // CHANGED: All others are source
+
+    setPendingMergeOperation({
+      sourceRoutes,
+      targetRoute,
+      routeArray,
+    });
+
+    setShowRouteMergeDialog(true);
+  }, [routeSelectionOrder, selectedRoutes.size]);
+
+  const confirmMergeOperation = useCallback(async () => {
+    if (!pendingMergeOperation) return;
+
+    try {
+      setShowRouteMergeDialog(false);
+      setIsLoading(true);
+
+      const requestPayload = {
+        RouteIDs: pendingMergeOperation.routeArray.join(","),
+        userid: Number(parseInt(userID) || 0),
+      };
+
+      console.log("Route merge payload:", requestPayload);
+
+      const response = await ManageRouteService.MergeRoute(requestPayload);
+
+      toastService.success(
+        `Routes merged successfully! All routes merged into Route ${pendingMergeOperation.targetRoute} (first selected)`
+      );
+
+      // Clear selection after successful merge
+      handleClearRouteSelection();
+
+      // Refresh the main table to reflect the changes
+      await handleSubmit();
+    } catch (error) {
+      console.error("Error merging routes:", error);
+      toastService.error(`Failed to merge routes: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+      setPendingMergeOperation(null);
+    }
+  }, [pendingMergeOperation, userID, handleClearRouteSelection]);
+
+  const cancelMergeOperation = useCallback(() => {
+    setShowRouteMergeDialog(false);
+    setPendingMergeOperation(null);
+  }, []);
+
+  // Auto-expand functions
+  const handleRouteRowEnter = useCallback(
+    (event) => {
+      // Only auto-expand during drag operations
+      if (!activeId) return;
+
+      const routeId = event.data.RouteID;
+      setHoveredRouteId(routeId);
+
+      // Clear any existing timer
+      if (autoExpandTimer) {
+        clearTimeout(autoExpandTimer);
+      }
+
+      // Check if already expanded
+      if (expandedRows && expandedRows[routeId]) {
+        return; // Already expanded, no need to do anything
+      }
+
+      // Set a new timer for auto-expansion
+      const timer = setTimeout(() => {
+        setExpandedRows((prev) => ({
+          ...prev,
+          [routeId]: true,
+        }));
+
+        // Show a subtle toast for user feedback
+        toastService.info(`Route ${routeId} expanded for dropping`);
+      }, AUTO_EXPAND_DELAY);
+
+      setAutoExpandTimer(timer);
+    },
+    [activeId, expandedRows, autoExpandTimer]
+  );
+
+  const handleRouteRowLeave = useCallback(
+    (event) => {
+      // Clear the auto-expand timer if user moves away
+      if (autoExpandTimer) {
+        clearTimeout(autoExpandTimer);
+        setAutoExpandTimer(null);
+      }
+      setHoveredRouteId(null);
+    },
+    [autoExpandTimer]
+  );
+
+  // Clean up timer on component unmount
+  useEffect(() => {
+    return () => {
+      if (autoExpandTimer) {
+        clearTimeout(autoExpandTimer);
+      }
+    };
+  }, [autoExpandTimer]);
+
+  // UPDATED Enhanced Employee Selection Handler to work with split mode
+  const handleEmployeeSelection = useCallback(
+    (employeeKey, routeId) => {
+      // Centralize the mode check here. Do nothing if not in a selection mode.
+      if (!isSplitMode && !isMultiSelectMode) {
+        return;
+      }
+
+      // If in split mode, use the split-specific handler
+      if (isSplitMode) {
+        handleEmployeeSelectionForSplit(employeeKey, routeId);
+        return;
+      }
+
+      // If not in split mode, it must be multi-select mode.
+      // This logic now correctly only runs for multi-select.
+      setSelectedEmployees((prev) => {
+        const newSelection = new Set(prev);
+
+        if (newSelection.has(employeeKey)) {
+          newSelection.delete(employeeKey);
+          const remainingFromStartRoute = Array.from(newSelection).some((key) =>
+            key.startsWith(`${selectionStartRoute}-`)
+          );
+          if (!remainingFromStartRoute && selectionStartRoute === routeId) {
+            setSelectionStartRoute(null);
+          }
+          if (newSelection.size === 0) {
+            setSelectionStartRoute(null);
+            setShowFloatingPanel(false);
+            setIsSelectionHeld(false);
+            setCrossPageDropMode(false);
+          }
+        } else {
+          newSelection.add(employeeKey);
+          if (!selectionStartRoute) {
+            setSelectionStartRoute(routeId);
+          }
+          setShowFloatingPanel(true);
+        }
+
+        return newSelection;
+      });
+    },
+    [
+      isSplitMode,
+      isMultiSelectMode,
+      selectionStartRoute,
+      handleEmployeeSelectionForSplit,
+    ]
+  );
+
+  // Toggle hold functionality
+  const handleToggleHold = useCallback(() => {
+    setIsSelectionHeld((prev) => {
+      const newHeld = !prev;
+      setCrossPageDropMode(newHeld);
+      if (newHeld) {
+        toastService.info(
+          "Selection held - click on any route to drop employees"
+        );
+      } else {
+        toastService.info("Selection released");
+      }
+      return newHeld;
+    });
+  }, []);
+
+  // Modified Cross-page drop handler to show confirmation dialog
+  const handleCrossPageDrop = useCallback(
+    async (targetRouteId, targetPosition) => {
+      if (!isSelectionHeld || selectedEmployees.size === 0) return;
+
+      // Prepare data similar to drag-drop confirmation but for cross-page drop
+      const employeeData = [];
+      const routeIds = [];
+      const selectedEmployeeDetails = [];
+
+      for (const employeeKey of selectedEmployees) {
+        const [routeId, employeeId] = employeeKey.split("-");
+        employeeData.push(employeeId);
+        routeIds.push(routeId);
+
+        // Find employee details for the dialog
+        const routeEmployees = routeDetails[routeId] || [];
+        const emp = routeEmployees.find(
+          (e) => (e.id || e.empID || e.empId) === employeeId
+        );
+        if (emp) {
+          selectedEmployeeDetails.push(emp);
+        }
+      }
+
+      // Create a mock activeData similar to drag operation for consistency
+      const mockActiveData = {
+        employee: selectedEmployeeDetails[0], // Use first employee for display
+        sourceRouteId: routeIds[0], // Use first route
+        type: "employee",
+        isMultiSelect: selectedEmployees.size > 1,
+        selectedCount: selectedEmployees.size,
+      };
+
+      // Create mock overData
+      const mockOverData = {
+        targetRouteId: targetRouteId,
+        targetPosition: targetPosition,
+        type: "position",
+      };
+
+      // Set up the pending operation for the confirmation dialog
+      setPendingDragOperation({
+        employeeKeys: Array.from(selectedEmployees),
+        targetRouteId: targetRouteId,
+        targetPosition: targetPosition,
+        activeData: mockActiveData,
+        overData: mockOverData,
+        isCrossPageDrop: true, // Flag to identify this as cross-page drop
+      });
+
+      // Show the confirmation dialog
+      setShowDragDropConfirmDialog(true);
+    },
+    [isSelectionHeld, selectedEmployees, routeDetails]
+  );
+
+  // Clear selection handler
+  const handleClearSelection = useCallback(() => {
+    setSelectedEmployees(new Set());
+    setSelectionStartRoute(null);
+    setShowFloatingPanel(false);
+    setIsSelectionHeld(false);
+    setCrossPageDropMode(false);
+  }, []);
+
+  // Enhanced Drag and Drop Handlers
+  const handleDragStart = useCallback(
+    (event) => {
+      setActiveId(event.active.id);
+      const activeData = event.active.data.current;
+
+      if (activeData && activeData.type === "employee") {
+        setDraggedEmployee(activeData.employee);
+
+        const employeeKey = `${activeData.sourceRouteId}-${activeData.employee.id}`;
+
+        if (isMultiSelectMode) {
+          // If in multi-select mode and this employee is not selected
+          if (!selectedEmployees.has(employeeKey)) {
+            // Auto-select the dragged employee
+            setSelectedEmployees((prev) => {
+              const newSelection = new Set(prev);
+              newSelection.add(employeeKey);
+              return newSelection;
+            });
+            if (!selectionStartRoute) {
+              setSelectionStartRoute(activeData.sourceRouteId);
+            }
+          }
+        } else {
+          // In single select mode, just drag the employee
+          setSelectedEmployees(new Set([employeeKey]));
+          setSelectionStartRoute(activeData.sourceRouteId);
+        }
+      }
+    },
+    [selectedEmployees, isMultiSelectMode, selectionStartRoute]
+  );
+
+  // Enhanced handleDragEnd to work with both cross-route and same-route moves
+
+  const handleDragEnd = useCallback(
+    async (event) => {
+      const { active, over, delta } = event; // Get delta for swipe detection
+
+      // Clean up auto-expand timer and states
+      if (autoExpandTimer) {
+        clearTimeout(autoExpandTimer);
+        setAutoExpandTimer(null);
+      }
+      setHoveredRouteId(null);
+      setActiveId(null);
+      setDraggedEmployee(null);
+      setHoveredDropZone(null);
+
+      const activeData = active.data.current;
+
+      // --- SWIPE TO DELETE LOGIC ---
+      if (
+        delta.x > SWIPE_DELETE_THRESHOLD &&
+        activeData.type === "employee" &&
+        !isSplitMode
+      ) {
+        const employeeToDelete = activeData.employee;
+        const sourceRouteId = activeData.sourceRouteId;
+
+        setPendingDeleteEmployee({
+          employee: employeeToDelete,
+          routeId: sourceRouteId,
+        });
+        setShowDeleteEmployeeDialog(true);
+        return;
+      }
+
+      // --- REORDER LOGIC ---
+      // This guard is crucial. If 'over' is null, the drop happened outside a valid zone.
+      if (!over) {
+        console.log("Drag ended over no valid drop zone. Aborting.");
+        return;
+      }
+
+      const overData = over.data.current;
+
+      if (
+        activeData &&
+        overData &&
+        activeData.type === "employee" &&
+        overData.type === "position"
+      ) {
+        const employeesToMove =
+          selectedEmployees.size > 0
+            ? Array.from(selectedEmployees)
+            : [`${activeData.sourceRouteId}-${activeData.employee.id}`];
+
+        const targetRouteId = overData.targetRouteId;
+        const targetPosition = overData.targetPosition;
+        const sourceRoutes = [
+          ...new Set(employeesToMove.map((key) => key.split("-")[0])),
+        ];
+
+        let shouldShowConfirmation = false;
+        let isSameRouteReorder = false;
+
+        if (sourceRoutes.some((routeId) => routeId !== targetRouteId)) {
+          // This is a cross-route move, always requires confirmation.
+          shouldShowConfirmation = true;
+        } else if (
+          sourceRoutes.length === 1 &&
+          sourceRoutes[0] === targetRouteId
+        ) {
+          // This is a same-route reorder. Now we check if it's a real move.
+          const routeEmployees = routeDetails[targetRouteId] || [];
+          const currentPositions = employeesToMove.map((employeeKey) => {
+            const [, employeeId] = employeeKey.split("-");
+            const employeeIndex = routeEmployees.findIndex(
+              (emp) => String(emp.id || emp.empID || emp.empId) === employeeId
+            );
+            return employeeIndex + 1; // 1-based position
+          });
+
+          // ⭐ CRUCIAL DEBUGGING AND LOGIC BLOCK
+          const isSingleEmployee = employeesToMove.length === 1;
+          const isSamePosition =
+            isSingleEmployee && currentPositions[0] === targetPosition;
+          const isNoOp = isSingleEmployee && isSamePosition;
+
+          console.log(
+            "%c --- Drag End Analysis ---",
+            "color: blue; font-weight: bold;"
+          );
+          console.log(
+            `Target Route: ${targetRouteId}, Target Position: ${targetPosition}`
+          );
+          console.log(
+            `Current Employee Position(s): [${currentPositions.join(", ")}]`
+          );
+          console.log(`Is this a single employee drag? ${isSingleEmployee}`);
+          console.log(
+            `Is it being dropped in the same position? ${isSamePosition}`
+          );
+          console.log(
+            `CONCLUSION: Is this a No-Op (should do nothing)? ${isNoOp}`
+          );
+
+          // Only show confirmation if it is NOT a no-op.
+          if (!isNoOp) {
+            shouldShowConfirmation = true;
+            isSameRouteReorder = true;
+          }
+        }
+
+        if (shouldShowConfirmation) {
+          setPendingDragOperation({
+            employeeKeys: employeesToMove,
+            targetRouteId: targetRouteId,
+            targetPosition: targetPosition,
+            activeData,
+            overData,
+            isCrossPageDrop: false,
+            isSameRouteReorder: isSameRouteReorder,
+          });
+          setShowDragDropConfirmDialog(true);
+        }
+      }
+    },
+    [selectedEmployees, autoExpandTimer, routeDetails, isSplitMode]
+  );
+  // Modified confirmDragDropOperation to handle both regular and cross-page drops
+  const confirmDragDropOperation = useCallback(async () => {
+    if (!pendingDragOperation) return;
+
+    try {
+      setShowDragDropConfirmDialog(false);
+      setIsLoading(true);
+
+      // Parse employee data from selection
+      const employeeData = [];
+      const routeIds = [];
+      const employeeNames = [];
+
+      for (const employeeKey of pendingDragOperation.employeeKeys) {
+        const [routeId, employeeId] = employeeKey.split("-");
+        employeeData.push(employeeId);
+        routeIds.push(routeId);
+
+        // Find employee name for toast message
+        const routeEmployees = routeDetails[routeId] || [];
+        const emp = routeEmployees.find(
+          (e) => (e.id || e.empID || e.empId) === employeeId
+        );
+        if (emp) {
+          employeeNames.push(emp.empCode);
+        }
+      }
+
+      // Prepare API payload with comma-separated values
+      const requestPayload = {
+        OldRouteid: routeIds.join(","),
+        oldemployeeid: employeeData.join(","),
+        newrouteid: String(pendingDragOperation.targetRouteId),
+        stopno: Number(pendingDragOperation.targetPosition),
+        userid: Number(parseInt(userID) || 0),
+      };
+
+      console.log("Employee move payload:", requestPayload);
+
+      const response = await ManageRouteService.UpdateCutPaste(requestPayload);
+
+      // Create appropriate success message
+      let moveMessage;
+      if (pendingDragOperation.isSameRouteReorder) {
+        moveMessage =
+          employeeData.length === 1
+            ? `Employee ${employeeNames[0]} reordered to position ${pendingDragOperation.targetPosition} in Route ${pendingDragOperation.targetRouteId}`
+            : `${employeeData.length} employees reordered to position ${pendingDragOperation.targetPosition} in Route ${pendingDragOperation.targetRouteId}`;
+      } else {
+        moveMessage =
+          employeeData.length === 1
+            ? `Employee ${employeeNames[0]} moved to Route ${pendingDragOperation.targetRouteId} at position ${pendingDragOperation.targetPosition}`
+            : `${employeeData.length} employees moved to Route ${pendingDragOperation.targetRouteId} at position ${pendingDragOperation.targetPosition}`;
+      }
+
+      toastService.success(moveMessage);
+
+      // Clear selection after successful move
+      setSelectedEmployees(new Set());
+      setSelectionStartRoute(null);
+
+      // If this was a cross-page drop, also clear the held state
+      if (pendingDragOperation.isCrossPageDrop) {
+        setShowFloatingPanel(false);
+        setIsSelectionHeld(false);
+        setCrossPageDropMode(false);
+      }
+
+      // Refresh affected routes
+      const affectedRoutes = [
+        ...new Set([...routeIds, pendingDragOperation.targetRouteId]),
+      ];
+      for (const routeId of affectedRoutes) {
+        await refreshRouteDetails(routeId);
+      }
+
+      // Refresh main table
+      await handleSubmit();
+    } catch (error) {
+      console.error("Error moving employees:", error);
+      toastService.error(`Failed to move employees: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+      setPendingDragOperation(null);
+    }
+  }, [pendingDragOperation, userID, routeDetails]);
+
+  // Function to cancel the drag and drop operation
+  const cancelDragDropOperation = useCallback(() => {
+    setShowDragDropConfirmDialog(false);
+    setPendingDragOperation(null);
+  }, []);
+
+  // Function to refresh route details
+  const refreshRouteDetails = useCallback(async (routeId) => {
+    try {
+      const response = await ManageRouteService.GetRoutesDetailsnew({
+        RouteID: routeId,
+        isAdd: 0,
+      });
+      const parsedResponse =
+        typeof response === "string" ? JSON.parse(response) : response;
+      setRouteDetails((prev) => ({
+        ...prev,
+        [routeId]: parsedResponse,
+      }));
+    } catch (error) {
+      console.error(`Error refreshing route details for ${routeId}:`, error);
+    }
+  }, []);
+
+  // ✅ FIX 9: Optimize fetchFacilities and fetchShifts
+  const fetchFacilities = useCallback(async () => {
+    try {
+      const response = await ManageRouteService.SelectBaseFacility({
+        userid: userID,
+      });
+
+      const parsedResponse =
+        typeof response === "string" ? JSON.parse(response) : response;
+
+      const formattedData = Array.isArray(parsedResponse)
+        ? parsedResponse.map((item) => ({
+            label: item.facility || item.facilityName,
+            value: item.Id,
+          }))
+        : [];
+
+      setFacilities(formattedData);
+    } catch (error) {
+      console.error("Failed to fetch facilities:", error);
+      toastService.error("An error occurred while loading facilities.");
+    }
+  }, [userID]);
+
+  const fetchShifts = useCallback(async () => {
+    try {
+      if (selectedFacility && selectedTripType) {
+        const response = await ManageRouteService.GetShiftByFacilityType({
+          facid: selectedFacility,
+          type: selectedTripType,
+        });
+
+        const parsedResponse =
+          typeof response === "string" ? JSON.parse(response) : response;
+
+        const formattedShifts = Array.isArray(parsedResponse)
+          ? parsedResponse.map((shift) => ({
+              label: shift.shiftTime || shift.ShiftTime,
+              value: shift.shiftTime || shift.ShiftTime,
+            }))
+          : [];
+
+        setShifts(formattedShifts);
+      }
+    } catch (error) {
+      console.error("Failed to fetch shifts:", error);
+      toastService.error("An error occurred while loading shifts.");
+    }
+  }, [selectedFacility, selectedTripType]);
+
+  // ✅ FIX 11: Separate effect for sort changes only
+  useEffect(() => {
+    if (
+      sortField &&
+      sortOrder &&
+      selectedFacility &&
+      selectedShifts.length > 0
+    ) {
+      handleSortChange();
+    }
+  }, [sortField, sortOrder, handleSortChange]);
+
+  // Effects for fetching data
+  useEffect(() => {
+    fetchFacilities();
+  }, [fetchFacilities]);
+
+  useEffect(() => {
+    if (selectedFacility && selectedTripType) {
+      fetchShifts();
+    }
+  }, [selectedFacility, selectedTripType, fetchShifts]);
+
+  // ✅ FIX 12: Enhanced row expansion template with proper memoization
   const rowExpansionTemplate = useCallback(
     (rowData) => {
+      // Fetch details if not already loaded
       if (!routeDetails[rowData.RouteID]) {
+        // Add a loading flag to prevent multiple API calls
         setRouteDetails((prev) => ({
           ...prev,
           [rowData.RouteID]: { loading: true },
@@ -1812,6 +2387,7 @@ const ManageRoute = () => {
           .then((response) => {
             const parsedResponse =
               typeof response === "string" ? JSON.parse(response) : response;
+            console.log("Employee details structure:", parsedResponse[0]); // Debug log
             setRouteDetails((prev) => ({
               ...prev,
               [rowData.RouteID]: parsedResponse,
@@ -1819,6 +2395,7 @@ const ManageRoute = () => {
           })
           .catch((error) => {
             console.error("Error fetching route details:", error);
+            // Remove the loading flag on error
             setRouteDetails((prev) => {
               const newState = { ...prev };
               delete newState[rowData.RouteID];
@@ -1836,6 +2413,7 @@ const ManageRoute = () => {
       const routeData = routeDetails[rowData.RouteID];
       const employees = Array.isArray(routeData) ? routeData : [];
 
+      // Show loading state if data is being fetched
       if (routeData && routeData.loading) {
         return (
           <div className="bg-custom">
@@ -1852,24 +2430,34 @@ const ManageRoute = () => {
       return (
         <div className="bg-custom">
           <div className="p-0">
-            {/* Flexbox Header - Replaces <thead> */}
-            <div className="row" style={{fontSize: '12px', background: '#f8f9fa', padding: '8px 0', fontWeight: 'bold'}}>
-                <div className="col-1">Select/Actions</div>
-                <div className="col-2">Employee</div>
-                {/* <div className="col"></div> */}
-                <div className="col-3">Address</div>
-                <div className="col-2">Location</div>
-                <div className="col-1">Shift</div>
-                <div className="col-1">Trip</div>
-                <div className="col-1">Stop</div>
-                <div className="col-1">ETA</div>
-            </div>
-
-            {/* Body Container - Replaces <tbody> */}
-            <div>
+            <table className="table table-sm employee-table">
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      width:
+                        isMultiSelectMode || isSplitMode ? "120px" : "80px",
+                    }}
+                  >
+                    {isMultiSelectMode || isSplitMode
+                      ? "Select/Actions"
+                      : "Actions"}
+                  </th>
+                  <th>Employee</th>
+                  <th style={{ width: "50px" }}></th>
+                  <th>Address</th>
+                  <th>Location</th>
+                  <th>Shift</th>
+                  <th>Trip</th>
+                  <th style={{ width: "70px" }}>Stop</th>
+                  <th style={{ width: "120px" }}>ETA</th>
+                </tr>
+              </thead>
+              <tbody>
                 {employees.length === 0 ? (
                   <>
-                    <div>
+                    <tr>
+                      <td colSpan="9" style={{ padding: 0, border: "none" }}>
                         <CrossPageDropZone
                           routeId={rowData.RouteID}
                           position={1}
@@ -1877,7 +2465,7 @@ const ManageRoute = () => {
                           onDrop={handleCrossPageDrop}
                           selectedEmployees={selectedEmployees}
                         />
-                        {selectedAction !== 'split' && (
+                        {!isSplitMode && (
                           <DropZoneIndicator
                             routeId={rowData.RouteID}
                             position={1}
@@ -1888,33 +2476,39 @@ const ManageRoute = () => {
                             }
                           />
                         )}
-                    </div>
-                    <div
-                      className="text-center p-4"
-                      style={{ color: "#666" }}
-                    >
-                      No employees in this route.
-                      {crossPageDropMode ? (
-                        <span className="text-primary">
-                          {" "}
-                          Click above to drop employees here.
-                        </span>
-                      ) : selectedAction === 'split' ? (
-                        <span>
-                          {" "}
-                          Select another route with employees to split.
-                        </span>
-                      ) : (
-                        <span>
-                          {" "}
-                          Drag employees from other routes to add them here.
-                        </span>
-                      )}
-                    </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        colSpan="9"
+                        className="text-center p-4"
+                        style={{ color: "#666" }}
+                      >
+                        No employees in this route.
+                        {crossPageDropMode ? (
+                          <span className="text-primary">
+                            {" "}
+                            Click above to drop employees here.
+                          </span>
+                        ) : isSplitMode ? (
+                          <span>
+                            {" "}
+                            Select another route with employees to split.
+                          </span>
+                        ) : (
+                          <span>
+                            {" "}
+                            Drag employees from other routes to add them here.
+                          </span>
+                        )}
+                      </td>
+                    </tr>
                   </>
                 ) : (
                   <>
-                    <div>
+                    {/* Drop zones before first employee */}
+                    <tr>
+                      <td colSpan="9" style={{ padding: 0, border: "none" }}>
                         <CrossPageDropZone
                           routeId={rowData.RouteID}
                           position={1}
@@ -1922,7 +2516,7 @@ const ManageRoute = () => {
                           onDrop={handleCrossPageDrop}
                           selectedEmployees={selectedEmployees}
                         />
-                        {selectedAction !== 'split' && (
+                        {!isSplitMode && (
                           <DropZoneIndicator
                             routeId={rowData.RouteID}
                             position={1}
@@ -1933,7 +2527,8 @@ const ManageRoute = () => {
                             }
                           />
                         )}
-                    </div>
+                      </td>
+                    </tr>
 
                     {employees.map((employee, index) => {
                       const employeeKey = `${rowData.RouteID}-${
@@ -1949,18 +2544,24 @@ const ManageRoute = () => {
                             index={index}
                             isSelected={isSelected}
                             onSelectionChange={handleEmployeeSelection}
+                            isMultiSelectMode={isMultiSelectMode}
                             selectedCount={selectedEmployees.size}
                             activeId={activeId}
                             selectedEmployees={selectedEmployees}
                             isDragInProgress={!!activeId}
-                            selectedAction={selectedAction}
+                            isSplitMode={isSplitMode}
                             onDeleteEmployee={(employee, routeId) => {
                               setPendingDeleteEmployee({ employee, routeId });
                               setShowDeleteEmployeeDialog(true);
                             }}
                           />
-                          {selectedAction !== 'split' && (
-                            <div>
+                          {/* Drop zones after each employee - Hide in split mode */}
+                          {!isSplitMode && (
+                            <tr>
+                              <td
+                                colSpan="9"
+                                style={{ padding: 0, border: "none" }}
+                              >
                                 <CrossPageDropZone
                                   routeId={rowData.RouteID}
                                   position={index + 2}
@@ -1977,15 +2578,18 @@ const ManageRoute = () => {
                                       `dropzone-${rowData.RouteID}-${index + 2}`
                                   }
                                 />
-                            </div>
+                              </td>
+                            </tr>
                           )}
                         </React.Fragment>
                       );
                     })}
                   </>
                 )}
-            </div>
+              </tbody>
+            </table>
 
+            {/* Add Employee Button - Positioned at bottom-left of each route */}
             <div
               className="d-flex justify-content-between align-items-center p-3 border-top"
               style={{ backgroundColor: "#f8f9fa" }}
@@ -2001,6 +2605,15 @@ const ManageRoute = () => {
                     fontSize: "12px",
                     fontWeight: "500",
                     transition: "all 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = "translateY(-1px)";
+                    e.target.style.boxShadow =
+                      "0 2px 8px rgba(40, 167, 69, 0.3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "none";
                   }}
                 >
                   <i className="material-icons" style={{ fontSize: "16px" }}>
@@ -2030,365 +2643,19 @@ const ManageRoute = () => {
       activeId,
       hoveredDropZone,
       selectedEmployees,
+      isMultiSelectMode,
       handleEmployeeSelection,
       handleCrossPageDrop,
-      selectedAction,
+      isSplitMode,
     ]
   );
-  // Drag and Drop Handlers
-  const handleDragStart = useCallback(
-    (event) => {
-      setActiveId(event.active.id);
-      const activeData = event.active.data.current;
-
-      if (activeData && activeData.type === "employee") {
-        setDraggedEmployee(activeData.employee);
-
-        const employeeKey = `${activeData.sourceRouteId}-${activeData.employee.id}`;
-
-        if (selectedAction === 'multiSelect') {
-          if (!selectedEmployees.has(employeeKey)) {
-            setSelectedEmployees((prev) => {
-              const newSelection = new Set(prev);
-              newSelection.add(employeeKey);
-              return newSelection;
-            });
-            if (!selectionStartRoute) {
-              setSelectionStartRoute(activeData.sourceRouteId);
-            }
-          }
-        } else {
-          setSelectedEmployees(new Set([employeeKey]));
-          setSelectionStartRoute(activeData.sourceRouteId);
-        }
-      }
-    },
-    [selectedEmployees, selectedAction, selectionStartRoute]
-  );
-
-  const handleDragEnd = useCallback(
-    async (event) => {
-      const { active, over, delta } = event;
-
-      if (autoExpandTimer) {
-        clearTimeout(autoExpandTimer);
-        setAutoExpandTimer(null);
-      }
-      setHoveredRouteId(null);
-      setActiveId(null);
-      setDraggedEmployee(null);
-      setHoveredDropZone(null);
-
-      const activeData = active.data.current;
-
-      // Swipe to delete logic
-      if (
-        delta.x > SWIPE_DELETE_THRESHOLD &&
-        activeData.type === "employee" &&
-        selectedAction !== 'split'
-      ) {
-        const employeeToDelete = activeData.employee;
-        const sourceRouteId = activeData.sourceRouteId;
-
-        setPendingDeleteEmployee({
-          employee: employeeToDelete,
-          routeId: sourceRouteId,
-        });
-        setShowDeleteEmployeeDialog(true);
-        return;
-      }
-
-      if (!over) {
-        return;
-      }
-
-      const overData = over.data.current;
-
-      if (
-        activeData &&
-        overData &&
-        activeData.type === "employee" &&
-        overData.type === "position"
-      ) {
-        const employeesToMove =
-          selectedEmployees.size > 0
-            ? Array.from(selectedEmployees)
-            : [`${activeData.sourceRouteId}-${activeData.employee.id}`];
-
-        const targetRouteId = overData.targetRouteId;
-        const targetPosition = overData.targetPosition;
-        const sourceRoutes = [
-          ...new Set(employeesToMove.map((key) => key.split("-")[0])),
-        ];
-
-        let shouldShowConfirmation = false;
-        let isSameRouteReorder = false;
-
-        if (sourceRoutes.some((routeId) => routeId !== targetRouteId)) {
-          shouldShowConfirmation = true;
-        } else if (
-          sourceRoutes.length === 1 &&
-          sourceRoutes[0] === targetRouteId
-        ) {
-          const routeEmployees = routeDetails[targetRouteId] || [];
-          const currentPositions = employeesToMove.map((employeeKey) => {
-            const [, employeeId] = employeeKey.split("-");
-            const employeeIndex = routeEmployees.findIndex(
-              (emp) => String(emp.id || emp.empID || emp.empId) === employeeId
-            );
-            return employeeIndex + 1;
-          });
-
-          const isSingleEmployee = employeesToMove.length === 1;
-          const isSamePosition =
-            isSingleEmployee && currentPositions[0] === targetPosition;
-          const isNoOp = isSingleEmployee && isSamePosition;
-
-          if (!isNoOp) {
-            shouldShowConfirmation = true;
-            isSameRouteReorder = true;
-          }
-        }
-
-        if (shouldShowConfirmation) {
-          setPendingDragOperation({
-            employeeKeys: employeesToMove,
-            targetRouteId: targetRouteId,
-            targetPosition: targetPosition,
-            activeData,
-            overData,
-            isCrossPageDrop: false,
-            isSameRouteReorder: isSameRouteReorder,
-          });
-          setShowDragDropConfirmDialog(true);
-        }
-      }
-    },
-    [selectedEmployees, autoExpandTimer, routeDetails, selectedAction]
-  );
-
-  // Confirmation handlers
-  const confirmDragDropOperation = useCallback(async () => {
-    if (!pendingDragOperation) return;
-
-    try {
-      setShowDragDropConfirmDialog(false);
-      setIsLoading(true);
-
-      const employeeData = [];
-      const routeIds = [];
-      const employeeNames = [];
-
-      for (const employeeKey of pendingDragOperation.employeeKeys) {
-        const [routeId, employeeId] = employeeKey.split("-");
-        employeeData.push(employeeId);
-        routeIds.push(routeId);
-
-        const routeEmployees = routeDetails[routeId] || [];
-        const emp = routeEmployees.find(
-          (e) => (e.id || e.empID || e.empId) === employeeId
-        );
-        if (emp) {
-          employeeNames.push(emp.empCode);
-        }
-      }
-
-      const requestPayload = {
-        OldRouteid: routeIds.join(","),
-        oldemployeeid: employeeData.join(","),
-        newrouteid: String(pendingDragOperation.targetRouteId),
-        stopno: Number(pendingDragOperation.targetPosition),
-        userid: Number(parseInt(userID) || 0),
-      };
-
-      const response = await ManageRouteService.UpdateCutPaste(requestPayload);
-
-      let moveMessage;
-      if (pendingDragOperation.isSameRouteReorder) {
-        moveMessage =
-          employeeData.length === 1
-            ? `Employee ${employeeNames[0]} reordered to position ${pendingDragOperation.targetPosition} in Route ${pendingDragOperation.targetRouteId}`
-            : `${employeeData.length} employees reordered to position ${pendingDragOperation.targetPosition} in Route ${pendingDragOperation.targetRouteId}`;
-      } else {
-        moveMessage =
-          employeeData.length === 1
-            ? `Employee ${employeeNames[0]} moved to Route ${pendingDragOperation.targetRouteId} at position ${pendingDragOperation.targetPosition}`
-            : `${employeeData.length} employees moved to Route ${pendingDragOperation.targetRouteId} at position ${pendingDragOperation.targetPosition}`;
-      }
-
-      toastService.success(moveMessage);
-
-      // Clear selections
-      handleClearSelection();
-
-      // Refresh affected routes
-      const affectedRoutes = [
-        ...new Set([...routeIds, pendingDragOperation.targetRouteId]),
-      ];
-      for (const routeId of affectedRoutes) {
-        await refreshRouteDetails(routeId);
-      }
-
-      await handleSubmit();
-    } catch (error) {
-      console.error("Error moving employees:", error);
-      toastService.error(`Failed to move employees: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-      setPendingDragOperation(null);
-    }
-  }, [pendingDragOperation, userID, routeDetails, handleClearSelection, handleSubmit]);
-
-  const cancelDragDropOperation = useCallback(() => {
-    setShowDragDropConfirmDialog(false);
-    setPendingDragOperation(null);
-  }, []);
-
-  // Route merge handlers
-  const handleMergeRoutes = useCallback(() => {
-    if (selectedRoutes.size < 2) {
-      toastService.warn("Please select at least 2 routes to merge");
-      return;
-    }
-
-    const routeArray = Array.from(routeSelectionOrder);
-    const targetRoute = routeArray[0];
-    const sourceRoutes = routeArray.slice(1);
-
-    setPendingMergeOperation({
-      sourceRoutes,
-      targetRoute,
-      routeArray,
-    });
-
-    setShowRouteMergeDialog(true);
-  }, [routeSelectionOrder, selectedRoutes.size]);
-
-  const confirmMergeOperation = useCallback(async () => {
-    if (!pendingMergeOperation) return;
-
-    try {
-      setShowRouteMergeDialog(false);
-      setIsLoading(true);
-
-      const requestPayload = {
-        RouteIDs: pendingMergeOperation.routeArray.join(","),
-        userid: Number(parseInt(userID) || 0),
-      };
-
-      const response = await ManageRouteService.MergeRoute(requestPayload);
-
-      toastService.success(
-        `Routes merged successfully! All routes merged into Route ${pendingMergeOperation.targetRoute} (first selected)`
-      );
-
-      handleClearRouteSelection();
-      await handleSubmit();
-    } catch (error) {
-      console.error("Error merging routes:", error);
-      toastService.error(`Failed to merge routes: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-      setPendingMergeOperation(null);
-    }
-  }, [pendingMergeOperation, userID, handleClearRouteSelection, handleSubmit]);
-
-  const cancelMergeOperation = useCallback(() => {
-    setShowRouteMergeDialog(false);
-    setPendingMergeOperation(null);
-  }, []);
-
-  // Split operation handlers
-  const confirmSplitOperation = useCallback(async () => {
-    if (!pendingSplitOperation) return;
-
-    try {
-      setShowSplitConfirmDialog(false);
-      setIsLoading(true);
-
-      const requestPayload = {
-        RouteIDs: pendingSplitOperation.routeId,
-        empIDs: pendingSplitOperation.employeeIds.join(","),
-      };
-
-      const response = await ManageRouteService.SplitRoute(requestPayload);
-
-      let result;
-      if (typeof response === "string") {
-        const parsedResponse = JSON.parse(response);
-        result = parsedResponse[0]?.result;
-      } else if (Array.isArray(response)) {
-        result = response[0]?.result;
-      } else {
-        result = response?.result;
-      }
-
-      switch (result) {
-        case 1:
-          toastService.success(
-            `Route split successful! ${pendingSplitOperation.employeeIds.length} employees moved to Route ${pendingSplitOperation.newRouteId}`
-          );
-          handleClearSelection();
-          await handleSubmit();
-          break;
-        case 0:
-          toastService.error(
-            `Split route ${pendingSplitOperation.newRouteId} already exists. Cannot split again.`
-          );
-          break;
-        case -1:
-          toastService.error('Cannot split a route that already ends with "S"');
-          break;
-        default:
-          toastService.error("Unexpected response from split operation");
-          break;
-      }
-    } catch (error) {
-      console.error("Error splitting route:", error);
-      toastService.error(`Failed to split route: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-      setPendingSplitOperation(null);
-    }
-  }, [pendingSplitOperation, handleClearSelection, handleSubmit]);
-
-  const cancelSplitOperation = useCallback(() => {
-    setShowSplitConfirmDialog(false);
-    setPendingSplitOperation(null);
-  }, []);
-
-  // Recalculation handlers
-  const checkIfRecalculationNeeded = useCallback(async () => {
-    try {
-      const inputJsonResponse =
-        await ManageRouteService.GetInputJsonRecalculate({
-          shiftdate: shiftDate,
-          shifttime: selectedShifts,
-          facilityid: selectedFacility,
-          triptype: selectedTripType,
-        });
-
-      const inputJsonData =
-        typeof inputJsonResponse === "string"
-          ? JSON.parse(inputJsonResponse)
-          : inputJsonResponse;
-
-      return !!(
-        inputJsonData &&
-        inputJsonData.routes &&
-        inputJsonData.routes.length > 0
-      );
-    } catch (error) {
-      console.error("Error checking recalculation status:", error);
-      return true;
-    }
-  }, [shiftDate, selectedShifts, selectedFacility, selectedTripType]);
 
   const handleRecalculateModifiedRoutes = useCallback(async () => {
     setIsLoading(true);
-    toastService.info("Fetching data for all modified routes...");
+    toastService.info("Fetching data for all modified routes..."); // ✅ Changed
 
     try {
+      // Step 1: Get the input JSON for all modified routes
       const inputJsonResponse =
         await ManageRouteService.GetInputJsonRecalculate({
           shiftdate: shiftDate,
@@ -2402,18 +2669,20 @@ const ManageRoute = () => {
           ? JSON.parse(inputJsonResponse)
           : inputJsonResponse;
 
+      // ✨ UPDATED LOGIC: Check if the 'routes' property inside the object is empty
       if (
         !inputJsonData ||
         !inputJsonData.routes ||
         inputJsonData.routes.length === 0
       ) {
-        toastService.info("No routes to be recalculated.");
+        toastService.info("No routes to be recalculated."); // ✅ Changed
         setIsLoading(false);
-        return;
+        return; // Stop execution here
       }
 
-      toastService.info("Sending data for recalculation...");
+      toastService.info("Sending data for recalculation..."); // ✅ Changed
 
+      // Step 2: Call the external recalculation API (this part is now conditional)
       const recalculateResponse = await fetch(
         "https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/recalculate",
         {
@@ -2435,6 +2704,7 @@ const ManageRoute = () => {
 
       const recalculatedRouteJson = await recalculateResponse.json();
 
+      // Step 3: Save the recalculated route data
       await ManageRouteService.updateRouteMapbased({
         facilityid: selectedFacility,
         sDate: shiftDate,
@@ -2444,12 +2714,13 @@ const ManageRoute = () => {
         updatedBy: userID,
       });
 
-      toastService.success("Modified routes recalculated! Refreshing table...");
+      toastService.success("Modified routes recalculated! Refreshing table..."); // ✅ Changed
 
+      // Step 4: Refresh the main table to show updated data
       await handleSubmit();
     } catch (error) {
       console.error("Error recalculating modified routes:", error);
-      toastService.error(`Failed to recalculate routes: ${error.message}`);
+      toastService.error(`Failed to recalculate routes: ${error.message}`); // ✅ Changed
     } finally {
       setIsLoading(false);
     }
@@ -2462,7 +2733,7 @@ const ManageRoute = () => {
     handleSubmit,
   ]);
 
-  // Additional handlers for file operations, employee management, etc.
+  // Add other handlers that were in the original code...
   const handleFileUpload = async (event) => {
     try {
       const file = event.target.files[0];
@@ -2483,17 +2754,22 @@ const ManageRoute = () => {
     }
   };
 
+  // button
   const handleFinalizeRoute = useCallback(async () => {
+    // First check if recalculation is needed
     const needsRecalculation = await checkIfRecalculationNeeded();
 
     if (needsRecalculation) {
+      // Show the modal asking user to recalculate first
       setShowRecalcBeforeFinalizeDialog(true);
       return;
     }
 
+    // If no recalculation needed, proceed with finalization
     await proceedWithFinalization();
   }, [checkIfRecalculationNeeded]);
 
+  // Separate the actual finalization logic
   const proceedWithFinalization = useCallback(async () => {
     setIsSubmitting(true);
     setIsFinalizing(true);
@@ -2536,6 +2812,7 @@ const ManageRoute = () => {
     try {
       toastService.info("Recalculating routes before finalization...");
 
+      // Step 1: Get the input JSON for all modified routes
       const inputJsonResponse =
         await ManageRouteService.GetInputJsonRecalculate({
           shiftdate: shiftDate,
@@ -2554,6 +2831,7 @@ const ManageRoute = () => {
         !inputJsonData.routes ||
         inputJsonData.routes.length === 0
       ) {
+        // If no routes to recalculate, proceed with finalization
         toastService.info(
           "No routes need recalculation. Proceeding with finalization..."
         );
@@ -2563,6 +2841,7 @@ const ManageRoute = () => {
 
       toastService.info("Sending data for recalculation...");
 
+      // Step 2: Call the external recalculation API
       const recalculateResponse = await fetch(
         "https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/recalculate",
         {
@@ -2584,6 +2863,7 @@ const ManageRoute = () => {
 
       const recalculatedRouteJson = await recalculateResponse.json();
 
+      // Step 3: Save the recalculated route data
       await ManageRouteService.updateRouteMapbased({
         facilityid: selectedFacility,
         sDate: shiftDate,
@@ -2597,7 +2877,10 @@ const ManageRoute = () => {
         "Routes recalculated successfully! Now finalizing..."
       );
 
+      // Step 4: Refresh the main table to show updated data
       await handleSubmit();
+
+      // Step 5: Proceed with finalization
       await proceedWithFinalization();
     } catch (error) {
       console.error("Error during recalculation before finalize:", error);
@@ -2624,14 +2907,16 @@ const ManageRoute = () => {
         },
       });
 
-      if (response.status !== 201) {
+      if (response.status === 201) {
+        // Success
+      } else {
         console.error(
           "Failed to push data:",
           response.status,
           response.statusText
         );
         toastService.error(
-          `Failed to push data. Status: ${response.status} ${response.statusText}`
+          `Failed to push data. Status:  ${response.status} ${response.statusText}`
         );
       }
     } catch (error) {
@@ -2668,6 +2953,30 @@ const ManageRoute = () => {
     } finally {
       setIsLoading(false);
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveFile = async () => {
+    try {
+      if (!selectedFile) {
+        toastService.warn("Please select a file first");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("facilityId", selectedFacility);
+      formData.append("tripType", selectedTripType);
+      formData.append("shiftDate", shiftDate);
+
+      toastService.success("File uploaded successfully");
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toastService.error("An error occurred during file upload.");
     }
   };
 
@@ -2806,7 +3115,7 @@ const ManageRoute = () => {
     }
   };
 
-  // Employee management handlers
+  // Handle employee deletion from route
   const handleDeleteEmployee = async () => {
     if (!pendingDeleteEmployee) return;
 
@@ -2823,10 +3132,12 @@ const ManageRoute = () => {
         uname: userID,
       });
 
+      // Parse the response - it comes as a stringified JSON array
       let parsedResponse;
       try {
         parsedResponse =
           typeof response === "string" ? JSON.parse(response) : response;
+        // If it's an array, take the first element
         if (Array.isArray(parsedResponse)) {
           parsedResponse = parsedResponse[0];
         }
@@ -2841,6 +3152,7 @@ const ManageRoute = () => {
           `Employee ${employee.empName} has been removed from route ${routeId}`
         );
 
+        // Refresh the main route table data
         try {
           const tableResponse = await ManageRouteService.GetRoutesByOrder({
             sDate: shiftDate,
@@ -2863,12 +3175,14 @@ const ManageRoute = () => {
           console.error("Error refreshing route data:", refreshError);
         }
 
+        // Refresh the specific route details to update the expanded row
         try {
           await refreshRouteDetails(routeId);
         } catch (refreshError) {
           console.error("Error refreshing route details:", refreshError);
         }
 
+        // Clear any selections that might include the deleted employee
         setSelectedEmployees((prev) => {
           const newSelection = new Set(prev);
           const employeeKey = `${routeId}-${employee.id || employee.empID}`;
@@ -2891,13 +3205,11 @@ const ManageRoute = () => {
     }
   };
 
-  const handleDeleteFromPanel = useCallback((employee, routeId) => {
-    setPendingDeleteEmployee({ employee, routeId });
-    setShowDeleteEmployeeDialog(true);
-  }, []);
-
+  // Add Employee Modal Handlers
   const handleOpenAddEmployeeModal = useCallback((routeId) => {
+    // Set the selected route ID for this specific route
     setSelectedRouteId(routeId);
+
     setShowAddEmployeeModal(true);
     setEmployeeSearchQuery("");
     setSearchResults([]);
@@ -2964,10 +3276,12 @@ const ManageRoute = () => {
     (employee) => {
       setSelectedEmployee(employee);
 
+      // Generate available stop numbers based on the current number of employees in the route
       const currentRouteEmployees = routeDetails[selectedRouteId];
       if (currentRouteEmployees && Array.isArray(currentRouteEmployees)) {
         const currentEmployeeCount = currentRouteEmployees.length;
         const stopNumbers = [];
+        // Generate stop numbers from 1 to currentEmployeeCount + 1
         for (let i = 1; i <= currentEmployeeCount + 1; i++) {
           stopNumbers.push({
             label: `${i}${getOrdinalSuffix(i)} Stop`,
@@ -3016,6 +3330,7 @@ const ManageRoute = () => {
           `Employee ${selectedEmployee.empName} has been added to route ${selectedRouteId} at stop ${selectedStopNo}`
         );
 
+        // Refresh the main route table data
         try {
           const tableResponse = await ManageRouteService.GetRoutesByOrder({
             sDate: shiftDate,
@@ -3038,6 +3353,7 @@ const ManageRoute = () => {
           console.error("Error refreshing route data:", refreshError);
         }
 
+        // Refresh the specific route details to update the expanded row
         try {
           await refreshRouteDetails(selectedRouteId);
         } catch (refreshError) {
@@ -3070,29 +3386,33 @@ const ManageRoute = () => {
     handleCloseAddEmployeeModal,
   ]);
 
-  const handleSaveFile = async () => {
-    try {
-      if (!selectedFile) {
-        toastService.warn("Please select a file first");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("facilityId", selectedFacility);
-      formData.append("tripType", selectedTripType);
-      formData.append("shiftDate", shiftDate);
-
-      toastService.success("File uploaded successfully");
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toastService.error("An error occurred during file upload.");
-    }
-  };
+  // Helper Component for Swipe-to-Delete Background
+  // const SwipeToDeleteBackground = ({ isActive, swipeProgress }) => {
+  //   const opacity = Math.min(Math.abs(swipeProgress) / 100, 1);
+  //   return (
+  //     <div
+  //       style={{
+  //         position: 'absolute',
+  //         top: '1px',
+  //         left: '1px',
+  //         right: '1px',
+  //         bottom: '1px',
+  //         backgroundColor: '#dc3545',
+  //         color: 'white',
+  //         display: 'flex',
+  //         alignItems: 'center',
+  //         justifyContent: 'flex-end',
+  //         paddingRight: '30px',
+  //         opacity: isActive ? opacity : 0,
+  //         transition: 'opacity 0.2s ease',
+  //         zIndex: 1, // Behind the foreground
+  //       }}
+  //     >
+  //       <i className="material-symbols-outlined me-2">delete</i>
+  //       <strong>Delete</strong>
+  //     </div>
+  //   );
+  // };
 
   const handleGenerateRoute = async () => {
     try {
@@ -3264,6 +3584,7 @@ const ManageRoute = () => {
       setShowProgressDialog(false);
     }
   };
+
   return (
     <>
       <style>
@@ -3273,7 +3594,6 @@ const ManageRoute = () => {
             overflow: hidden;
             will-change: transform, background-color, border-color;
             transform: translateZ(0);
-            height: 0 !important;
           }
 
           .drop-zone-active {
@@ -3337,6 +3657,7 @@ const ManageRoute = () => {
             }
           }
 
+          /* Auto-expand CSS */
           .route-hover-drag {
             background-color: #f3e5f5 !important;
             border-left: 4px solid #9c27b0 !important;
@@ -3370,18 +3691,90 @@ const ManageRoute = () => {
             cursor: pointer;
           }
 
+          .drag-overlay {
+            will-change: transform;
+            transform: translateZ(100px);
+            pointer-events: none;
+            transition: none;
+          }
+
+          .multi-employee-stack {
+            position: relative;
+            animation: stackFloat 0.6s ease-out;
+          }
+
+          @keyframes stackFloat {
+            0% {
+              transform: scale(0.9) rotate(0deg);
+              opacity: 0.7;
+            }
+            100% {
+              transform: scale(1) rotate(2deg);
+              opacity: 1;
+            }
+          }
+
+          .employee-count-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4444;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 10;
+          }
+
+          .employee-card-stack {
+            will-change: transform;
+          }
+
+          .single-employee-drag {
+            will-change: transform;
+          }
+
+          .employee-table {
+            transform: translateZ(0);
+          }
+
+          .employee-table tbody tr {
+            will-change: transform;
+          }
+
+          .dragging-over {
+            background-color: #f5f5f5;
+            border: 2px dashed #2196F3;
+          }
+
+          .multi-drag-container {
+            position: relative;
+          }
+
+          /* Floating Selection Panel Styles */
           .floating-selection-panel {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 12px 16px;
           }
 
           .floating-selection-panel.held {
             border-color: #ff9800;
             box-shadow: 0 8px 32px rgba(255, 152, 0, 0.3);
+          }
+
+          .floating-selection-panel .panel-header {
+            border-radius: 10px 10px 0 0;
+            user-select: none;
+          }
+
+          .employee-item {
+            transition: background-color 0.2s ease;
+          }
+
+          .employee-item:hover {
+            background-color: #f5f5f5;
           }
 
           .cross-page-drop-zone {
@@ -3419,11 +3812,13 @@ const ManageRoute = () => {
             pointer-events: none;
           }
 
+          /* Enhanced visual feedback for hold mode */
           .held-selection-active {
             background: linear-gradient(45deg, #fff3e0, #ffe0b2);
             border-left: 4px solid #ff9800;
           }
 
+          /* Route Selection Styles */
           .route-selected {
             background-color: #fff3e0 !important;
             border-left: 4px solid #ff9800 !important;
@@ -3433,11 +3828,25 @@ const ManageRoute = () => {
             background-color: #ffe0b2 !important;
           }
 
+          /* UPDATED: Enhanced first-selected route styling */
           .route-selected.first-selected {
             background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
             border-left: 8px solid #28a745 !important;
             box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
             position: relative;
+          }
+
+          @keyframes targetGlow {
+            0%, 100% {
+              opacity: 0.9;
+              transform: translateY(-50%) scale(1);
+              box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+            }
+            50% {
+              opacity: 1;
+              transform: translateY(-50%) scale(1.02);
+              box-shadow: 0 4px 12px rgba(40, 167, 69, 0.5);
+            }
           }
 
           .route-selected:not(.first-selected)::after {
@@ -3462,6 +3871,20 @@ const ManageRoute = () => {
             transition: all 0.3s ease;
           }
 
+          .route-item {
+            transition: background-color 0.2s ease;
+          }
+
+          .route-item:hover {
+            background-color: rgba(255, 152, 0, 0.1) !important;
+          }
+
+          .merge-info {
+            border-radius: 8px;
+            margin: 4px;
+          }
+
+          /* Route merge mode styling */
           .route-merge-mode .p-datatable-tbody tr {
             cursor: pointer;
             transition: background-color 0.2s ease;
@@ -3469,6 +3892,16 @@ const ManageRoute = () => {
 
           .route-merge-mode .p-datatable-tbody tr:hover {
             background-color: rgba(255, 152, 0, 0.1) !important;
+          }
+
+          /* Enhanced dialog styling */
+          .route-merge-dialog .card {
+            transition: all 0.3s ease;
+          }
+
+          .route-merge-dialog .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
           }
 
           .bg-success-subtle {
@@ -3483,26 +3916,112 @@ const ManageRoute = () => {
             background: linear-gradient(135deg, #d1ecf1 0%, #b8daff 100%) !important;
           }
 
-          .bg-primary-subtle {
-            background: linear-gradient(135deg, #cce7ff 0%, #b3d9ff 100%) !important;
+          /* Route Split Mode Styles */
+          .route-split-mode .p-datatable-tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            position: relative; /* Ensure pseudo-elements position correctly per row */
           }
 
+          .route-split-mode .p-datatable-tbody tr:hover {
+            background-color: rgba(23, 162, 184, 0.1) !important;
+          }
+
+          .split-selected {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%) !important;
+            border-left: 4px solid #17a2b8 !important;
+            box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+          }
+
+          .split-selected::after {
+            content: 'SELECTED FOR SPLIT';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+          }
+
+          .split-disabled {
+            background-color: #f8f9fa !important;
+            color: #6c757d !important;
+            opacity: 0.6;
+            cursor: not-allowed !important;
+            position: relative; /* Anchor ::after badge to the row */
+          }
+
+          .split-disabled::after {
+            content: 'Cannot split (ends with S)';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #6c757d;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 10;
+          }
+
+          .route-split-dialog .card {
+            transition: all 0.3s ease;
+          }
+
+          .route-split-dialog .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          }
+
+          /* Responsive styles for the table when Route Merge Mode is active */
           .route-merge-table-active .p-datatable-thead > tr > th {
+            /* Allow long headers like "Farthest Employee Dist.(Km)" to wrap */
             white-space: normal;
+            /* Reduce font size to save space */
             font-size: 12px;
+            /* Reduce padding to make columns narrower */
             padding: 0.6rem 0.4rem;
             text-align: center;
             vertical-align: middle;
           }
 
           .route-merge-table-active .p-datatable-tbody > tr > td {
+            /* Reduce padding on the data cells */
             padding: 0.6rem 0.4rem;
             font-size: 13px;
           }
 
+          /* Set minimum widths for specific columns to prevent them from becoming too small */
           .route-merge-table-active .p-column-header-content {
-            justify-content: center;
+            justify-content: center; /* Center the header text */
           }
+
+          .route-merge-table-active th:nth-child(4), /* Route ID */
+          .route-merge-table-active th:nth-child(5) { /* Shift */
+            min-width: 90px;
+          }
+
+          .route-merge-table-active th:nth-child(10), /* Stops */
+          .route-merge-table-active th:nth-child(11) { /* Vendor */
+            min-width: 70px;
+          }
+
+          /* Modern Modal Styles */
+          // .modern-modal .p-dialog-header {
+          //   background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+          //   color: white;
+          //   border-radius: 8px 8px 0 0;
+          //   padding: 1rem;
+          //   border-bottom: none;
+          // }
 
           .modern-modal .p-dialog-content {
             border-radius: 0 0 8px 8px;
@@ -3517,6 +4036,31 @@ const ManageRoute = () => {
             padding: 0.75rem 1rem;
             border-top: 1px solid #dee2e6;
           }
+
+          // .modern-modal .table {
+          //   border-radius: 6px;
+          //   overflow: hidden;
+          //   box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+          //   margin-bottom: 0;
+          // }
+
+          // .modern-modal .table thead th {
+          //   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+          //   border-bottom: 1px solid #dee2e6;
+          //   font-weight: 600;
+          //   color: #495057;
+          //   padding: 0.5rem;
+          // }
+
+          // .modern-modal .table tbody tr {
+          //   transition: all 0.2s ease;
+          // }
+
+          // .modern-modal .table tbody tr:hover {
+          //   background-color: #f8f9fa;
+          //   transform: translateY(-1px);
+          //   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          // }
 
           .modern-modal .table thead th{ font-size: 12px; }
           .modern-modal .table tbody td{ vertical-align: middle; }
@@ -3534,6 +4078,18 @@ const ManageRoute = () => {
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin-bottom: 0;
           }
+
+          // .modern-modal .btn {
+          //   border-radius: 6px;
+          //   font-weight: 500;
+          //   transition: all 0.2s ease;
+          //   border: 1px solid transparent;
+          // }
+
+          // .modern-modal .btn:hover {
+          //   transform: translateY(-1px);
+          //   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          // }
 
           .modern-modal .form-control {
             border-radius: 6px;
@@ -3558,18 +4114,6 @@ const ManageRoute = () => {
 
           .modern-modal .fw-semibold {
             font-weight: 600 !important;
-          }
-          
-          /* --- Style for Active Route Merge Button --- */
-          .route-merge-toggle-btn.p-button-warning {
-            background: #343a40 !important;
-            border-color: #343a40 !important;
-            color: #fff !important;
-          }
-
-          .route-merge-toggle-btn.p-button-warning:hover {
-            background: #495057 !important;
-            border-color: #495057 !important;
           }
         `}
       </style>
@@ -3671,8 +4215,19 @@ const ManageRoute = () => {
                     />
                   </div>
                   <div className="col no-label">
+                    {/* <Button
+                      className="p-button-sm"
+                      label={isLoading ? "Loading..." : "Submit"}
+                      rounded
+                      raised
+                      // outlined
+                      severity="primary"
+                      onClick={handleSubmit}
+                      disabled={isLoading}
+                    /> */}
                     <button
-                      className="btn btn-dark p-button p-component"
+                      class="btn btn-dark p-button p-component"
+                      label={isLoading ? "Loading..." : "Submit"}
                       onClick={handleSubmit}
                       disabled={isLoading}
                     >
@@ -3747,111 +4302,282 @@ const ManageRoute = () => {
             </div>
           </div>
 
-          {/* UPDATED: Simplified toolbar - only Route Merge */}
+          {/* Enhanced Multi-Select Controls with Route Merge and Split */}
           {showButtons && (
-
-            <div className={scrolled ? "buttonFix shadow" : "hidden"}>
             <div className="row mt-3">
               <div className="col-12 d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center gap-3">
-                  {/* Only keep Route Merge Mode */}
-                  <div className="d-flex align-items-center">
+                  {/* Employee Multi-Select - Hide in split mode */}
+                  {!isSplitMode && (
+                    <div className="d-flex align-items-center gap-2">
+                      <Button
+                        label="Employee Multi-Select"
+                        icon={`pi ${
+                          isMultiSelectMode ? "pi-check-square" : "pi-square"
+                        }`}
+                        className="btn btn-outline-secondary"
+                        //severity={isMultiSelectMode ? "primary" : "secondary"}
+                        // outlined
+                        //raised
+                        //rounded
+                        // text
+                        onClick={() => {
+                          setIsMultiSelectMode(!isMultiSelectMode);
+                          if (isMultiSelectMode) handleClearSelection();
+                        }}
+                      />
+
+                      {selectedEmployees.size > 0 && (
+                        <>
+                          {/* <span className="badge bg-primary me-2">
+                            {selectedEmployees.size} employees
+                          </span> */}
+
+                          <Button
+                            label={isSelectionHeld ? "Release" : "Hold"}
+                            icon="pi pi-thumbtack"
+                            className="btn btn-outline-secondary"
+                            //severity={isSelectionHeld ? "warning" : "secondary"}
+                            outlined={!isSelectionHeld}
+                            onClick={handleToggleHold}
+                            raised={!isSelectionHeld}
+                            rounded={!isSelectionHeld}
+                          />
+
+                          <Button
+                            label="Clear Employees"
+                            icon="pi pi-times"
+                            className="btn btn-outline-secondary"
+                            //severity="danger"
+                            //outlined
+                            onClick={handleClearSelection}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Route Multi-Select - Hide in split mode */}
+                  {!isSplitMode && (
+                    <div className="d-flex align-items-center border-start ps-3">
+                      <Button
+                        label="Route Merge Mode"
+                        icon="pi pi-share-alt"
+                        className="btn btn-outline-secondary"
+                        severity={isRouteSelectMode ? "warning" : "secondary"}
+                        // outlined={!isRouteSelectMode}
+                        raised
+                        rounded
+                        onClick={() => {
+                          setIsRouteSelectMode(!isRouteSelectMode);
+                          if (isRouteSelectMode) handleClearRouteSelection();
+                        }}
+                      />
+
+                      {selectedRoutes.size > 0 && (
+                        <>
+                          {/* <span className="badge bg-warning text-dark me-2">
+                            {selectedRoutes.size} routes
+                          </span> */}
+
+                          <Button
+                            label="Merge Routes"
+                            icon="pi pi-arrows-h"
+                            className="btn btn-outline-secondary ms-2"
+                            //severity="success"
+                            onClick={handleMergeRoutes}
+                            rounded
+                            raised
+                            // outlined
+                            disabled={selectedRoutes.size < 2}
+                          />
+
+                          <Button
+                            label="Clear Routes"
+                            icon="pi pi-times"
+                            className="btn btn-outline-secondary ms-2"
+                            severity="danger"
+                            outlined
+                            raised
+                            rounded
+                            onClick={handleClearRouteSelection}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Route Split Mode */}
+                  <div
+                    className={`d-flex align-items-center ${
+                      !isSplitMode && (isMultiSelectMode || isRouteSelectMode)
+                        ? "border-start ps-3"
+                        : ""
+                    }`}
+                  >
                     <Button
-                      label="Route Merge Mode"
-                      icon="pi pi-share-alt"
-                      className="btn btn-outline-secondary route-merge-toggle-btn"
-                      severity={isRouteSelectMode ? "warning" : "secondary"}
+                      label="Route Split Mode"
+                      icon="pi pi-sitemap"
+                      className="btn btn-outline-secondary"
+                      severity={isSplitMode ? "info" : "secondary"}
+                      // outlined={!isSplitMode}
+                      onClick={handleToggleSplitMode}
                       raised
                       rounded
-                      onClick={() => {
-                        setIsRouteSelectMode(!isRouteSelectMode);
-                        if (isRouteSelectMode) handleClearRouteSelection();
-                      }}
+                      disabled={isMultiSelectMode || isRouteSelectMode}
                     />
 
-                    {selectedRoutes.size > 0 && (
+                    {isSplitMode && (
                       <>
-                        <Button
-                          label="Merge Routes"
-                          icon="pi pi-arrows-h"
-                          className="btn btn-outline-secondary ms-2"
-                          onClick={handleMergeRoutes}
-                          rounded
-                          raised
-                          disabled={selectedRoutes.size < 2}
-                        />
+                        {splitModeEmployees.size > 0 && (
+                          <>
+                            <Button
+                              label="Split Route"
+                              //icon="pi pi-sitemap"
+                              className="btn btn-outline-secondary ms-2"
+                              severity="success"
+                              outlined
+                              raised
+                              rounded
+                              onClick={handleSplitRoute}
+                              disabled={
+                                !selectedRouteForSplit ||
+                                splitModeEmployees.size === 0
+                              }
+                            />
 
-                        <Button
-                          label="Clear Routes"
-                          icon="pi pi-times"
-                          className="btn btn-outline-secondary ms-2"
-                          severity="danger"
-                          outlined
-                          raised
-                          rounded
-                          onClick={handleClearRouteSelection}
-                        />
+                            <Button
+                              label="Clear Selection"
+                              //icon="pi pi-times"
+                              className="btn btn-outline-secondary ms-2"
+                              severity="danger"
+                              outlined
+                              raised
+                              rounded
+                              onClick={handleClearSplitSelection}
+                            />
+
+                            <span className="ms-5">
+                              <strong className="text-primary fw-bold">
+                                {splitModeEmployees.size}
+                              </strong>{" "}
+                              employees to split
+                            </span>
+                            <span className="mx-3">|</span>
+                          </>
+                        )}
+
+                        {selectedRouteForSplit && (
+                          <span>
+                            Route{" "}
+                            <strong className="text-primary fw-bold">
+                              {selectedRouteForSplit}
+                            </strong>{" "}
+                            selected
+                          </span>
+                        )}
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* Keep existing action buttons */}
-                <div>
-                  <Button
-                    label="Recalculate"
-                    icon={isLoading ? "pi pi-spin pi-spinner" : "pi pi-sync"}
-                    className="btn btn-primary me-2"
-                    severity="warning"
-                    raised
-                    rounded
-                    onClick={handleRecalculateModifiedRoutes}
-                    disabled={isLoading}
-                    tooltip="Recalculates ETA and distance for all modified routes in this shift"
-                    tooltipOptions={{ position: "top" }}
-                  />
+                {/* Existing buttons - Hide in split mode */}
+                {!isSplitMode && (
+                  <div>
+                    <Button
+                      label="Recalculate"
+                      icon={isLoading ? "pi pi-spin pi-spinner" : "pi pi-sync"}
+                      className="btn btn-primary me-2"
+                      severity="warning"
+                      raised
+                      rounded
+                      onClick={handleRecalculateModifiedRoutes}
+                      disabled={isLoading}
+                      tooltip="Recalculates ETA and distance for all modified routes in this shift"
+                      tooltipOptions={{ position: "top" }}
+                    />
 
-                  <Button
-                    label={
-                      isLoading ? "Allocating..." : "Auto Vendor Allocation"
-                    }
-                    icon="pi pi-cog"
-                    className="btn btn-primary me-2"
-                    raised
-                    rounded
-                    onClick={handleAutoVendorAllocation}
-                    disabled={isLoading}
-                  />
+                    <Button
+                      label={
+                        isLoading ? "Allocating..." : "Auto Vendor Allocation"
+                      }
+                      icon="pi pi-cog"
+                      className="btn btn-primary me-2"
+                      //severity="warning"
+                      // outlined
+                      raised
+                      rounded
+                      onClick={handleAutoVendorAllocation}
+                      disabled={isLoading}
+                    />
 
-                  <Button
-                    label={
-                      isRecalcBeforeFinalize
-                        ? "Recalculating..."
-                        : isFinalizing
-                        ? "Finalizing..."
-                        : "Finalize Route"
-                    }
-                    icon={
-                      isRecalcBeforeFinalize
-                        ? "pi pi-spin pi-spinner"
-                        : isFinalizing
-                        ? "pi pi-spin pi-spinner"
-                        : "pi pi-check"
-                    }
-                    className="btn btn-primary"
-                    severity="success"
-                    raised
-                    rounded
-                    onClick={handleFinalizeRoute}
-                    disabled={isFinalizing || isRecalcBeforeFinalize}
-                  />
-                </div>
+                    <Button
+                      label={
+                        isRecalcBeforeFinalize
+                          ? "Recalculating..."
+                          : isFinalizing
+                          ? "Finalizing..."
+                          : "Finalize Route"
+                      }
+                      icon={
+                        isRecalcBeforeFinalize
+                          ? "pi pi-spin pi-spinner"
+                          : isFinalizing
+                          ? "pi pi-spin pi-spinner"
+                          : "pi pi-check"
+                      }
+                      className="btn btn-primary"
+                      severity="success"
+                      raised
+                      rounded
+                      onClick={handleFinalizeRoute}
+                      disabled={isFinalizing || isRecalcBeforeFinalize}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
+
+              {/* Split Mode Instructions */}
+              {isSplitMode && (
+                <div className="col-12 mt-2">
+                  <div className="alert alert-info d-flex align-items-center">
+                    <span
+                      className="material-icons me-2"
+                      style={{ fontSize: "20px" }}
+                    >
+                      info
+                    </span>
+                    <div>
+                      <strong>Route Split Mode Active:</strong>
+                      {!selectedRouteForSplit ? (
+                        <span>
+                          {" "}
+                          Click on a route (not ending with 'S') to select it
+                          for splitting.
+                        </span>
+                      ) : splitModeEmployees.size === 0 ? (
+                        <span>
+                          {" "}
+                          Now select employees from Route{" "}
+                          {selectedRouteForSplit} to move to the new route{" "}
+                          {selectedRouteForSplit}S.
+                        </span>
+                      ) : (
+                        <span>
+                          {" "}
+                          {splitModeEmployees.size} employee(s) selected to move
+                          from Route {selectedRouteForSplit} to new Route{" "}
+                          {selectedRouteForSplit}S.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Enhanced Table */}
+          {/* Enhanced Table with Cross-Page Mode, Route Selection, and Split Mode */}
           <div className="row">
             <div className="col-12">
               <div className="card_tb">
@@ -3897,6 +4623,11 @@ const ManageRoute = () => {
                       ? (e) => {
                           e.preventDefault();
                           handleRouteSelection(e.data.RouteID);
+                        }
+                      : isSplitMode
+                      ? (e) => {
+                          e.preventDefault();
+                          handleRouteSelectionForSplit(e.data.RouteID);
                         }
                       : undefined
                   }
@@ -4011,7 +4742,7 @@ const ManageRoute = () => {
                         )}
                       </div>
                     )}
-                  />
+                  ></Column>
                   <Column
                     field="RouteID"
                     header="Route ID"
@@ -4091,7 +4822,7 @@ const ManageRoute = () => {
                         )}
                       </div>
                     )}
-                  />
+                  ></Column>
                 </DataTable>
                 <Tooltip target="[data-pr-tooltip]" />
               </div>
@@ -4099,21 +4830,18 @@ const ManageRoute = () => {
           </div>
         </div>
 
-        {/* UPDATED: Enhanced Floating Selection Panel */}
+        {/* Floating Selection Panel */}
         <FloatingSelectionPanel
           selectedEmployees={selectedEmployees}
           routeDetails={routeDetails}
           onClearSelection={handleClearSelection}
           onToggleHold={handleToggleHold}
           isHeld={isSelectionHeld}
+          onDrop={handleCrossPageDrop}
           isVisible={showFloatingPanel}
-          selectedAction={selectedAction}
-          onActionChange={handleActionChange}
-          onSplitRoute={handleSplitRoute}
-          onDeleteEmployee={handleDeleteFromPanel}
         />
 
-        {/* Floating Route Selection Panel */}
+        {/* UPDATED: Floating Route Selection Panel with routeSelectionOrder */}
         <FloatingRouteSelectionPanel
           selectedRoutes={selectedRoutes}
           tableData={memoizedTableData}
@@ -4129,6 +4857,7 @@ const ManageRoute = () => {
           onClose={() => setShowOffcanvas(false)}
           routeId={selectedRouteId}
         />
+
         <Dialog
           visible={showProgressDialog}
           onHide={() => {}}
@@ -4221,6 +4950,12 @@ const ManageRoute = () => {
           style={{ width: "692px", height: "auto" }}
           header={
             <div className="d-flex align-items-center">
+              {/* <i
+                className="material-icons me-2"
+                style={{ color: "#dc3545", fontSize: "20px" }}
+              >
+                warning
+              </i> */}
               <span>
                 {pendingDragOperation?.isCrossPageDrop
                   ? "Confirm Cross-Page Employee Move"
@@ -4250,6 +4985,7 @@ const ManageRoute = () => {
               />
             </>
           }
+          //style={{ width: "500px", height: "auto" }}
         >
           {pendingDragOperation && (
             <div className="p-2">
@@ -4343,7 +5079,7 @@ const ManageRoute = () => {
           )}
         </Dialog>
 
-        {/* Route Merge Confirmation Dialog */}
+        {/* UPDATED: Route Merge Confirmation Dialog */}
         <Dialog
           visible={showRouteMergeDialog}
           onHide={cancelMergeOperation}
@@ -4383,9 +5119,9 @@ const ManageRoute = () => {
                 <span className="badge bg-success ms-2">FIRST SELECTED</span>.
               </p>
 
-              <div className="row">
+              <div className="row d-flex">
                 <div className="col-6">
-                  <div className="card border-primary">
+                  <div className="card border-primary h-100">
                     <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                       <strong className="mb-0">
                         Target Route (Preserved):
@@ -4413,7 +5149,7 @@ const ManageRoute = () => {
                 </div>
 
                 <div className="col-6">
-                  <div className="card border-danger">
+                  <div className="card border-danger h-100">
                     <div className="card-header bg-danger text-white">
                       <strong className="mb-0">
                         Source Routes (To Be Deleted):
@@ -4421,6 +5157,7 @@ const ManageRoute = () => {
                     </div>
                     <div
                       className="card-body bg-danger-subtle"
+                      //style={{ maxHeight: "200px", overflowY: "auto" }}
                     >
                       {pendingMergeOperation.sourceRoutes.map(
                         (routeId, index) => (
@@ -4473,11 +5210,15 @@ const ManageRoute = () => {
                   becomes the target route that receives all employees.
                 </small>
               </div>
+
+              <div className="mt-3 text-center">
+                <small className=""></small>
+              </div>
             </div>
           )}
         </Dialog>
 
-        {/* Route Split Confirmation Dialog */}
+        {/* NEW: Route Split Confirmation Dialog */}
         <Dialog
           visible={showSplitConfirmDialog}
           onHide={cancelSplitOperation}
@@ -4562,7 +5303,7 @@ const ManageRoute = () => {
                 </div>
               </div>
 
-              {/* <div className="mt-3">
+              <div className="mt-3">
                 <strong className="mb-3 d-block">Employees to be moved:</strong>
                 <div
                   className="border rounded p-2"
@@ -4606,7 +5347,7 @@ const ManageRoute = () => {
                     )
                   )}
                 </div>
-              </div> */}
+              </div>
             </div>
           )}
         </Dialog>
@@ -4910,6 +5651,7 @@ const ManageRoute = () => {
               <span>Confirm Employee Deletion</span>
             </div>
           }
+          //style={{ fontSize: "16px !important", fontWeight: "600" }}
           modal
           footer={
             <>
@@ -4928,13 +5670,19 @@ const ManageRoute = () => {
         >
           {pendingDeleteEmployee && (
             <div className="text-left">
+              {/* <i
+                className="material-icons text-danger"
+                style={{ fontSize: "48px", marginBottom: "16px" }}
+              >
+                warning
+              </i> */}
               <p className=" mb-3">
                 Are you sure you want to delete{" "}
-                <strong className="text-primary fw-bold">
+                <strong class="text-primary fw-bold">
                   {pendingDeleteEmployee.employee.empName}
                 </strong>{" "}
                 from route{" "}
-                <strong className="text-primary fw-bold">
+                <strong class="text-primary fw-bold">
                   {pendingDeleteEmployee.routeId}
                 </strong>
                 ?
@@ -4947,17 +5695,22 @@ const ManageRoute = () => {
           )}
         </Dialog>
 
-        
         {/* Modern Add Employee Modal */}
         <Dialog
           visible={showAddEmployeeModal}
           onHide={handleCloseAddEmployeeModal}
           header={
             <div className="d-flex align-items-center">
+              {/* <i
+                className="material-icons me-2"
+                style={{ color: "#28a745", fontSize: "20px" }}
+              >
+                person_add
+              </i> */}
               <span>Add Employee to Route</span>
             </div>
           }
-          style={{ width: "800px", maxWidth: "95vw" }}
+          style={{ width: "692px", maxWidth: "95vw" }}
           className="modern-modal"
           footer={
             <div className="d-flex justify-content-end">
@@ -4974,11 +5727,14 @@ const ManageRoute = () => {
                 disabled={
                   !selectedEmployee || !selectedStopNo || isAddingEmployee
                 }
+                // icon={                  isAddingEmployee ? "pi pi-spinner pi-spin" : "pi pi-check"
+                // }
               />
             </div>
           }
         >
           <div className="p-3">
+            {/* Route Info Header */}
             {selectedRouteId && (
               <div
                 className="mb-3 p-2 rounded"
@@ -5008,12 +5764,20 @@ const ManageRoute = () => {
               </div>
             )}
 
-            {/* [MODIFIED] Search Bar Layout */}
+            {/* Search Section */}
             <div className="mb-3">
-              <span className="fw-semibold" style={{ fontSize: "14px" }}>
-                Search Employee
-              </span>
-              <div className="input-group"> {/* Use Bootstrap's input-group for clean alignment */}
+              <div className="d-flex align-items-center mb-2">
+                {/* <i
+                  className="material-icons me-2"
+                  style={{ color: "#6c757d", fontSize: "16px" }}
+                >
+                  search
+                </i> */}
+                <span className="fw-semibold" style={{ fontSize: "14px" }}>
+                  Search Employee
+                </span>
+              </div>
+              <div className="d-flex align-items-center gap-2">
                 <InputText
                   value={employeeSearchQuery}
                   onChange={(e) => setEmployeeSearchQuery(e.target.value)}
@@ -5025,140 +5789,221 @@ const ManageRoute = () => {
                   }
                 />
                 <Button
-                  label={isSearching ? "" : "Search"} // Hide label when loading to prevent resizing
+                  label={isSearching ? "..." : "Search"}
                   onClick={handleSearchEmployees}
-                  className="btn btn-dark"
+                  className="btn btn-dark me-3 d-flex w-25"
+                  //disabled={isSearching || !employeeSearchQuery.trim()}
                   icon={isSearching ? "pi pi-spinner pi-spin" : "pi pi-search"}
                 />
               </div>
             </div>
 
-            {/* Two-column layout for results and stop selection */}
-            <div className="row">
-              {/* Left Column: Search Results */}
-              <div className="col-md-8">
-                {searchResults.length > 0 && (
-                  <div>
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <span className="fw-semibold" style={{ fontSize: "14px" }}>
-                        Search Results
-                      </span>
-                      <span className="badge bg-primary">
-                        {searchResults.length} &nbsp; Found
-                      </span>
-                    </div>
-                    <div className="table-responsive" style={{ maxHeight: '250px', overflowY: 'auto' }}>
-                      <table className="table table-hover table-bordered">
-                        <thead className="table-dark" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                          <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Address</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {searchResults.map((employee) => (
-                            <tr
-                              key={employee.id}
-                              onClick={() => handleSelectEmployee(employee)}
-                              style={{ 
-                                cursor: 'pointer',
-                                background: selectedEmployee?.id === employee.id ? '#d1ecf1' : 'transparent' 
-                              }}
-                            >
-                              <td>
-                                <strong>{employee.empCode}</strong>
-                              </td>
-                              <td>{employee.empName}</td>
-                              <td
-                                style={{
-                                  maxWidth: "150px",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: 'nowrap'
-                                }}
-                                title={employee.address}
-                              >
-                                {employee.address}
-                              </td>
-                              <td>
-                                <Button
-                                  label={selectedEmployee?.id === employee.id ? "Selected" : "Select"}
-                                  className={`btn ${selectedEmployee?.id === employee.id ? 'btn-success' : 'btn-outline-secondary'}`}
-                                  style={{ fontSize: "12px", padding: "4px 8px" }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSelectEmployee(employee);
-                                  }}
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right Column: Stop Position */}
-              <div className="col-md-4">
-                {selectedEmployee && availableStopNumbers.length > 0 && (
-                  <div className="mb-3">
+            {/* Search Results */}
+            {searchResults.length > 0 && (
+              <div className="mb-3">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <div className="d-flex align-items-center">
+                    {/* <i
+                      className="material-icons me-2"
+                      style={{ color: "#17a2b8", fontSize: "16px" }}
+                    >
+                      people
+                    </i> */}
                     <span className="fw-semibold" style={{ fontSize: "14px" }}>
-                      Select Stop Position
+                      Search Results
                     </span>
-                    <Dropdown
-                        value={selectedStopNo}
-                        onChange={(e) => setSelectedStopNo(e.value)}
-                        options={availableStopNumbers}
-                        placeholder="Choose stop number..."
-                        className="w-100"
-                        optionLabel="label"
-                        optionValue="value"
-                        style={{ fontSize: "14px" }}
-                      />
-                    <div className="text-muted mt-2" style={{ fontSize: "11px" }}>
-                        <i
-                          className="material-icons me-1"
-                          style={{ fontSize: "12px", verticalAlign: 'middle' }}
+                  </div>
+                  <span className="badge bg-primary">
+                    {searchResults.length} &nbsp; Found
+                  </span>
+                </div>
+                <div className="table-responsive">
+                  <table className="table table-hover table-bordered">
+                    <thead className="table-dark">
+                      <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {searchResults.map((employee) => (
+                        <tr
+                          key={employee.id}
+                          className={
+                            selectedEmployee?.id === employee.id ? "" : ""
+                          }
+                          //style={{ cursor: "pointer", fontSize: "12px" }}
+                          onClick={() => handleSelectEmployee(employee)}
                         >
-                          info
-                        </i>
-                        Insert at this position in the route.
-                    </div>
-
-                    {selectedStopNo && (
-                       <div
-                        className="alert alert-success py-2 mt-3"
-                        style={{ fontSize: "13px" }}
-                      >
-                        <div className="d-flex align-items-center">
-                          <i
-                            className="material-icons me-2"
-                            style={{ fontSize: "16px" }}
+                          <td>
+                            <strong>{employee.empCode}</strong>
+                          </td>
+                          <td>{employee.empName}</td>
+                          <td
+                            style={{
+                              maxWidth: "150px",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
                           >
-                            check_circle
-                          </i>
-                          <span>
-                            Ready to add <strong>{selectedEmployee.empName}</strong> at stop{" "}
-                            <strong>
-                              {selectedStopNo}
-                            </strong>
+                            {employee.address}
+                          </td>
+                          <td>
+                            <Button
+                              label="Select"
+                              className="btn btn-outline-secondary"
+                              style={{ fontSize: "12px", padding: "4px 8px" }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectEmployee(employee);
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Selected Employee */}
+            {selectedEmployee && (
+              <div className="mb-3">
+                <div className="d-flex align-items-center mb-2">
+                  {/* <i
+                    className="material-icons me-2"
+                    style={{ color: "#28a745", fontSize: "16px" }}
+                  >
+                    check_circle
+                  </i> */}
+                  <span className="fw-semibold" style={{ fontSize: "14px" }}>
+                    Selected Employee
+                  </span>
+                </div>
+                <div
+                  className="card p-3"
+                  style={{ backgroundColor: "#f8fff9" }}
+                >
+                  <div className="card-body p-2">
+                    <div className="row g-2">
+                      <div className="col-6">
+                        <small className="text-muted">Employee ID</small>
+                        <div className="fw-bold">
+                          {selectedEmployee.empCode}
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <small className="text-muted">Name</small>
+                        <div className="fw-bold">
+                          {selectedEmployee.empName}
+                        </div>
+                      </div>
+                      <div className="col-12">
+                        <small className="text-muted">Address</small>
+                        <div className="fw-bold">
+                          {selectedEmployee.address}
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <small className="text-muted">Process</small>
+                        <div className="fw-bold">
+                          {selectedEmployee.processName}
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <small className="text-muted">Transport</small>
+                        <div>
+                          <span
+                            className={`badge ${
+                              selectedEmployee.TptReq === "Y"
+                                ? "bg-success"
+                                : "bg-secondary"
+                            }`}
+                          >
+                            {selectedEmployee.TptReq === "Y"
+                              ? "Required"
+                              : "Not Required"}
                           </span>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Stop Selection */}
+            {selectedEmployee && availableStopNumbers.length > 0 && (
+              <div className="mb-3">
+                <div className="d-flex align-items-center mb-2">
+                  {/* <i
+                    className="material-icons me-2"
+                    style={{ color: "#ffc107", fontSize: "16px" }}
+                  >
+                    location_on
+                  </i> */}
+                  <span className="fw-semibold" style={{ fontSize: "14px" }}>
+                    Select Stop Position
+                  </span>
+                </div>
+                <div className="row g-2">
+                  <div className="col-8">
+                    <Dropdown
+                      value={selectedStopNo}
+                      onChange={(e) => setSelectedStopNo(e.value)}
+                      options={availableStopNumbers}
+                      placeholder="Choose stop number..."
+                      className="w-100"
+                      optionLabel="label"
+                      optionValue="value"
+                      style={{ fontSize: "14px" }}
+                    />
+                  </div>
+                  <div className="col-4 d-flex align-items-center">
+                    <div className="text-muted" style={{ fontSize: "11px" }}>
+                      <i
+                        className="material-icons me-1"
+                        style={{ fontSize: "12px" }}
+                      >
+                        info
+                      </i>
+                      Insert at position
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ready Status */}
+            {selectedEmployee && selectedStopNo && (
+              <div
+                className="alert alert-success py-2"
+                style={{ fontSize: "13px" }}
+              >
+                <div className="d-flex align-items-center">
+                  <i
+                    className="material-icons me-2"
+                    style={{ fontSize: "16px" }}
+                  >
+                    check_circle
+                  </i>
+                  <span>
+                    Ready to add <strong>{selectedEmployee.empName}</strong> at{" "}
+                    <strong>
+                      {selectedStopNo}
+                      {getOrdinalSuffix(selectedStopNo)} stop
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </Dialog>
-        
 
-        {/* Enhanced Drag Overlay */}
+        {/* Enhanced Drag Overlay with Multi-Select Support */}
         <DragOverlay
           dropAnimation={{
             duration: 400,
@@ -5169,6 +6014,7 @@ const ManageRoute = () => {
             <div className="multi-drag-container">
               {selectedEmployees.size > 1 ? (
                 <div className="multi-employee-stack">
+                  {/* Stack effect for multiple employees */}
                   {Array.from({
                     length: Math.min(selectedEmployees.size, 3),
                   }).map((_, index) => (
@@ -5231,7 +6077,6 @@ const ManageRoute = () => {
             </div>
           ) : null}
         </DragOverlay>
-
         {/* Recalculate Before Finalize Dialog */}
         <Dialog
           visible={showRecalcBeforeFinalizeDialog}

@@ -76,7 +76,7 @@ export const apiService = {
       throw error.response?.data || error.message;
     }
   },
- Spr_GetMenuItem_V2: async (credentials) => {
+  Spr_GetMenuItem_V2: async (credentials) => {
     try {
       const response = await api.post("/Spr_GetMenuItem_V2", {
         UserName: credentials.userID,
@@ -521,7 +521,7 @@ export const apiService = {
         RaisedById: credentials.RaisedById,
         RouteId: credentials.RouteId,
       });
-     // console.log("Insert Feedback Response:", response.data);
+      // console.log("Insert Feedback Response:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -715,7 +715,7 @@ export const apiService = {
         vendorid: body.vendorid || 0,
         triptype: body.triptype || "",
       });
-     // console.log("Shift Completion Vs Pending -------->:", response.data);
+      // console.log("Shift Completion Vs Pending -------->:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -1007,128 +1007,144 @@ export const apiService = {
   },
   //vendor master
   GetVendorByFacility: async (params) => {
-  try {
-    const response = await api.post("/GetVendorByFacility", {
-      facilityid: params.facilityid,
-    });
-    return JSON.parse(response.data);
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error.response?.data || error.message;
-  }
-},
- 
-UpdateVendor: async (params) => {
-  try {
-    const response = await api.post("/UpdateVendor", {
-      vendorName: params.vendorName,
-      vendorStrength: params.vendorStrength,
-      vendorContact: params.vendorContact,
-      vendorInfo: params.vendorInfo,
-      facilityId: params.facilityId,
-      vendorType:params.vendorType,
-      attrited: params.attrited,
-      ID: params.ID,
-      EmailId: params.EmailId,
-      vendorStrength2: params.vendorStrength2,
-      vendorStrength3: params.vendorStrength3,
-      Updatedby: params.Updatedby
-    });
-    return JSON.parse(response.data);
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error.response?.data || error.message;
-  }
-},
- 
-InsertVendor: async (params) => {
-  try {
-    const response = await api.post("/InsertVendor", {
-      vendorName: params.vendorName,
-      vendorStrength: params.vendorStrength,
-      vendorContact: params.vendorContact,
-      vendorInfo: params.vendorInfo,
-      facilityId: params.facilityId,
-      vendorType:params.vendorType,
-      attrited: params.attrited,  
-      EmailId: params.EmailId,
-      vendorStrength2: params.vendorStrength2,
-      vendorStrength3: params.vendorStrength3,
-      Updatedby: params.Updatedby
-    });
-    return JSON.parse(response.data);
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error.response?.data || error.message;
-  }
-},
- 
-SelectVehicleTypeFacility: async (params) => {
-  try {
-    const response = await api.post("/SelectVehicleTypeFacility?vendorid="+params.vendorid+"&facilityid="+params.facilityid);
-    return JSON.parse(response.data);
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error.response?.data || error.message;
-  }
-},
- 
-UpdateVehicleType: async (params) => {
-  try {
-    const response = await api.post("/UpdateVehicleType", {
-      vehicle: params.vehicle,
-      cost_ac: params.cost_ac,
-      cost_nonac: params.cost_nonac, 
-      occupancy: params.occupancy,
-      vendorId: params.vendorId,
-      updatedBy: params.updatedBy, 
-      updatedAt: params.updatedAt,
-      scheme: params.scheme,
-      Id: params.Id, 
-    })  
- 
-    return JSON.parse(response.data);
-  } 
-  catch(error){
-    console.error("API Error:", error);
-    throw error.response?.data || error.message;
-  }
-},
- 
- 
-GetSelectedVendor: async (params) => {
-  try {
-    const response = await api.post("/GetSelectedVendor", {
-      vendorid: params.vendorid,
-    });
-    return JSON.parse(response.data);
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error.response?.data || error.message;
-  }
-},
- 
- 
-sp_getvehicledetails: async (params) => {
-  try {
-    const response = await api.post("/sp_getvehicledetails", params);
-    return JSON.parse(response.data);
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error.response?.data || error.message;
-  }
-},
- 
- 
-SelectVehicleType: async (param) => {
-  try{
-    const response = await api.post("/SelectVehicleType",param);
-    return JSON.parse(response.data);
-  }
-  catch (error) {
-    console.error("API Error:", error);
-    throw error.response?.data || error.message;
-  }
-},
+    try {
+      const response = await api.post("/GetVendorByFacility", {
+        facilityid: params.facilityid,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  UpdateVendor: async (params) => {
+    try {
+      const response = await api.post("/UpdateVendor", {
+        vendorName: params.vendorName,
+        vendorStrength: params.vendorStrength,
+        vendorContact: params.vendorContact,
+        vendorInfo: params.vendorInfo,
+        facilityId: params.facilityId,
+        vendorType: params.vendorType,
+        attrited: params.attrited,
+        ID: params.ID,
+        EmailId: params.EmailId,
+        vendorStrength2: params.vendorStrength2,
+        vendorStrength3: params.vendorStrength3,
+        Updatedby: params.Updatedby
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  InsertVendor: async (params) => {
+    try {
+      const response = await api.post("/InsertVendor", {
+        vendorName: params.vendorName,
+        vendorStrength: params.vendorStrength,
+        vendorContact: params.vendorContact,
+        vendorInfo: params.vendorInfo,
+        facilityId: params.facilityId,
+        vendorType: params.vendorType,
+        attrited: params.attrited,
+        EmailId: params.EmailId,
+        vendorStrength2: params.vendorStrength2,
+        vendorStrength3: params.vendorStrength3,
+        Updatedby: params.Updatedby
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  SelectVehicleTypeFacility: async (params) => {
+    try {
+      const response = await api.post("/SelectVehicleTypeFacility?vendorid=" + params.vendorid + "&facilityid=" + params.facilityid);
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  UpdateVehicleType: async (params) => {
+    try {
+      const response = await api.post("/UpdateVehicleType", {
+        vehicle: params.vehicle,
+        cost_ac: params.cost_ac,
+        cost_nonac: params.cost_nonac,
+        occupancy: params.occupancy,
+        vendorId: params.vendorId,
+        updatedBy: params.updatedBy,
+        updatedAt: params.updatedAt,
+        scheme: params.scheme,
+        Id: params.Id,
+      })
+
+      return JSON.parse(response.data);
+    }
+    catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+  InsertVehicleType: async (params) => {
+    try {
+      const response =await api.post("/InsertVehicleType",{
+        vehicle:params.vehicle,
+        cost_ac:params.cost_ac,
+        cost_nonac:params.cost_nonac,
+        occupancy:params.occupancy,
+        vendorId:params.vendorId,
+        updatedBy:params.updatedBy,
+        scheme:params.scheme,
+      })
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+  GetSelectedVendor: async (params) => {
+    try {
+      const response = await api.post("/GetSelectedVendor", {
+        vendorid: params.vendorid,
+      });
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+
+  sp_getvehicledetails: async (params) => {
+    try {
+      const response = await api.post("/sp_getvehicledetails", params);
+      return JSON.parse(response.data);
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+
+
+  SelectVehicleType: async (param) => {
+    try {
+      const response = await api.post("/SelectVehicleType", param);
+      return JSON.parse(response.data);
+    }
+    catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
 
 };

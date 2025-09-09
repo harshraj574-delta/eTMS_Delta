@@ -16,7 +16,8 @@ import { Calendar } from "primereact/calendar";
 import { Checkbox } from "primereact/checkbox";
 import { InputNumber } from "primereact/inputnumber";
 import { toastService } from "../services/toastService";
-
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 const GuardMaster = () => {
   const [addGuardMaster, setAddGuardMaster] = useState(false);
   const [visibleLeft, setVisibleLeft] = useState(false);
@@ -27,25 +28,41 @@ const GuardMaster = () => {
   const [GuardDetails, setGuardDetails] = useState([]);
   // Lookup states
   const [facilities, setFacilities] = useState([]);
-
   // Selectted Values
   const [selFacility, setSelFacility] = useState(null);
-
   const [search, setSearch] = useState("");
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Open sidebar with employee data
   const openEditSidebar = (guardData) => {
     setSelectedGuard(guardData); // Set the selected guard data
     setVisibleLeft(true); // Open sidebar
     //console.log("Selected Guard Details -->", guardData);
   };
-
+const exportToExcel = () => {
+  // Table data ko Excel sheet me convert karo
+  const ws = XLSX.utils.json_to_sheet(GuardDetails);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Guards");
+  const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const data = new Blob([excelBuffer], { type: "application/octet-stream" });
+  saveAs(data, "GuardMaster.xlsx");
+};
   useEffect(() => {
     fetchFacilities();
-    let facilityid = sessionManager.getUserSession().FacilityID;
-    fetchGuardDetails(facilityid);
   }, []);
 
+  useEffect(() => {
+    if (facilities.length > 0) {
+      const userFacilityId = sessionManager.getUserSession().FacilityID;
+      const defaultFacility = facilities.find(f => f.Id === userFacilityId) || facilities[0];
+      setSelFacility(defaultFacility);
+
+      // Hamesha data fetch karo, chahe user ki facility mile ya na mile
+      if (defaultFacility) {
+        fetchGuardDetails(defaultFacility.Id);
+      }
+    }
+  }, [facilities]);
   const fetchFacilities = () => {
     GuardMasterService.getFacilitiesByUserId(userId)
       .then((res) => {
@@ -96,27 +113,35 @@ const GuardMaster = () => {
 
   //Save Guard Details
   const SaveGuard = async () => {
+    setIsSubmitting(true);
     try {
       if (!selectedGuard) {
         toastService.warn("Please fill guard details.");
+        setIsSubmitting(false);
         return;
       } else if (!selectedGuard.Name) {
         toastService.warn("Please enter Guard Name");
+        setIsSubmitting(false);
         return;
       } else if (!selectedGuard.GuardID) {
         toastService.warn("Please enter Guard ID");
+        setIsSubmitting(false);
         return;
       } else if (!selectedGuard.GuardComID) {
         toastService.warn("Please Enter Guard Agency ID");
+        setIsSubmitting(false);
         return;
       } else if (!selectedGuard.Designation) {
         toastService.warn("Please enter Designation");
+        setIsSubmitting(false);
         return;
       } else if (!selectedGuard.ContactNo) {
         toastService.warn("Please Enter valid contact No.");
+        setIsSubmitting(false);
         return;
       } else if (!selectedGuard.AadharNo) {
         toastService.warn("Please Enter valid Aadhar No.");
+        setIsSubmitting(false);
         return;
       }
 
@@ -157,6 +182,9 @@ const GuardMaster = () => {
     } catch (error) {
       console.error("Error saving guard details:", error);
       toastService.error("Error saving guard details. Please try again.");
+    }
+    finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -199,27 +227,35 @@ const GuardMaster = () => {
 
   // Update Guard details
   const UpdateGuard = async () => {
+    setIsSubmitting(true);
     try {
       if (!selectedGuard) {
         toastService.warn("Please select Guard to update.");
+        setIsSubmitting(false);
         return;
       } else if (selectedGuard.GuardID == "") {
         toastService.warn("Please enter Guard ID");
+        setIsSubmitting(false);
         return;
       } else if (selectedGuard.Name == "") {
         toastService.warn("Please enter Guard Name");
+        setIsSubmitting(false);
         return;
       } else if (selectedGuard.GuardComID == "") {
         toastService.warn("Please Enter Guard Agency ID");
+        setIsSubmitting(false);
         return;
       } else if (selectedGuard.Designation == "") {
         toastService.warn("Please enter Designation");
+        setIsSubmitting(false);
         return;
       } else if (selectedGuard.ContactNo == "") {
         toastService.warn("Please Enter valid contact No.");
+        setIsSubmitting(false);
         return;
       } else if (selectedGuard.AadharNo == "") {
         toastService.warn("Please Enter valid Aadhar No.");
+        setIsSubmitting(false);
         return;
       }
 
@@ -256,10 +292,36 @@ const GuardMaster = () => {
     } catch (error) {
       console.error("Error saving guard details:", error);
       toastService.error("Error saving guard details. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
   return (
     <>
+      {isSubmitting && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(255,255,255,0.7)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            className="spinner-border text-primary"
+            style={{ width: 60, height: 60, fontSize: 32 }}
+            role="status"
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      )}
       <Header
         pageTitle="Vehicle Master"
         showNewButton={true}
@@ -279,15 +341,25 @@ const GuardMaster = () => {
                   <label htmlFor="">Facility</label>
                   <Dropdown
                     value={selFacility}
-                    onChange={(e) => {
+                    onChange={async (e) => {
+                      setIsSubmitting(true);
                       setSelFacility(e.value);
-                      fetchGuardDetails(e.value.Id);
+                      await fetchGuardDetails(e.value.Id);
+                      setIsSubmitting(false);
                     }}
                     options={facilities}
                     optionLabel="facilityName"
                     placeholder="Select Facility"
                     className="w-100"
                     filter
+                  />
+                </div>
+                <div className="col-2 d-flex align-items-end">
+                  <Button
+                    label="Export Excel"
+                    icon="pi pi-file-excel"
+                    className="btn btn-success"
+                    onClick={exportToExcel}
                   />
                 </div>
                 {/* <div className="col-2">
@@ -303,8 +375,8 @@ const GuardMaster = () => {
               <DataTable
                 value={GuardDetails}
                 paginator
-                rows={10}
-                rowsPerPageOptions={[5, 10, 25, 50]}
+                rows={50}
+                rowsPerPageOptions={[50, 100, 150, 200, 250]}
                 emptyMessage="No guard data available"
                 rowClassName={(rowData) => {
                   // return rowData[0].status === "Y" ? "bg-danger-subtle" : "";
@@ -380,16 +452,16 @@ const GuardMaster = () => {
                   <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
                     <h6 className="sidebarSubTitle">Basic Details</h6>
                     <div className="d-flex justify-content-between">
-                    <Checkbox
-                      checked={selectedGuard?.status === "Y"}
-                      onChange={(e) => {
-                        setSelectedGuard((prev) => ({
-                          ...prev,
-                          status: e.checked ? "Y" : "N",
-                        }));
-                      }}
-                    />
-                    <label className="mx-2">Attrited</label>
+                      <Checkbox
+                        checked={selectedGuard?.status === "Y"}
+                        onChange={(e) => {
+                          setSelectedGuard((prev) => ({
+                            ...prev,
+                            status: e.checked ? "Y" : "N",
+                          }));
+                        }}
+                      />
+                      <label className="mx-2">Attrited</label>
                     </div>
                   </div>
                 </div>
@@ -581,12 +653,12 @@ const GuardMaster = () => {
                 {selectedGuard?.GuardID || ""}
               </h6>
               <span className="d-flex align-items-center">
-                    <p className="text-warning">{selectedGuard?.status === "Y" ? "Attrited" : ""}</p>
-              <Button
-                icon="pi pi-times"
-                className="p-button-rounded p-button-text"
-                onClick={() => setVisibleLeft(false)}
-              />
+                <p className="text-warning">{selectedGuard?.status === "Y" ? "Attrited" : ""}</p>
+                <Button
+                  icon="pi pi-times"
+                  className="p-button-rounded p-button-text"
+                  onClick={() => setVisibleLeft(false)}
+                />
               </span>
             </div>
             <div className="sidebarBody">
@@ -594,23 +666,23 @@ const GuardMaster = () => {
                 {/* <div className="col-12 mb-3">
                                     <h6 className="sidebarSubTitle">Guard Details</h6>
                                 </div>*/}
-                                <div className="col-12 mb-3">
-                                <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
-                                    <h6 className="sidebarSubTitle">Vehical Details</h6>
-                                    <div className="d-flex justify-content-between">
-                                    <Checkbox
-                      checked={selectedGuard?.status === "Y"}
-                      onChange={(e) => {
-                        setSelectedGuard((prev) => ({
-                          ...prev,
-                          status: e.checked ? "Y" : "N",
-                        }));
-                      }}
-                    />
-                    <label className="mx-2">Attrited</label>
-                                    </div>
-                                    </div>
-                                </div>
+                <div className="col-12 mb-3">
+                  <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
+                    <h6 className="sidebarSubTitle">Vehical Details</h6>
+                    <div className="d-flex justify-content-between">
+                      <Checkbox
+                        checked={selectedGuard?.status === "Y"}
+                        onChange={(e) => {
+                          setSelectedGuard((prev) => ({
+                            ...prev,
+                            status: e.checked ? "Y" : "N",
+                          }));
+                        }}
+                      />
+                      <label className="mx-2">Attrited</label>
+                    </div>
+                  </div>
+                </div>
                 <div className="field col-6 mb-3">
                   <label>Guard ID</label>
                   <InputText

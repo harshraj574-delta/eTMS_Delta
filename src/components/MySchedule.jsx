@@ -431,7 +431,7 @@ const MySchedule = () => {
 
   // Add pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(25); // Show 7 employees per page
+  const [itemsPerPage] = useState(50); // Show 7 employees per page
 
   // Calculate pagination indexes
   const indexOfLastItem = currentPage * itemsPerPage;

@@ -28,7 +28,7 @@ const VendorMaster = () => {
   const [VendorList, setVendorList] = useState([]);
   // selected vendor
   const [selectedVendor, setSelectedVendor] = useState(null);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Add newVendor state near other state declarations
   const [newVendor, setNewVendor] = useState({
     vendorName: "",
@@ -104,41 +104,52 @@ const VendorMaster = () => {
 
   // Update vendor details using API
   const handleUpdateVendor = async () => {
+    setIsSubmitting(true);
     try {
       if (!selectedVendor) {
         toastService.warn("Please select a vendor to update.");
+        setIsSubmitting(false);
         return;
       } if (!selectedVendor.vendorName) {
         toastService.warn("Please enter vendor name");
+        setIsSubmitting(false);
         return;
 
       } if (!selectedVendor.vendorContact) {
         toastService.warn("Please enter vendor contact");
+        setIsSubmitting(false);
         return;
       } else if (!/^\d+$/.test(selectedVendor.vendorContact)) {
         toastService.warn("Contact number must be numeric only");
+        setIsSubmitting(false);
         return;
       } else if (selectedVendor.vendorContact.length > 15) {
         toastService.warn("Contact number must not exceed 15 digits");
+        setIsSubmitting(false);
         return;
       }
       if (!selectedVendor.EmailId) {
         toastService.warn("Please enter EmailId");
+        setIsSubmitting(false);
         return;
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(selectedVendor.EmailId)) {
         toastService.warn("Please enter a valid EmailId");
+        setIsSubmitting(false);
         return;
       }
       if (!selectedVendor.vendorStrength) {
         toastService.warn("Please enter Fleet Strength");
+        setIsSubmitting(false);
         return;
       }
       if (!selectedVendor.vendorStrength2) {
         toastService.warn("Please enter Fleet Strength2");
+        setIsSubmitting(false);
         return;
       }
       if (!selectedVendor.vendorStrength3) {
         toastService.warn("Please enter Fleet Strength3");
+        setIsSubmitting(false);
         return;
       }
 
@@ -168,41 +179,50 @@ const VendorMaster = () => {
       }
     } catch (error) {
       console.error("Error updating vendor:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleSaveVendor = async () => {
+    setIsSubmitting(true);
     try {
       //console.log("newVendor", newVendor);
 
       if (!newVendor) {
         toastService.warn("Please select a vendor to update.");
+        setIsSubmitting(false);
         return;
       } if (newVendor.vendorName == "") {
         toastService.warn("Please Enter Vendor Name");
+        setIsSubmitting(false);
         return;
       }
       // Validate vendor contact
       if (!newVendor.vendorContact) {
         toastService.warn("Please enter vendor contact");
+        setIsSubmitting(false);
         return;
       }
 
       // Check if contact contains only numbers
       if (!/^\d+$/.test(newVendor.vendorContact)) {
         toastService.warn("Contact number must be numeric only");
+        setIsSubmitting(false);
         return;
       }
 
       // Validate contact length
       if (newVendor.vendorContact.length > 15) {
         toastService.warn("Contact number must not exceed 15 digits");
+        setIsSubmitting(false);
         return;
       }
 
       // Validate email presence
       if (!newVendor.EmailId?.trim()) {
         toastService.warn("Please enter Email Id");
+        setIsSubmitting(false);
         return;
       }
 
@@ -210,19 +230,23 @@ const VendorMaster = () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(newVendor.EmailId)) {
         toastService.warn("Please enter a valid Email Id");
+        setIsSubmitting(false);
         return;
       }
 
       if (!newVendor.vendorStrength) {
         toastService.warn("Please enter Fleet Strength");
+        setIsSubmitting(false);
         return;
       }
       if (!newVendor.vendorStrength2) {
         toastService.warn("Please enter Fleet Strength 2");
+        setIsSubmitting(false);
         return;
       }
       if (!newVendor.vendorStrength3) {
         toastService.warn("Please enter Fleet Strength 3");
+        setIsSubmitting(false);
         return;
       }
 
@@ -245,9 +269,9 @@ const VendorMaster = () => {
       if (response[0].result === 1) {
         toastService.success("Data Saved Successfully");
         // Refresh the vendor grid
-        BindVendorGrid(selectedFacility);
+        await BindVendorGrid(selectedFacility);
         // Reset the form
-        document.getElementById("raise_Feedback").classList.remove("show");
+        //document.getElementById("raise_Feedback").classList.remove("show");
         // Reset newVendor to initial state
         setNewVendor({
           vendorName: "",
@@ -261,9 +285,12 @@ const VendorMaster = () => {
           vendorType: "route",
           attrited: 0,
         });
+        setVisibleLeftAdd(false); // Close the sidebar
       }
     } catch (error) {
       console.error("Error updating vendor:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -274,6 +301,30 @@ const VendorMaster = () => {
 
   return (
     <>
+      {isSubmitting && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(255,255,255,0.7)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            className="spinner-border text-primary"
+            style={{ width: 60, height: 60, fontSize: 32 }}
+            role="status"
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      )}
       <Header
         pageTitle="Vendor Master"
         showNewButton={true}
@@ -293,9 +344,11 @@ const VendorMaster = () => {
                   <label htmlFor="">Facility</label>
                   <Dropdown
                     value={selectedFacility}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       setSelectedfacility(e.value);
-                      BindVendorGrid(e.value);
+                      setIsSubmitting(true);
+                      await BindVendorGrid(e.value);
+                      setIsSubmitting(false);
                     }}
                     options={facilityList}
                     optionLabel="facilityName"
@@ -316,8 +369,8 @@ const VendorMaster = () => {
               <DataTable
                 value={VendorList}
                 paginator
-                rows={10}
-                rowsPerPageOptions={[5, 10, 25, 50]}
+                rows={50}
+                rowsPerPageOptions={[50, 100, 150, 200]}
                 rowClassName={(rowData) => {
                   //console.log("row data", rowData);
                   // return rowData[0].attrited === "1" ? 'bg-danger-subtle' : '';
@@ -345,9 +398,9 @@ const VendorMaster = () => {
                 <Column field="vendorInfo" header="Vendor Info" />
                 <Column field="vendorContact" header="Vendor Contact" />
                 <Column field="EmailId" header="EmailId" />
-                <Column field="vendorStrength" header="Fleet Strength" />
-                <Column field="vendorStrength2" header="Fleet Strength2" />
-                <Column field="vendorStrength3" header="Fleet Strength3" />
+                <Column field="vendorStrength" header="Fleet Strength" sortable />
+                <Column sortable field="vendorStrength2" header="Fleet Strength2" />
+                <Column sortable field="vendorStrength3" header="Fleet Strength3" />
                 <Column field="vendorType" header="Vendor Type" />
                 <Column
                   field="attrited"
@@ -418,6 +471,7 @@ const VendorMaster = () => {
                         ...newVendor,
                         facilityId: e.value,
                       })
+
                     }
                     options={facilityList}
                     optionLabel="facilityName"

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 
@@ -11,27 +11,462 @@ import { Button } from "primereact/button";
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Sidebar as PrimeSidebar } from "primereact/sidebar"; // Renamed to avoid conflict with your Sidebar component
+import VehicleMasterService from "../services/compliance/VehicleMasterService";
+import sessionManager from "../utils/SessionManager.js";
+import { toastService } from "../services/toastService.js";
 
 const VehicleMaster = () => {
     const [selectedCity, setSelectedCity] = useState(null);
     const [visibleLeft, setVisibleLeft] = useState(false);
     const [addVehicle, setAddVehicle] = useState(false);
-    //const [editVehicle, setEditVehicle] = useState(false);
-    const cities = [
-        { name: 'New York', code: 'NY' },
-        { name: 'Rome', code: 'RM' },
-        { name: 'London', code: 'LDN' },
-        { name: 'Istanbul', code: 'IST' },
-        { name: 'Paris', code: 'PRS' }
-    ];
+    const [facility, setFacility] = useState([]);
+    const locationid = localStorage.getItem("locationid");
+    const [vendor, setVendor] = useState([]);
+    const [selectedVendor, setSelectedVendor] = useState(null);
+    const [vehicleDetails, setVehicleDetails] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const userID = sessionManager.getUserSession().ID;
+    const [isAttrited, setIsAttrited] = useState(false);
+    const [showTable, setShowTable] = useState(false);
+    const [facilityAdd, setFacilityAdd] = useState([]);
+    const [selectedFacility, setSelectedFacility] = useState(null);
+    const [selectedVendorAdd, setSelectedVendorAdd] = useState(null);
+    const [vendorAdd, setVendorAdd] = useState([]);
+    const [vehicleType, setVehicleType] = useState([]);
+    const [selectedVehicleType, setSelectedVehicleType] = useState(null);
+    // Fuel type options array
+    const fuelTypeOptions = [
+        { name: "CNG", value: "0" },
+        { name: "Electric", value: "1" },
+        { name: "Diesel", value: "2" },
+        { name: "Petrol", value: "3" },
 
+    ];
+    const [documentDetails, setDocumentDetails] = useState([]);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "";
+        const date = new Date(dateStr);
+        if (isNaN(date)) return "";
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`; // <-- space separator
+    };
+    const formatDateAdd = (date) => {
+        if (!date) return null;
+        const d = new Date(date);
+        if (isNaN(d.getTime())) {
+            console.error("Invalid date provided to formatDate:", date);
+            return null;
+        }
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+    //const [editVehicle, setEditVehicle] = useState(false);
+    useEffect(() => {
+        fetchFacility();
+        fetchFacilityAdd();
+        fetchDocumentDetails();
+        //fetchVendorsByFacilityAdd();
+    }, []);
+
+    // useEffect(() => {
+    //     if (facility.length > 0) {
+    //         const userFacilityId = sessionManager.getUserSession().FacilityID;
+    //         const defaultFacility = facility.find(f => f.value === userFacilityId) || facility[0];
+    //         setSelectedCity(defaultFacility.value);
+    //     }
+    // // }, [facility]);
+
+    useEffect(() => {
+        if (selectedCity) {
+            fetchVendorsByFacility();
+        }
+        if (selectedFacility) {
+            fetchVendorsByFacilityAdd();
+        }
+        if (selectedVendorAdd) {
+            fetchSelectVehicleType();
+        }
+    }, [selectedCity, selectedFacility, selectedVendorAdd]);
+
+    // useEffect(() => {
+    //     if (vendor.length > 0) {
+    //         const userVendorId = sessionManager.getUserSession().VendorID;
+    //         const defaultVendor = vendor.find(v => v.value === userVendorId) || vendor[0];
+    //         setSelectedVendor(defaultVendor.value);
+    //     }
+    // }, [vendor]);
+
+    const fetchFacility = async () => {
+        try {
+            const response = await VehicleMasterService.SelectFacility({
+                Userid: userID,
+            })
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            const formattedData = parsedData.map(item => ({
+                name: item.facilityName,
+                value: item.Id
+            }));
+            // console.log("Facility Data:", formattedData);
+            setFacility(formattedData);
+        } catch (error) {
+            console.error("Error fetching facility data:", error);
+        }
+    }
+    const fetchVendorsByFacility = async () => {
+        try {
+            const response = await VehicleMasterService.GetVendorByFacility({
+                facilityid: selectedCity
+            });
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            const formattedData = parsedData.map(item => ({
+                name: item.vendorName,
+                value: item.Id
+            }));
+            //console.log("Vendor Data:", formattedData);
+            setVendor(formattedData);
+        } catch (error) {
+            console.error("Error fetching vendor data:", error);
+        }
+    }
+    const fetchSelectVehicleType = async () => {
+        try {
+            const response = await VehicleMasterService.SelectVehicleType({
+                vendorid: selectedVendor,
+            });
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            const formattedData = parsedData.map(item => ({
+                name: item.vehicle,
+                value: item.Id
+            }));
+            console.log("Vehicle Type Data:", formattedData);
+            setVehicleType(formattedData);
+        } catch (error) {
+            console.error("Error fetching vehicle type data:", error);
+        }
+    }
+    const fetchFacilityAdd = async () => {
+        try {
+            const response = await VehicleMasterService.SelectFacility({
+                Userid: userID,
+            })
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            const formattedData = parsedData.map(item => ({
+                name: item.facilityName,
+                value: item.Id
+            }));
+            // console.log("Facility Data:", formattedData);
+            setFacilityAdd(formattedData);
+        } catch (error) {
+            console.error("Error fetching facility data:", error);
+        }
+    }
+    const fetchVendorsByFacilityAdd = async () => {
+        try {
+            const response = await VehicleMasterService.GetVendorByFacility({
+                facilityid: selectedFacility
+            });
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            const formattedData = parsedData.map(item => ({
+                name: item.vendorName,
+                value: item.Id
+            }));
+            console.log("Vendor Data:", formattedData);
+            setVendorAdd(formattedData);
+        } catch (error) {
+            console.error("Error fetching vendor data:", error);
+        }
+    }
+    const VehiclesDetailsData = async () => {
+        setIsSubmitting(true);
+        try {
+            const response = await VehicleMasterService.SPR_VehiclesDetails({
+                facilityid: selectedCity,
+                vendorid: selectedVendor,
+                search: ""
+            });
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            //console.log("Vehicle Details Data:", parsedData);
+            setVehicleDetails(parsedData);
+            setShowTable(true); // Show table on submitF
+        } catch (error) {
+            console.error("Error fetching vehicle details:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+    const fetchDocumentDetails = async () => {
+        try {
+            const response = await VehicleMasterService.SPR_DocumentDetails({
+                type: "V"
+            });
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            const formattedData = parsedData.map(item => ({
+                name: item.DocumentType,
+                value: item.Id
+            }));
+            console.log("Document Details Data:", formattedData);
+            setDocumentDetails(formattedData);
+        } catch (error) {
+            console.error("Error fetching document details:", error);
+        }
+    }
     // Open sidebar with employee data
     const openEditSidebar = () => {
         setVisibleLeft(true); // Open sidebar
     };
+    // State initialization (already present)
+    const [vehicleFormData, setVehicleFormData] = useState({
+        VehicleId: "",
+        VehicleNo: "",
+        VehicleRegNo: "",
+        FacilityId: 0,
+        VendorId: 0,
+        VehicleTypeId: 0,
+        VehicleRegDate: "",
+        PermitExpiryDate: "",
+        InsuranceExpiryDate: "",
+        FitnessExpiryDate: "",
+        TaxExpiryDate: "",
+        PUCExpiryDate: "",
+        ChasisNo: "",
+        ModelNo: "",
+        FCValidDate: "",
+        InsuranceNo: "",
+        InsuranceCompanyName: "",
+        PermitNo: "",
+        PermitIssueDate: "",
+        EmissionExpiryDate: "",
+        CabInductionDate: "",
+        CabExpiryDate: "",
+        FuelType: 0,
+        Warning_1: "",
+        Warning_2: "",
+        FinalWarning: "",
+        Remark: "",
+        BillingType: 0,
+        Emergency_Contact: 0,
+        Wireless_Set: 0,
+        FireExtinguisher: 0,
+        Spare_Tyre: 0,
+        Medical_Kit: 0,
+        Umbrella: 0,
+        Torch: 0,
+        Documents: 0,
+    });
 
+    const InsertAddVehicle = async () => {
+        setIsSubmitting(true);
+
+        try {
+            const response = await VehicleMasterService.SPR_AddUpdateVehicle({
+                ...vehicleFormData,
+                VehicleRegDate: formatDateAdd(vehicleFormData.VehicleRegDate),
+                PermitExpiryDate: formatDateAdd(vehicleFormData.PermitExpiryDate),
+                InsuranceExpiryDate: formatDateAdd(vehicleFormData.InsuranceExpiryDate),
+                FitnessExpiryDate: formatDateAdd(vehicleFormData.FitnessExpiryDate),
+                TaxExpiryDate: formatDateAdd(vehicleFormData.TaxExpiryDate),
+                PUCExpiryDate: formatDateAdd(vehicleFormData.PUCExpiryDate),
+                FCValidDate: formatDateAdd(vehicleFormData.FCValidDate),
+                PermitIssueDate: formatDateAdd(vehicleFormData.PermitIssueDate),
+                EmissionExpiryDate: formatDateAdd(vehicleFormData.EmissionExpiryDate),
+                CabInductionDate: formatDateAdd(vehicleFormData.CabInductionDate),
+                CabExpiryDate: formatDateAdd(vehicleFormData.CabExpiryDate),
+                AttritedDate: formatDateAdd(vehicleFormData.AttritedDate), // ✅ Add this
+                Attrited: isAttrited ? 1 : 0, // ✅ Use checkbox state
+                Emergency_Contact: vehicleFormData.Emergency_Contact ? 1 : 0,
+                Wireless_Set: vehicleFormData.Wireless_Set ? 1 : 0,
+                FireExtinguisher: vehicleFormData.FireExtinguisher ? 1 : 0,
+                Spare_Tyre: vehicleFormData.Spare_Tyre ? 1 : 0,
+                Medical_Kit: vehicleFormData.Medical_Kit ? 1 : 0,
+                Umbrella: vehicleFormData.Umbrella ? 1 : 0,
+                Torch: vehicleFormData.Torch ? 1 : 0,
+                Documents: vehicleFormData.Documents ? 1 : 0,
+                ChasisNo: vehicleFormData.ChasisNo, // ✅ Added
+                ModelNo: vehicleFormData.ModelNo,     // ✅ Added
+                UpdatedBy: userID,
+
+            });
+
+            console.log("Add/Update Vehicle Response:", response);
+            toastService.success("Vehicle has been added successfully.");
+            await VehiclesDetailsData();
+        } catch (error) {
+            console.error("Error in adding vehicle:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // const InsertAddVehicle = async () => {
+    //     setIsSubmitting(true);
+
+    //     try {
+    //         const response = await VehicleMasterService.SPR_AddUpdateVehicle({
+    //             ...vehicleFormData,
+    //             VehicleRegDate: formatDateAdd(vehicleFormData.VehicleRegDate),
+    //             PermitExpiryDate: formatDateAdd(vehicleFormData.PermitExpiryDate),
+    //             InsuranceExpiryDate: formatDateAdd(vehicleFormData.InsuranceExpiryDate),
+    //             FitnessExpiryDate: formatDateAdd(vehicleFormData.FitnessExpiryDate),
+    //             TaxExpiryDate: formatDateAdd(vehicleFormData.TaxExpiryDate),
+    //             PUCExpiryDate: formatDateAdd(vehicleFormData.PUCExpiryDate),
+    //             FCValidDate: formatDateAdd(vehicleFormData.FCValidDate),
+    //             PermitIssueDate: formatDateAdd(vehicleFormData.PermitIssueDate),
+    //             EmissionExpiryDate: formatDateAdd(vehicleFormData.EmissionExpiryDate),
+    //             CabInductionDate: formatDateAdd(vehicleFormData.CabInductionDate),
+    //             CabExpiryDate: formatDateAdd(vehicleFormData.CabExpiryDate),
+    //             Attrited: vehicleFormData.Attrited,
+    //             UpdatedBy: userID,
+    //         });
+    //         console.log("Add/Update Vehicle Response:", response);
+    //         toastService.success("Vehicle has been added successfully.");
+    //         // if (response[0].result) {
+    //         //     setAddVehicle(false);
+    //         //     setVehicleFormData({
+    //         //         VehicleId: null,
+    //         //         VehicleNo: "",
+    //         //         VehicleRegNo: "",
+    //         //         FacilityId: null,
+    //         //         VendorId: null,
+    //         //         VehicleTypeId: null,
+    //         //         VehicleRegDate: null,
+    //         //         PermitExpiryDate: null,
+    //         //         InsuranceExpiryDate: null,
+    //         //         FitnessExpiryDate: null,
+    //         //         TaxExpiryDate: null,
+    //         //         PUCExpiryDate: null,
+    //         //         ChassisNo: "",
+    //         //         ModelNo: "",
+    //         //         FCValidDate: null,
+    //         //         InsuranceNo: "",
+    //         //         InsuranceCompanyName: "",
+    //         //         PermitNo: "",
+    //         //         PermitIssueDate: null,
+    //         //         EmissionExpiryDate: null,
+    //         //         CabInductionDate: null,
+    //         //         CabExpiryDate: null,
+    //         //         FuelType: "",
+    //         //         Warning_1: "",
+    //         //         Warning_2: "",
+    //         //         FinalWarning: "",
+    //         //         Remark: "",
+    //         //         BillingType: "",
+    //         //         Attrited: isAttrited,
+    //         //         Emergency_Contact: false,
+    //         //         Wireless_Set: false,
+    //         //         FireExtinguisher: false,
+    //         //         Spare_Tyre: false,
+    //         //         Medical_Kit: false,
+    //         //         Umbrella: false,
+    //         //         Torch: false,
+    //         //         Documents: false,
+    //         //         UpdatedBy: userID,
+    //         //     });
+    //         // 2. Agar file selected hai aur vehicle insert ho gaya
+    //         // if (selectedFile && response[0]?.VehicleId) {
+    //         //     await VehicleMasterService.SPR_AddUpdateVehicleDocument({
+    //         //         FacilityId: vehicleFormData.FacilityId,
+    //         //         VehicleId: response[0].VehicleId, // API se aaya VehicleId
+    //         //         VehicleNo: vehicleFormData.VehicleNo,
+    //         //         DocumentId: vehicleFormData.DocumentType, // ya jo bhi aapka document id hai
+    //         //         DocumentName: "", // yahan document name de sakte hain
+    //         //         UpdatedBy: userID,
+    //         //         File: selectedFile,
+    //         //     });
+    //         // }
+
+    //         // if (response[0].result) {
+    //         //     setAddVehicle(false);
+    //         //     setVehicleFormData({ ...initialFormData }); // initialFormData me aapka blank object ho
+    //         //setSelectedFile(null);
+    //         await VehiclesDetailsData();
+    //         //}
+    //         //}
+    //     } catch (error) {
+    //         console.error("Error in adding vehicle:", error);
+    //     } finally {
+    //         setIsSubmitting(false);
+    //     }
+    // }
+    // Upload handler
+    // Upload handler
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            toastService.warn("Please select a file before uploading.");
+            return;
+        }
+
+        // Convert file to base64
+        const toBase64 = (file) =>
+            new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(",")[1]); // strip metadata
+                reader.onerror = (error) => reject(error);
+            });
+
+        const base64File = await toBase64(selectedFile);
+
+        const payload = {
+            FacilityId: vehicleFormData.FacilityId || 0,
+            VehicleId: vehicleFormData.VehicleId || 0,
+            VehicleNo: vehicleFormData.VehicleNo || "",
+            DocumentId: vehicleFormData.DocumentType || 0,
+            DocumentName: selectedFile.name,
+            UpdatedBy: userID,
+            File: {
+                ContentLength: selectedFile.size,
+                ContentType: selectedFile.type,
+                FileName: selectedFile.name,
+                InputStream: base64File
+            }
+        };
+
+        try {
+            const response = await VehicleMasterService.SPR_AddUpdateVehicleDocument(payload);
+
+            if (Array.isArray(response) && response.length > 0 && response[0].RESULT === 0) {
+                toastService.success("File uploaded successfully!");
+                setSelectedFile(null);
+            } else {
+                const errorMessage = typeof response === 'string' ? response : "File upload failed.";
+                toastService.error(errorMessage);
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            toastService.error("File upload failed!");
+        }
+    };
     return (
         <>
+            {isSubmitting && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        width: "100vw",
+                        height: "100vh",
+                        background: "rgba(255,255,255,0.7)",
+                        zIndex: 9999,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <div
+                        className="spinner-border text-primary"
+                        style={{ width: 60, height: 60, fontSize: 32 }}
+                        role="status"
+                    >
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            )}
             <Header pageTitle="Vehicle Master" showNewButton={true} onNewButtonClick={setAddVehicle} />
             <Sidebar />
             <div className="middle">
@@ -45,17 +480,22 @@ const VehicleMaster = () => {
                             <div className="row">
                                 <div className="col-2">
                                     <label htmlFor="">Facility</label>
-                                    <Dropdown value={selectedCity} onChange={(e) => setSelectedCity(e.value)} options={cities} optionLabel="name"
-                                        placeholder="Select Facility" className="w-100" filter />
+                                    <Dropdown value={selectedCity} onChange={(e) => setSelectedCity(e.value)} options={facility} optionLabel="name"
+                                        placeholder="Select Facility" className="w-100" />
                                 </div>
                                 <div className="col-2">
                                     <label htmlFor="">Vendor</label>
-                                    <Dropdown value={selectedCity} onChange={(e) => setSelectedCity(e.value)} options={cities} optionLabel="name"
+                                    <Dropdown value={selectedVendor}
+                                        onChange={(e) => {
+                                            setSelectedVendor(e.value);
+                                            setSelectedVendorAdd(e.value); 
+                                        }}
+                                        options={vendor} optionLabel="name"
                                         placeholder="Select Vendor" className="w-100" filter />
                                 </div>
-                                
+
                                 <div className="col-2">
-                                    <Button label="Submit" className="btn btn-dark no-label-prime" />
+                                    <Button label="Submit" className="btn btn-dark no-label-prime" onClick={VehiclesDetailsData} />
                                 </div>
                                 <div className="col-2 offset-4">
                                     <label htmlFor="">Search Any</label>
@@ -64,120 +504,123 @@ const VehicleMaster = () => {
                             </div>
                         </div>
                     </div>
-
                     {/* Table Start */}
-                    <div className="col-12">
-                        <div className="card_tb">
-                            <DataTable value={[
-                                {
-                                    id: 1,
-                                    driverName: "John Doe",
-                                    facilityName: "Facility A",
-                                    vendorName: "Vendor X",
-                                    fatherName: "James Doe",
-                                    contactNo: "+91 9876543210",
-                                    dob: "01/01/1990",
-                                    bloodGroup: "O+",
-                                    vehicleNo: "VH-001",
-                                    vehicleRegNo: "MH-12-AB-1234",
-                                    licenceNo: "LIC123456",
-                                    licenceExpDate: "31/12/2024",
-                                    badgeNo: "BDG789",
-                                    badgeExpDate: "31/12/2024",
-                                    action: <a href="#!"><i className="pi pi-download" style={{ color: 'var(--primary-color)' }}></i></a>
-                                }
-                            ]} paginator rows={10}
-                                rowsPerPageOptions={[5, 10, 25, 50]}>
-                                <Column sortable field="id" header="ID" body={(rowData) => (
-                                    <a href="#" onClick={(e) => {
-                                        e.preventDefault();
-                                        setVisibleLeft(true);
-                                    }}>
-                                        15226
-                                    </a>
-                                )}></Column>
-                                <Column field="driverName" header="Vehicle Reg. No."></Column>
-                                <Column field="driverName" header="Vehicle Type"></Column>
-                                <Column field="facilityName" header="Facility Name"></Column>
-                                <Column field="vendorName" header="Vendor Name"></Column>
-                                {/* <Column field="fatherName" header="Modal No."></Column>
+                    {showTable && (
+                        < div className="col-12">
+                            <div className="card_tb">
+                                <DataTable value={[...vehicleDetails]} paginator rows={50} emptyMessage="No Records Found"
+                                    rowsPerPageOptions={[50, 100, 150, 200]}>
+                                    <Column sortable field="Id" header="ID" body={(rowData) => (
+                                        <a href="#" onClick={(e) => {
+                                            e.preventDefault();
+                                            setVisibleLeft(true);
+                                        }}>
+                                            {rowData.Id}
+                                        </a>
+                                    )}></Column>
+                                    <Column field="VehicleNo" header="Vehicle No."></Column>
+                                    <Column field="VehicleRegDate" header="Vehicle Reg.Date" body={rowData => formatDate(rowData.VehicleRegDate)}></Column>
+                                    <Column field="VehicleRegNo" header="Vehicle Reg. No."></Column>
+                                    <Column field="VehicleType" header="Vehicle Type"></Column>
+                                    <Column field="FacilityName" header="Facility Name"></Column>
+                                    <Column field="VendorName" header="Vendor Name"></Column>
+                                    {/* <Column field="fatherName" header="Modal No."></Column>
                                 <Column field="contactNo" header="Reg. Date"></Column> */}
-                                <Column field="dob" header="Permit Expiry"></Column>
-                                <Column field="bloodGroup" header="Insurance Expiry"></Column>
-                                <Column field="vehicleNo" header="Fitness Expiry"></Column>
-                                <Column field="vehicleRegNo" header="Tax Expiry"></Column>
-                                <Column field="licenceNo" header="PUC Expiry"></Column>
-                                {/* <Column field="licenceExpDate" header="Cab Induction"></Column> */}
-                                <Column field="badgeNo" header="Cab Expiry"></Column>
-                                {/* <Column field="badgeExpDate" header="Fuel Type"></Column> */}
-                                {/* <Column field="action" header="Action" className="text-center"></Column> */}
-                            </DataTable>
+                                    <Column field="PermitExpiryDate" header="Permit Expiry Date" body={rowData => formatDate(rowData.PermitExpiryDate)}></Column>
+                                    <Column field="InsuranceExpiryDate" header="Insurance Expiry Date" body={rowData => formatDate(rowData.InsuranceExpiryDate)}></Column>
+                                    <Column field="FitnessExpiryDate" header="Fitness Expiry Date" body={rowData => formatDate(rowData.FitnessExpiryDate)}></Column>
+                                    <Column field="TaxExpiryDate" header="Tax Expiry Date" body={rowData => formatDate(rowData.TaxExpiryDate)}></Column>
+                                    <Column field="PUCExpiryDate" header="PUC Expiry Date" body={rowData => formatDate(rowData.PUCExpiryDate)}></Column>
+                                    <Column field="Attrited" header="Attrited"></Column>
+                                    {/* <Column field="licenceExpDate" header="Cab Induction"></Column> */}
+                                    {/* <Column field="badgeExpDate" header="Fuel Type"></Column> */}
+                                    {/* <Column field="action" header="Action" className="text-center"></Column> */}
+                                </DataTable>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Add Vehicle Master */}
-                    <PrimeSidebar visible={addVehicle} position="right" onHide={() => setAddVehicle(false)} showCloseIcon={false} dismissable={false} style={{width: '50%'}}>
+                    <PrimeSidebar visible={addVehicle} position="right" onHide={() => setAddVehicle(false)} showCloseIcon={false} dismissable={false} style={{ width: '50%' }}>
                         <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
                             <h6 className="sidebarTitle">Add Vehicle Master</h6>
                             <span className="d-flex align-items-center">
-                    <p>Attrited</p>
-                            <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setAddVehicle(false)} />
-                                </span>
+                                {isAttrited && <p className="text-warning mb-0 me-2">Attrited</p>}
+                                <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setAddVehicle(false)} />
+                            </span>
                         </div>
                         <div className="sidebarBody">
                             <div className="row">
                                 <div className="col-12 mb-3">
-                                <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
-                                    <h6 className="sidebarSubTitle">Vehical Details</h6>
-                                    <div className="d-flex justify-content-between me-3">
-                                    <Checkbox inputId="AadharVerification" className="" name="" />
-                                    <label htmlFor="AadharVerification" className="ms-2">Attrited</label>
-                                    </div>
+                                    <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
+                                        <h6 className="sidebarSubTitle">Vehical Details</h6>
+                                        <div className="d-flex justify-content-between me-3">
+                                            <Checkbox inputId="AadharVerification" checked={isAttrited} onChange={(e) => setIsAttrited(e.target.checked)} />
+                                            {/* <Checkbox
+                                                inputId="Attrited"
+                                                checked={vehicleFormData.Attrited === 1} // true if 1
+                                                onChange={(e) =>
+                                                    setVehicleFormData({
+                                                        ...vehicleFormData,
+                                                        Attrited: e.checked ? 1 : 0,  // 1 if checked, 0 if unchecked
+                                                    })
+                                                }
+                                            /> */}
+                                            <label htmlFor="AadharVerification" className="ms-2">Attrited</label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="field col-4 mb-3">
-                                    <label>Vehicle No.  <span>*</span></label>
-                                    <InputText className="form-control" name="" placeholder="Vehical Number" />
+                                    <label>Vehicle No.<span>*</span></label>
+                                    <InputText className="form-control" name="" placeholder="Vehical Number" value={vehicleFormData.VehicleNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, VehicleNo: e.target.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Registration No. <span>*</span></label>
-                                    <InputText className="form-control" name="" placeholder="Vehicle Registration" />
+                                    <InputText className="form-control" name="" placeholder="Vehicle Registration" value={vehicleFormData.VehicleRegNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, VehicleRegNo: e.target.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Registration Date</label>
-                                    <Calendar className="w-100" name="" placeholder="Vehicle Registration Date" />
+                                    <Calendar className="w-100" name="" placeholder="Vehicle Registration Date" value={vehicleFormData.VehicleRegDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, VehicleRegDate: e.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Facility</label>
-                                    <Dropdown optionLabel="name" placeholder="Select Facility Name" className="w-100" filter />
+                                    <Dropdown optionLabel="name" placeholder="Select Facility Name" className="w-100" value={vehicleFormData.FacilityId} onChange={(e) => {
+                                        setVehicleFormData({ ...vehicleFormData, FacilityId: e.value });
+                                        setSelectedFacility(e.value);
+                                        setSelectedVendorAdd(null);
+                                    }} options={facilityAdd} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Vendor</label>
-                                    <Dropdown optionLabel="name" placeholder="Select Vendor Name" className="w-100" filter />
+                                    <Dropdown optionLabel="name" placeholder="Select Vendor Name" className="w-100" filter value={vehicleFormData.VendorId} onChange={(e) => {
+                                        setSelectedVendorAdd(e.value); setVehicleFormData({ ...vehicleFormData, VendorId: e.value });
+                                    }} options={vendorAdd} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Vehicle Type</label>
-                                    <Dropdown optionLabel="name" placeholder="Select Vehicle Type" className="w-100" filter />
+                                    <Dropdown optionLabel="name" placeholder="Select Vehicle Type" className="w-100" filter
+                                        value={vehicleFormData.VehicleTypeId}
+                                        onChange={(e) => { setSelectedVehicleType(e.value); setVehicleFormData({ ...vehicleFormData, VehicleTypeId: e.value }) }} options={vehicleType} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Permit Expiry Date</label>
-                                    <Calendar className="w-100" name="" placeholder="Permit Expiry Date" />
+                                    <Calendar className="w-100" name="" placeholder="Permit Expiry Date" value={vehicleFormData.PermitExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PermitExpiryDate: e.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Insurance Expiry</label>
-                                    <Calendar className="w-100" name="" placeholder="Insurance Expiry Date" />
+                                    <Calendar className="w-100" name="" placeholder="Insurance Expiry Date" value={vehicleFormData.InsuranceExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceExpiryDate: e.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Fitness Expiry </label>
-                                    <Calendar className="w-100" name="" placeholder="Fitness Expiry Date" />
+                                    <Calendar className="w-100" name="" placeholder="Fitness Expiry Date" value={vehicleFormData.FitnessExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FitnessExpiryDate: e.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Tax Expiry </label>
-                                    <Calendar className="w-100" name="" placeholder="Tax Expiry Date" />
+                                    <Calendar className="w-100" name="" placeholder="Tax Expiry Date" value={vehicleFormData.TaxExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, TaxExpiryDate: e.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>PUC Expiry </label>
-                                    <Calendar className="w-100" name="" placeholder="PUC Expiry Date" />
+                                    <Calendar className="w-100" name="" placeholder="PUC Expiry Date" value={vehicleFormData.PUCExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PUCExpiryDate: e.value })} />
                                 </div>
                                 {/* <div className="field col-4 mb-3">
                                     <label>Emission Expiry Date</label>
@@ -185,65 +628,53 @@ const VehicleMaster = () => {
                                 </div> */}
                                 <div className="field col-4 mb-3">
                                     <label>Cab Induction</label>
-                                    <Calendar className="w-100" name="" placeholder="Cab Induction Date" />
+                                    <Calendar className="w-100" name="" placeholder="Cab Induction Date" value={vehicleFormData.CabInductionDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabInductionDate: e.value })} />
+
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Cab Expiry</label>
-                                    <Calendar className="w-100" name="" placeholder="Cab Expiry Date" />
+                                    <Calendar className="w-100" name="" placeholder="Cab Expiry Date" value={vehicleFormData.CabExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabExpiryDate: e.value })} />
+
                                 </div>
                                 <div className="field col-4 mb-3">
-                                    <label>Chassis No.  <span>*</span></label>
-                                    <InputText className="form-control" name="" placeholder="Chassis Number" />
+                                    <label>Chassis No.</label>
+                                    <InputText className="form-control" name="" placeholder="Chassis Number" value={vehicleFormData.ChasisNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, ChasisNo: e.target.value })} />
+
+
                                 </div>
                                 <div className="field col-4 mb-3">
-                                    <label>Model No.  <span>*</span></label>
-                                    <InputText className="form-control" name="" placeholder="Modal Number" />
+                                    <label>Model No.</label>
+                                    <InputText className="form-control" name="" placeholder="Model Number" value={vehicleFormData.ModelNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, ModelNo: e.target.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Insurance No.</label>
-                                    <InputText className="form-control" name="" placeholder="Insurance Number" />
+                                    <InputText className="form-control" name="" placeholder="Insurance Number" value={vehicleFormData.InsuranceNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceNo: e.target.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Insurance Company </label>
-                                    <InputText className="form-control" name="" placeholder="Insurance Company Name" />
+                                    <InputText className="form-control" name="" placeholder="Insurance Company Name" value={vehicleFormData.InsuranceCompanyName} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceCompanyName: e.target.value })} />
                                 </div>
                                 <div className="field col-4">
                                     <label className="d-block">Fuel Type</label>
-                                    <Dropdown optionLabel="name" placeholder="Select Fuel Type" className="w-100" filter />
-                                    {/* <div className=" d-flex align-items-center gap-4 mt-3">
-                                        <div className="d-flex">
-                                            <Checkbox inputId="AadharVerification" className="" name="" />
-                                            <label htmlFor="AadharVerification" className="ms-2">Petrol</label>
-                                        </div>
-                                        <div className="d-flex">
-                                            <Checkbox inputId="AadharVerification" className="" name="" />
-                                            <label htmlFor="AadharVerification" className="ms-2">Electric</label>
-                                        </div>
-                                        <div className="d-flex">
-                                            <Checkbox inputId="AadharVerification" className="" name="" />
-                                            <label htmlFor="AadharVerification" className="ms-2">Diesel</label>
-                                        </div>
-                                        <div className="d-flex">
-                                            <Checkbox inputId="AadharVerification" className="" name="" />
-                                            <label htmlFor="AadharVerification" className="ms-2">CNG</label>
-                                        </div>
-                                    </div> */}
+                                    <Dropdown optionLabel="name" placeholder="Select Fuel Type" className="w-100" value={vehicleFormData.FuelType} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FuelType: e.value })} options={fuelTypeOptions} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Warning-1</label>
-                                    <InputText className="form-control" name="" placeholder="Warning-1" />
+                                    <InputText className="form-control" name="" placeholder="Warning-1" value={vehicleFormData.Warning_1} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Warning_1: e.target.value })} />
+
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Warning-2</label>
-                                    <InputText className="form-control" name="" placeholder="Warning-2" />
+                                    <InputText className="form-control" name="" placeholder="Warning-2" value={vehicleFormData.Warning_2} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Warning_2: e.target.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Final Warning</label>
-                                    <InputText className="form-control" name="" placeholder="Final Warning" />
+                                    <InputText className="form-control" name="" placeholder="Final Warning" value={vehicleFormData.FinalWarning} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FinalWarning: e.target.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Attrited Date</label>
-                                    <Calendar className="w-100" name="" placeholder="Attrited Date" />
+                                    <Calendar className="w-100" name="" placeholder="Attrited Date" value={vehicleFormData.AttritedDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, AttritedDate: e.value })} />
+
                                 </div>
                                 {/* <div className="field col-3 d-flex align-items-center">
                                     <div className="d-flex mt-3">
@@ -253,56 +684,76 @@ const VehicleMaster = () => {
                                 </div> */}
                                 <div className="field col-8 mb-3">
                                     <label>Remark</label>
-                                    <InputText className="form-control" name="" placeholder="Remark" />
+                                    <InputText className="form-control" name="" placeholder="Remark" value={vehicleFormData.Remark} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Remark: e.target.value })} />
+
                                 </div>
                                 <div className="col-12 mb-3">
                                     <h6 className="sidebarSubTitle">Document Details</h6>
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Document Type</label>
-                                    <Dropdown optionLabel="name" placeholder="Select Document Type" className="w-100" filter />
+                                    <Dropdown optionLabel="name" placeholder="Select Document Type" className="w-100" filter options={documentDetails} value={vehicleFormData.DocumentType} onChange={(e) => setVehicleFormData({ ...vehicleFormData, DocumentType: e.value })} />
                                 </div>
-                                <div className="field col-4 mb-3">
+                                <div className="field col-8 mb-3">
                                     <label>Choose File</label>
-                                    <FileUpload mode="basic" name="demo[]" url="/api/upload" accept="image/*" className="w-100" />
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'start' }}>
+                                        <FileUpload mode="basic"
+                                            name="file[]"
+                                            accept="image/*"
+                                            className=""
+                                            multiple
+                                            customUpload
+                                            uploadHandler={(e) => {
+                                                if (e.files && e.files.length > 0) {
+                                                    setSelectedFile(e.files[0]);
+                                                }
+                                            }}
+                                            chooseLabel={selectedFile ? selectedFile.name : "Choose File"} />
+
+                                        <button className="btn btn-dark ms-2" onClick={handleUpload}>Upload File</button>
+                                    </div>
                                 </div>
+                                {/* <div className="field col-4 mb-3">
+                                    <label>Upload Date</label>
+                                    <button className="btn btn-primary">Choose Date</button>
+                                </div> */}
                                 <div className="col-12 mb-3">
                                     <h6 className="sidebarSubTitle">Other Details</h6>
                                 </div>
-                                <div className="field col-12 d-flex flex-wrap justify-content-start align-items-center gap-4" style={{ whiteSpace:"nowrap"}}>
+                                <div className="field col-12 d-flex flex-wrap justify-content-start align-items-center gap-4" style={{ whiteSpace: "nowrap" }}>
                                     <div className="d-flex">
-                                        <Checkbox inputId="AadharVerification" className="" name="" />
-                                        <label htmlFor="AadharVerification" className="ms-2">Emergency Contact Detail Danglers</label>
+                                        <Checkbox inputId="AadharVerification" className="" name="" checked={vehicleFormData.Emergency_Contact} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Emergency_Contact: e.checked })} />
+                                        <label htmlFor="AadharVerification" className="ms-2" >Emergency Contact Detail Danglers</label>
                                     </div>
 
                                     <div className="d-flex">
-                                        <Checkbox inputId="AadharVerification" className="" name="" />
+                                        <Checkbox inputId="AadharVerification" className="" name="" checked={vehicleFormData.Wireless_Set} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Wireless_Set: e.checked })} />
                                         <label htmlFor="AadharVerification" className="ms-2">Wireless Set</label>
                                     </div>
 
                                     <div className="d-flex">
-                                        <Checkbox inputId="AadharVerification" className="" name="" />
+                                        <Checkbox inputId="AadharVerification" className="" name="" checked={vehicleFormData.FireExtinguisher} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FireExtinguisher: e.checked })} />
                                         <label htmlFor="AadharVerification" className="ms-2">Fire Extinguisher</label>
                                     </div>
                                     {/*  */}
                                     <div className="d-flex">
-                                        <Checkbox inputId="AadharVerification" className="" name="" />
+                                        <Checkbox inputId="AadharVerification" className="" name="" checked={vehicleFormData.Spare_Tyre} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Spare_Tyre: e.checked })} />
                                         <label htmlFor="AadharVerification" className="ms-2">Spare Tyre</label>
                                     </div>
                                     <div className="d-flex">
-                                        <Checkbox inputId="AadharVerification" className="" name="" />
+                                        <Checkbox inputId="AadharVerification" className="" name="" checked={vehicleFormData.Medical_Kit} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Medical_Kit: e.checked })} />
                                         <label htmlFor="AadharVerification" className="ms-2">Medical Kit</label>
                                     </div>
                                     <div className="d-flex">
-                                        <Checkbox inputId="AadharVerification" className="" name="" />
+                                        <Checkbox inputId="AadharVerification" className="" name="" checked={vehicleFormData.Umbrella} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Umbrella: e.checked })} />
                                         <label htmlFor="AadharVerification" className="ms-2">Umbrella</label>
                                     </div>
                                     <div className="d-flex">
-                                        <Checkbox inputId="AadharVerification" className="" name="" />
+                                        <Checkbox inputId="AadharVerification" className="" name="" checked={vehicleFormData.Torch} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Torch: e.checked })} />
                                         <label htmlFor="AadharVerification" className="ms-2">Torch</label>
                                     </div>
                                     <div className="d-flex">
-                                        <Checkbox inputId="AadharVerification" className="" name="" />
+                                        <Checkbox inputId="AadharVerification" className="" name="" checked={vehicleFormData.Documents} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Documents: e.checked })} />
                                         <label htmlFor="AadharVerification" className="ms-2">Documents</label>
                                     </div>
                                 </div>
@@ -311,7 +762,7 @@ const VehicleMaster = () => {
                                 <div className="sidebar-fixed-bottom">
                                     <div className="d-flex gap-3 justify-content-end">
                                         <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setVisibleLeft(false)} />
-                                        <Button label="Save Changes" className="btn btn-success" />
+                                        <Button label="Save Changes" className="btn btn-success" onClick={InsertAddVehicle} />
                                     </div>
                                 </div>
 
@@ -320,23 +771,23 @@ const VehicleMaster = () => {
                     </PrimeSidebar>
 
                     {/* Edit Vehicle Master */}
-                    <PrimeSidebar visible={visibleLeft} position="right" onHide={() => setVisibleLeft(false)} showCloseIcon={false} dismissable={false} style={{width: '50%'}}>
+                    <PrimeSidebar visible={visibleLeft} position="right" onHide={() => setVisibleLeft(false)} showCloseIcon={false} dismissable={false} style={{ width: '50%' }}>
                         <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
                             <h6 className="sidebarTitle">Edit Vehicle Master</h6>
                             <span className="d-flex align-items-center">
-                    <p>Attrited</p>
-                            <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setVisibleLeft(false)} />
-                                </span>
+                                <p>Attrited</p>
+                                <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setVisibleLeft(false)} />
+                            </span>
                         </div>
                         <div className="sidebarBody">
                             <div className="row">
                                 <div className="col-12 mb-3">
-                                <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
-                                    <h6 className="sidebarSubTitle">Vehical Details</h6>
-                                    <div className="d-flex justify-content-between me-3">
-                                    <Checkbox inputId="AadharVerification" className="" name="" />
-                                    <label htmlFor="AadharVerification" className="ms-2">Attrited</label>
-                                    </div>
+                                    <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
+                                        <h6 className="sidebarSubTitle">Vehical Details</h6>
+                                        <div className="d-flex justify-content-between me-3">
+                                            <Checkbox inputId="AadharVerification" className="" name="" />
+                                            <label htmlFor="AadharVerification" className="ms-2">Attrited</label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -473,7 +924,7 @@ const VehicleMaster = () => {
                                 <div className="col-12 mb-3">
                                     <h6 className="sidebarSubTitle">Other Details</h6>
                                 </div>
-                                <div className="field col-12 d-flex flex-wrap justify-content-start align-items-center gap-4" style={{ whiteSpace:"nowrap"}}>
+                                <div className="field col-12 d-flex flex-wrap justify-content-start align-items-center gap-4" style={{ whiteSpace: "nowrap" }}>
                                     <div className="d-flex">
                                         <Checkbox inputId="AadharVerification" className="" name="" />
                                         <label htmlFor="AadharVerification" className="ms-2">Emergency Contact Detail Danglers</label>
@@ -524,7 +975,7 @@ const VehicleMaster = () => {
                     </PrimeSidebar>
 
                 </div>
-            </div>
+            </div >
         </>
     )
 }

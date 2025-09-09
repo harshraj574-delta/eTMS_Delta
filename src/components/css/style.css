@@ -2451,7 +2451,8 @@ label>span {
 
 /* .filterFix{ position: fixed; top: 58px; z-index: 99; width: -webkit-fill-available; border-radius: 0; margin-left: -15px; transition: box-shadow 0.5s ease; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); } */
 
-.filterFix {
+.filterFix,
+.buttonFix {
     position: fixed;
     top: 58px;
     z-index: 99;
@@ -2463,15 +2464,21 @@ label>span {
     margin-left: -15px;
 }
 
-.filterFix.hidden {
+.filterFix.hidden,
+.buttonFix.hidden {
     transform: translateY(-100%);
     /* slide up when hidden */
     box-shadow: none;
 }
 
-.filterFix.shadow {
+.filterFix.shadow,
+.buttonFix.shadow {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     /* subtle shadow */
+}
+
+.buttonFix {
+    padding: 10px 15px;
 }
 
 .btn-primary {
@@ -2644,19 +2651,21 @@ label>span {
     color: #212529;
     width: 10% !important;
 }
+
 /* add menu stle */
 .submenu-link {
-  color: #333;
-  text-decoration: none;
-  padding-left: 10px;
-  display: block;
-  padding: 5px 0;
+    color: #333;
+    text-decoration: none;
+    padding-left: 10px;
+    display: block;
+    padding: 5px 0;
 }
 
 .submenu-link.active-submenu {
-  color: blue;
-  font-weight: 600;
-}   
+    color: blue;
+    font-weight: 600;
+}
+
 /* drag css */
 /* .draggable-row {
   user-select: none;
