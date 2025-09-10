@@ -129,6 +129,13 @@ const VendorAllocation = () => {
 
       let parsedData = typeof response === "string" ? JSON.parse(response) : response;
 
+      if (!parsedData || parsedData.length === 0) {
+        toastService.error("No record found.");
+        setFetchData([]);
+        setIsDataShown(false);
+        return;
+      }
+
       // Restore vendor mapping from localStorage
       const vendorMap = JSON.parse(localStorage.getItem("routeVendorMap") || "{}");
       parsedData = parsedData.map((row, index) => ({

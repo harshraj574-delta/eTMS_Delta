@@ -46,7 +46,7 @@ import {
   MeasuringStrategy,
 } from "@dnd-kit/core";
 import SwipeToDeleteBackground from "./SwipeToDeleteBackground";
-import Draggable, {DraggableCore} from 'react-draggable';
+import Draggable, { DraggableCore } from 'react-draggable';
 
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 const getOrdinalSuffix = (num) => {
@@ -397,9 +397,8 @@ const FloatingRouteSelectionPanel = React.memo(
             return (
               <div
                 key={route.RouteID}
-                className={`route-item p-2 border-bottom d-flex align-items-center ${
-                  isTarget ? "bg-success-subtle" : "bg-danger-subtle"
-                }`}
+                className={`route-item p-2 border-bottom d-flex align-items-center ${isTarget ? "bg-success-subtle" : "bg-danger-subtle"
+                  }`}
               >
                 <div className="flex-grow-1">
                   <div className="fw-bold">
@@ -418,9 +417,8 @@ const FloatingRouteSelectionPanel = React.memo(
                 </div>
                 <div className="me-2">
                   <span
-                    className={`badge p-2 ${
-                      isTarget ? "bg-success" : "bg-danger"
-                    }`}
+                    className={`badge p-2 ${isTarget ? "bg-success" : "bg-danger"
+                      }`}
                   >
                     {isTarget ? "Target" : "Source"}
                   </span>
@@ -520,8 +518,7 @@ const CrossPageDropZone = React.memo(
         onClick={handleClick}
       >
         {isHovered &&
-          `Click to drop ${
-            selectedEmployees?.size || 0
+          `Click to drop ${selectedEmployees?.size || 0
           } employee(s) at position ${position}`}
       </div>
     );
@@ -669,9 +666,8 @@ const DraggableEmployeeRow = React.memo(
     return (
       <div
         style={rowStyle}
-        className={`draggable-row ${
-          shouldAppearDragged ? "dragging-multi" : ""
-        } ${isSelected ? "selected" : ""}`}
+        className={`draggable-row ${shouldAppearDragged ? "dragging-multi" : ""
+          } ${isSelected ? "selected" : ""}`}
         onClick={handleRowClick}
       >
         <SwipeToDeleteBackground
@@ -685,7 +681,7 @@ const DraggableEmployeeRow = React.memo(
         >
           {/* Column 1: Actions - Always show checkbox */}
           <div className="col-1">
-            <div className="d-flex gap-2 align-items-center">
+            <div className="d-flex align-items-center">
               {/* Always show checkbox */}
               <input
                 type="checkbox"
@@ -694,7 +690,7 @@ const DraggableEmployeeRow = React.memo(
                 className="form-check-input me-2"
                 onClick={(e) => e.stopPropagation()}
               />
-              
+
               {/* Show drag handle only when not in split mode */}
               {selectedAction !== 'split' && (
                 <span
@@ -706,7 +702,7 @@ const DraggableEmployeeRow = React.memo(
                   drag_indicator
                 </span>
               )}
-              
+
               {/* Icons */}
               <div className="d-flex gap-1">
                 {employee.isPWD && (
@@ -747,28 +743,28 @@ const DraggableEmployeeRow = React.memo(
 
           {/* Column 2: Employee */}
           <div className="col-2">
+
             
-            <span className="me-2">
-              {employee.Gender === "M" ? (
-              <span className="badge bg-primary-subtle rounded-pill text-dark">
-                M
-              </span>
-            ) : employee.Gender === "F" ? (
-              <span className="badge bg-danger-subtle rounded-pill text-dark">
-                F
-              </span>
-            ) : null}
-            </span>
             {`${employee.empCode} - ${employee.empName}`}
           </div>
 
           {/* Column 3: Gender */}
-          {/* <div className="col">
-            
-          </div> */}
+          <div className="col-1">
+            <span className="me-2">
+              {employee.Gender === "M" ? (
+                <span className="badge bg-primary-subtle rounded-pill text-dark">
+                  M
+                </span>
+              ) : employee.Gender === "F" ? (
+                <span className="badge bg-danger-subtle rounded-pill text-dark">
+                  F
+                </span>
+              ) : null}
+            </span>
+          </div>
 
           {/* Column 4 & 5: Address & Location */}
-          <div className="col-3">
+          <div className="col-2">
             <span title={employee.address || ""} style={{
               width: "100%",
               whiteSpace: "nowrap",
@@ -875,7 +871,7 @@ const ManageRoute = () => {
   // Constants
   const SWIPE_DELETE_THRESHOLD = 150;
   const userID = sessionStorage.getItem("ID");
-  
+
   // Refs
   const toast = useRef(null);
   const fileInputRef = useRef(null);
@@ -952,22 +948,22 @@ const ManageRoute = () => {
   const [showFloatingPanel, setShowFloatingPanel] = useState(false);
   const [crossPageDropMode, setCrossPageDropMode] = useState(false);
 
-   const [scrolled, setScrolled] = useState(false);
-    useEffect(() => {
-       const handleScroll = () => {
-         if (window.scrollY > 200) {
-           setScrolled(true);
-         } else {
-           setScrolled(false);
-         }
-       };
-   
-       window.addEventListener("scroll", handleScroll);
-   
-       return () => {
-         window.removeEventListener("scroll", handleScroll);
-       };
-     }, []);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 200) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   // Date state
   const [shiftDate, setShiftDate] = useState(() => {
@@ -1100,7 +1096,7 @@ const ManageRoute = () => {
   // NEW: Action change handler
   const handleActionChange = useCallback((action) => {
     setSelectedAction(action);
-    
+
     if (action === 'multiSelect') {
       setIsSelectionHeld(false);
       setCrossPageDropMode(false);
@@ -1326,9 +1322,9 @@ const ManageRoute = () => {
 
       const formattedData = Array.isArray(parsedResponse)
         ? parsedResponse.map((item) => ({
-            label: item.facility || item.facilityName,
-            value: item.Id,
-          }))
+          label: item.facility || item.facilityName,
+          value: item.Id,
+        }))
         : [];
 
       setFacilities(formattedData);
@@ -1351,9 +1347,9 @@ const ManageRoute = () => {
 
         const formattedShifts = Array.isArray(parsedResponse)
           ? parsedResponse.map((shift) => ({
-              label: shift.shiftTime || shift.ShiftTime,
-              value: shift.shiftTime || shift.ShiftTime,
-            }))
+            label: shift.shiftTime || shift.ShiftTime,
+            value: shift.shiftTime || shift.ShiftTime,
+          }))
           : [];
 
         setShifts(formattedShifts);
@@ -1514,7 +1510,7 @@ const ManageRoute = () => {
         AvgOccupancy: 0,
       });
       setShowButtons(false);
-      
+
       // Clear all selections when submitting new data
       handleClearSelection();
       handleClearRouteSelection();
@@ -1853,137 +1849,136 @@ const ManageRoute = () => {
         <div className="bg-custom">
           <div className="p-0">
             {/* Flexbox Header - Replaces <thead> */}
-            <div className="row" style={{fontSize: '12px', background: '#f8f9fa', padding: '8px 0', fontWeight: 'bold'}}>
-                <div className="col-1">Select/Actions</div>
-                <div className="col-2">Employee</div>
-                {/* <div className="col"></div> */}
-                <div className="col-3">Address</div>
-                <div className="col-2">Location</div>
-                <div className="col-1">Shift</div>
-                <div className="col-1">Trip</div>
-                <div className="col-1">Stop</div>
-                <div className="col-1">ETA</div>
+            <div className="row" style={{ fontSize: '12px', background: '#f8f9fa', padding: '8px 0', fontWeight: 'bold' }}>
+              <div className="col-1">Select/Actions</div>
+              <div className="col-2">Employee</div>
+              <div className="col-1"></div>
+              <div className="col-2">Address</div>
+              <div className="col-2">Location</div>
+              <div className="col-1">Shift</div>
+              <div className="col-1">Trip</div>
+              <div className="col-1">Stop</div>
+              <div className="col-1">ETA</div>
             </div>
 
             {/* Body Container - Replaces <tbody> */}
             <div>
-                {employees.length === 0 ? (
-                  <>
-                    <div>
-                        <CrossPageDropZone
-                          routeId={rowData.RouteID}
-                          position={1}
-                          isActive={crossPageDropMode}
-                          onDrop={handleCrossPageDrop}
-                          selectedEmployees={selectedEmployees}
-                        />
-                        {selectedAction !== 'split' && (
-                          <DropZoneIndicator
-                            routeId={rowData.RouteID}
-                            position={1}
-                            isOver={
-                              activeId &&
-                              hoveredDropZone ===
-                                `dropzone-${rowData.RouteID}-1`
-                            }
-                          />
-                        )}
-                    </div>
-                    <div
-                      className="text-center p-4"
-                      style={{ color: "#666" }}
-                    >
-                      No employees in this route.
-                      {crossPageDropMode ? (
-                        <span className="text-primary">
-                          {" "}
-                          Click above to drop employees here.
-                        </span>
-                      ) : selectedAction === 'split' ? (
-                        <span>
-                          {" "}
-                          Select another route with employees to split.
-                        </span>
-                      ) : (
-                        <span>
-                          {" "}
-                          Drag employees from other routes to add them here.
-                        </span>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                        <CrossPageDropZone
-                          routeId={rowData.RouteID}
-                          position={1}
-                          isActive={crossPageDropMode}
-                          onDrop={handleCrossPageDrop}
-                          selectedEmployees={selectedEmployees}
-                        />
-                        {selectedAction !== 'split' && (
-                          <DropZoneIndicator
-                            routeId={rowData.RouteID}
-                            position={1}
-                            isOver={
-                              activeId &&
-                              hoveredDropZone ===
-                                `dropzone-${rowData.RouteID}-1`
-                            }
-                          />
-                        )}
-                    </div>
+              {employees.length === 0 ? (
+                <>
+                  <div>
+                    <CrossPageDropZone
+                      routeId={rowData.RouteID}
+                      position={1}
+                      isActive={crossPageDropMode}
+                      onDrop={handleCrossPageDrop}
+                      selectedEmployees={selectedEmployees}
+                    />
+                    {selectedAction !== 'split' && (
+                      <DropZoneIndicator
+                        routeId={rowData.RouteID}
+                        position={1}
+                        isOver={
+                          activeId &&
+                          hoveredDropZone ===
+                          `dropzone-${rowData.RouteID}-1`
+                        }
+                      />
+                    )}
+                  </div>
+                  <div
+                    className="text-center p-4"
+                    style={{ color: "#666" }}
+                  >
+                    No employees in this route.
+                    {crossPageDropMode ? (
+                      <span className="text-primary">
+                        {" "}
+                        Click above to drop employees here.
+                      </span>
+                    ) : selectedAction === 'split' ? (
+                      <span>
+                        {" "}
+                        Select another route with employees to split.
+                      </span>
+                    ) : (
+                      <span>
+                        {" "}
+                        Drag employees from other routes to add them here.
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <CrossPageDropZone
+                      routeId={rowData.RouteID}
+                      position={1}
+                      isActive={crossPageDropMode}
+                      onDrop={handleCrossPageDrop}
+                      selectedEmployees={selectedEmployees}
+                    />
+                    {selectedAction !== 'split' && (
+                      <DropZoneIndicator
+                        routeId={rowData.RouteID}
+                        position={1}
+                        isOver={
+                          activeId &&
+                          hoveredDropZone ===
+                          `dropzone-${rowData.RouteID}-1`
+                        }
+                      />
+                    )}
+                  </div>
 
-                    {employees.map((employee, index) => {
-                      const employeeKey = `${rowData.RouteID}-${
-                        employee.id || employee.empID
+                  {employees.map((employee, index) => {
+                    const employeeKey = `${rowData.RouteID}-${employee.id || employee.empID
                       }`;
-                      const isSelected = selectedEmployees.has(employeeKey);
+                    const isSelected = selectedEmployees.has(employeeKey);
 
-                      return (
-                        <React.Fragment key={employeeKey}>
-                          <DraggableEmployeeRow
-                            employee={employee}
-                            routeId={rowData.RouteID}
-                            index={index}
-                            isSelected={isSelected}
-                            onSelectionChange={handleEmployeeSelection}
-                            selectedCount={selectedEmployees.size}
-                            activeId={activeId}
-                            selectedEmployees={selectedEmployees}
-                            isDragInProgress={!!activeId}
-                            selectedAction={selectedAction}
-                            onDeleteEmployee={(employee, routeId) => {
-                              setPendingDeleteEmployee({ employee, routeId });
-                              setShowDeleteEmployeeDialog(true);
-                            }}
-                          />
-                          {selectedAction !== 'split' && (
-                            <div>
-                                <CrossPageDropZone
-                                  routeId={rowData.RouteID}
-                                  position={index + 2}
-                                  isActive={crossPageDropMode}
-                                  onDrop={handleCrossPageDrop}
-                                  selectedEmployees={selectedEmployees}
-                                />
-                                <DropZoneIndicator
-                                  routeId={rowData.RouteID}
-                                  position={index + 2}
-                                  isOver={
-                                    activeId &&
-                                    hoveredDropZone ===
-                                      `dropzone-${rowData.RouteID}-${index + 2}`
-                                  }
-                                />
-                            </div>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </>
-                )}
+                    return (
+                      <React.Fragment key={employeeKey}>
+                        <DraggableEmployeeRow
+                          employee={employee}
+                          routeId={rowData.RouteID}
+                          index={index}
+                          isSelected={isSelected}
+                          onSelectionChange={handleEmployeeSelection}
+                          selectedCount={selectedEmployees.size}
+                          activeId={activeId}
+                          selectedEmployees={selectedEmployees}
+                          isDragInProgress={!!activeId}
+                          selectedAction={selectedAction}
+                          onDeleteEmployee={(employee, routeId) => {
+                            setPendingDeleteEmployee({ employee, routeId });
+                            setShowDeleteEmployeeDialog(true);
+                          }}
+                        />
+                        {selectedAction !== 'split' && (
+                          <div>
+                            <CrossPageDropZone
+                              routeId={rowData.RouteID}
+                              position={index + 2}
+                              isActive={crossPageDropMode}
+                              onDrop={handleCrossPageDrop}
+                              selectedEmployees={selectedEmployees}
+                            />
+                            <DropZoneIndicator
+                              routeId={rowData.RouteID}
+                              position={index + 2}
+                              isOver={
+                                activeId &&
+                                hoveredDropZone ===
+                                `dropzone-${rowData.RouteID}-${index + 2}`
+                              }
+                            />
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </>
+              )}
             </div>
 
             <div
@@ -3635,7 +3630,7 @@ const ManageRoute = () => {
                     <label htmlFor="">Facility Name</label>
                     <Dropdown
                       id="facility"
-                      placeholder="Select Facility"
+                      placeholder="Select"
                       className="w-100"
                       filter
                       value={selectedFacility || null}
@@ -3666,7 +3661,7 @@ const ManageRoute = () => {
                       options={shifts}
                       onChange={(e) => setSelectedShifts(e.value)}
                       optionLabel="label"
-                      placeholder="Select Shifts"
+                      placeholder="Select"
                       className="w-full md:w-20rem w-100"
                     />
                   </div>
@@ -3751,103 +3746,103 @@ const ManageRoute = () => {
           {showButtons && (
 
             <div className={scrolled ? "buttonFix shadow" : "hidden"}>
-            <div className="row mt-3">
-              <div className="col-12 d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center gap-3">
-                  {/* Only keep Route Merge Mode */}
-                  <div className="d-flex align-items-center">
+              <div className="row mt-3">
+                <div className="col-12 d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center gap-3">
+                    {/* Only keep Route Merge Mode */}
+                    <div className="d-flex align-items-center">
+                      <Button
+                        label="Route Merge Mode"
+                        icon="pi pi-share-alt"
+                        className="btn btn-outline-secondary route-merge-toggle-btn"
+                        severity={isRouteSelectMode ? "warning" : "secondary"}
+                        raised
+                        rounded
+                        onClick={() => {
+                          setIsRouteSelectMode(!isRouteSelectMode);
+                          if (isRouteSelectMode) handleClearRouteSelection();
+                        }}
+                      />
+
+                      {selectedRoutes.size > 0 && (
+                        <>
+                          <Button
+                            label="Merge Routes"
+                            icon="pi pi-arrows-h"
+                            className="btn btn-outline-secondary ms-2"
+                            onClick={handleMergeRoutes}
+                            rounded
+                            raised
+                            disabled={selectedRoutes.size < 2}
+                          />
+
+                          <Button
+                            label="Clear Routes"
+                            icon="pi pi-times"
+                            className="btn btn-outline-secondary ms-2"
+                            severity="danger"
+                            outlined
+                            raised
+                            rounded
+                            onClick={handleClearRouteSelection}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Keep existing action buttons */}
+                  <div>
                     <Button
-                      label="Route Merge Mode"
-                      icon="pi pi-share-alt"
-                      className="btn btn-outline-secondary route-merge-toggle-btn"
-                      severity={isRouteSelectMode ? "warning" : "secondary"}
+                      label="Recalculate"
+                      icon={isLoading ? "pi pi-spin pi-spinner" : "pi pi-sync"}
+                      className="btn btn-primary me-2"
+                      severity="warning"
                       raised
                       rounded
-                      onClick={() => {
-                        setIsRouteSelectMode(!isRouteSelectMode);
-                        if (isRouteSelectMode) handleClearRouteSelection();
-                      }}
+                      onClick={handleRecalculateModifiedRoutes}
+                      disabled={isLoading}
+                      tooltip="Recalculates ETA and distance for all modified routes in this shift"
+                      tooltipOptions={{ position: "top" }}
                     />
 
-                    {selectedRoutes.size > 0 && (
-                      <>
-                        <Button
-                          label="Merge Routes"
-                          icon="pi pi-arrows-h"
-                          className="btn btn-outline-secondary ms-2"
-                          onClick={handleMergeRoutes}
-                          rounded
-                          raised
-                          disabled={selectedRoutes.size < 2}
-                        />
+                    <Button
+                      label={
+                        isLoading ? "Allocating..." : "Auto Vendor Allocation"
+                      }
+                      icon="pi pi-cog"
+                      className="btn btn-primary me-2"
+                      raised
+                      rounded
+                      onClick={handleAutoVendorAllocation}
+                      disabled={isLoading}
+                    />
 
-                        <Button
-                          label="Clear Routes"
-                          icon="pi pi-times"
-                          className="btn btn-outline-secondary ms-2"
-                          severity="danger"
-                          outlined
-                          raised
-                          rounded
-                          onClick={handleClearRouteSelection}
-                        />
-                      </>
-                    )}
+                    <Button
+                      label={
+                        isRecalcBeforeFinalize
+                          ? "Recalculating..."
+                          : isFinalizing
+                            ? "Finalizing..."
+                            : "Finalize Route"
+                      }
+                      icon={
+                        isRecalcBeforeFinalize
+                          ? "pi pi-spin pi-spinner"
+                          : isFinalizing
+                            ? "pi pi-spin pi-spinner"
+                            : "pi pi-check"
+                      }
+                      className="btn btn-primary"
+                      severity="success"
+                      raised
+                      rounded
+                      onClick={handleFinalizeRoute}
+                      disabled={isFinalizing || isRecalcBeforeFinalize}
+                    />
                   </div>
                 </div>
-
-                {/* Keep existing action buttons */}
-                <div>
-                  <Button
-                    label="Recalculate"
-                    icon={isLoading ? "pi pi-spin pi-spinner" : "pi pi-sync"}
-                    className="btn btn-primary me-2"
-                    severity="warning"
-                    raised
-                    rounded
-                    onClick={handleRecalculateModifiedRoutes}
-                    disabled={isLoading}
-                    tooltip="Recalculates ETA and distance for all modified routes in this shift"
-                    tooltipOptions={{ position: "top" }}
-                  />
-
-                  <Button
-                    label={
-                      isLoading ? "Allocating..." : "Auto Vendor Allocation"
-                    }
-                    icon="pi pi-cog"
-                    className="btn btn-primary me-2"
-                    raised
-                    rounded
-                    onClick={handleAutoVendorAllocation}
-                    disabled={isLoading}
-                  />
-
-                  <Button
-                    label={
-                      isRecalcBeforeFinalize
-                        ? "Recalculating..."
-                        : isFinalizing
-                        ? "Finalizing..."
-                        : "Finalize Route"
-                    }
-                    icon={
-                      isRecalcBeforeFinalize
-                        ? "pi pi-spin pi-spinner"
-                        : isFinalizing
-                        ? "pi pi-spin pi-spinner"
-                        : "pi pi-check"
-                    }
-                    className="btn btn-primary"
-                    severity="success"
-                    raised
-                    rounded
-                    onClick={handleFinalizeRoute}
-                    disabled={isFinalizing || isRecalcBeforeFinalize}
-                  />
-                </div>
               </div>
-            </div>
             </div>
           )}
 
@@ -3888,16 +3883,15 @@ const ManageRoute = () => {
                   sortField={sortField}
                   sortOrder={sortOrder}
                   onSort={handleSort}
-                  className={`p-datatable-sm ${
-                    isRouteSelectMode ? "route-merge-table-active" : ""
-                  }`}
+                  className={`p-datatable-sm ${isRouteSelectMode ? "route-merge-table-active" : ""
+                    }`}
                   rowClassName={getRowClassName}
                   onRowClick={
                     isRouteSelectMode
                       ? (e) => {
-                          e.preventDefault();
-                          handleRouteSelection(e.data.RouteID);
-                        }
+                        e.preventDefault();
+                        handleRouteSelection(e.data.RouteID);
+                      }
                       : undefined
                   }
                 >
@@ -4033,6 +4027,7 @@ const ManageRoute = () => {
                       <AddressColumnTemplate Address={rowData.Location} />
                     )}
                   />
+                  <Column field="totalStop" header="Stops" sortable />
                   <Column field="totaldist" header="Total Dist.(Km)" sortable />
                   <Column
                     field="farthestEmployeeDistance"
@@ -4045,7 +4040,6 @@ const ManageRoute = () => {
                     body={durationTemplate}
                     sortable
                   />
-                  <Column field="totalStop" header="Stops" sortable />
                   <Column field="vendorname" header="Vendor" sortable />
                   <Column
                     field=""
@@ -4131,7 +4125,7 @@ const ManageRoute = () => {
         />
         <Dialog
           visible={showProgressDialog}
-          onHide={() => {}}
+          onHide={() => { }}
           closable={false}
           draggable={false}
           resizable={false}
@@ -4225,8 +4219,8 @@ const ManageRoute = () => {
                 {pendingDragOperation?.isCrossPageDrop
                   ? "Confirm Cross-Page Employee Move"
                   : pendingDragOperation?.isSameRouteReorder
-                  ? "Confirm Employee Reorder"
-                  : "Confirm Employee Move"}
+                    ? "Confirm Employee Reorder"
+                    : "Confirm Employee Move"}
               </span>
             </div>
           }
@@ -4278,8 +4272,8 @@ const ManageRoute = () => {
                   {pendingDragOperation.isCrossPageDrop
                     ? "from held selection"
                     : pendingDragOperation.isSameRouteReorder
-                    ? `within Route ${pendingDragOperation.targetRouteId}`
-                    : `from Route ${pendingDragOperation.activeData.sourceRouteId}`}{" "}
+                      ? `within Route ${pendingDragOperation.targetRouteId}`
+                      : `from Route ${pendingDragOperation.activeData.sourceRouteId}`}{" "}
                   {!pendingDragOperation.isSameRouteReorder && (
                     <>
                       to Route{" "}
@@ -4307,8 +4301,8 @@ const ManageRoute = () => {
                     {pendingDragOperation.isCrossPageDrop
                       ? "from held selection"
                       : pendingDragOperation.isSameRouteReorder
-                      ? `within Route ${pendingDragOperation.targetRouteId}`
-                      : ""}
+                        ? `within Route ${pendingDragOperation.targetRouteId}`
+                        : ""}
                     {!pendingDragOperation.isSameRouteReorder && (
                       <>
                         {" "}
@@ -4947,7 +4941,7 @@ const ManageRoute = () => {
           )}
         </Dialog>
 
-        
+
         {/* Modern Add Employee Modal */}
         <Dialog
           visible={showAddEmployeeModal}
@@ -5062,9 +5056,9 @@ const ManageRoute = () => {
                             <tr
                               key={employee.id}
                               onClick={() => handleSelectEmployee(employee)}
-                              style={{ 
+                              style={{
                                 cursor: 'pointer',
-                                background: selectedEmployee?.id === employee.id ? '#d1ecf1' : 'transparent' 
+                                background: selectedEmployee?.id === employee.id ? '#d1ecf1' : 'transparent'
                               }}
                             >
                               <td>
@@ -5110,27 +5104,27 @@ const ManageRoute = () => {
                       Select Stop Position
                     </span>
                     <Dropdown
-                        value={selectedStopNo}
-                        onChange={(e) => setSelectedStopNo(e.value)}
-                        options={availableStopNumbers}
-                        placeholder="Choose stop number..."
-                        className="w-100"
-                        optionLabel="label"
-                        optionValue="value"
-                        style={{ fontSize: "14px" }}
-                      />
+                      value={selectedStopNo}
+                      onChange={(e) => setSelectedStopNo(e.value)}
+                      options={availableStopNumbers}
+                      placeholder="Choose stop number..."
+                      className="w-100"
+                      optionLabel="label"
+                      optionValue="value"
+                      style={{ fontSize: "14px" }}
+                    />
                     <div className="text-muted mt-2" style={{ fontSize: "11px" }}>
-                        <i
-                          className="material-icons me-1"
-                          style={{ fontSize: "12px", verticalAlign: 'middle' }}
-                        >
-                          info
-                        </i>
-                        Insert at this position in the route.
+                      <i
+                        className="material-icons me-1"
+                        style={{ fontSize: "12px", verticalAlign: 'middle' }}
+                      >
+                        info
+                      </i>
+                      Insert at this position in the route.
                     </div>
 
                     {selectedStopNo && (
-                       <div
+                      <div
                         className="alert alert-success py-2 mt-3"
                         style={{ fontSize: "13px" }}
                       >
@@ -5156,7 +5150,7 @@ const ManageRoute = () => {
             </div>
           </div>
         </Dialog>
-        
+
 
         {/* Enhanced Drag Overlay */}
         <DragOverlay
@@ -5183,9 +5177,8 @@ const ManageRoute = () => {
                         backgroundColor: "#fff",
                         border: "2px solid #2196F3",
                         borderRadius: "8px",
-                        boxShadow: `0 ${4 + index * 2}px ${
-                          16 + index * 4
-                        }px rgba(0,0,0,${0.1 + index * 0.05})`,
+                        boxShadow: `0 ${4 + index * 2}px ${16 + index * 4
+                          }px rgba(0,0,0,${0.1 + index * 0.05})`,
                         fontSize: "14px",
                         fontWeight: "bold",
                         transform: `rotate(${3 + index * 1}deg)`,

@@ -393,7 +393,8 @@ h6 strong {
 }
 
 .subtitle_sm {
-    font-size: 14px;
+    /* font-size: 14px; */
+    font-size: clamp(11px, 2.2vw, 13px);
     font-weight: 600;
     line-height: 28px;
     color: var(--grey-4);

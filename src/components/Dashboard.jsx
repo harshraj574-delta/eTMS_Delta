@@ -1,661 +1,705 @@
 import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "./Master/SidebarMenu";
-import Notifications from "./Master/Notifications";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../components/css/style.css";
 import { TabMenu } from "primereact/tabmenu";
-import { Chart } from "primereact/chart";
 import { Dropdown } from "primereact/dropdown";
+import { InputSwitch } from "primereact/inputswitch";
 import { Image } from "primereact/image";
-import { Button } from "primereact/button";
 import Header from "./Master/Header";
-import { BiExpand } from "react-icons/bi";
-import { MeterGroup } from "primereact/metergroup";
+import { BiExpand, BiCalendar } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
 
-import { get } from "lodash";
-import RiStats from "./DashboardPage/DashboardPage/RiStats";
-import RiNormalAdhoc from "./DashboardPage/DashboardPage/RiNormalAdhoc";
-import RiShiftCompletionPending from "./DashboardPage/DashboardPage/RiShiftCompletionPending";
-import RiPickDrop from "./DashboardPage/DashboardPage/RiPickDrop";
+import RiStats from "./DashboardPage/RiStats";
+import RiShiftEmployeeOccupancy from "./DashboardPage/RiShiftEmployeeOccupancy";
+import RiNormalAdhoc from "./DashboardPage/RiNormalAdhoc";
+import RiShiftCompletionPending from "./DashboardPage/RiShiftCompletionPending";
+import RiPickDrop from "./DashboardPage/RiPickDrop";
+import RiDropSafeChart from "./DashboardPage/RiDropSafeChart";
+import VpStats from "./DashboardPage/VpStats";
+import VpVehicleDistribution from "./DashboardPage/VpVehicleDistribution";
+import LeafletHeatMap from "./DashboardPage/LeafletHeatMap";
 
-import sessionManager from "../utils/SessionManager";
-import driverMasterService from "../services/compliance/DriverMasterService";
-import RiDropSafeChart from "./DashboardPage/DashboardPage/RiDropSafeChart";
-import { apiService } from "../services/api";
-import VpStats from "./DashboardPage/DashboardPage/VpStats";
-import LeafletHeatMap from "./DashboardPage//DashboardPage/LeafletHeatMap";
+import DriverFragmentation from "./DashboardPage/VendorPerformance/DriverFragmentation";
+import VehicleFragmentation from "./DashboardPage/VendorPerformance/VehicleFragmentation";
+import FleetEfficiency from "./DashboardPage/VendorPerformance/FleetEfficiency";
+import DriverEfficiency from "./DashboardPage/VendorPerformance/DriverEfficiency";
+import RouteBreakDuty from "./DashboardPage/VendorPerformance/RouteBreakDuty";
 
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { data } from "react-router-dom";
+
+import sessionManager from "../utils/SessionManager";
+import driverMasterService from "../services/compliance/DriverMasterService";
+import { apiService } from "../services/api";
 
 const Dashboard = () => {
   const userId = sessionManager.getUserSession().ID;
-  // Add this state for selected index
+  const locationid = sessionManager.getUserSession().LocationId;
+
+  // States
   const [dialogVisible, setDialogVisible] = useState(false);
-
-  const [selectedDate, setSelectedDate] = useState(new Date()); // sirf ek hi jagah
-
-  const handleCalendarClose = () => console.log("Calendar closed");
-  const handleCalendarOpen = () => console.log("Calendar opened");
-
-  const [selected, setSelected] = useState("");
-  //const [selectedDate, setSelectedDate] = useState(new Date());
-
-  const handleSelect = (value) => {
-    setSelected(value);
-    setSelectedPeriod1(value); // Add this line
-
-    // Optionally, set selectedDate based on value
-    let date = new Date();
-    if (value === "today") {
-      date = new Date();
-    } else if (value === "yesterday") {
-      date = new Date();
-      date.setDate(date.getDate() - 1);
-    } else if (value === "last_7_days") {
-      date = new Date();
-      date.setDate(date.getDate() - 7);
-    } else if (value === "last_30_days") {
-      date = new Date();
-      date.setDate(date.getDate() - 30);
-    }
-    else if (value === "last_90_days") {
-      date = new Date();
-      date.setDate(date.getDate() - 90);
-    }
-    // ...add logic for other options if needed
-
-    setSelectedDate(date);
-    // Yahan filter bhi update kar sakte hain agar zarurat ho
-  };
-
-  const [visiblex, setVisiblex] = useState(false);
-  const calendarRef = useRef(null);
-  // Close calendar on outside click
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
-        setVisiblex(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const periodOptions1 = [
-    { label: "Today", value: "today", type: "day" },
-    { label: "Yesterday", value: "yesterday", type: "day" },
-    { label: "Last 7 days", value: "last_7_days", type: "week" },
-    { label: "Last 30 days", value: "last_30_days", type: "month" },
-    { label: "Last 90 days", value: "last_90_days", type: "quarter" },
-    { label: "Last 12 months", value: "last_12_months", type: "year" },
-    { label: "Custom", value: "custom", type: "custom" }, // Add this
-  ];
-  const today = new Date();
-  const firstDayOfWeek = new Date(today);
-  firstDayOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
-  const lastDayOfWeek = new Date(today);
-  lastDayOfWeek.setDate(today.getDate() + (6 - today.getDay())); // Saturday
-
   const [selectedPeriod1, setSelectedPeriod1] = useState("last_7_days");
   const [pendingPeriod1, setPendingPeriod1] = useState("last_7_days");
-  const [pendingDate, setPendingDate] = useState(selectedDate);
+
+  const today = new Date();
   const [pendingDateFrom, setPendingDateFrom] = useState(
     new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
   );
   const [pendingDateTo, setPendingDateTo] = useState(today);
 
-  // Custom calendar open/close par pendingPeriod1 ko sync karein
-  useEffect(() => {
-    if (visiblex) {
-      setPendingPeriod1(selectedPeriod1);
-      setPendingDate(selectedDate);
-    }
-  }, [visiblex, selectedPeriod1, selectedDate]);
+  const [visibleCalendar, setVisibleCalendar] = useState(false);
+  const calendarRef = useRef(null);
 
-  const periodOptions = [
-    { label: "Today", value: "today", type: "day" },
-    { label: "This Week", value: "week", type: "week" },
-    { label: "This Month", value: "month", type: "month" },
-    { label: "This Quater", value: "quarter", type: "quarter" },
-    { label: "This Year", value: "year", type: "year" },
+  const [selectedTripType, setSelectedTripType] = useState("");
+  const [type, setType] = useState(1); // 1: Employees, 2: Routes
+  const [checked, setChecked] = useState(false); // false: Employees, true: Routes
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+
+  // default option so dropdown shows "All Cities" on first render
+  const defaultCityOption = {
+    name: "All Cities",
+    value: { Id: "all", locationName: "All Cities" },
+  };
+
+  // default option so dropdown shows "All Cities" on first render
+  const defaultFacilityOption = {
+    name: "All Facility",
+    value: { Id: "allFacility", locationName: "All Facility" },
+  };
+
+  // const userLocationName = sessionStorage.getItem("LocationName");
+  // const userFacilityName = sessionStorage.getItem("FacilityName");
+
+  const [cities, setCities] = useState([]);
+  // store the nested `value` as selCity so it matches Dropdown when using optionValue
+  const [selCity, setSelCity] = useState(null);
+
+  const [selFacility, setSelFacility] = useState(null);
+
+  // Facility state
+  const [facilities, setFacilities] = useState([]);
+  const [filteredFacilities, setFilteredFacilities] = useState([]);
+  //const [selFacility, setSelFacility] = useState(null);
+
+  const [venders, setVenders] = useState([]);
+  const [selVendor, setSelVendor] = useState(null);
+
+  const [filter, setFilter] = useState({
+    sDate: null,
+    eDate: null,
+    locationid: null, // undefined for "All Cities"
+    facilityid: null,
+    vendorid: null,
+    triptype: "",
+    type: 1,
+  });
+  // useEffect(() => {
+  //   if (!selCity || !selFacility || !selVendor) return;
+
+  //   setFilter({
+  //     sDate: pendingDateFrom.toISOString().split("T")[0],
+  //     eDate: pendingDateTo.toISOString().split("T")[0],
+  //     locationid: selCity?.Id,
+  //     facilityid: selFacility,
+  //     vendorid: selVendor?.Id === "all" ? undefined : selVendor?.Id,
+  //     triptype: selectedTripType,
+  //     type,
+  //   });
+  // }, [
+  //   selCity,
+  //   selFacility,
+  //   selVendor,
+  //   selectedTripType,
+  //   pendingDateFrom,
+  //   pendingDateTo,
+  //   type,
+  // ]);
+
+  // Date periods options
+  const periodOptions1 = [
+    { label: "Today", value: "today" },
+    { label: "Yesterday", value: "yesterday" },
+    { label: "Last 7 days", value: "last_7_days" },
+    { label: "Last 30 days", value: "last_30_days" },
+    { label: "Last 90 days", value: "last_90_days" },
+    { label: "Last 12 months", value: "last_12_months" },
+    { label: "Custom", value: "custom" },
   ];
-  const [selectedPeriod, setSelectedPeriod] = useState(periodOptions[2].value);
+
   const tripTypeOptions = [
     { label: "Both", value: "" },
     { label: "Pick", value: "P" },
     { label: "Drop", value: "D" },
   ];
-  const [selectedTripType, setSelectedTripType] = useState("");
 
-  //Tab Menu
-  const items = [
+  const tabItems = [
     { label: "Routing Insights" },
     { label: "Vendor Performance" },
     { label: "Facility Insights" },
   ];
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
-  const [hasShadow, setHasShadow] = useState(false);
-  const [visible, setVisible] = useState(true); // optional for slide effect
+
+  // Sync switch with type state
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 200) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
+    setChecked(type === 2);
+  }, [type, filter]);
+
+  // Scroll effect to toggle filter fix
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 200);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Close calendar on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+        setVisibleCalendar(false);
       }
     };
-
-    window.addEventListener("scroll", handleScroll);
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Lookup states
-  const [facilities, setFacilities] = useState([]);
-  const [filterFacilities, setfilterFacilities] = useState([]);
-
-  const [venders, setVenders] = useState([]);
-
-  // Selectted Values
-  // const [selCity, setSelCity] = useState(null);
-  // const [cities, setCities] = useState([]);
-
-  const [cities, setCities] = useState([]);
-  const [selCity, setSelCity] = useState({ name: "All Cities", value: { Id: "all", locationName: "All Cities" } });
-
-  const [selFacility, setSelFacility] = useState(1);
-  const [selVendor, setSelVendor] = useState(null);
-  const [filter, setFilter] = useState({
-    sDate: null, // selectedPeriod
-    eDate: null, // selectedPeriod
-    locationid: null, // selCity
-    facilityid: null, // selFacility
-    vendorid: null, // selVendor
-    triptype: null, // selectedTripType
-  });
-
+  // Fetch cities and all vendors on mount
   useEffect(() => {
-    fetchFacilities();
+    fetchAllCities();
+    // fetchVenders(""); // Bind all vendors on initial load
   }, []);
 
-  // Keep this for vendors only
+  // Ensure default city selection always after cities load
+  // useEffect(() => {
+  //   if (cities.length && !selCity) {
+  //     // Set default to "All Cities" nested value
+  //     setSelCity(userLocationName);
+  //   }
+  // }, [cities, selCity]);
+
+  // Fetch facilities when cities are loaded
+  // useEffect(() => {
+  //   if (cities.length > 0 && facilities.length === 0) {
+  //     fetchFacilities();
+  //   }
+  // }, [cities]);
+
+  // Fetch vendors when facility changes
+  // useEffect(() => {
+  //   // If no facility or city is selected, or if either is 'all' or empty, fetch all vendors
+  //   if (
+  //     !selFacility ||
+  //     selFacility === "" ||
+  //     selFacility === "allFacility" ||
+  //     selFacility?.Id === "allFacility" ||
+  //     !selCity ||
+  //     selCity === "" ||
+  //     selCity === "all" ||
+  //     selCity?.Id === "all"
+  //   ) {
+  //     //fetchVenders("");
+  //   } else {
+  //     //fetchVenders(selFacility.Id || selFacility);
+  //   }
+  // }, [selFacility, selCity]);
   useEffect(() => {
-    if (selFacility?.Id) {
-      fetchVenders(selFacility.Id);
-    }
-  }, [selFacility]);
-
-  // Component mount par cities pehle fetch karein
-  useEffect(() => {
-    fetchAllCities(); // Pehle cities load karein
-  }, []);
-
-  // Separate function for fetching all cities
-  // Separate function for fetching all cities
-  const fetchAllCities = async () => {
-    try {
-      const response = await apiService.sp_getAllLocation();
-      console.log("Raw cities response:", JSON.stringify(response, null, 2));
-
-      let rawList = [];
-      if (typeof response === "string") {
-        rawList = JSON.parse(response);
-      } else if (response?.data) {
-        rawList = Array.isArray(response.data) ? response.data : [];
-      } else if (Array.isArray(response)) {
-        rawList = response;
-      }
-
-      // Add "All Cities" option at the top
-      const formatted = [
-        { name: "All Cities", value: { Id: "all", locationName: "All Cities" } },
-        ...rawList.map((city) => ({
-          name: city.locationName || city.name || "Unknown",
-          value: city
-        }))
-      ];
-
-      setCities(formatted);
-      setSelCity(formatted[0]); // Yahi "All Cities" ko default select karta hai
-      // If "All Cities" is selected, fetch all facilities
-      fetchFacilitiesByCity("all");
-    } catch (err) {
-      console.error("Error fetching cities:", err);
-      setCities([{ name: "All Cities", value: { Id: "all", locationName: "All Cities" } }]);
-      setSelCity({ name: "All Cities", value: { Id: "all", locationName: "All Cities" } });
-    }
-  };
-
-  const changeCity = (e) => {
-    console.log("Selected city:", facilities, e.value, e.value.Id);
-    setSelCity(e.value); // Always set as object
-    // Fetch facilities based on selected city
-    if (e.value.Id === "all") {
-      // Always fetch all facilities for the user when 'All Cities' is selected
-      driverMasterService.getFacilitiesByUserId(userId)
-        .then((res) => {
-          const data = JSON.parse(res.data) || [];
-          setFacilities(data);
-          setfilterFacilities(data);
-          setSelFacility(data[0] || null);
-        })
-        .catch((err) => {
-          console.log("Error fetching all facilities:", err);
-          setFacilities([]);
-          setfilterFacilities([]);
-          setSelFacility(null);
-        });
-    } else {
-      let filterfacility = facilities.filter(data => {
-        return data.locationId === e?.value?.Id;
-      });
-      console.log("Filtered facilities:", filterfacility);
-      setfilterFacilities(filterfacility);
-      setSelFacility(filterfacility[0] || null);
-    }
-  }
-  const fetchFacilities = () => {
-    driverMasterService
-      .getFacilitiesByUserId(userId)
-      .then((res) => {
-        const data = JSON.parse(res.data) || [];
-        //console.log("Facilities", data);
-        setFacilities(data);
-        setfilterFacilities(data);
-        setSelFacility(data[0]);
-      })
-      .catch((err) => {
-        console.log("Error", err);
-      });
-  };
-  const fetchVenders = (id) => {
-    driverMasterService
-      .getVenders({ facilityid: id })
-      .then((res) => {
-        const data = JSON.parse(res.data) || [];
-        setVenders([{ vendorName: "All Vendor", Id: "all" }, ...data]);
-        setSelVendor({ vendorName: "All Vendor", Id: "all" }); // <-- Add this line
-      })
-      .catch((err) => {
-        console.log("Error", err);
-      });
-  };
-
-  const fetchCitiesByFacility = async (facilityId) => {
-    try {
-      // Correct parameter format
-      const response = await apiService.getCitiesByFacility({
-        facilityId: facilityId,
-      });
-      console.log("Raw API response:", response);
-
-      let rawList = [];
-      // Better response handling
-      if (typeof response === "string") {
-        try {
-          rawList = JSON.parse(response);
-        } catch (e) {
-          console.error("Failed to parse response as JSON:", e);
-        }
-      } else if (response?.data) {
-        // Handle if response is { data: [...] }
-        rawList = Array.isArray(response.data) ? response.data : [];
-      } else if (Array.isArray(response)) {
-        rawList = response;
-      }
-
-      console.log("Processed cities list:", rawList);
-
-      if (!rawList || !rawList.length) {
-        console.warn("No cities found for facility:", facilityId);
-        // Still set All Cities option
-        setCities([
-          {
-            name: "All Cities",
-            value: { Id: "all", locationName: "All Cities" },
-          },
-        ]);
-        setSelCity({
-          name: "All Cities",
-          value: { Id: "all", locationName: "All Cities" },
-        });
-        return;
-      }
-
-      // Format correctly based on actual API response structure
-      const formatted = [
-        {
-          name: "All Cities",
-          value: { Id: "all", locationName: "All Cities" },
-        },
-        ...rawList.map((city) => ({
-          name: city.locationName || city.name || "Unknown",
-          value: city,
-        })),
-      ];
-
-      console.log("Formatted cities for dropdown:", formatted);
-
-      setCities(formatted);
-      setSelCity(formatted[0]);
-    } catch (err) {
-      console.error("Error fetching cities by facility:", err);
-      setCities([
-        {
-          name: "All Cities",
-          value: { Id: "all", locationName: "All Cities" },
-        },
-      ]);
-      setSelCity({
-        name: "All Cities",
-        value: { Id: "all", locationName: "All Cities" },
-      });
-    }
-  };
-
-  // New function to fetch facilities by city
-  const fetchFacilitiesByCity = (cityId) => {
-    // If "all" is selected, fetch all facilities for the user
-    if (cityId === "all") {
-      driverMasterService
-        .getFacilitiesByUserId(userId)
-        .then((res) => {
-          const data = JSON.parse(res.data) || [];
-          setFacilities(data);
-          if (data.length > 0) {
-            setSelFacility(data[0]);
-            // When facility changes, fetch vendors
-            fetchVenders(data[0]?.Id);
-          }
-        })
-        .catch((err) => {
-          console.log("Error fetching facilities:", err);
-        });
-    } else {
-      // Fetch facilities by city ID
-      driverMasterService
-        .getFacilitiesByCity({ cityId: cityId }) // <-- Yeh API method exist nahi karta ya properly implement nahi hai
-        .then((res) => {
-          const data = JSON.parse(res.data) || [];
-          setFacilities(data);
-          if (data.length > 0) {
-            setSelFacility(data[0]);
-            // When facility changes, fetch vendors
-            fetchVenders(data[0]?.Id);
-          }
-        })
-        .catch((err) => {
-          console.log("Error fetching facilities by city:", err);
-        });
-    }
-  };
-
-  useEffect(() => {
-    console.log(
-      "------rrrrr------",
-      selectedPeriod,
-      selCity,
-      selFacility,
-      selectedTripType,
-      selVendor,
-      selCity
-    );
-
-    // yahan par selectedPeriod ko replace kar dein:
-    // selectedPeriod1 agar visiblex (custom calendar) open hai, warna selectedPeriod
-    const period = selectedPeriod1 || selectedPeriod;
-
-    let sDate = "";
-    let eDate = "";
-
-    const today = new Date();
-
-    if (period === "today") {
-      sDate = new Date();
-      eDate = new Date();
-    } else if (period === "week") {
-      const firstDayOfWeek = new Date(today);
-      firstDayOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
-
-      const lastDayOfWeek = new Date(today);
-      lastDayOfWeek.setDate(today.getDate() + (6 - today.getDay())); // Saturday
-
-      sDate = firstDayOfWeek;
-      eDate = lastDayOfWeek;
-    } else if (period === "month") {
-      const firstDayOfMonth = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        1
-      );
-
-      const lastDayOfMonth = new Date(
-        today.getFullYear(),
-        today.getMonth() + 1,
-        0
-      );
-
-      sDate = firstDayOfMonth;
-      eDate = lastDayOfMonth;
-    } else if (period === "year") {
-      const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
-      const lastDayOfYear = new Date(today.getFullYear(), 11, 31);
-
-      sDate = firstDayOfYear;
-      eDate = lastDayOfYear;
-    } else if (period === "quarter") {
-      const quarter = Math.floor(today.getMonth() / 3);
-      const firstMonthOfQuarter = quarter * 3;
-      const firstDayOfQuarter = new Date(
-        today.getFullYear(),
-        firstMonthOfQuarter,
-        1
-      );
-      const lastDayOfQuarter = new Date(
-        today.getFullYear(),
-        firstMonthOfQuarter + 3,
-        0
-      );
-
-      sDate = firstDayOfQuarter;
-      eDate = lastDayOfQuarter;
-    } else if (period === "last_7_days") {
-      sDate = new Date();
-      sDate.setDate(today.getDate() - 7);
-      eDate = today;
-    } else if (period === "last_30_days") {
-      sDate = new Date();
-      sDate.setDate(today.getDate() - 30);
-      eDate = today;
-    } else if (period === "last_90_days") {
-      sDate = new Date();
-      sDate.setDate(today.getDate() - 90);
-      eDate = today;
-    } else if (period === "last_365_days") {
-      sDate = new Date();
-      sDate.setDate(today.getDate() - 365);
-      eDate = today;
-    } else if (period === "last_12_months") {
-      sDate = new Date(
-        today.getFullYear() - 1,
-        today.getMonth(),
-        today.getDate()
-      );
-      eDate = today;
-    } else {
-      sDate = pendingDateFrom;
-      eDate = pendingDateTo;
-    }
-
-    const formatDate = (date) => date.toISOString().split("T")[0];
-    if (period && sDate && eDate) {
-      sDate = formatDate(sDate);
-      eDate = formatDate(eDate);
-    }
+    if (!selCity || !selFacility || !selVendor) return;
 
     setFilter({
-      sDate: sDate,
-      eDate: eDate,
-      locationid:
-        selCity?.value?.Id === "all" ? undefined : selCity?.value?.Id || null,
-      facilityid: selFacility?.Id || null,
-      vendorid: selVendor?.Id === "all" ? undefined : selVendor?.Id || null,
-      triptype: selectedTripType || "",
-      type: 1,
+      sDate: pendingDateFrom ? formatDateLocal(pendingDateFrom) : null,
+      eDate: pendingDateTo ? formatDateLocal(pendingDateTo) : null,
+      locationid: selCity?.Id === "all" ? undefined : selCity?.Id,
+      facilityid:
+        selFacility === "allFacility" || selFacility?.Id === "allFacility"
+          ? undefined
+          : selFacility,
+      vendorid: selVendor?.Id === "all" ? undefined : selVendor?.Id,
+      triptype: selectedTripType,
+      type,
     });
   }, [
-    selectedPeriod,
-    selectedPeriod1,
     selCity,
     selFacility,
-    selectedTripType,
     selVendor,
+    selectedTripType,
+    pendingDateFrom,
+    pendingDateTo,
+    type,
   ]);
-  const mapProps = {
-    facilityid: filter.facilityid,
-    sDate: filter.sDate,
-    triptype: filter.triptype,
-    type: 1,
-  };
-  //   const mapProps = {
-  //   facilityid: 1,
-  //   sDate: "2025-06-29",
-  //   triptype: "P",
-  //   type: 1
-  // };
-
-  const handleDateChange = (date) => {
-    setSelectedDate(date);
-  };
-
-  const handlePendingDateChange = (date) => {
-    setPendingDate(date);
-  };
-
+  // Ensure selVendor is always the actual object from venders array (not a new object)
   useEffect(() => {
-    if (pendingPeriod1 === "custom") return; // Don't override manual selection
+    if (venders && venders.length > 0) {
+      const allVendorObj = venders.find((v) => v.Id === "all");
+      if (allVendorObj) setSelVendor(allVendorObj);
+    }
+  }, [venders]);
 
-    const today = new Date();
-    let from = today;
-    let to = today;
+  // Sync pendingPeriod1 when calendar opens
+  useEffect(() => {
+    if (visibleCalendar) {
+      setPendingPeriod1(selectedPeriod1);
+    }
+  }, [visibleCalendar, selectedPeriod1]);
 
-    if (pendingPeriod1 === "today") {
-      from = to = today;
-    } else if (pendingPeriod1 === "yesterday") {
-      from = to = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() - 1
-      );
-    } else if (pendingPeriod1 === "last_7_days") {
-      from = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() - 6
-      );
-      to = today;
-    } else if (pendingPeriod1 === "last_30_days") {
-      from = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() - 29
-      );
-      to = today;
-    } else if (pendingPeriod1 === "last_90_days") {
-      from = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() - 89
-      );
-      to = today;
-    } else if (pendingPeriod1 === "last_12_months") {
-      from = new Date(
-        today.getFullYear() - 1,
-        today.getMonth(),
-        today.getDate()
-      );
-      to = today;
+  // Update date range when pendingPeriod1 changes and not custom
+  useEffect(() => {
+    if (pendingPeriod1 === "custom") return;
+
+    const now = new Date();
+    let from = now;
+    let to = now;
+    switch (pendingPeriod1) {
+      case "today":
+        from = to = now;
+        break;
+      case "yesterday":
+        from = to = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 1
+        );
+        break;
+      case "last_7_days":
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+        break;
+      case "last_30_days":
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        break;
+      case "last_90_days":
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
+        break;
+      case "last_12_months":
+        from = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        break;
+      default:
+        break;
     }
 
     setPendingDateFrom(from);
     setPendingDateTo(to);
   }, [pendingPeriod1]);
 
+  // Helper: Format date as local yyyy-mm-dd avoiding timezone problems
+  const formatDateLocal = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const year = d.getFullYear();
+    const month = (d.getMonth() + 1).toString().padStart(2, "0");
+    const day = d.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Update filter when selections change
+  useEffect(() => {
+    const period = selectedPeriod1;
+
+    let sDate = null,
+      eDate = null;
+
+    const now = new Date();
+
+    switch (period) {
+      case "today":
+        sDate = eDate = now;
+        break;
+      case "yesterday":
+        sDate = eDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 1
+        );
+        break;
+      case "last_7_days":
+        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+        eDate = now;
+        break;
+      case "last_30_days":
+        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        eDate = now;
+        break;
+      case "last_90_days":
+        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
+        eDate = now;
+        break;
+      case "last_12_months":
+        sDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        eDate = now;
+        break;
+      case "custom":
+        sDate = pendingDateFrom;
+        eDate = pendingDateTo;
+        break;
+      default:
+        sDate = pendingDateFrom;
+        eDate = pendingDateTo;
+    }
+
+    setFilter({
+      sDate: sDate ? formatDateLocal(sDate) : null,
+      eDate: eDate ? formatDateLocal(eDate) : null,
+      locationid: selCity?.Id === "all" ? undefined : selCity?.Id || "",
+      facilityid:
+        selFacility === "allFacility" || selFacility?.Id === "allFacility"
+          ? undefined
+          : selFacility || undefined,
+      vendorid:
+        selVendor?.Id === "all" ? undefined : selVendor?.Id || undefined,
+      triptype: selectedTripType || "",
+      type,
+    });
+  }, [
+    selectedPeriod1,
+    pendingDateFrom,
+    pendingDateTo,
+    selCity,
+    selFacility,
+    selVendor,
+    selectedTripType,
+    type,
+  ]);
+
+  // Fetch data functions
+  // const fetchAllCities = async () => {
+  //   try {
+  //     const response = await apiService.sp_getAllLocation();
+  //     let rawList = [];
+
+  //     if (typeof response === "string") rawList = JSON.parse(response);
+  //     else if (response?.data)
+  //       rawList = Array.isArray(response.data) ? response.data : [];
+  //     else if (Array.isArray(response)) rawList = response;
+
+  //     const formatted = [
+  //       ...rawList.map((city) => ({
+  //         name: city.locationName || city.name || "Unknown",
+  //         value: city,
+  //       })),
+  //     ];
+
+  //     setCities(formatted);
+
+  //     // Set default to All Cities option - ensure it's the first item
+  //     const allCitiesOption = formatted.find((city) => city.name === userLocationName );
+  //     // store nested value for consistency with Dropdown optionValue
+  //     setSelCity(allCitiesOption.value);
+
+  //     // Immediately fetch facilities for all cities
+  //     fetchFacilitiesByCity(allCitiesOption.value);
+  //   } catch (err) {
+  //     console.error("Error fetching cities:", err);
+  //     setCities([ ]);
+  //     setSelCity('');
+  //   }
+  // };
+
+  //   const fetchAllCities = async () => {
+  //   try {
+  //     const response = await apiService.sp_getAllLocation();
+  //     let rawList = [];
+
+  //     if (typeof response === "string") rawList = JSON.parse(response);
+  //     else if (response?.data)
+  //       rawList = Array.isArray(response.data) ? response.data : [];
+  //     else if (Array.isArray(response)) rawList = response;
+
+  //     // format for Dropdown
+  //     const formatted = rawList.map((city) => ({
+  //       name: city.locationName || city.name || "Unknown",
+  //       value: { Id: city.Id, locationName: city.locationName || city.name },
+  //     }));
+
+  //     setCities(formatted);
+
+  //     // find logged-in user's city
+  //     const userCity = formatted.find(
+  //       (c) =>
+  //         c.value.locationName?.toLowerCase() ===
+  //         userLocationName?.toLowerCase()
+  //     );
+
+  //     if (userCity) {
+  //       setSelCity(userCity.value);
+  //       fetchFacilitiesByCity(userCity.value.Id); // fetch facilities of that city
+  //     } else {
+  //       setSelCity(null);
+  //     }
+  //   } catch (err) {
+  //     console.error("Error fetching cities:", err);
+  //     setCities([]);
+  //     setSelCity(null);
+  //   }
+  // };
+  const fetchAllCities = async () => {
+    try {
+      const res = await apiService.sp_getAllLocation();
+      const rawList = typeof res === "string" ? JSON.parse(res) : res || [];
+
+      const formatted = rawList.map((city) => ({
+        name: city.locationName || city.name || "Unknown",
+        value: { Id: city.Id, locationName: city.locationName || city.name },
+      }));
+
+      setCities(formatted);
+
+      // Default: first city from API
+      const defaultCity = formatted[0]?.value || null;
+      setSelCity(defaultCity);
+
+      // Fetch facilities for that city
+      if (defaultCity?.Id) fetchFacilitiesByCity(defaultCity.Id);
+    } catch (err) {
+      console.error("Error fetching cities:", err);
+      setCities([]);
+      setSelCity(null);
+    }
+  };
+
+  // const fetchFacilitiesByCity = (cityId) => {
+  //   apiService
+  //     .Getchart_Facility({ cityId })
+  //     .then((res) => {
+  //       const data = JSON.parse(res.data) || [];
+  //       setFacilities(data);
+  //       setFilteredFacilities(data);
+
+  //       // find logged-in user's facility
+  //       const userFaci = data.find(
+  //         (f) =>
+  //           f.facilityName?.toLowerCase() === userFacilityName?.toLowerCase()
+  //       );
+  //       if (userFaci) {
+  //         setSelFacility(userFaci.Id);
+  //       } else {
+  //         setSelFacility(null);
+  //       }
+  //     })
+  //     .catch(() => {
+  //       setFacilities([]);
+  //       setFilteredFacilities([]);
+  //       setSelFacility(null);
+  //     });
+  // };
+  const fetchFacilitiesByCity = async (cityId) => {
+    try {
+      const res = await apiService.Getchart_Facility({ locationid: cityId });
+      const data = typeof res === "string" ? JSON.parse(res) : res || [];
+
+      setFacilities(data);
+      setFilteredFacilities(data);
+
+      // Default: first facility from API
+      const defaultFacility = data[0]?.Id || null;
+      setSelFacility(defaultFacility);
+
+      // Fetch vendors for this facility
+      if (defaultFacility) fetchVendors(defaultFacility);
+    } catch (err) {
+      console.error("Error fetching facilities:", err);
+      setFacilities([]);
+      setFilteredFacilities([]);
+      setSelFacility(null);
+    }
+  };
+
+  const fetchFacilities = () => {
+    apiService
+      .Getchart_Facility(locationid)
+      .then((res) => {
+        const data = JSON.parse(res.data) || [];
+        setFacilities(data);
+        // Add 'All Facility' as the first option
+        // const allFacilityOption = { Id: "allFacility", facilityName: "All Facility" };
+        const facilitiesWithAll = [...data];
+
+        const cityFacilities = facilities.filter(
+          (facility) => facility.locationId === userLocationName
+        );
+        setFilteredFacilities(cityFacilities);
+
+        if (cityFacilities.length > 0) {
+          setSelFacility(userFacilityName);
+        } else {
+          setFilteredFacilities(facilitiesWithAll);
+
+          let cfaci = facilitiesWithAll.find(
+            (faci) => faci.facilityName === userFacilityName
+          );
+          if (cfaci) {
+            setSelFacility(cfaci.Id);
+          } else {
+            setSelFacility("");
+          }
+        }
+      })
+      .catch(() => {
+        setFacilities([]);
+        setFilteredFacilities([]);
+        //setSelFacility(userFacilityName);
+      });
+  };
+
+  // const fetchFacilitiesByCity = (cityId) => {
+  //   // if (cityId === "all") {
+  //   //   fetchFacilities();
+  //   // } else {
+  //     driverMasterService
+  //       .getFacilities({ cityId })
+  //       .then((res) => {
+  //         const data = JSON.parse(res.data) || [];
+  //         setFacilities(data);
+  //         // Add 'All Facility' as the first option
+  //         // const allFacilityOption = { Id: "allFacility", facilityName: "All Facility" };
+  //         const facilitiesWithAll = [...data];
+  //         setFilteredFacilities(facilitiesWithAll);
+  //         setSelFacility(userFacilityName || '');
+  //       })
+  //       .catch(() => {
+  //         setFacilities([]);
+  //         setFilteredFacilities([]);
+  //         setSelFacility(userFacilityName);
+  //       });
+  //   // }
+  // };
+
+  // const fetchVenders = (facilityId) => {
+  //   setSelVendor(null); // Reset before fetching
+  //   let param = {};
+  //   // If facilityId is null, undefined, or empty string, fetch all vendors
+  //   if (facilityId && facilityId !== "allFacility" && facilityId !== "") {
+  //     param.facilityid = facilityId;
+  //   }
+  //   driverMasterService
+  //     .getVenders(param)
+  //     .then((res) => {
+  //       const data = JSON.parse(res.data) || [];
+  //       const allVendorOption = { vendorName: "All Vendor", Id: "all" };
+  //       const vendorList = [allVendorOption, ...data];
+  //       setVenders(vendorList);
+  //       // Always select All Vendor by default
+  //       setSelVendor(allVendorOption);
+  //     })
+  //     .catch(() => {
+  //       setVenders([]);
+  //       setSelVendor(null);
+  //     });
+  // };
+  useEffect(() => {
+    if (selFacility) {
+      fetchVendors(selFacility);
+    }
+  }, [selFacility]);
+
+  const fetchVendors = async (facilityId) => {
+    try {
+      const res = await apiService.sp_getVendorByFac({
+        facilityid: facilityId,
+      });
+      const data = typeof res === "string" ? JSON.parse(res) : res || [];
+
+      const allVendorOption = { vendorName: "All Vendor", Id: "all" };
+      setVenders([allVendorOption, ...data]);
+      setSelVendor(allVendorOption); // always default
+    } catch (err) {
+      console.error("Error fetching vendors:", err);
+      setVenders([]);
+      setSelVendor(null);
+    }
+  };
+
+  // Handlers
+  // const handleCityChange = (e) => {
+  //   // With optionValue="value", e.value is the nested city object
+  //   const selected = e.value;
+  //   setSelCity(selected);
+
+  //   // Reset facility when city changes
+  //   setSelFacility(userFacilityName);
+
+  //   const cityId = selected?.Id;
+
+  //   // Filter facilities based on selected city
+  //   if (cityId === "all") {
+  //     setFilteredFacilities(facilities);
+  //     if (facilities.length > 0) {
+  //       setSelFacility(facilities[0]?.Id);
+  //     }
+  //   } else {
+  //     const cityFacilities = facilities.filter(
+  //       (facility) => facility.locationId === cityId
+  //     );
+  //     setFilteredFacilities(cityFacilities);
+  //     if (cityFacilities.length > 0) {
+  //       setSelFacility(cityFacilities[0]?.Id);
+  //     }
+  //   }
+  // };
+  const handleCityChange = (e) => {
+    const selected = e.value;
+    setSelCity(selected);
+    fetchFacilitiesByCity(selected?.Id);
+  };
+
+  const handleFacilityChange = (e) => {
+    const facilityId = e.value;
+    setSelFacility(facilityId);
+    fetchVendors(facilityId);
+  };
+  const handleChange = (e) => {
+    const value = e.target.value;
+    setType(value === "2" ? 2 : 1); // Set type based on selection
+  };
+  const handleVendorChange = (e) => {
+    setSelVendor(e.value);
+  };
   return (
     <div className="container-fluid p-0" style={{ background: "#f9f9f9" }}>
-      {/* Header */}
-      <Header pageTitle={"Dashboard"} />
-
-      {/* Sidebar */}
+      <Header pageTitle="Dashboard" />
       <Sidebar />
-
       <div className="middle">
         <div className="row mb-4">
           <div className="col-12">
-            {/* <div className={`cardx mt-3 p-3 border-0 p-3 ${scrolled ? "filterFix" : ""}`}> */}
             <div
-              className={`cardx mt-3 p-3 border-0 ${scrolled ? "filterFix shadow" : "hidden"
-                }`}
+              className={`cardx mt-3 p-3 border-0 ${
+                scrolled ? "filterFix shadow" : "hidden"
+              }`}
             >
               <div className="row d-flex align-items-center">
-                <div className="col-4 d-none">
+                <div className="col-12 col-md-12 col-lg-12 col-xl-4">
                   <TabMenu
-                    model={items}
+                    model={tabItems}
                     activeIndex={activeIndex}
                     onTabChange={(e) => setActiveIndex(e.index)}
                   />
                 </div>
-                <div className="col-12">
+                <div className="col-12 col-md-12 col-lg-12 col-xl-8 mt-3 mt-xl-0">
                   <div className="row">
-                    <div className="col-2 position-relative">
-                      {/* <Dropdown
-                        options={periodOptions}
-                        optionLabel="label"
-                        value={selectedPeriod}
-                        onChange={(e) => setSelectedPeriod(e.value)}
-                        className="w-100"
-                        placeholder="Select Period"
-                      /> */}
+                    <div className="col position-relative">
+                      <label>Date</label>
                       <div
                         className="custom-select"
-                        onClick={() => setVisiblex((prev) => !prev)}
+                        onClick={() => setVisibleCalendar((v) => !v)}
                       >
-                        📅{" "}
+                        <BiCalendar style={{ marginRight: 4 }} />
                         {periodOptions1.find(
                           (opt) => opt.value === selectedPeriod1
                         )?.label || "Custom Calendar"}
                       </div>
-                      {/* <div className="custom-calender" style={{ display: visible ? 'none' : 'block' }}>
-                        1
-                      </div> */}
-                      {visiblex && (
+                      {visibleCalendar && (
                         <div className="custom-calender" ref={calendarRef}>
                           <div className="row">
                             <div className="col-3">
                               <div className="time-filter">
                                 <ul className="time-filter-list">
-                                  {periodOptions1.map((option) => (
+                                  {periodOptions1.map(({ label, value }) => (
                                     <li
-                                      key={option.value}
-                                      className={`time-filter-item ${pendingPeriod1 === option.value
-                                        ? "active"
-                                        : ""
-                                        }`}
-                                      onClick={() =>
-                                        setPendingPeriod1(option.value)
-                                      }
+                                      key={value}
+                                      className={`time-filter-item ${
+                                        pendingPeriod1 === value ? "active" : ""
+                                      }`}
+                                      onClick={() => setPendingPeriod1(value)}
                                     >
-                                      {option.label}
+                                      {label}
                                     </li>
                                   ))}
                                 </ul>
@@ -666,16 +710,11 @@ const Dashboard = () => {
                                 type="text"
                                 className="form-control mb-3 form-control-sm"
                                 value={
-                                  pendingDateFrom
-                                    ? pendingDateFrom.toLocaleDateString(
-                                      "en-GB",
-                                      {
-                                        day: "2-digit",
-                                        month: "long",
-                                        year: "numeric",
-                                      }
-                                    )
-                                    : ""
+                                  pendingDateFrom?.toLocaleDateString("en-GB", {
+                                    day: "2-digit",
+                                    month: "long",
+                                    year: "numeric",
+                                  }) || ""
                                 }
                                 readOnly
                               />
@@ -692,16 +731,11 @@ const Dashboard = () => {
                                 type="text"
                                 className="form-control mb-3 form-control-sm"
                                 value={
-                                  pendingDateTo
-                                    ? pendingDateTo.toLocaleDateString(
-                                      "en-GB",
-                                      {
-                                        day: "2-digit",
-                                        month: "long",
-                                        year: "numeric",
-                                      }
-                                    )
-                                    : ""
+                                  pendingDateTo?.toLocaleDateString("en-GB", {
+                                    day: "2-digit",
+                                    month: "long",
+                                    year: "numeric",
+                                  }) || ""
                                 }
                                 readOnly
                               />
@@ -711,13 +745,12 @@ const Dashboard = () => {
                                   setPendingPeriod1("custom");
                                 }}
                                 value={pendingDateTo}
-                              // activeStartDate={new Date(2025, 7, 1)} // <-- yeh August 2025 dikhata hai
                               />
                             </div>
                             <div className="col-12 mt-3 text-end">
                               <button
                                 className="btn btn-secondary me-2"
-                                onClick={() => setVisiblex(false)}
+                                onClick={() => setVisibleCalendar(false)}
                               >
                                 Close
                               </button>
@@ -725,19 +758,14 @@ const Dashboard = () => {
                                 className="btn btn-primary"
                                 onClick={() => {
                                   setSelectedPeriod1(pendingPeriod1);
-                                  setSelectedDate(pendingDateFrom);
-                                  setVisiblex(false);
+                                  setVisibleCalendar(false);
                                   setFilter((prev) => ({
                                     ...prev,
                                     sDate: pendingDateFrom
-                                      ? pendingDateFrom
-                                        .toISOString()
-                                        .split("T")[0]
+                                      ? formatDateLocal(pendingDateFrom)
                                       : null,
                                     eDate: pendingDateTo
-                                      ? pendingDateTo
-                                        .toISOString()
-                                        .split("T")[0]
+                                      ? formatDateLocal(pendingDateTo)
                                       : null,
                                   }));
                                 }}
@@ -749,62 +777,52 @@ const Dashboard = () => {
                         </div>
                       )}
                     </div>
+
                     <div className="col">
+                      <label>City</label>
                       <Dropdown
-                        value={selCity || cities[0] || null} // <-- yeh line change karein
+                        value={selCity}
                         optionLabel="name"
-                        onChange={(e) => {
-                          console.log("Selected city:", e.value);
-                          changeCity(e); // Only call changeCity, it sets selCity
-                        }}
+                        optionValue="value"
+                        onChange={handleCityChange}
                         options={cities}
                         placeholder="Select City"
                         className="w-100"
+                        showClear={false}
                       />
                     </div>
+
                     <div className="col">
+                      <label>Facility</label>
                       <Dropdown
-                        value={selFacility || 1}
-                        onChange={(e) => {
-                          console.log("Selected facility:", e.value);
-                          setSelFacility(e.value);
-                          // Do NOT call fetchCitiesByFacility here, so city selection is preserved
-                          // If you need to update cities, do it based on business logic, but keep selCity unchanged
-                        }}
-                        options={filterFacilities}
+                        value={selFacility}
                         optionLabel="facilityName"
+                        optionValue="Id"
+                        onChange={handleFacilityChange}
+                        options={filteredFacilities}
                         placeholder="Select Facility"
                         className="w-100"
                       />
                     </div>
 
-                    <div className="col-2">
-                      {/* <Dropdown
-                        id="tripType"
-                        value={selectedTripType || "P"}
-                        options={tripTypeOptions}
-                        onChange={(e) => setSelectedTripType(e.value)}
-                        placeholder="Select Trip Type"
-                        className="w-100"
-                      /> */}
+                    <div className="col">
+                      <label>Trip Type</label>
                       <Dropdown
-                        id="tripType"
                         value={selectedTripType}
                         options={tripTypeOptions}
-                        onChange={(e) => {
-                          console.log("Selected trip type:", e.value);
-                          setSelectedTripType(e.value);
-                        }}
+                        onChange={(e) => setSelectedTripType(e.value)}
                         optionLabel="label"
                         optionValue="value"
                         placeholder="Select Trip Type"
                         className="w-100"
                       />
                     </div>
-                    <div className="col-2">
+
+                    <div className="col">
+                      <label>Vendor</label>
                       <Dropdown
                         value={selVendor}
-                        onChange={(e) => setSelVendor(e.value)}
+                        onChange={handleVendorChange}
                         options={venders}
                         optionLabel="vendorName"
                         placeholder="Select Vendor"
@@ -818,254 +836,247 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Tab Content */}
         <div className="row">
           <div className="col-12">
             {(() => {
               switch (activeIndex) {
                 case 0:
                   return (
-                    <div>
-                      {/* selectedPeriod */}
+                    <>
+                      {" "}
+                      {/* {console.log("🔍 Routing Insights Filter:", filter)} */}
                       <RiStats filter={filter} />
-                      {/* <VpStats filter={filter} /> */}
                       <div className="row mt-4">
-                        {/* <div className="col-4 mb-3 d-none">
-                          <div
-                            className="cardx border-0 p-3"
-                            style={{ height: "40vh", width: "100%" }}
-                          >
-                            <h6 className="d-flex justify-content-between">
-                              Route Distribution
-                              <Tooltip
-                                target="#expand-route-distribution"
-                                content="Expand Map"
-                                position="top"
-                              />
-                              <h6 className="d-flex justify-content-between">
-                                <span
-                                  id="expand-route-distribution"
-                                  style={{ cursor: "pointer" }}
-                                  onClick={() => setDialogVisible(true)}
-                                >
-                                  <BiExpand />
+                        <div
+                          className="col-6 mb-3"
+                          // style={{ height: "585px", position: "relative" }}
+                        >
+                          <div className="cardx border-0 p-3 h-100">
+                            <h6 className="d-flex justify-content-between align-items-center">
+                              <div className="d-flex align-items-center">
+                                <span className="me-2">
+                                  {checked ? "Routes" : "Employees"} Density
                                 </span>
-                              </h6>
+                              </div>
+                              {/* <div className="d-flex align-items-center">
+                                  <span className="me-2" style={{ fontSize: "12px", color: "#666" }}>
+                                    Employees
+                                  </span>
+                                  <InputSwitch 
+                                    checked={checked} 
+                                    onChange={(e) => {
+                                      setChecked(e.value);
+                                      setType(e.value ? 2 : 1);
+                                    }} 
+                                    style={{ transform: "scale(0.8)" }}
+                                  />
+                                  <span className="ms-2" style={{ fontSize: "12px", color: "#666" }}>
+                                    Routes
+                                  </span>
+                                </div> */}
+
+                              <div className="d-flex align-items-center">
+                                <select
+                                  className="form-select form-select-map pointer"
+                                  value={type}
+                                  onChange={handleChange}
+                                >
+                                  <option value="1">Employees</option>
+                                  <option value="2">Routes</option>
+                                </select>
+                                <div className="ms-3 ">
+                                  <Tooltip
+                                    target="#expand-route-distribution"
+                                    content="Expand Map"
+                                    position="top"
+                                  />
+                                  <span
+                                    id="expand-route-distribution"
+                                    style={{ cursor: "pointer" }}
+                                    onClick={() => setDialogVisible(true)}
+                                  >
+                                    <BiExpand />
+                                  </span>
+                                </div>
+                              </div>
                             </h6>
                             <hr />
+                            {/* {console.log(
+                              "Rendering LeafletHeatMap with filter:",
+                              filter
+                            )} */}
                             <LeafletHeatMap filter={filter} />
                           </div>
-                        </div> */}
-                        {/* <div className="col-8 mb-3">
-                          <RiDropSafeChart filter={filter} />
-                        </div> */}
-                        {/* <div className="col-4 mb-3">
+                        </div>
+                        <div className="col-6 mb-3">
+
+                          {/* {console.log(
+                            "Rendering RiShiftEmployeeOccupancy with filter:",
+                            filter
+                          )} */}
+                          <div>
+                            
+                          </div>
                           <RiShiftEmployeeOccupancy filter={filter} />
-                        </div> */}
-                        <div className="col-6 mb-3">
-                          <RiNormalAdhoc filter={filter} />
                         </div>
-                        <div className="col-6 mb-3">
-                          <RiShiftCompletionPending filter={filter} />
-                        </div>
-                        <div className="col-12">
+                        <div className="col-8">
+                          {/* {console.log(
+                            "Rendering RiPickDrop with filter:",
+                            filter
+                          )} */}
                           <RiPickDrop filter={filter} />
                         </div>
+                        <div className="col-4 mb-3">
+                          {/* {console.log(
+                            "Rendering RiShiftCompletionPending with filter:",
+                            filter
+                          )} */}
+                          <RiShiftCompletionPending filter={filter} />
+                        </div>
                       </div>
-                    </div>
+                      <div className="row mt-3 d-flex align-items-stretch">
+                        <div className="col-6 mb-3 h-100">
+                          <RiDropSafeChart filter={filter} />
+                        </div>
+                        <div className="col-6 mb-3 h-100">
+                          <RiNormalAdhoc filter={filter} />
+                        </div>
+                      </div>
+                      <div className="row d-flex">
+                        <div className="col-6">
+                          <div className="card h-100">
+                            1 <br />
+                            2
+                          </div>
+                        </div>
+                        <div className="col-6">
+                            <div className="card h-100">1</div>
+                          </div>
+                      </div>
+                    </>
                   );
                 case 1:
                   return (
-                    <div>
-                      <div className="row">
-                        <VpStats filter={filter} />
-                      </div>
-
-                      <div className="row mt-4">
+                    <>
+                      <VpStats filter={filter} />
+                      <div className="row mt-4 mb-3">
                         <div className="col-4">
-                          <div className="cardx border-0 p-3">
-                            <h6>Trip summary</h6>
-                            <hr />
-                            <Image
-                              src="src/assets/chart1.png"
-                              alt="Image"
-                              className="img-fluid"
-                            />
-                          </div>
+                          <VpVehicleDistribution filter={filter} />
                         </div>
-                        <div className="col-4">
-                          <div className="cardx border-0 p-3">
-                            <h6>Vehicle Distribution</h6>
-                            <hr />
-                            <Image
-                              src="src/assets/chart1.png"
-                              alt="Image"
-                              className="img-fluid"
-                            />
-                          </div>
-                        </div>
-                        <div className="col-4">
-                          <div className="cardx border-0 p-3">
+                        <div className="col-8">
+                          <RouteBreakDuty filter={filter} />
+                          {/* <div className="cardx border-0 p-3">
                             <h6>Routes vs Breakdowns vs Duty Hours</h6>
                             <hr />
                             <Image
                               src="src/assets/chart4.png"
-                              alt="Image"
+                              alt="Routes vs Breakdowns"
                               className="img-fluid"
+                            />
+                          </div> */}
+                        </div>
+                      </div>
+                      <div className="row align-items-stretch">
+                        <div className="col-4 mb-3">
+                          <FleetEfficiency filter={filter} />
+                        </div>
+                        <div className="col-4 mb-3">
+                          <DriverEfficiency filter={filter} />
+                        </div>
+
+                        {/* <div className="col-4 mb-3">
+                          <TripEfficiency />
+                        </div> */}
+                        <div className="col-4 mb-3">
+                          <VehicleFragmentation filter={filter} />
+                        </div>
+                      </div>
+                      <div className="row">
+                        <div className="col-4 mb-3">
+                          <DriverFragmentation filter={filter} />
+                        </div>
+                      </div>
+                    </>
+                  );
+                case 2:
+                  return (
+                    <>
+                      <div className="row mb-3">
+                        <div className="col-12">
+                          <div className="cardx border-0 p-3">
+                            <iframe
+                              title="Google Map"
+                              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d28069.195720471515!2d77.01584120702411!3d28.42983216765682!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d190d4d1ab7f9%3A0x9edd43ec9fba1ce9!2sAccenture%20DDC7x!5e0!3m2!1sen!2sin!4v1748521289659!5m2!1sen!2sin"
+                              width="100%"
+                              height="450"
+                              style={{ border: 0 }}
+                              allowFullScreen
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
                             />
                           </div>
                         </div>
                       </div>
                       <div className="row">
-                        <div className="col-4">
-                          <div className="cardx">
-                            <div className="cardx border-0 p-3">
-                              <h6>Fleet Efficiency</h6>
-                              <hr />
-                              <p>Data Loading...</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-4">
-                          <div className="cardx">
-                            <div className="cardx border-0 p-3">
-                              <h6>Driver Efficiency</h6>
-                              <hr />
-                              <p>Data Loading...</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-4 mb-3">
-                          <div className="cardx">
-                            <div className="cardx border-0 p-3">
-                              <h6>Trip Efficiency</h6>
-                              <hr />
-                              <p>Data Loading...</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-4">
-                          <div className="cardx">
-                            <div className="cardx border-0 p-3">
-                              <h6>Driver Fragmentation</h6>
-                              <hr />
-                              <p>Data Loading...</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-4">
-                          <div className="cardx">
-                            <div className="cardx border-0 p-3">
-                              <h6>Vehicle Fragmentation</h6>
-                              <hr />
-                              <p>Data Loading...</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-4">
-                          <div className="cardx">
-                            <div className="cardx border-0 p-3">
-                              <h6>Trip Analysis</h6>
-                              <hr />
-                              <p>Data Loading...</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="col-6 mt-3">
-                          <div className="cardx">
-                            <div className="cardx border-0 p-3">
-                              <h6>Status by Pick Summary</h6>
-                              <hr />
-                              <p>Data Loading...</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="col-6 mt-3">
-                          <div className="cardx">
-                            <div className="cardx border-0 p-3">
-                              <h6>Status by Drop Summary</h6>
-                              <hr />
-                              <p>Data Loading...</p>
-                            </div>
+                        <div className="col-12">
+                          <div className="cardNew w-100 p-2">
+                            <ul>
+                              <li>
+                                <span className="overline_text text-primary">
+                                  Average Trips per day 2500
+                                </span>
+                                <h3>
+                                  <strong>1,042</strong>
+                                </h3>
+                                <span className="subtitle_sm">Total Trips</span>
+                              </li>
+                              <li>
+                                <span className="overline_text text-primary">
+                                  1.3 Trips per vehicle
+                                </span>
+                                <h3>
+                                  <strong>784</strong>
+                                </h3>
+                                <span className="subtitle_sm">
+                                  Vehicles Deployed
+                                </span>
+                              </li>
+                              <li>
+                                <span className="overline_text text-primary">
+                                  0.2% of Total
+                                </span>
+                                <h3>
+                                  <strong>26</strong>
+                                </h3>
+                                <span className="subtitle_sm">B2B Routes</span>
+                              </li>
+                              <li>
+                                <span className="overline_text text-primary">
+                                  Overall Breakdowns 30
+                                </span>
+                                <h3>
+                                  <strong>12</strong>
+                                </h3>
+                                <span className="subtitle_sm">Breakdowns</span>
+                              </li>
+                              <li>
+                                <span className="overline_text text-primary">
+                                  Lowest is 22 Routes for GGN1
+                                </span>
+                                <h3>
+                                  <strong>109</strong>
+                                </h3>
+                                <span className="subtitle_sm">
+                                  Single Employee Routes
+                                </span>
+                              </li>
+                            </ul>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                case 2:
-                  return (
-                    <div className="row">
-                      <div className="col-12 mb-3">
-                        <div className="cardx border-0 p-3">
-                          <iframe
-                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d28069.195720471515!2d77.01584120702411!3d28.42983216765682!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d190d4d1ab7f9%3A0x9edd43ec9fba1ce9!2sAccenture%20DDC7x!5e0!3m2!1sen!2sin!4v1748521289659!5m2!1sen!2sin"
-                            width="100%"
-                            height="450"
-                            style={{ border: 0 }} // Use an object for styles
-                            allowFullScreen=""
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade" // Important for API key restrictions
-                            title="Google Map" // Add a title for accessibility
-                          ></iframe>
-                        </div>
-                      </div>
-                      <div className="col-12">
-                        <div className="cardNew w-100 p-2">
-                          <ul className="">
-                            <li>
-                              <span className="overline_text text-primary">
-                                Average Trips per day 2500
-                              </span>
-                              <h3>
-                                <strong>1,042</strong>
-                              </h3>
-                              <span className="subtitle_sm">Total Trips</span>
-                            </li>
-                            <li>
-                              <span className="overline_text text-primary">
-                                1.3 Trips per vehicle
-                              </span>
-                              <h3>
-                                <strong>784</strong>
-                              </h3>
-                              <span className="subtitle_sm">
-                                Vehicles Deployed
-                              </span>
-                            </li>
-                            <li>
-                              <span className="overline_text text-primary">
-                                0.2% of Total
-                              </span>
-                              <h3>
-                                <strong>26</strong>
-                              </h3>
-                              <span className="subtitle_sm">B2B Routes</span>
-                            </li>
-                            <li>
-                              <span className="overline_text text-primary">
-                                Overall Breakdowns 30
-                              </span>
-                              <h3>
-                                <strong>12</strong>
-                              </h3>
-                              <span className="subtitle_sm">Breakdowns</span>
-                            </li>
-                            <li>
-                              <span className="overline_text text-primary">
-                                Lowest is 22 Routes for GGN1
-                              </span>
-                              <h3>
-                                <strong>109</strong>
-                              </h3>
-                              <span className="subtitle_sm">
-                                Single Employee Routes
-                              </span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
+                    </>
                   );
                 default:
                   return null;
@@ -1074,20 +1085,34 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      {/* Move Dialog outside card/flex container for proper overlay */}
+
+      {/* Heatmap dialog */}
       <Dialog
-        header="Route Distribution"
+        header={`${checked ? "Routes" : "Employees"} Density`}
         visible={dialogVisible}
         style={{ width: "90vw", minHeight: "90vh" }}
         onHide={() => setDialogVisible(false)}
       >
-        <div className="m-0" style={{ height: "78vh", width: "100%" }}>
-          <LeafletHeatMap filter={filter} />
+        <div
+          className="m-0 bg-light"
+          style={{ height: "710px", width: "100%", position: "relative" }}
+        >
+          <LeafletHeatMap
+            filter={filter}
+            style={{
+              height: "710px",
+              width: "100%",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              bottom: 0,
+              right: 0,
+            }}
+          />
         </div>
       </Dialog>
-    </div >
+    </div>
   );
 };
-export default Dashboard;
 
-console.log("Available API methods:", Object.keys(driverMasterService));
+export default Dashboard;

@@ -562,9 +562,9 @@ export const apiService = {
       const response = await api.post("/Getchart_RouteCount", {
         sDate: credentials.sDate,
         eDate: credentials.eDate,
-        locationid: credentials.locationid || 0,
-        facilityid: credentials.facilityid || 0,
-        vendorid: credentials.vendorid || 0,
+        locationid: credentials.locationid || "",
+        facilityid: credentials.facilityid || "",
+        vendorid: credentials.vendorid || "",
         triptype: credentials.triptype || "",
       });
 
@@ -575,16 +575,42 @@ export const apiService = {
       throw error.response?.data || error.message;
     }
   },
-
+  Getchart_Facility: async (params = {}) => {
+    try {
+      // Accepts params object, sends locationid if provided
+      const requestBody = {};
+      if (params.locationid !== undefined && params.locationid !== null) {
+        requestBody.locationid = params.locationid;
+      }
+      const response = await api.post("/Getchart_Facility", requestBody);
+      // console.log("Getchart_Facility ---->", response);
+      return response.data;
+    } catch (error) {
+      console.log("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+  sp_getVendorByFac: async (params) => {
+    try {
+      const response = await api.post("/sp_getVendorByFac", {
+        facilityid: params.facilityid || 0,
+      });
+      // console.log("sp_getVendorByFac ---->", response);
+      return response.data;
+    } catch (error) {
+      console.log("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
   //Dashboard Map Api's
   GetPickDropcount_shiftwise: async (credentials) => {
     try {
       const response = await api.post("/GetPickDropcount_shiftwise", {
         sDate: credentials.sDate,
         eDate: credentials.eDate,
-        locationid: credentials.locationid || 0,
-        facilityid: credentials.facilityid || 0,
-        vendorid: credentials.vendorid || 0,
+        locationid: credentials.locationid || "",
+        facilityid: credentials.facilityid || "",
+        vendorid: credentials.vendorid || "",
         triptype: credentials.triptype || "",
       });
 
@@ -603,13 +629,13 @@ export const apiService = {
       const response = await api.post("/GetNormalAdhoc_shiftwise", {
         sDate: credentials.sDate,
         eDate: credentials.eDate,
-        locationid: credentials.locationid || 0,
-        facilityid: credentials.facilityid || 0,
-        vendorid: credentials.vendorid || 0,
+        locationid: credentials.locationid || "",
+        facilityid: credentials.facilityid || "",
+        vendorid: credentials.vendorid || "",
         triptype: credentials.triptype || "",
       });
 
-      // //console.log(
+      // console.log(
       //   "Get Normal Adhoc Shiftwise Response -------->:",
       //   response.data
       // );
@@ -620,21 +646,106 @@ export const apiService = {
       throw error.response?.data || error.message;
     }
   },
-
+  getchart_monthlyRoutedetails: async (params) => {
+    try {
+      const response = await api.post("/getchart_monthlyRoutedetails", {
+        sDate: params.sDate,
+        eDate: params.eDate,
+        locationid: params.locationid,
+        facilityid: params.facilityid,
+        vendorid: params.vendorid,
+        triptype: params.triptype,
+      });
+      // Check if response.data is a string and try to parse it
+      if (typeof response.data === 'string') {
+        try {
+          return JSON.parse(response.data);
+        } catch (parseError) {
+          console.log("JSON Parse Error:", parseError);
+          return response.data; // Return as is if parsing fails
+        }
+      }
+      return response.data;
+    } catch (error) {
+      console.log("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+  getchart_Efficiency: async (params) => {
+    try {
+      const response = await api.post("/getchart_Efficiency", {
+        sDate: params.sDate,
+        eDate: params.eDate,
+        locationid: params.locationid,
+        facilityid: params.facilityid,
+        vendorid: params.vendorid,
+        triptype: params.triptype,
+      });
+      return response.data;
+    } catch (error) {
+      console.log("API Error:", error);
+      throw error.response.data || error.message;
+    }
+  },
+  getchart_VehFrag: async (params) => {
+    try {
+      const response = await api.post("/getchart_VehFrag", {
+        sDate: params.sDate,
+        eDate: params.eDate,
+        locationid: params.locationid,
+        facilityid: params.facilityid,
+        vendorid: params.vendorid,
+        triptype: params.triptype,
+      });
+      return response.data;
+    } catch (error) {
+      console.log("API Error:", error);
+      throw error.response.data || error.message;
+    }
+  },
+  getchart_vehDist: async (params) => {
+    try {
+      const response = await api.post("/getchart_vehDist", {
+        sDate: params.sDate,
+        eDate: params.eDate,
+        locationid: params.locationid,
+        facilityid: params.facilityid,
+        vendorid: params.vendorid,
+        triptype: params.triptype,
+      });
+      return response.data;
+    } catch (error) {
+      console.log("API Error:", error);
+      throw error.response.data || error.message;
+    }
+  },
+  GetChart_OverSpeedcount: async (params) => {
+    try {
+      const response = await api.post("/GetChart_OverSpeedcount", {
+        sDate: params.sDate,
+        eDate: params.eDate,
+        locationid: params.locationid,
+        facilityid: params.facilityid,
+        vendorid: params.vendorid,
+        triptype: params.triptype,
+      });
+      return response.data;
+    } catch (error) {
+      console.log("API Error:", error);
+      throw error.response.data || error.message;
+    }
+  },
   // Drop Safe Overview
   GetDropSafe_shiftwise: async (credentials) => {
     try {
       const response = await api.post("/GetDropSafe_shiftwise", {
         sDate: credentials.sDate,
         eDate: credentials.eDate,
-        locationid: credentials.locationid,
-        facilityid: credentials.facilityid,
-        vendorid: credentials.vendorid,
-        triptype: credentials.triptype,
+        locationid: credentials.locationid || "",
+        facilityid: credentials.facilityid || "",
+        vendorid: credentials.vendorid || "",
+        triptype: credentials.triptype || "",
       });
-
-      //console.log("Drop Safe Overview Response API.JS -------->:", response.data);
-
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -667,9 +778,9 @@ export const apiService = {
       const response = await api.post("/getchart_CancelReallocation", {
         sDate: credentials.sDate,
         eDate: credentials.eDate,
-        locationid: credentials.locationid || 0,
-        facilityid: credentials.facilityid || 0,
-        vendorid: credentials.vendorid || 0,
+        locationid: credentials.locationid || "",
+        facilityid: credentials.facilityid || "",
+        vendorid: credentials.vendorid || "",
         triptype: credentials.triptype || "",
       });
 
@@ -710,12 +821,12 @@ export const apiService = {
       const response = await api.post("/getchart_completePending", {
         sDate: body.sDate,
         eDate: body.eDate,
-        locationid: body.locationid || 0,
-        facilityid: body.facilityid || 0,
-        vendorid: body.vendorid || 0,
+        locationid: body.locationid || "",
+        facilityid: body.facilityid || "",
+        vendorid: body.vendorid || "",
         triptype: body.triptype || "",
       });
-      // console.log("Shift Completion Vs Pending -------->:", response.data);
+      //console.log("Shift Completion Vs Pending -------->:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -723,10 +834,11 @@ export const apiService = {
     }
   },
 
+
   sp_getAllLocation: async () => {
     try {
       const response = await api.post("/sp_getAllLocation");
-      //console.log("get AllLocation DashBoard ---->", response);
+      // console.log("get AllLocation DashBoard ---->", response);
       return response.data;
     } catch (error) {
       console.log("API Error:", error);
@@ -740,15 +852,11 @@ export const apiService = {
       const response = await api.post("/GetEmpOccupancy_shiftwise", {
         sDate: body.sDate,
         eDate: body.eDate,
-        locationid: body.locationid || 0,
-        facilityid: body.facilityid || 0,
-        vendorid: body.vendorid || 0,
+        locationid: body.locationid || "",
+        facilityid: body.facilityid || "",
+        vendorid: body.vendorid || "",
         triptype: body.triptype || "",
       });
-      // console.log(
-      //   "Shift/Employee/Occupancy per Trip -------->:",
-      //   response.data
-      // );
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -756,12 +864,12 @@ export const apiService = {
     }
   },
 
-  getRoutedEmpGeocode: async (params) => {
+ getRoutedEmpGeocode: async (params) => {
     try {
       const response = await api.post("/sp_getRoutedEmpGeocode", {
         facilityid: params.facilityid,
         sDate: params.sDate,
-        triptype: params.triptype,
+        triptype: params.triptype || "",
         type: params.type,
       });
       //console.log("Get Routed Emp Geocode Response:", response.data);
@@ -771,6 +879,8 @@ export const apiService = {
       throw error.response?.data || error.message;
     }
   },
+
+
 
   get_VProutecount: async (credentials) => {
     try {
@@ -1097,14 +1207,14 @@ export const apiService = {
 
   InsertVehicleType: async (params) => {
     try {
-      const response =await api.post("/InsertVehicleType",{
-        vehicle:params.vehicle,
-        cost_ac:params.cost_ac,
-        cost_nonac:params.cost_nonac,
-        occupancy:params.occupancy,
-        vendorId:params.vendorId,
-        updatedBy:params.updatedBy,
-        scheme:params.scheme,
+      const response = await api.post("/InsertVehicleType", {
+        vehicle: params.vehicle,
+        cost_ac: params.cost_ac,
+        cost_nonac: params.cost_nonac,
+        occupancy: params.occupancy,
+        vendorId: params.vendorId,
+        updatedBy: params.updatedBy,
+        scheme: params.scheme,
       })
       return JSON.parse(response.data);
     } catch (error) {
