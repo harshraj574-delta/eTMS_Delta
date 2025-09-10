@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, use } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -11,14 +11,9 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import polylineUtil from "@mapbox/polyline";
-// CHANGED: Swapped Dropdown for MultiSelect
-import { MultiSelect } from 'primereact/multiselect';
 import "leaflet/dist/leaflet.css";
-import "primereact/resources/themes/lara-light-indigo/theme.css";
-import "primereact/resources/primereact.min.css";
-// The incorrect line has been removed
+// import ManageRouteService from "../services/compliance/ManageRouteService";
 import ManageRouteService from "../services/compliance/ManageRouteService";
-
 // Helper function for retrying failed requests with an async function
 const retryAsync = async (asyncFn, args, maxRetries = 3, delay = 1000) => {
   let lastError;
@@ -136,10 +131,14 @@ function FitMapToRoutes({ routes }) {
       }
     });
     if (bounds.length) {
+      // Calculate appropriate padding based on number of routes
+      // More routes = more padding to prevent excessive zoom out
       const basePadding = 40;
-      const paddingMultiplier = Math.min(1 + (routes.length * 0.05), 2);
+      const paddingMultiplier = Math.min(1 + (routes.length * 0.05), 2); // Cap at 2x padding
       const padding = Math.floor(basePadding * paddingMultiplier);
       
+      // Set a maximum zoom level to prevent excessive zooming out
+      // Lower number = more zoomed out
       const maxZoom = routes.length > 10 ? 12 : 
                      routes.length > 5 ? 11 : 
                      routes.length > 1 ? 12 : 13;
@@ -177,29 +176,6 @@ const safeParseJson = (data, fieldName = "response") => {
   return parsedData;
 };
 
-// Helper function to call external recalculate API
-const callRecalculateAPI = async (inputData) => {
-  try {
-    const response = await fetch('https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/recalculate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(inputData)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Recalculate API failed with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error calling recalculate API:', error);
-    throw error;
-  }
-};
-
 const VehicleIcon = ({ type, isActive }) => {
   const getVehicleImage = (type) => {
     switch (type) {
@@ -224,7 +200,6 @@ const VehicleIcon = ({ type, isActive }) => {
     />
   );
 };
-
 const GuardIcon = ({ isActive }) => (
   <img
     src="images/icons/add_guard.png"
@@ -233,7 +208,6 @@ const GuardIcon = ({ isActive }) => (
     title="Guard Required"
   />
 );
-
 const SwappedIcon = ({ isActive }) => (
   <img
     src="images/icons/swap.png"
@@ -242,7 +216,6 @@ const SwappedIcon = ({ isActive }) => (
     title="Swapped Route"
   />
 );
-
 const PWDIcon = ({ isActive }) => (
   <img
     src="images/icons/pwd.png"
@@ -251,7 +224,6 @@ const PWDIcon = ({ isActive }) => (
     title="PWD"
   />
 );
-
 const MedicalIcon = ({ isActive }) => (
   <img
     src="images/icons/medical.png"
@@ -260,7 +232,6 @@ const MedicalIcon = ({ isActive }) => (
     title="Medical Required"
   />
 );
-
 const NonMotorableIcon = ({ isActive }) => (
   <img
     src="images/icons/non-motorable.png"
@@ -275,12 +246,8 @@ export default function RouteMap() {
   const [fetchedRoutesData, setFetchedRoutesData] = useState({});
   const [routeVisible, setRouteVisible] = useState({});
   const [showAll, setShowAll] = useState(false);
-  // CHANGED: State is now an array to hold multiple locations
-  const [selectedLocation, setSelectedLocation] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isRecalculating, setIsRecalculating] = useState(false);
-  const [isMapReady, setIsMapReady] = useState(false);
   const [queryParams, setQueryParams] = useState({});
   const [ParsedRouteStats, setParsedRouteStats] = useState([]);
 
@@ -288,30 +255,6 @@ export default function RouteMap() {
     const params = getQueryParams();
     setQueryParams(params);
   }, []);
-
-  // CHANGED: Removed the 'All Locations' option, as an empty selection now means 'all'
-  const locationOptions = useMemo(() => {
-    if (!allRouteMetas || allRouteMetas.length === 0) return [];
-    
-    const locations = allRouteMetas
-      .map(route => route.Location)
-      .filter(location => location && location.trim() !== "")
-      .filter((location, index, self) => self.indexOf(location) === index)
-      .sort();
-    
-    return locations.map(location => ({
-        label: location,
-        value: location
-    }));
-  }, [allRouteMetas]);
-
-  // CHANGED: Filtering logic now checks if the route's location is in the selected locations array
-  const filteredRouteMetas = useMemo(() => {
-    if (!selectedLocation || selectedLocation.length === 0) {
-      return allRouteMetas; // Show all if no locations are selected
-    }
-    return allRouteMetas.filter(route => selectedLocation.includes(route.Location));
-  }, [allRouteMetas, selectedLocation]);
 
   const fetchRouteDetailsAndGeometry = useCallback(
     async (routeID, existingRouteMeta) => {
@@ -378,19 +321,13 @@ export default function RouteMap() {
       setLoading(false);
       return;
     }
-    
     const fetchInitialData = async () => {
       setLoading(true);
-      setIsMapReady(false);
       setError(null);
       setAllRouteMetas([]);
       setFetchedRoutesData({});
       setRouteVisible({});
       setShowAll(false);
-      // CHANGED: Resetting state to an empty array
-      setSelectedLocation([]);
-      setIsRecalculating(false);
-      
       try {
         const apiParams = {
           sDate: queryParams.sDate,
@@ -403,8 +340,6 @@ export default function RouteMap() {
           Routeid: "",
           occ_seater: -2,
         };
-        
-        console.log("Fetching routes by order...");
         const routesResponse = await retryAsync(
           ManageRouteService.GetRoutesByOrder,
           apiParams
@@ -413,79 +348,13 @@ export default function RouteMap() {
           routesResponse,
           "GetRoutesByOrder"
         );
-
-        if (!parsedRoutesMeta || !Array.isArray(parsedRoutesMeta)) {
-          throw new Error(
-            "Invalid response from GetRoutesByOrder: expected array"
-          );
-        }
-
-        console.log("Routes metadata fetched:", parsedRoutesMeta.length, "routes");
-
-        // NEW FLOW: Check for route updates before proceeding
-        if (parsedRoutesMeta.length > 0) {
-          const routeIds = parsedRoutesMeta.map(route => route.RouteID).join(',');
-          console.log("Checking for route updates with IDs:", routeIds);
-          
-          try {
-            const inputJsonResponse = await retryAsync(
-              ManageRouteService.getInputJsonByrouteids,
-              { routeids: routeIds }
-            );
-            
-            const inputJsonData = safeParseJson(inputJsonResponse, "getInputJsonByrouteids");
-            console.log("Input JSON response:", inputJsonData);
-            
-            if (inputJsonData && inputJsonData.routes && inputJsonData.routes.length > 0) {
-              console.log("Routes need recalculation, starting recalculation process...");
-              
-              setLoading(false);
-              await new Promise(resolve => setTimeout(resolve, 300));
-              setIsRecalculating(true);
-              
-              try {
-                const recalculateData = await callRecalculateAPI(inputJsonData);
-                console.log("Recalculate API response received");
-                
-                await retryAsync(
-                  ManageRouteService.updateRouteMapbased,
-                  {
-                    facilityid: queryParams.FacilityID,
-                    sDate: queryParams.sDate,
-                    triptype: queryParams.TripType,
-                    shifttime: queryParams.Shifttimes || "0900",
-                    jsonstring: JSON.stringify(recalculateData),
-                    updatedBy: 0
-                  }
-                );
-                console.log("Routes updated successfully in database");
-                
-              } catch (recalcError) {
-                console.error("Error during recalculation process:", recalcError);
-                setError(`Failed to recalculate routes: ${recalcError.message}`);
-              } finally {
-                setIsRecalculating(false);
-                await new Promise(resolve => setTimeout(resolve, 300));
-                setLoading(true);
-              }
-            } else {
-              console.log("No route updates needed, proceeding with normal flow");
-            }
-            
-          } catch (updateCheckError) {
-            console.error("Error checking for route updates:", updateCheckError);
-            setError(`Failed to check for route updates: ${updateCheckError.message}`);
-          }
-        }
-
-        // Fetch route statistics
         const routeStats = {
           sdate: queryParams.sDate,
           edate: queryParams.sDate,
           triptype: queryParams.TripType,
           facilityid: queryParams.FacilityID,
-          shifttime: queryParams.Shifttimes || "0900",
-        };
+          shifttime:  queryParams.Shifttimes || "0900",
+        }
 
         const routeStatsResponse = await retryAsync(
           ManageRouteService.GetRoutesStatistics,
@@ -495,9 +364,13 @@ export default function RouteMap() {
         console.log("Route Stats:", parsedRouteStats);      
         setParsedRouteStats(parsedRouteStats);
 
+        if (!parsedRoutesMeta || !Array.isArray(parsedRoutesMeta)) {
+          throw new Error(
+            "Invalid response from GetRoutesByOrder: expected array"
+          );
+        }
+       // console.log("Parsed Routes Meta:", parsedRoutesMeta);
         setAllRouteMetas(parsedRoutesMeta);
-        
-        // Load first route details as before
         if (parsedRoutesMeta.length > 0) {
           const firstRouteMeta = parsedRoutesMeta[0];
           const firstRouteFullData = await fetchRouteDetailsAndGeometry(
@@ -516,24 +389,18 @@ export default function RouteMap() {
             );
           }
         }
-        
-        setIsMapReady(true);
-
       } catch (err) {
         console.error("Error fetching initial route data:", err);
         setError(err.message || "Error during initial load.");
-        setIsMapReady(false);
       } finally {
         setLoading(false);
-        setIsRecalculating(false);
       }
     };
-    
     fetchInitialData();
   }, [queryParams, fetchRouteDetailsAndGeometry]);
 
   const displayRoutes = useMemo(() => {
-    return filteredRouteMetas.map((meta) => {
+    return allRouteMetas.map((meta) => {
       const fetchedDetail = fetchedRoutesData[meta.RouteID];
       if (fetchedDetail) return fetchedDetail;
       return {
@@ -544,7 +411,7 @@ export default function RouteMap() {
         facility: {},
       };
     });
-  }, [filteredRouteMetas, fetchedRoutesData]);
+  }, [allRouteMetas, fetchedRoutesData]);
 
   const routesForMap = useMemo(() => {
     return displayRoutes.filter(
@@ -552,36 +419,33 @@ export default function RouteMap() {
     );
   }, [displayRoutes, routeVisible]);
 
-  // Update stats to reflect filtered routes
   const totalDistance = useMemo(
     () =>
-      filteredRouteMetas.reduce(
+      allRouteMetas.reduce(
         (sum, route) => sum + (parseFloat(route.totaldist) || 0),
         0
       ),
-    [filteredRouteMetas]
+    [allRouteMetas]
   );
   const totalEmployees = useMemo(
     () =>
-      filteredRouteMetas.reduce(
+      allRouteMetas.reduce(
         (sum, route) => sum + (parseInt(route.totalStop, 10) || 0),
         0
       ),
-    [filteredRouteMetas]
+    [allRouteMetas]
   );
-
-  const handleLocationChange = (e) => {
-    const newLocation = e.value;
-    setSelectedLocation(newLocation);
-    setShowAll(false);
-    setRouteVisible({}); // Clear all visible routes when location changes
-  };
+  // const avgOccupancy = useMemo(() => {
+  //   return allRouteMetas.length > 0 && totalEmployees > 0
+  //     ? (totalEmployees / allRouteMetas.length).toFixed(2)
+  //     : "0.0";
+  // }, [allRouteMetas, totalEmployees]);
 
   const handleToggleAll = async (checked) => {
     setShowAll(checked);
     if (checked) {
       setLoading(true);
-      const routesToFetchDetailsFor = filteredRouteMetas.filter(
+      const routesToFetchDetailsFor = allRouteMetas.filter(
         (meta) => !fetchedRoutesData[meta.RouteID]
       );
       const newDetailsPromises = routesToFetchDetailsFor.map((meta) =>
@@ -595,12 +459,12 @@ export default function RouteMap() {
         });
         setFetchedRoutesData((prev) => ({ ...prev, ...newFetchedDataUpdate }));
         const allVisible = {};
-        filteredRouteMetas.forEach((meta) => (allVisible[meta.RouteID] = true));
+        allRouteMetas.forEach((meta) => (allVisible[meta.RouteID] = true));
         setRouteVisible(allVisible);
       } catch (err) {
         setError("Some routes could not be loaded. " + err.message);
         const currentVis = { ...routeVisible };
-        filteredRouteMetas.forEach((meta) => {
+        allRouteMetas.forEach((meta) => {
           if (
             fetchedRoutesData[meta.RouteID] ||
             newFetchedDataUpdate[meta.RouteID]
@@ -614,7 +478,7 @@ export default function RouteMap() {
       }
     } else {
       const noneVisible = {};
-      filteredRouteMetas.forEach((meta) => (noneVisible[meta.RouteID] = false));
+      allRouteMetas.forEach((meta) => (noneVisible[meta.RouteID] = false));
       setRouteVisible(noneVisible);
     }
   };
@@ -625,7 +489,7 @@ export default function RouteMap() {
     let operationSuccess = true;
     if (makeVisible && !fetchedRoutesData[routeid]) {
       setLoading(true);
-      const routeMeta = filteredRouteMetas.find((meta) => meta.RouteID === routeid);
+      const routeMeta = allRouteMetas.find((meta) => meta.RouteID === routeid);
       if (routeMeta) {
         const routeFullData = await fetchRouteDetailsAndGeometry(
           routeid,
@@ -647,8 +511,8 @@ export default function RouteMap() {
       setRouteVisible((prev) => {
         const updated = { ...prev, [routeid]: makeVisible };
         setShowAll(
-          filteredRouteMetas.length > 0 &&
-            filteredRouteMetas.every((meta) => updated[meta.RouteID])
+          allRouteMetas.length > 0 &&
+            allRouteMetas.every((meta) => updated[meta.RouteID])
         );
         return updated;
       });
@@ -671,9 +535,6 @@ export default function RouteMap() {
         alignItems: "center",
         justifyContent: "center",
         gap: "24px",
-        opacity: loading ? 1 : 0,
-        visibility: loading ? "visible" : "hidden",
-        transition: "opacity 0.3s ease-in-out, visibility 0.3s ease-in-out",
       }}
     >
       <div style={{ width: "80px", height: "80px", position: "relative" }}>
@@ -728,165 +589,20 @@ export default function RouteMap() {
     </div>
   );
 
-  const RecalculatingScreen = () => (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(255, 255, 255, 0.95)",
-        backdropFilter: "blur(8px)",
-        zIndex: 10000,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "24px",
-        opacity: isRecalculating ? 1 : 0,
-        visibility: isRecalculating ? "visible" : "hidden",
-        transition: "opacity 0.3s ease-in-out, visibility 0.3s ease-in-out",
-      }}
-    >
-      <div style={{ width: "100px", height: "100px", position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            width: "100%",
-            height: "100%",
-            border: "4px solid #e2e8f0",
-            borderTopColor: "#f59e0b",
-            borderRadius: "50%",
-            animation: "spin 1.2s linear infinite",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            width: "70%",
-            height: "70%",
-            top: "15%",
-            left: "15%",
-            border: "3px solid #e2e8f0",
-            borderTopColor: "#10b981",
-            borderRadius: "50%",
-            animation: "spin 0.9s linear infinite reverse",
-          }}
-        />
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          animation: "pulse 2s ease-in-out infinite",
-        }}>
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M9 20l-5.447-2.724A1 1 0 013 16.382V7.618a1 1 0 01.553-.894L9 4l6 3 5.447-2.724A1 1 0 0121 5.382v8.764a1 1 0 01-.553.894L15 17l-6-3z"
-              stroke="#3b82f6"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="rgba(59, 130, 246, 0.1)"
-            />
-            <path
-              d="M9 4v16"
-              stroke="#3b82f6"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M15 7v10"
-              stroke="#3b82f6"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "24px",
-            fontWeight: "600",
-            color: "#1e293b",
-            margin: 0,
-          }}
-        >
-          Optimizing Routes
-        </h2>
-        <p style={{ fontSize: "16px", color: "#64748b", margin: 0, textAlign: "center" }}>
-          We're recalculating your routes for better efficiency...
-        </p>
-      </div>
-
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              backgroundColor: "#3b82f6",
-              opacity: "0.3",
-              animation: `progressDot 1.6s ease-in-out ${i * 0.2}s infinite`,
-            }}
-          />
-        ))}
-      </div>
-
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-          50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
-        }
-        @keyframes progressDot {
-          0%, 80%, 100% { opacity: 0.3; transform: scale(1); }
-          40% { opacity: 1; transform: scale(1.3); }
-        }
-      `}</style>
-    </div>
-  );
-
   const ErrorMessage = ({ message }) => (
     <div
       style={{
         position: "fixed",
         top: "24px",
         right: "24px",
-        zIndex: 10001,
+        zIndex: 10000,
         background: "white",
         padding: "16px 20px",
         borderRadius: "12px",
         boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
         maxWidth: "400px",
         borderLeft: "4px solid #ef4444",
-        opacity: error ? 1 : 0,
-        visibility: error ? "visible" : "hidden",
-        transform: error ? "translateX(0)" : "translateX(100%)",
-        transition: "all 0.3s ease-in-out",
+        animation: "slideIn 0.3s ease-out",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -921,10 +637,11 @@ export default function RouteMap() {
           </p>
         </div>
       </div>
+      <style>{`@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
     </div>
   );
 
-  const componentStyles = `
+    const componentStyles = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     /* Sidebar Styles */
@@ -970,59 +687,6 @@ export default function RouteMap() {
       font-size: 14px;
       font-weight: 600;
     }
-    
-    /* CHANGED: Styles updated for MultiSelect component */
-    .location-filter-container {
-      margin-bottom: 12px;
-      padding: 0 2px;
-    }
-    .location-filter-label {
-      font-weight: 600;
-      color: #1e293b;
-      font-size: 13px;
-      margin-bottom: 6px;
-      display: block;
-    }
-    .location-filter-container .p-multiselect {
-      width: 100%;
-      font-family: 'Inter', sans-serif;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 6px;
-    }
-    .location-filter-container .p-multiselect .p-multiselect-label {
-      font-size: 14px;
-      padding: 8px 12px;
-      color: #374151;
-    }
-    .location-filter-container .p-multiselect:not(.p-disabled):hover {
-      border-color: #9ca3af;
-    }
-    .location-filter-container .p-multiselect:not(.p-disabled).p-focus {
-      outline: none;
-      outline-offset: 0;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      border-color: #3b82f6;
-    }
-    .location-filter-container .p-multiselect-panel {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      border-radius: 6px;
-      border: 1.5px solid #e2e8f0;
-    }
-    .location-filter-container .p-multiselect-items .p-multiselect-item {
-      font-size: 14px;
-      padding: 8px 12px;
-      color: #374151;
-      font-family: 'Inter', sans-serif;
-    }
-    .location-filter-container .p-multiselect-items .p-multiselect-item:not(.p-highlight):not(.p-disabled):hover {
-      background: #f3f4f6;
-      color: #1e293b;
-    }
-    .location-filter-container .p-multiselect-items .p-multiselect-item.p-highlight {
-      background: #3b82f6;
-      color: white;
-    }
-    
     .sidebar-switch-row {
       display: flex;
       align-items: center;
@@ -1093,7 +757,7 @@ export default function RouteMap() {
       object-fit: contain;
     }
     .route-summary.active .route-icons-container img {
-       opacity: 0.7;
+       opacity: 0.7; /* Or your preferred active style */
     }
     .route-summary .route-stats {
       display: grid;
@@ -1146,7 +810,7 @@ export default function RouteMap() {
     .info-header {
       font-weight: 700;
       font-size: 13px;
-      padding: 6px 28px 6px 12px;
+      padding: 6px 28px 6px 12px; /* Increased right padding for close button */
       color: white;
       display: flex;
       align-items: center;
@@ -1186,6 +850,7 @@ export default function RouteMap() {
       padding-bottom: 4px;
       border-bottom: 1px solid #cbd5e1;
     }
+    /* REMOVED .employee-details strong::before rule from here */
     .employee-details li > span {
       color: #1e293b;
       font-size: 11px;
@@ -1228,12 +893,12 @@ export default function RouteMap() {
       text-decoration: none !important;
       transition: all 0.2s ease !important;
       position: absolute !important;
-      top: 4px !important;
-      right: 4px !important;
-      width: 20px !important;
-      height: 20px !important;
+      top: 4px !important;    /* Adjust to position from top of header */
+      right: 4px !important;   /* Adjust to position from right of header */
+      width: 20px !important;  /* Smaller clickable area */
+      height: 20px !important; /* Smaller clickable area */
       background: transparent !important;
-      border-radius: 50% !important;
+      border-radius: 50% !important; /* Circular button */
       z-index: 10 !important;
       padding: 0 !important;
     }
@@ -1242,6 +907,7 @@ export default function RouteMap() {
       background: rgba(0, 0, 0, 0.2) !important;
     }
   `;
+
 
   return (
     <div
@@ -1253,266 +919,246 @@ export default function RouteMap() {
       }}
     >
       <style>{componentStyles}</style>
-      <LoadingScreen />
-      <RecalculatingScreen />
+      {loading && <LoadingScreen />}
       {error && <ErrorMessage message={error} />}
-
-      {/* Conditionally render the map and sidebar */}
-      {isMapReady && (
-        <>
-          <div className="sidebar-react">
-            <div className="summary-stats">
-              <div className="stat-item">
-                <div className="stat-label">Routes</div>
-                <div className="stat-value">{filteredRouteMetas.length}</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-label">Distance</div>
-                <div className="stat-value">{totalDistance.toFixed(1)} km</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-label">Employees</div>
-                <div className="stat-value">{totalEmployees}</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-label">Avg Occupancy</div>
-                <div className="stat-value">{ParsedRouteStats[0]?.AvgOccupancy}</div>
-              </div>
-            </div>
-            
-            {/* CHANGED: Replaced Dropdown with MultiSelect */}
-            <div className="location-filter-container">
-              <label className="location-filter-label">Filter by Location:</label>
-              <MultiSelect
-                value={selectedLocation}
-                options={locationOptions}
-                onChange={handleLocationChange}
-                optionLabel="label"
-                placeholder="Select Locations"
-                display="chip"
-                maxSelectedLabels={2}
-              />
-            </div>
-            
-            <div className="sidebar-switch-row">
-              <span className="switch-label">Show All Routes</span>
-              <label
-                className="switch"
+      <div className="sidebar-react">
+        <div className="summary-stats">
+          <div className="stat-item">
+            <div className="stat-label">Routes</div>
+            <div className="stat-value">{allRouteMetas.length}</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-label">Distance</div>
+            <div className="stat-value">{totalDistance.toFixed(1)} km</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-label">Employees</div>
+            <div className="stat-value">{totalEmployees}</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-label">Avg Occupancy</div>
+            <div className="stat-value">{ParsedRouteStats[0]?.AvgOccupancy}</div>
+          </div>
+        </div>
+        <div className="sidebar-switch-row">
+          <span className="switch-label">Show All Routes</span>
+          <label
+            className="switch"
+            style={{
+              position: "relative",
+              display: "inline-block",
+              width: 44,
+              height: 24,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showAll}
+              onChange={(e) => handleToggleAll(e.target.checked)}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span
+              className="slider"
+              style={{
+                position: "absolute",
+                cursor: "pointer",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: showAll ? "#3b82f6" : "#e5e7eb",
+                transition: ".3s",
+                borderRadius: 24,
+              }}
+            >
+              <span
                 style={{
-                  position: "relative",
-                  display: "inline-block",
-                  width: 44,
-                  height: 24,
+                  position: "absolute",
+                  content: '""',
+                  height: 18,
+                  width: 18,
+                  left: showAll ? 23 : 3,
+                  bottom: 3,
+                  backgroundColor: "#fff",
+                  transition: ".3s",
+                  borderRadius: "50%",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                  display: "block",
                 }}
-              >
-                <input
-                  type="checkbox"
-                  checked={showAll}
-                  onChange={(e) => handleToggleAll(e.target.checked)}
-                  style={{ opacity: 0, width: 0, height: 0 }}
-                />
-                <span
-                  className="slider"
+              />
+            </span>
+          </label>
+        </div>
+        <div id="route-buttons">
+          {displayRoutes.map((route, idx) => {
+            const isActive = !!routeVisible[route.routeid];
+            return (
+              <div className="route-item" key={route.routeid}>
+                <div
+                  className={`route-summary${isActive ? " active" : ""}`}
+                  data-routeid={route.routeid}
                   style={{
-                    position: "absolute",
-                    cursor: "pointer",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: showAll ? "#3b82f6" : "#e5e7eb",
-                    transition: ".3s",
-                    borderRadius: 24,
+                    borderLeft: `6px solid ${colors[idx % colors.length]}`,
                   }}
+                  onClick={() => handleToggleRoute(route.routeid)}
                 >
-                  <span
-                    style={{
-                      position: "absolute",
-                      content: '""',
-                      height: 18,
-                      width: 18,
-                      left: showAll ? 23 : 3,
-                      bottom: 3,
-                      backgroundColor: "#fff",
-                      transition: ".3s",
-                      borderRadius: "50%",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-                      display: "block",
-                    }}
-                  />
-                </span>
-              </label>
-            </div>
-            <div id="route-buttons">
-              {displayRoutes.map((route, idx) => {
-                const isActive = !!routeVisible[route.routeid];
-                // Use the original index from allRouteMetas for consistent color assignment
-                const originalIndex = allRouteMetas.findIndex(meta => meta.RouteID === route.routeid);
-                return (
-                  <div className="route-item" key={route.routeid}>
-                    <div
-                      className={`route-summary${isActive ? " active" : ""}`}
-                      data-routeid={route.routeid}
-                      style={{
-                        borderLeft: `6px solid ${colors[originalIndex % colors.length]}`,
-                      }}
-                      onClick={() => handleToggleRoute(route.routeid)}
-                    >
-                      <div className="route-name">
-                        <span>Route {route.routeid}</span>
-                        <div className="route-icons-container">
-                          {route.varvehicleType && (
-                            <VehicleIcon
-                              type={route.varvehicleType}
-                              isActive={isActive}
-                            />
-                          )}
-                          {route.PlannedGuard == 1 && <GuardIcon isActive={isActive} />}
-                          {(route.swapped === true || route.swapped === "true") && (
-                            <SwappedIcon isActive={isActive} />
-                          )}
-                          {route.isPWD && <PWDIcon isActive={isActive} />}
-                          {route.isMedical && <MedicalIcon isActive={isActive} />}
-                          {route.isNMT && <NonMotorableIcon isActive={isActive} />}
-                        </div>
+                  <div className="route-name">
+                    <span>Route {route.routeid}</span>
+                    <div className="route-icons-container">
+                      {route.varvehicleType && (
+                        <VehicleIcon
+                          type={route.varvehicleType}
+                          isActive={isActive}
+                        />
+                      )}
+                      {route.PlannedGuard == 1 && <GuardIcon isActive={isActive} />}
+                      {(route.swapped === true || route.swapped === "true") && (
+                        <SwappedIcon isActive={isActive} />
+                      )}
+                      {route.isPWD && <PWDIcon isActive={isActive} />}
+                      {route.isMedical && <MedicalIcon isActive={isActive} />}
+                      {route.isNMT && <NonMotorableIcon isActive={isActive} />}
+                    </div>
+                  </div>
+                  <div className="route-stats">
+                    <div className="stat-item">
+                      <div className="stat-label">Distance</div>
+                      <div className="stat-value">
+                        {route.totaldist && !isNaN(parseFloat(route.totaldist))
+                          ? `${parseFloat(route.totaldist).toFixed(1)} km`
+                          : "—"}
                       </div>
-                      <div className="route-stats">
-                        <div className="stat-item">
-                          <div className="stat-label">Distance</div>
-                          <div className="stat-value">
-                            {route.totaldist && !isNaN(parseFloat(route.totaldist))
-                              ? `${parseFloat(route.totaldist).toFixed(1)} km`
-                              : "—"}
-                          </div>
-                        </div>
-                        <div className="stat-item">
-                          <div className="stat-label">Occupancy</div>
-                          <div className="stat-value">
-                            {route.totalStop !== undefined &&
-                            !isNaN(parseInt(route.totalStop, 10))
-                              ? `${parseInt(route.totalStop, 10)}`
-                              : "—"}
-                          </div>
-                        </div>
-                        <div className="stat-item">
-                          <div className="stat-label">Duration</div>
-                          <div className="stat-value">
-                            {route.duration && !isNaN(parseInt(route.duration, 10))
-                              ? `${parseInt(route.duration, 10)} min`
-                              : "—"}
-                          </div>
-                        </div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Occupancy</div>
+                      <div className="stat-value">
+                        {route.totalStop !== undefined &&
+                        !isNaN(parseInt(route.totalStop, 10))
+                          ? `${parseInt(route.totalStop, 10)}`
+                          : "—"}
+                      </div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Duration</div>
+                      <div className="stat-value">
+                        {route.duration && !isNaN(parseInt(route.duration, 10))
+                          ? `${parseInt(route.duration, 10)} min`
+                          : "—"}
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-          <MapContainer
-            center={[22.5937, 78.9629]}
-            zoom={6}
-            style={{ height: "100vh", width: "100vw", zIndex: 1 }}
-            zoomControl={false}
-          >
-            <FitMapToRoutes routes={routesForMap} />
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="© OpenStreetMap"
-            />
-            <ZoomControl position="bottomright" />
-            {routesForMap.map((route) => {
-              const originalIndex = allRouteMetas.findIndex(meta => meta.RouteID === route.routeid);
-              const routeColor = colors[originalIndex % colors.length];
-              const routeColorRgb = hexToRgb(routeColor);
-              return (
-                <LayerGroup key={route.routeid}>
-                  {route.geometry && (
-                    <Polyline
-                      positions={polylineUtil
-                        .decode(route.geometry)
-                        .map((coord) => [coord[0], coord[1]])}
-                      color={routeColor}
-                      weight={5}
-                      opacity={1}
-                    />
-                  )}
-                  {route.stops &&
-                    route.stops.map((stop, sidx) => {
-                      const lat = parseFloat(stop.locationY);
-                      const lng = parseFloat(stop.locationX);
-                      if (isNaN(lat) || isNaN(lng)) return null;
-                      return (
-                        <Marker
-                          key={`${route.routeid}-stop-${sidx}`}
-                          position={[lat, lng]}
-                          icon={createColoredMarker(routeColor, stop.stopNo)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <MapContainer
+        center={[22.5937, 78.9629]}
+        zoom={6}
+        style={{ height: "100vh", width: "100vw", zIndex: 1 }}
+        zoomControl={false}
+      >
+        <FitMapToRoutes routes={routesForMap} />
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution="© OpenStreetMap"
+        />
+        <ZoomControl position="bottomright" />
+        {routesForMap.map((route) => {
+          const routeColor =
+            colors[
+              allRouteMetas.findIndex((meta) => meta.RouteID === route.routeid) %
+                colors.length
+            ];
+          const routeColorRgb = hexToRgb(routeColor);
+          return (
+            <LayerGroup key={route.routeid}>
+              {route.geometry && (
+                <Polyline
+                  positions={polylineUtil
+                    .decode(route.geometry)
+                    .map((coord) => [coord[0], coord[1]])}
+                  color={routeColor}
+                  weight={5}
+                  opacity={1}
+                />
+              )}
+              {route.stops &&
+                route.stops.map((stop, sidx) => {
+                  const lat = parseFloat(stop.locationY);
+                  const lng = parseFloat(stop.locationX);
+                  //console.log("Stop Coordinates:", stop);
+                  if (isNaN(lat) || isNaN(lng)) return null;
+                  return (
+                    <Marker
+                      key={`${route.routeid}-stop-${sidx}`}
+                      position={[lat, lng]}
+                      icon={createColoredMarker(routeColor, stop.stopNo)}
+                    >
+                      <Popup>
+                        <div
+                          className="info-window"
+                          style={{
+                            "--route-color": routeColor,
+                            "--route-color-rgb": routeColorRgb,
+                          }}
                         >
-                          <Popup>
-                            <div
-                              className="info-window"
-                              style={{
-                                "--route-color": routeColor,
-                                "--route-color-rgb": routeColorRgb,
-                              }}
-                            >
-                              <div className="info-header">
-                                 Stop <span>{stop.stopNo}</span>
-                              </div>
-                              <ul className="employee-details">
-                                <li>
-                                  <strong>Emp Name</strong>
-                                  <span>{stop.empName || "N/A"}</span>
-                                </li>
-                                <li>
-                                  <strong>Emp Code</strong>
-                                  <span>{stop.empCode || "N/A"}</span>
-                                </li>
-                                <li>
-                                  <strong>Address</strong>
-                                  <span>{stop.address || "No address"}</span>
-                                </li>
-                                <li>
-                                  <strong>ETA</strong>
-                                  <span>{stop.eta || "N/A"}</span>
-                                </li>
-                                <li>
-                                  <strong>Gender</strong>
-                                  <span>{stop.gender || "N/A"}</span>
-                                </li>
-                              </ul>
-                            </div>
-                          </Popup>
-                        </Marker>
-                      );
-                    })}
-                  {route.facility &&
-                    route.facility.facilityGeoY &&
-                    route.facility.facilityGeoX && (
-                      <Marker
-                        key={`${route.routeid}-facility`}
-                        position={[
-                          parseFloat(route.facility.facilityGeoY),
-                          parseFloat(route.facility.facilityGeoX),
-                        ]}
-                        icon={
-                          new L.Icon({
-                            iconUrl: "images/icons/facility.png",
-                            iconSize: [36, 36],
-                            iconAnchor: [18, 36],
-                            popupAnchor: [0, -36],
-                          })
-                        }
-                      >
-                        <Popup><b>Facility</b></Popup>
-                      </Marker>
-                    )}
-                </LayerGroup>
-              );
-            })}
-          </MapContainer>
-        </>
-      )}
+                          <div className="info-header">
+                             Stop <span>{stop.stopNo}</span>
+                          </div>
+                          <ul className="employee-details">
+                            <li>
+                              <strong>Emp Name</strong>
+                              <span>{stop.empName || "N/A"}</span>
+                            </li>
+                            <li>
+                              <strong>Emp Code</strong>
+                              <span>{stop.empCode || "N/A"}</span>
+                            </li>
+                            <li>
+                              <strong>Address</strong>
+                              <span>{stop.address || "No address"}</span>
+                            </li>
+                            <li>
+                              <strong>ETA</strong>
+                              <span>{stop.eta || "N/A"}</span>
+                            </li>
+                            <li>
+                              <strong>Gender</strong>
+                              <span>{stop.gender || "N/A"}</span>
+                            </li>
+                          </ul>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              {route.facility &&
+                route.facility.facilityGeoY &&
+                route.facility.facilityGeoX && (
+                  <Marker
+                    key={`${route.routeid}-facility`}
+                    position={[
+                      parseFloat(route.facility.facilityGeoY),
+                      parseFloat(route.facility.facilityGeoX),
+                    ]}
+                    icon={
+                      new L.Icon({
+                        iconUrl: "images/icons/facility.png",
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 36],
+                        popupAnchor: [0, -36],
+                      })
+                    }
+                  >
+                    <Popup><b>Facility</b></Popup>
+                  </Marker>
+                )}
+            </LayerGroup>
+          );
+        })}
+      </MapContainer>
     </div>
   );
 }
