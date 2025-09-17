@@ -184,7 +184,7 @@ const LeafletHeatMap = ({ filter }) => {
       setLoading(true);
       try {
         const response = await fetch(
-          "/heatmapApi/api/v1/sp_getRoutedEmpGeocode",
+          "/api/api/v1/sp_getRoutedEmpGeocode",
           {
             method: "POST",
             headers: {

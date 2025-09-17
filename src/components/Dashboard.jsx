@@ -660,9 +660,8 @@ const Dashboard = () => {
         <div className="row mb-4">
           <div className="col-12">
             <div
-              className={`cardx mt-3 p-3 border-0 ${
-                scrolled ? "filterFix shadow" : "hidden"
-              }`}
+              className={`cardx mt-3 p-3 border-0 ${scrolled ? "filterFix shadow" : "hidden"
+                }`}
             >
               <div className="row d-flex align-items-center">
                 <div className="col-12 col-md-12 col-lg-12 col-xl-4">
@@ -694,9 +693,8 @@ const Dashboard = () => {
                                   {periodOptions1.map(({ label, value }) => (
                                     <li
                                       key={value}
-                                      className={`time-filter-item ${
-                                        pendingPeriod1 === value ? "active" : ""
-                                      }`}
+                                      className={`time-filter-item ${pendingPeriod1 === value ? "active" : ""
+                                        }`}
                                       onClick={() => setPendingPeriod1(value)}
                                     >
                                       {label}
@@ -851,7 +849,7 @@ const Dashboard = () => {
                       <div className="row mt-4">
                         <div
                           className="col-6 mb-3"
-                          // style={{ height: "585px", position: "relative" }}
+                        // style={{ height: "585px", position: "relative" }}
                         >
                           <div className="cardx border-0 p-3 h-100">
                             <h6 className="d-flex justify-content-between align-items-center">
@@ -890,7 +888,7 @@ const Dashboard = () => {
                                   <Tooltip
                                     target="#expand-route-distribution"
                                     content="Expand Map"
-                                    position="top"
+                                    position="bottom"
                                   />
                                   <span
                                     id="expand-route-distribution"
@@ -917,7 +915,7 @@ const Dashboard = () => {
                             filter
                           )} */}
                           <div>
-                            
+
                           </div>
                           <RiShiftEmployeeOccupancy filter={filter} />
                         </div>

@@ -50,7 +50,6 @@ const VehicleTypeMaster = () => {
             const response = await apiService.GetSelectedVendor({
                 vendorid: vendorId,
             });
-            // Update the selectedVehicletype with the new scheme
             setSelectedVehicletype(prev => ({
                 ...prev,
                 vendorType: response[0].vendorType
