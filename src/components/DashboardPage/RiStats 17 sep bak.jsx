@@ -102,15 +102,22 @@ const RiStats = ({ filter }) => {
   const isDrop = filter?.triptype?.toLowerCase() === "drop";
 
   return (
-    <div className="row d-flex align-items-stretch">
-      <div className="col-lg-12 col-xl-7 d-flex">
-        <div className="cardNew w-100 h-100" style={{  alignItems: 'center', display: 'flex', justifyContent: 'center' }}>
+    <div className="row d-flex align-items-center">
+      <div className="col-lg-12 col-xl-7 d-flex align-items-stretch">
+        <div className="cardNew w-100 h-100">
           <ul className="py-2">
             <li>
               <h3>
                 <strong>{statsData.totalroute ?? 0}</strong>
                 <span className="subtitle_sm">Routes</span>
               </h3>
+              {/* <span className="overline_text d-flex text-success align-items-center">
+                
+                
+                {statsData.routediffStatus === "down" ? "<FiTrendingUp className="me-1" />" : "<FiTrendingDown className="me-1" />" }
+                 {statsData.RouteDiffPer ?? 0}
+              </span> */}
+
               <span
                 className={`overline_text d-flex align-items-center ${
                   statsData.routediffStatus === "down"
@@ -163,8 +170,26 @@ const RiStats = ({ filter }) => {
                 )}
                 {statsData.AvgOccupancyDiff ?? 0} %
               </span>
-
+              {/* <span className="overline_text text-warning">
+                {statsData.totalvehicle ?? 0} Number Of Vehicles
+              </span> */}
             </li>
+            {/* <li>
+              <h3>
+                <strong>
+                  {`${cancellationPer.toFixed(2)}`}{" "}
+                  <small className="fs-6 text-muted">%</small>
+                </strong>
+              </h3>
+              <span className="subtitle_sm">Trip Cancellation</span>
+              <span className="overline_text d-flex text-danger align-items-center">
+                <FiTrendingDown className="me-1" /> 85%
+              </span>
+              <span className="overline_text text-success">
+                {`${reallocationPer}%`} reallocated
+              </span>
+            </li> */}
+
             <li>
               <h3>
                 <strong>
@@ -180,7 +205,12 @@ const RiStats = ({ filter }) => {
                 <strong>{statsData.guardCount ?? 0}</strong>
               </h3>
               <span className="subtitle_sm">Guards Deployed</span>
-
+              {/* <span className="overline_text d-flex">
+                <span className="text-success me-1">
+                  <FiTrendingUp className="me-1" />{" "}
+                  {statsData.LastGuardDeployed ?? 0}%
+                </span>{" "}
+              </span> */}
               <span
                 className={`overline_text d-flex align-items-center ${
                   statsData.gaurddiffstatus === "down"
@@ -195,6 +225,9 @@ const RiStats = ({ filter }) => {
                 )}
                 {statsData.guarddiffper ?? 0} %
               </span>
+              {/* <span className="overline_text text-warning">
+                {statsData.GuardDeployed ?? 0} Deployment
+              </span> */}
             </li>
           </ul>
         </div>
@@ -336,10 +369,73 @@ const RiStats = ({ filter }) => {
         </div>
         <div className="cardNew w-100  p-0">
           <ul className="last_stats">
+            {/* <li>
+              <h3>
+                <strong>
+                  {(() => {
+                    const total = statsData.AvgTripHour ?? 0;
+                    const hrs = Math.floor(total);
+                    const mins = Math.round((total - hrs) * 60);
+                    return `${hrs} hr${hrs !== 1 ? "s" : ""} ${
+                      mins > 0 ? mins + " mins" : ""
+                    }`;
+                  })()}
+                </strong>
+              </h3>
+              <span className="subtitle_sm text-primary">Avg Trip Time</span>
+            </li> */}
+
+            {/* {statsData.AvgTripHour > 0 && (
+              <li>
+                <h3>
+                  <strong>
+                    {(() => {
+                      const total = statsData.AvgTripHour;
+                      const hrs = Math.floor(total);
+                      const mins = Math.round((total - hrs) * 60);
+                      return (
+                        <>
+                          {hrs > 0 && `${hrs} hr${hrs > 1 ? "s" : ""}`}
+                          {mins > 0 && (
+                            <>
+                              {" "}
+                              {`${mins}`}{" "}
+                              <small className="text-muted fs-6">{`Mins`}</small>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </strong>
+                </h3>
+                <span className="overline_text d-flex text-danger align-items-center">
+                  <FiTrendingDown className="me-1" /> 85%
+                </span>
+                <span className="subtitle_sm text-primary">Avg Trip Time</span>
+              </li>
+            )} */}
+
             <li>
               <h3>
                 <strong>{statsData.AvgTripHour || 0}</strong>
               </h3>
+              {/* <span className="overline_text d-flex text-danger align-items-center">
+                  <FiTrendingDown className="me-1" /> 85%
+                </span> */}
+              {/* <span
+                className={`overline_text d-flex align-items-center ${
+                  statsData.AvgTripTimeDiffStatus === "down"
+                    ? "text-danger"
+                    : "text-success"
+                }`}
+              >
+                {statsData.AvgTripTimeDiffStatus === "down" ? (
+                  <FiTrendingDown className="me-1" />
+                ) : (
+                  <FiTrendingUp className="me-1" />
+                )}
+                {statsData.AvgTripTimeDiff ?? 0}
+              </span> */}
               <span className="subtitle_sm text-primary">Avg Trip Time</span>
             </li>
 

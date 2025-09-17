@@ -73,7 +73,7 @@ class VehicleMasterService {
                 EmissionExpiryDate: params.EmissionExpiryDate,
                 CabInductionDate: params.CabInductionDate,
                 CabExpiryDate: params.CabExpiryDate,
-                FuelType: params.FuelType,
+                FuleType: params.FuleType,
                 Warning_1: params.Warning_1,
                 Warning_2: params.Warning_2,
                 FinalWarning: params.FinalWarning,

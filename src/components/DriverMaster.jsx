@@ -178,8 +178,8 @@ const DriverMaster = () => {
                                 sortMode="single"
                                 removableSort
                                 paginator
-                                rows={10}
-                                rowsPerPageOptions={[5, 10, 25, 50]} pt={customSortStyle}>
+                                rows={50}
+                                rowsPerPageOptions={[50,100,150,200]} pt={customSortStyle}>
                                 <Column field="Id" header="ID" body={(rowData) => (
                                     <a href="#" onClick={(e) => { e.preventDefault(); setVisibleLeft(true); }}>
                                         {rowData.Id}

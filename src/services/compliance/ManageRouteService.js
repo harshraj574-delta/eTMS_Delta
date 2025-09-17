@@ -1,4 +1,6 @@
+import { use } from "react";
 import { api } from "../axios/api";
+import { Route } from "react-router-dom";
 
 class ManageRouteService {
   async SelectBaseFacility(params) {
@@ -343,6 +345,36 @@ class ManageRouteService {
     }
     catch(error){
       console.error("Error in getInputJsonByrouteids:", error);
+      throw error;
+    }
+}
+  async GetIsRouteFinalized(params){
+    try{
+      const response = await api.post("/GetIsRouteFinalized", {
+        sDate: params.sDate,
+        FacilityID: params.FacilityID,
+        TripType: params.TripType,
+        Shifts: params.Shifts,
+        userid: params.userid,
+      });
+      console.log("GetIsRouteFinalized response:", response.data);
+      return response.data;
+    } catch(error){
+      console.error("Error in GetIsRouteFinalized:", error);
+      throw error;
+    }
+  }
+
+  async BlockTransport(params){
+    try{
+      const response = await api.post("/BlockTransport", {
+        RouteIDs: params.RouteIDs,
+        userid: params.userid
+      });
+      console.log("BlockTransport response:", response.data);
+      return response.data;
+    } catch(error){
+      console.error("Error in BlockTransport:", error);
       throw error;
     }
 }

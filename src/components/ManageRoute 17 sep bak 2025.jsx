@@ -19,7 +19,7 @@ import { toastService } from "../services/toastService";
 import OffcanvasRouteDetails from "./OffcanvasRouteDetails";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
 import { ProgressBar } from "primereact/progressbar";
-import { Dialog as PrimeDialog } from "primereact/dialog";
+import { Dialog } from "primereact/dialog";
 import { point, Point } from "leaflet";
 import axios from "axios";
 import { OverlayPanel } from "primereact/overlaypanel";
@@ -29,6 +29,7 @@ import { DataScroller } from 'primereact/datascroller';
 import { Badge } from "primereact/badge";
 import * as XLSX from "xlsx";
 import { set, throttle } from "lodash";
+import { useSmoothDraggable } from "./useSmoothDraggable";
 
 import {
   DndContext,
@@ -45,7 +46,7 @@ import {
   MeasuringStrategy,
 } from "@dnd-kit/core";
 import SwipeToDeleteBackground from "./SwipeToDeleteBackground";
-import Draggable from 'react-draggable';
+import Draggable, { DraggableCore } from 'react-draggable';
 
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 const getOrdinalSuffix = (num) => {
@@ -63,127 +64,7 @@ const getOrdinalSuffix = (num) => {
   return "th";
 };
 
-const PanelContent = React.memo(function PanelContent({
-  selectedEmployees,
-  selectedEmployeeDetails,
-  onClearSelection,
-  onToggleHold,
-  isHeld,
-  onSplitRoute,
-  onDeleteEmployee,
-  allFromSameRoute,
-}) {
-  const employeeItemTemplate = useCallback(
-    (employee) => {
-      const key = `${employee.sourceRouteId}-${employee.id || employee.empID}`;
-      return (
-        <div
-          key={key}
-          className="d-flex align-items-center p-2 border-bottom"
-          style={{ background: "white" }}
-        >
-          <div className="flex-grow-1 d-flex align-items-center justify-content-between">
-            <div>
-              <p className="fw-bold mb-0">
-                {employee.empCode} - {employee.empName}
-              </p>
-              <p className="mb-0" style={{ fontSize: "11px", color: "#666" }}>
-                {employee.Location}
-              </p>
-            </div>
-            <div className="d-flex align-items-center">
-              <p
-                className="ms-3 mb-0"
-                style={{ fontSize: "11px", color: "#555" }}
-              >
-                {employee.routeid}
-              </p>
-              <Button
-                icon="pi pi-trash"
-                className="p-button-sm p-button-danger p-button-text ms-2"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteEmployee(employee, employee.sourceRouteId);
-                }}
-                tooltip="Remove from Route"
-                tooltipOptions={{ position: "top" }}
-              />
-            </div>
-          </div>
-        </div>
-      );
-    },
-    [onDeleteEmployee]
-  );
-
-  return (
-    <>
-      {/* Sticky Header */}
-      <div
-        className="draggable-panel-header"
-        style={{
-          background: "linear-gradient(90deg, #f5f7fa, #e4e7ec)",
-          padding: "12px 16px",
-          borderBottom: "1px solid #ddd",
-          cursor: "move",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky", // 👈 makes it sticky
-          top: 0,
-          zIndex: 5,
-        }}
-      >
-        <div style={{ display: "flex", gap: "8px" }}>
-          <Button
-            label="Move Employees"
-            icon={isHeld ? "pi pi-lock" : "pi pi-arrows-alt"}
-            className={`p-button-sm ${isHeld ? "p-button-primary" : "p-button-outlined"
-              }`}
-            onClick={onToggleHold}
-            disabled={selectedEmployees.size === 0}
-          />
-          <Button
-            label="Split Route"
-            icon="pi pi-sitemap"
-            className="p-button-sm p-button-info"
-            onClick={onSplitRoute}
-            disabled={!allFromSameRoute || selectedEmployees.size === 0}
-          />
-        </div>
-
-        <Button
-          icon="pi pi-times"
-          className="p-button-rounded p-button-danger p-button-sm"
-          onClick={onClearSelection}
-          tooltip="Close"
-          tooltipOptions={{ position: "left" }}
-        />
-      </div>
-
-      {/* Scrollable Content */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          background: "#fafafa",
-          padding: "8px 12px",
-        }}
-      >
-        <DataScroller
-          value={selectedEmployeeDetails}
-          itemTemplate={employeeItemTemplate}
-          emptyMessage="No employees selected."
-          rows={100}
-          buffer={0.4}
-          inline
-          scrollHeight="100%"
-        />
-      </div>
-    </>
-  );
-});
-
+// Enhanced Floating Selection Panel Component with Action Selection
 const FloatingSelectionPanel = React.memo(
   ({
     selectedEmployees,
@@ -193,16 +74,24 @@ const FloatingSelectionPanel = React.memo(
     isHeld,
     isVisible,
     selectedAction,
+    onActionChange,
     onSplitRoute,
-    onDeleteEmployee,
+    onDeleteEmployee, // New prop for handling deletion
   }) => {
-    // ✅ Move ALL hooks to the top - before any early returns
-    const [position, setPosition] = useState({ x: 100, y: 150 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const elementRef = useRef(null);
+    const { position, isDragging, elementRef, handleMouseDown } =
+      useSmoothDraggable(100, 150, 350, 500);
 
-    // ✅ Move useMemo here too - always call it
+    // New handler to prevent drag on button clicks
+    const handlePanelMouseDown = (e) => {
+      // Check if the click originated on any button inside the panel
+      if (e.target.closest('button, .p-button')) {
+        // If it's a button, do not initiate the drag
+        return;
+      }
+      // Otherwise, call the original drag handler
+      handleMouseDown(e);
+    };
+
     const selectedEmployeeDetails = useMemo(() => {
       const details = [];
       if (selectedEmployees) {
@@ -226,89 +115,173 @@ const FloatingSelectionPanel = React.memo(
       return details;
     }, [selectedEmployees, routeDetails]);
 
+    // Check if all selected employees are from the same route (for split mode)
     const allFromSameRoute = useMemo(() => {
-      const routeIds = selectedEmployeeDetails.map((emp) => emp.sourceRouteId);
+      const routeIds = selectedEmployeeDetails.map(emp => emp.sourceRouteId);
       return routeIds.length > 0 && new Set(routeIds).size === 1;
     }, [selectedEmployeeDetails]);
 
-    // ✅ Custom drag handlers - define these always too
-    const handleMouseDown = (e) => {
-      // Only drag if clicked on the header
-      if (e.target.closest('.draggable-panel-header')) {
-        setIsDragging(true);
-        setDragStart({
-          x: e.clientX - position.x,
-          y: e.clientY - position.y
-        });
-      }
+    const firstRouteId = selectedEmployeeDetails[0]?.sourceRouteId;
+
+    const employeeItemTemplate = (employee) => {
+      const key = `${employee.sourceRouteId}-${employee.id || employee.empID}`;
+      return (
+        <div key={key} className="d-flex align-items-center p-2 border-bottom">
+          <div className="flex-grow-1" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <p className="fw-bold mb-0">
+                {employee.empCode} - {employee.empName}
+              </p>
+              <p className="mb-0" style={{ fontSize: "11px" }}>
+                {employee.Location}
+              </p>
+            </div>
+            <div className="d-flex align-items-center">
+              <p className="ms-3 mb-0" style={{ fontSize: "11px", color: "#555" }}>
+                {employee.routeid}
+              </p>
+              {/* Delete button added here */}
+              <Button
+                icon="pi pi-trash"
+                className="p-button-sm p-button-danger p-button-text ms-2"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent row selection
+                  onDeleteEmployee(employee, employee.sourceRouteId);
+                }}
+                tooltip="Remove from Route"
+                tooltipOptions={{ position: 'top' }}
+              />
+            </div>
+          </div>
+        </div>
+      );
     };
 
-    const handleMouseMove = React.useCallback((e) => {
-      if (!isDragging) return;
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }, [isDragging, dragStart]);
-
-    const handleMouseUp = React.useCallback(() => {
-      setIsDragging(false);
-    }, []);
-
-    // ✅ useEffect must also always be called
-    React.useEffect(() => {
-      if (isDragging) {
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-        return () => {
-          document.removeEventListener('mousemove', handleMouseMove);
-          document.removeEventListener('mouseup', handleMouseUp);
-        };
-      }
-    }, [isDragging, handleMouseMove, handleMouseUp]);
-
-    // ✅ NOW do the early return - after all hooks
-    if (!isVisible) return null;
+    if (!isVisible || selectedEmployees.size === 0) return null;
 
     return (
       <div
         ref={elementRef}
-        onMouseDown={handleMouseDown}
+        className={`floating-selection-panel ${isHeld ? "held" : ""}`}
         style={{
           position: "fixed",
-          top: `${position.y}px`,
-          left: `${position.x}px`,
-          width: "520px",
-          height: "30vh", // 👈 fixed height
-          zIndex: 1101,
-          borderRadius: "12px",
-          overflow: "hidden",
+          left: position.x,
+          top: position.y,
+          zIndex: 1100,
+          width: "600px",
+          maxHeight: "400px",
+          backgroundColor: "#fff",
+          cursor: isDragging ? "grabbing" : "grab",
           display: "flex",
           flexDirection: "column",
-          background: "white",
-          boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
-          willChange: "transform",
-          transition: "box-shadow 0.2s ease-in-out",
-          userSelect: 'none', // ✅ Prevent text selection while dragging
-          cursor: isDragging ? "grabbing" : "default"
+          boxShadow:
+            "0px 11px 15px -7px rgba(0, 0, 0, 0.2), 0px 24px 38px 3px rgba(0, 0, 0, 0.14), 0px 9px 46px 8px rgba(0, 0, 0, 0.12)",
         }}
+        onMouseDown={handlePanelMouseDown} // Use the new, smarter handler
       >
-        <PanelContent
-          selectedEmployees={selectedEmployees}
-          selectedEmployeeDetails={selectedEmployeeDetails}
-          onClearSelection={onClearSelection}
-          onToggleHold={onToggleHold}
-          isHeld={isHeld}
-          onSplitRoute={onSplitRoute}
-          onDeleteEmployee={onDeleteEmployee}
-          allFromSameRoute={allFromSameRoute}
-        />
+        {/* Header */}
+        <div
+          className="d-flex justify-content-between align-items-center w-100 p-2 draggable-panel-header"
+          style={{ color: "#333" }}
+        >
+          <div className="d-flex align-items-center">
+            <span style={{ fontSize: "16px", fontWeight: "600" }}>
+              Selected ({selectedEmployees.size})
+            </span>
+          </div>
+          <div className="d-flex gap-2">
+            <Tooltip target=".hold-button" />
+            {selectedAction === 'multiSelect' && (
+              <Button
+                icon={`pi ${isHeld ? "pi-lock" : "pi-unlock"}`}
+                className="p-button-sm hold-button"
+                onClick={onToggleHold}
+                data-pr-tooltip={isHeld ? "Release Hold" : "Hold Selection"}
+                data-pr-position="top"
+              />
+            )}
+            <Tooltip target=".clear-button" />
+            <Button
+              icon="pi pi-times"
+              className="p-button-sm p-button-danger clear-button"
+              onClick={onClearSelection}
+              data-pr-tooltip="Clear Selection"
+              data-pr-position="top"
+            />
+          </div>
+        </div>
+
+        {/* Action Selection Buttons */}
+        <div className="p-2 border-bottom bg-light">
+          <div className="d-flex flex-column gap-2">
+            <span className="fw-bold text-dark mb-2">Choose Action:</span>
+            <div className="d-flex gap-2">
+              <Button
+                label="Multi-Employee Drag & Drop"
+                icon="pi pi-arrows-alt"
+                className={`flex-fill ${selectedAction === 'multiSelect' ? 'p-button-primary' : 'p-button-outlined'}`}
+                onClick={() => onActionChange('multiSelect')}
+                disabled={selectedEmployees.size === 0}
+              />
+              <Button
+                label="Split Route"
+                icon="pi pi-sitemap"
+                className={`flex-fill ${selectedAction === 'split' ? 'p-button-info' : 'p-button-outlined'}`}
+                onClick={() => onActionChange('split')}
+                disabled={!allFromSameRoute || selectedEmployees.size === 0}
+              />
+            </div>
+          </div>
+
+          {/* Action-specific controls */}
+          {selectedAction === 'multiSelect' && (
+            <div className="mt-3 p-2 bg-primary-subtle rounded">
+              <div className="d-flex align-items-center justify-content-between">
+                <span className="text-primary fw-bold">Multi-Select Mode Active</span>
+                {isHeld && (
+                  <span className="badge bg-warning text-dark">Selection Held - Click routes to drop</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {selectedAction === 'split' && (
+            <div className="mt-3">
+              {allFromSameRoute ? (
+                <div className="d-flex gap-2">
+                  <Button
+                    label={`Split ${selectedEmployees.size} employee(s) to ${firstRouteId}S`}
+                    className="btn btn-info"
+                    onClick={onSplitRoute}
+                    disabled={selectedEmployees.size === 0}
+                  />
+                </div>
+              ) : (
+                <div className="alert alert-warning py-2">
+                  <small>All selected employees must be from the same route to split</small>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Employee List */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          <DataScroller
+            value={selectedEmployeeDetails}
+            itemTemplate={employeeItemTemplate}
+            emptyMessage="No employees selected."
+            rows={100}
+            buffer={0.4}
+            inline scrollHeight="500px"
+          />
+        </div>
       </div>
     );
   }
 );
 
-// Route Selection Panel Component (This component was not part of the request and remains unchanged)
+// Route Selection Panel Component (unchanged)
 const FloatingRouteSelectionPanel = React.memo(
   ({
     selectedRoutes,
@@ -318,13 +291,9 @@ const FloatingRouteSelectionPanel = React.memo(
     isVisible,
     routeSelectionOrder,
   }) => {
-    // ✅ Move ALL hooks to the top - before any early returns
-    const [position, setPosition] = useState({ x: 100, y: 100 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const elementRef = useRef(null);
+    const { position, isDragging, elementRef, handleMouseDown } =
+      useSmoothDraggable(20, 100, 350, 420);
 
-    // ✅ Move useMemo here too - always call it
     const selectedRouteDetails = useMemo(() => {
       return routeSelectionOrder.map((routeId) => {
         const route = tableData.find((r) => r.RouteID === routeId);
@@ -332,179 +301,174 @@ const FloatingRouteSelectionPanel = React.memo(
       });
     }, [routeSelectionOrder, tableData]);
 
-    // ✅ Custom drag handlers - define these always too
-    const handleMouseDown = (e) => {
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y
-      });
-    };
+    const targetRoute = selectedRouteDetails[0];
+    const sourceRoutes = selectedRouteDetails.slice(1);
 
-    const handleMouseMove = React.useCallback((e) => {
-      if (!isDragging) return;
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }, [isDragging, dragStart]);
-
-    const handleMouseUp = React.useCallback(() => {
-      setIsDragging(false);
-    }, []);
-
-    // ✅ useEffect must also always be called
-    React.useEffect(() => {
-      if (isDragging) {
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-        return () => {
-          document.removeEventListener('mousemove', handleMouseMove);
-          document.removeEventListener('mouseup', handleMouseUp);
-        };
-      }
-    }, [isDragging, handleMouseMove, handleMouseUp]);
-
-    // Route item template - matching employee item template structure
-    const routeItemTemplate = useCallback((route, index) => {
-      const isTarget = index === 0 && selectedRoutes.size >= 2;
-      return (
-        <div
-          key={route.RouteID}
-          className="d-flex align-items-center p-2 border-bottom"
-          style={{ background: "white" }}
-        >
-          <div className="flex-grow-1 d-flex align-items-center justify-content-between">
-            <div>
-              <p className="fw-bold mb-0">
-                Route {route.RouteID} {isTarget && <span className="badge bg-success ms-2">TARGET</span>}
-                {!isTarget && selectedRoutes.size >= 2 && <span className="badge bg-danger ms-2">SOURCE</span>}
-              </p>
-              <p className="mb-0" style={{ fontSize: "11px", color: "#666" }}>
-                {route.totalStop || 0} stops • {route.vendorname || "No vendor"}
-                {route.totaldist && <span> • {route.totaldist}km</span>}
-              </p>
-            </div>
-            <div className="d-flex align-items-center">
-              <div className="d-flex gap-1">
-                {route.isPWDRoute && (
-                  <img
-                    src="images/icons/pwd.png"
-                    alt="PWD"
-                    style={{ width: "12px", height: "12px" }}
-                  />
-                )}
-                {route.isOOBRoute && (
-                  <img
-                    src="images/icons/oob.png"
-                    alt="OOB"
-                    style={{ width: "12px", height: "12px" }}
-                  />
-                )}
-                {route.isNMTRoute && (
-                  <img
-                    src="images/icons/non-motorable.png"
-                    alt="NMT"
-                    style={{ width: "12px", height: "12px" }}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }, [selectedRoutes.size]);
-
-    // ✅ NOW do the early return - after all hooks
-    if (!isVisible || selectedRoutes.size === 0) {
-      return null;
-    }
+    if (!isVisible || selectedRoutes.size === 0) return null;
 
     return (
       <div
         ref={elementRef}
+        className="floating-route-panel"
         style={{
           position: "fixed",
-          top: `${position.y}px`,
-          left: `${position.x}px`,
-          width: "520px",
-          height: "30vh", // 👈 fixed height same as FloatingSelectionPanel
-          zIndex: 1101,
-          borderRadius: "12px",
-          overflow: "hidden",
+          left: position.x,
+          top: position.y,
+          zIndex: 1100,
+          width: "600px",
+          maxHeight: "400px",
+          backgroundColor: "#fff",
+          cursor: isDragging ? "grabbing" : "grab",
           display: "flex",
           flexDirection: "column",
-          background: "white",
-          boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
-          willChange: "transform",
-          transition: "box-shadow 0.2s ease-in-out",
-          userSelect: 'none'
+          boxShadow:
+            "0px 11px 15px -7px rgba(0, 0, 0, 0.2), 0px 24px 38px 3px rgba(0, 0, 0, 0.14), 0px 9px 46px 8px rgba(0, 0, 0, 0.12)",
         }}
+        onMouseDown={handleMouseDown}
       >
-        {/* Sticky Header - Same styling as FloatingSelectionPanel */}
+        {/* Header */}
         <div
-          className="draggable-panel-header"
-          onMouseDown={handleMouseDown}
-          style={{
-            background: "linear-gradient(90deg, #f5f7fa, #e4e7ec)",
-            padding: "12px 16px",
-            borderBottom: "1px solid #ddd",
-            cursor: isDragging ? "grabbing" : "move",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            position: "sticky", // 👈 makes it sticky
-            top: 0,
-            zIndex: 5,
-          }}
+          className="d-flex justify-content-between align-items-center w-100 p-2 draggable-panel-header"
+          style={{ color: "#333" }}
         >
-          <div style={{ display: "flex", gap: "8px" }}>
-            <Button
-              label="Merge Routes"
-              icon="pi pi-sitemap"
-              className="p-button-sm p-button-success"
+          <div className="d-flex align-items-center p-3 pb-0">
+            <span style={{ fontSize: "1.25rem" }}>
+              Route Merge ({selectedRoutes.size})
+            </span>
+          </div>
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-sm btn-outline-light"
               onClick={onMergeRoutes}
               disabled={selectedRoutes.size < 2}
-            />
+              title="Merge Routes"
+            >
+              <span
+                className="material-icons text-dark"
+                style={{ fontSize: "24px" }}
+              >
+                call_merge
+              </span>
+            </button>
+            <button
+              className="btn btn-sm btn-outline-light"
+              onClick={onClearSelection}
+              title="Clear Selection"
+            >
+              <span
+                className="material-icons text-dark"
+                style={{ fontSize: "24px" }}
+              >
+                close
+              </span>
+            </button>
           </div>
-
-          <Button
-            icon="pi pi-times"
-            className="p-button-rounded p-button-danger p-button-sm"
-            onClick={onClearSelection}
-            tooltip="Close"
-            tooltipOptions={{ position: "left" }}
-          />
         </div>
 
-        {/* Scrollable Content - Same styling as FloatingSelectionPanel */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            background: "#fafafa",
-            padding: "8px 12px",
-          }}
-        >
-          <DataView
-            value={selectedRouteDetails}
-            itemTemplate={(route, index) => routeItemTemplate(route, index)}
-            emptyMessage="No routes selected."
-            rows={100}
-            scrollHeight="100%"
-          />
-          
-          {selectedRoutes.size === 1 && (
-            <div className="text-center text-muted py-3">
-              <small>Select at least one more route to enable merging</small>
+        {/* Content */}
+        <div className="p-3" style={{ flex: 1, overflowY: "auto" }}>
+          {selectedRoutes.size >= 2 && (
+            <div className="alert alert-light">
+              <div className="mb-2">
+                <p className="fw-bold mb-3">
+                  Target Route (will receive all employees):
+                </p>
+                <div className="mt-1">
+                  <span className="badge bg-success me-2">Target</span>
+                  <strong>{targetRoute?.RouteID}</strong>
+                  <span className="badge bg-success ms-2">
+                    First Selected
+                  </span>
+                  <div className="small mt-3">
+                    {targetRoute?.totalStop || 0} stops •{" "}
+                    {targetRoute?.vendorname || "No vendor"}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="fw-bold">Source Routes (will be deleted):</p>
+              </div>
             </div>
           )}
+
+          {selectedRouteDetails.map((route, index) => {
+            const isTarget = index === 0 && selectedRoutes.size >= 2;
+
+            return (
+              <div
+                key={route.RouteID}
+                className={`route-item p-2 border-bottom d-flex align-items-center ${isTarget ? "bg-success-subtle" : "bg-danger-subtle"
+                  }`}
+              >
+                <div className="flex-grow-1">
+                  <div className="fw-bold">
+                    Route {route.RouteID}
+                    {isTarget && (
+                      <span className="text-primary ms-1">
+                        (First Selected)
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-dark">
+                    {route.totalStop || 0} stops •{" "}
+                    {route.vendorname || "No vendor"}
+                    {route.totaldist && <span> • {route.totaldist}km</span>}
+                  </div>
+                </div>
+                <div className="me-2">
+                  <span
+                    className={`badge p-2 ${isTarget ? "bg-success" : "bg-danger"
+                      }`}
+                  >
+                    {isTarget ? "Target" : "Source"}
+                  </span>
+                </div>
+                <div className="d-flex gap-1">
+                  {route.isPWDRoute && (
+                    <img
+                      src="images/icons/pwd.png"
+                      alt="PWD"
+                      style={{ width: "12px", height: "12px" }}
+                    />
+                  )}
+                  {route.isOOBRoute && (
+                    <img
+                      src="images/icons/oob.png"
+                      alt="OOB"
+                      style={{ width: "12px", height: "12px" }}
+                    />
+                  )}
+                  {route.isNMTRoute && (
+                    <img
+                      src="images/icons/non-motorable.png"
+                      alt="NMT"
+                      style={{ width: "12px", height: "12px" }}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div
+          className="text-center w-100 p-2 bg-light border-top"
+          style={{
+            borderBottomLeftRadius: "10px",
+            borderBottomRightRadius: "10px",
+          }}
+        >
+          <small className="text-muted">
+            {selectedRoutes.size < 2
+              ? "Select at least 2 routes to merge"
+              : `Ready to merge ${sourceRoutes.length} route(s) into Route ${targetRoute?.RouteID} (first selected)`}
+          </small>
         </div>
       </div>
     );
   }
 );
-
 // Enhanced Drop Zone Component for cross-page drops
 const CrossPageDropZone = React.memo(
   ({ routeId, position, isActive, onDrop, selectedEmployees }) => {
@@ -617,7 +581,6 @@ const DraggableEmployeeRow = React.memo(
     isDragInProgress,
     selectedAction,
     onDeleteEmployee,
-    isEditable,
   }) => {
     const employeeKey = `${routeId}-${employee.id || employee.empID}`;
 
@@ -634,7 +597,7 @@ const DraggableEmployeeRow = React.memo(
           isMultiSelect: isSelected && selectedCount > 1,
           selectedCount: isSelected ? selectedCount : 1,
         },
-        disabled: !isEditable || selectedAction === 'split',
+        disabled: selectedAction === 'split',
       });
 
     const shouldAppearDragged =
@@ -663,7 +626,7 @@ const DraggableEmployeeRow = React.memo(
       () => ({
         position: "relative",
         opacity: shouldAppearDragged ? 0.3 : 1,
-        cursor: "default",
+        cursor: isDragging ? "grabbing" : "pointer",
         border: isSelected
           ? selectedAction === 'split'
             ? "2px solid #17a2b8"
@@ -681,6 +644,17 @@ const DraggableEmployeeRow = React.memo(
       [isDragging, isSelected, shouldAppearDragged, selectedAction]
     );
 
+    const handleRowClick = useCallback(
+      (e) => {
+        if (!e.target.closest(".drag-handle")) {
+          e.preventDefault();
+          e.stopPropagation();
+          onSelectionChange(employeeKey, routeId);
+        }
+      },
+      [onSelectionChange, employeeKey, routeId]
+    );
+
     const handleCheckboxChange = useCallback(
       (e) => {
         e.stopPropagation();
@@ -694,6 +668,7 @@ const DraggableEmployeeRow = React.memo(
         style={rowStyle}
         className={`draggable-row ${shouldAppearDragged ? "dragging-multi" : ""
           } ${isSelected ? "selected" : ""}`}
+        onClick={handleRowClick}
       >
         <SwipeToDeleteBackground
           isActive={isDragging}
@@ -714,15 +689,13 @@ const DraggableEmployeeRow = React.memo(
                 onChange={handleCheckboxChange}
                 className="form-check-input me-2"
                 onClick={(e) => e.stopPropagation()}
-                style={{ cursor: isEditable ? 'pointer' : 'not-allowed' }}
-                disabled={!isEditable}
               />
 
               {/* Show drag handle only when not in split mode */}
               {selectedAction !== 'split' && (
                 <span
                   className="material-icons drag-handle"
-                  style={{ fontSize: "20px", cursor: isEditable ? "grab" : "not-allowed" }}
+                  style={{ fontSize: "20px", cursor: "grab" }}
                   {...attributes}
                   {...listeners}
                 >
@@ -771,7 +744,7 @@ const DraggableEmployeeRow = React.memo(
           {/* Column 2: Employee */}
           <div className="col-2">
 
-
+            
             {`${employee.empCode} - ${employee.empName}`}
           </div>
 
@@ -798,6 +771,7 @@ const DraggableEmployeeRow = React.memo(
               overflow: "hidden",
               textOverflow: "ellipsis",
               display: "inline-block",
+              // backgroundColor: employee.address && employee.address.length > 40 ? '#fff3cd' : 'transparent',
             }}>
               {employee.address || ""}
             </span>
@@ -933,7 +907,7 @@ const ManageRoute = () => {
 
   // UPDATED: Employee selection states with action selection
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
-  const [selectedAction, setSelectedAction] = useState('multiSelect'); // Default to multiSelect
+  const [selectedAction, setSelectedAction] = useState(null); // 'multiSelect' or 'split'
   const [selectionStartRoute, setSelectionStartRoute] = useState(null);
 
   // Route selection states
@@ -975,14 +949,6 @@ const ManageRoute = () => {
   const [crossPageDropMode, setCrossPageDropMode] = useState(false);
 
   const [scrolled, setScrolled] = useState(false);
-
-  // Unlock feature states
-  const [isShiftLocked, setIsShiftLocked] = useState(false);
-  const [isUnlockMode, setIsUnlockMode] = useState(false);
-  const [routesToUnlock, setRoutesToUnlock] = useState(new Set());
-  const [showUnlockConfirmDialog, setShowUnlockConfirmDialog] = useState(false);
-  const [pendingUnlock, setPendingUnlock] = useState(null);
-
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 200) {
@@ -1098,7 +1064,7 @@ const ManageRoute = () => {
     return closestCenter(args);
   }, []);
 
-  // [MODIFIED] Employee selection handler to keep panel open
+  // UPDATED: Employee selection handler
   const handleEmployeeSelection = useCallback(
     (employeeKey, routeId) => {
       setSelectedEmployees((prev) => {
@@ -1106,20 +1072,18 @@ const ManageRoute = () => {
 
         if (newSelection.has(employeeKey)) {
           newSelection.delete(employeeKey);
-          // When selection becomes empty, reset related states but keep panel open
           if (newSelection.size === 0) {
             setSelectionStartRoute(null);
+            setShowFloatingPanel(false);
             setIsSelectionHeld(false);
             setCrossPageDropMode(false);
-            setSelectedAction('multiSelect'); // Revert to default action
-            // NOTE: The line to hide the panel `setShowFloatingPanel(false)` is intentionally removed.
+            setSelectedAction(null);
           }
         } else {
           newSelection.add(employeeKey);
           if (!selectionStartRoute) {
             setSelectionStartRoute(routeId);
           }
-          // Always ensure the panel is visible when there's a selection
           setShowFloatingPanel(true);
         }
 
@@ -1129,11 +1093,14 @@ const ManageRoute = () => {
     [selectionStartRoute]
   );
 
-
-  // Action change handler
+  // NEW: Action change handler
   const handleActionChange = useCallback((action) => {
     setSelectedAction(action);
+
     if (action === 'multiSelect') {
+      setIsSelectionHeld(false);
+      setCrossPageDropMode(false);
+    } else if (action === 'split') {
       setIsSelectionHeld(false);
       setCrossPageDropMode(false);
     }
@@ -1141,9 +1108,6 @@ const ManageRoute = () => {
 
   // Toggle hold functionality
   const handleToggleHold = useCallback(() => {
-    // This function will now also set the correct action mode.
-    setSelectedAction('multiSelect');
-
     setIsSelectionHeld((prev) => {
       const newHeld = !prev;
       setCrossPageDropMode(newHeld);
@@ -1165,10 +1129,10 @@ const ManageRoute = () => {
     setShowFloatingPanel(false);
     setIsSelectionHeld(false);
     setCrossPageDropMode(false);
-    setSelectedAction('multiSelect');
+    setSelectedAction(null);
   }, []);
 
-  // Handle split route with updated logic
+  // NEW: Handle split route with updated logic
   const handleSplitRoute = useCallback(() => {
     if (selectedEmployees.size === 0) {
       toastService.warn("Please select employees to split");
@@ -1208,7 +1172,7 @@ const ManageRoute = () => {
     const selectedEmployeeDetails = [];
     employeeIds.forEach((employeeId) => {
       const employee = routeEmployees.find(
-        (emp) => String(emp.id || emp.empID || emp.empId) === employeeId
+        (emp) => (emp.id || emp.empID || emp.empId) === employeeId
       );
       if (employee) {
         selectedEmployeeDetails.push(employee);
@@ -1227,29 +1191,31 @@ const ManageRoute = () => {
 
   // Route selection handlers (unchanged)
   const handleRouteSelection = useCallback((routeId) => {
-  setSelectedRoutes((prev) => {
-    const newSelection = new Set(prev);
+    setSelectedRoutes((prev) => {
+      const newSelection = new Set(prev);
 
-    if (newSelection.has(routeId)) {
-      newSelection.delete(routeId);
-      setRouteSelectionOrder((prevOrder) =>
-        prevOrder.filter((id) => id !== routeId)
-      );
-      // Remove this line: if (newSelection.size === 0) setShowFloatingRoutePanel(false);
-    } else {
-      newSelection.add(routeId);
-      setRouteSelectionOrder((prevOrder) => [...prevOrder, routeId]);
-      // Remove this line: setShowFloatingRoutePanel(true);
-    }
+      if (newSelection.has(routeId)) {
+        newSelection.delete(routeId);
+        setRouteSelectionOrder((prevOrder) =>
+          prevOrder.filter((id) => id !== routeId)
+        );
+        if (newSelection.size === 0) {
+          setShowFloatingRoutePanel(false);
+        }
+      } else {
+        newSelection.add(routeId);
+        setRouteSelectionOrder((prevOrder) => [...prevOrder, routeId]);
+        setShowFloatingRoutePanel(true);
+      }
 
-    return newSelection;
-  });
-}, []);
+      return newSelection;
+    });
+  }, []);
 
   const handleClearRouteSelection = useCallback(() => {
     setSelectedRoutes(new Set());
     setRouteSelectionOrder([]);
-    // setShowFloatingRoutePanel(false);
+    setShowFloatingRoutePanel(false);
   }, []);
 
   // Cross-page drop handler
@@ -1414,15 +1380,6 @@ const ManageRoute = () => {
   const getRowClassName = useCallback(
     (rowData) => {
       let className = "";
-      if (rowData.isRouteFinalized === 1) {
-        className += "route-is-finalized ";
-      }
-      if (isUnlockMode && routesToUnlock.has(rowData.RouteID)) {
-        className += "route-selected-for-unlock ";
-      }
-      if (isUnlockMode && rowData.isRouteFinalized === 1) {
-        className += "unlock-mode-selectable ";
-      }
       if (activeId && hoveredRouteId === rowData.RouteID) {
         className += "route-hover-drag ";
       }
@@ -1448,7 +1405,6 @@ const ManageRoute = () => {
         className += "route-merge-mode ";
       }
 
-
       return className;
     },
     [
@@ -1459,8 +1415,6 @@ const ManageRoute = () => {
       selectedRoutes,
       routeSelectionOrder,
       isRouteSelectMode,
-      isUnlockMode,
-      routesToUnlock,
     ]
   );
 
@@ -1482,14 +1436,6 @@ const ManageRoute = () => {
       }
     };
   }, [autoExpandTimer]);
-
-  useEffect(() => {
-  if (isRouteSelectMode) {
-    setShowFloatingRoutePanel(selectedRoutes.size > 0);
-  } else {
-    setShowFloatingRoutePanel(false);
-  }
-}, [selectedRoutes.size, isRouteSelectMode]);
 
   const handleSortChange = useCallback(async () => {
     if (
@@ -1558,9 +1504,6 @@ const ManageRoute = () => {
       setTableData([]);
       setStatsDetails([]);
       setRouteDetails({});
-      setIsShiftLocked(false);
-      setIsUnlockMode(false);
-      setRoutesToUnlock(new Set());
       setRouteStats({
         TotalEmps: 0,
         TotalRoutes: 0,
@@ -1619,22 +1562,6 @@ const ManageRoute = () => {
           typeof response === "string" ? JSON.parse(response) : response;
         setTableData(parsedResponse || []);
         toastService.success("Route data loaded successfully.");
-
-        // Check for locked shifts
-        const lockStatusResponse = await ManageRouteService.GetIsRouteFinalized({
-          sDate: shiftDate,
-          FacilityID: selectedFacility,
-          TripType: selectedTripType,
-          Shifts: selectedShifts,
-          userid: userID,
-        });
-        const parsedLockStatus = typeof lockStatusResponse === 'string' ? JSON.parse(lockStatusResponse) : lockStatusResponse;
-        if (parsedLockStatus && parsedLockStatus.length > 0) {
-          setIsShiftLocked(parsedLockStatus[0].result);
-        } else {
-          setIsShiftLocked(false);
-        }
-
 
         const params = {
           sdate: shiftDate,
@@ -1904,7 +1831,6 @@ const ManageRoute = () => {
 
       const routeData = routeDetails[rowData.RouteID];
       const employees = Array.isArray(routeData) ? routeData : [];
-      const isEditable = rowData.isRouteFinalized !== 1;
 
       if (routeData && routeData.loading) {
         return (
@@ -1921,11 +1847,6 @@ const ManageRoute = () => {
 
       return (
         <div className="bg-custom">
-          {!isEditable && (
-            <div className="alert alert-warning text-center small p-2 mb-0">
-              This route is finalized and is now view-only. All operations are disabled.
-            </div>
-          )}
           <div className="p-0">
             {/* Flexbox Header - Replaces <thead> */}
             <div className="row" style={{ fontSize: '12px', background: '#f8f9fa', padding: '8px 0', fontWeight: 'bold' }}>
@@ -1945,16 +1866,14 @@ const ManageRoute = () => {
               {employees.length === 0 ? (
                 <>
                   <div>
-                    {isEditable && (
-                      <CrossPageDropZone
-                        routeId={rowData.RouteID}
-                        position={1}
-                        isActive={crossPageDropMode}
-                        onDrop={handleCrossPageDrop}
-                        selectedEmployees={selectedEmployees}
-                      />
-                    )}
-                    {isEditable && selectedAction !== 'split' && (
+                    <CrossPageDropZone
+                      routeId={rowData.RouteID}
+                      position={1}
+                      isActive={crossPageDropMode}
+                      onDrop={handleCrossPageDrop}
+                      selectedEmployees={selectedEmployees}
+                    />
+                    {selectedAction !== 'split' && (
                       <DropZoneIndicator
                         routeId={rowData.RouteID}
                         position={1}
@@ -1971,37 +1890,35 @@ const ManageRoute = () => {
                     style={{ color: "#666" }}
                   >
                     No employees in this route.
-                    {isEditable && crossPageDropMode ? (
+                    {crossPageDropMode ? (
                       <span className="text-primary">
                         {" "}
                         Click above to drop employees here.
                       </span>
-                    ) : isEditable && selectedAction === 'split' ? (
+                    ) : selectedAction === 'split' ? (
                       <span>
                         {" "}
                         Select another route with employees to split.
                       </span>
-                    ) : isEditable ? (
+                    ) : (
                       <span>
                         {" "}
                         Drag employees from other routes to add them here.
                       </span>
-                    ) : null}
+                    )}
                   </div>
                 </>
               ) : (
                 <>
                   <div>
-                    {isEditable && (
-                      <CrossPageDropZone
-                        routeId={rowData.RouteID}
-                        position={1}
-                        isActive={crossPageDropMode}
-                        onDrop={handleCrossPageDrop}
-                        selectedEmployees={selectedEmployees}
-                      />
-                    )}
-                    {isEditable && selectedAction !== 'split' && (
+                    <CrossPageDropZone
+                      routeId={rowData.RouteID}
+                      position={1}
+                      isActive={crossPageDropMode}
+                      onDrop={handleCrossPageDrop}
+                      selectedEmployees={selectedEmployees}
+                    />
+                    {selectedAction !== 'split' && (
                       <DropZoneIndicator
                         routeId={rowData.RouteID}
                         position={1}
@@ -2032,13 +1949,12 @@ const ManageRoute = () => {
                           selectedEmployees={selectedEmployees}
                           isDragInProgress={!!activeId}
                           selectedAction={selectedAction}
-                          isEditable={isEditable}
                           onDeleteEmployee={(employee, routeId) => {
                             setPendingDeleteEmployee({ employee, routeId });
                             setShowDeleteEmployeeDialog(true);
                           }}
                         />
-                        {isEditable && selectedAction !== 'split' && (
+                        {selectedAction !== 'split' && (
                           <div>
                             <CrossPageDropZone
                               routeId={rowData.RouteID}
@@ -2081,7 +1997,6 @@ const ManageRoute = () => {
                     fontWeight: "500",
                     transition: "all 0.3s ease",
                   }}
-                  disabled={!isEditable}
                 >
                   <i className="material-icons" style={{ fontSize: "16px" }}>
                     person_add
@@ -2541,82 +2456,6 @@ const ManageRoute = () => {
     userID,
     handleSubmit,
   ]);
-
-  // Unlock handlers
-  const handleSelectRouteToUnlock = useCallback((routeId) => {
-    setRoutesToUnlock((prev) => {
-      const newSelection = new Set(prev);
-      if (newSelection.has(routeId)) {
-        newSelection.delete(routeId);
-      } else {
-        newSelection.add(routeId);
-      }
-      return newSelection;
-    });
-  }, []);
-
-  const handleUnlockShift = () => {
-    const finalizedRoutes = tableData
-      .filter(route => route.isRouteFinalized === 1)
-      .map(route => route.RouteID);
-
-    if (finalizedRoutes.length === 0) {
-      toastService.info("No finalized routes to unlock in this shift.");
-      return;
-    }
-
-    setPendingUnlock({
-      routeIds: finalizedRoutes,
-      type: 'shift',
-    });
-    setShowUnlockConfirmDialog(true);
-  };
-
-  const handleUnlockSelectedRoutes = () => {
-    if (routesToUnlock.size === 0) {
-      toastService.warn("Please select routes to unlock.");
-      return;
-    }
-    setPendingUnlock({
-      routeIds: Array.from(routesToUnlock),
-      type: 'routes',
-    });
-    setShowUnlockConfirmDialog(true);
-  };
-
-  const confirmUnlockOperation = async () => {
-    if (!pendingUnlock) return;
-
-    setIsSubmitting(true);
-    setShowUnlockConfirmDialog(false);
-
-    try {
-      const response = await ManageRouteService.BlockTransport({
-        RouteIDs: pendingUnlock.routeIds.join(','),
-        userid: userID,
-      });
-
-      const parsedResponse = typeof response === 'string' ? JSON.parse(response) : response;
-      if (parsedResponse && parsedResponse.length > 0 && parsedResponse[0].res) {
-        toastService.success(parsedResponse[0].res);
-      } else {
-        toastService.success("Routes unlocked successfully!");
-      }
-
-      // Reset states and refresh data
-      setPendingUnlock(null);
-      setRoutesToUnlock(new Set());
-      setIsUnlockMode(false);
-      await handleSubmit();
-
-    } catch (error) {
-      console.error("Error unlocking routes:", error);
-      toastService.error("Failed to unlock routes.");
-      setIsSubmitting(false);
-      setPendingUnlock(null);
-    }
-  };
-
 
   // Additional handlers for file operations, employee management, etc.
   const handleFileUpload = async (event) => {
@@ -3424,34 +3263,6 @@ const ManageRoute = () => {
     <>
       <style>
         {`
-          .route-is-finalized {
-            background-color: #f8f9fa !important;
-            opacity: 0.7;
-            cursor: not-allowed;
-          }
-
-          .route-is-finalized > td {
-            color: #6c757d !important;
-          }
-
-          .route-is-finalized .p-row-toggler {
-            cursor: pointer !important;
-            opacity: 1 !important;
-          }
-
-          .route-is-finalized .p-row-toggler:hover {
-            background: rgba(0,0,0,0.05);
-          }
-          
-          .route-selected-for-unlock {
-            background-color: #d1ecf1 !important;
-            border-left: 4px solid #17a2b8 !important;
-          }
-
-          .unlock-mode-selectable {
-            cursor: pointer !important;
-          }
-
           .drop-zone {
             position: relative;
             overflow: hidden;
@@ -3549,7 +3360,7 @@ const ManageRoute = () => {
             50% { opacity: 1; }
           }
 
-          .drag-in-progress .p-datatable-tbody tr:not(.route-is-finalized):hover {
+          .drag-in-progress .p-datatable-tbody tr:hover {
             background-color: rgba(156, 39, 176, 0.1) !important;
             cursor: pointer;
           }
@@ -3646,12 +3457,12 @@ const ManageRoute = () => {
             transition: all 0.3s ease;
           }
 
-          .route-merge-mode .p-datatable-tbody tr:not(.route-is-finalized) {
+          .route-merge-mode .p-datatable-tbody tr {
             cursor: pointer;
             transition: background-color 0.2s ease;
           }
 
-          .route-merge-mode .p-datatable-tbody tr:not(.route-is-finalized):hover {
+          .route-merge-mode .p-datatable-tbody tr:hover {
             background-color: rgba(255, 152, 0, 0.1) !important;
           }
 
@@ -3931,61 +3742,56 @@ const ManageRoute = () => {
             </div>
           </div>
 
+          {/* UPDATED: Simplified toolbar - only Route Merge */}
           {showButtons && (
+
             <div className={scrolled ? "buttonFix shadow" : "hidden"}>
               <div className="row mt-3">
                 <div className="col-12 d-flex justify-content-between align-items-center">
                   <div className="d-flex align-items-center gap-3">
-                    <Button
-                      label="Route Merge Mode"
-                      icon="pi pi-share-alt"
-                      className="btn btn-outline-secondary route-merge-toggle-btn"
-                      severity={isRouteSelectMode ? "warning" : "secondary"}
-                      raised
-                      rounded
-                      onClick={() => {
-                        setIsRouteSelectMode(!isRouteSelectMode);
-                        if (isRouteSelectMode) handleClearRouteSelection();
-                        setIsUnlockMode(false);
-                      }}
-                    />
-                    {isShiftLocked && (
-                      <div className="d-flex align-items-center">
-                        <Button
-                          label="Unlock Shift"
-                          icon="pi pi-lock-open"
-                          className="btn btn-danger"
-                          raised
-                          rounded
-                          onClick={handleUnlockShift}
-                        />
-                        <Button
-                          label={isUnlockMode ? "Cancel Unlock" : "Unlock Routes"}
-                          icon="pi pi-key"
-                          className="btn btn-danger ms-2"
-                          raised
-                          rounded
-                          onClick={() => {
-                            setIsUnlockMode(!isUnlockMode);
-                            if (isUnlockMode) setRoutesToUnlock(new Set());
-                            setIsRouteSelectMode(false);
-                          }}
-                        />
-                        {isUnlockMode && routesToUnlock.size > 0 && (
+                    {/* Only keep Route Merge Mode */}
+                    <div className="d-flex align-items-center">
+                      <Button
+                        label="Route Merge Mode"
+                        icon="pi pi-share-alt"
+                        className="btn btn-outline-secondary route-merge-toggle-btn"
+                        severity={isRouteSelectMode ? "warning" : "secondary"}
+                        raised
+                        rounded
+                        onClick={() => {
+                          setIsRouteSelectMode(!isRouteSelectMode);
+                          if (isRouteSelectMode) handleClearRouteSelection();
+                        }}
+                      />
+
+                      {selectedRoutes.size > 0 && (
+                        <>
                           <Button
-                            label={`Confirm Unlock (${routesToUnlock.size})`}
-                            icon="pi pi-check"
-                            className="p-button-success ms-2"
+                            label="Merge Routes"
+                            icon="pi pi-arrows-h"
+                            className="btn btn-outline-secondary ms-2"
+                            onClick={handleMergeRoutes}
+                            rounded
+                            raised
+                            disabled={selectedRoutes.size < 2}
+                          />
+
+                          <Button
+                            label="Clear Routes"
+                            icon="pi pi-times"
+                            className="btn btn-outline-secondary ms-2"
+                            severity="danger"
+                            outlined
                             raised
                             rounded
-                            onClick={handleUnlockSelectedRoutes}
+                            onClick={handleClearRouteSelection}
                           />
-                        )}
-                      </div>
-                    )}
+                        </>
+                      )}
+                    </div>
                   </div>
 
-
+                  {/* Keep existing action buttons */}
                   <div>
                     <Button
                       label="Recalculate"
@@ -4040,6 +3846,7 @@ const ManageRoute = () => {
             </div>
           )}
 
+          {/* Enhanced Table */}
           <div className="row">
             <div className="col-12">
               <div className="card_tb">
@@ -4082,59 +3889,30 @@ const ManageRoute = () => {
                   onRowClick={
                     isRouteSelectMode
                       ? (e) => {
-                        if (e.data.isRouteFinalized !== 1) {
-                          e.preventDefault();
-                          handleRouteSelection(e.data.RouteID);
-                        }
+                        e.preventDefault();
+                        handleRouteSelection(e.data.RouteID);
                       }
-                      : isUnlockMode
-                        ? (e) => {
-                          if (e.data.isRouteFinalized === 1) {
-                            e.preventDefault();
-                            handleSelectRouteToUnlock(e.data.RouteID);
-                          }
-                        }
-                        : undefined
+                      : undefined
                   }
                 >
                   <Column expander style={{ width: "3rem" }} />
 
+                  {/* Add Route Selection Column */}
                   {isRouteSelectMode && (
                     <Column
                       header="Select"
                       style={{ width: "4rem" }}
-                      body={(rowData) =>
-                        rowData.isRouteFinalized !== 1 ? (
-                          <input
-                            type="checkbox"
-                            checked={selectedRoutes.has(rowData.RouteID)}
-                            onChange={() => handleRouteSelection(rowData.RouteID)}
-                            className="form-check-input"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : null
-                      }
+                      body={(rowData) => (
+                        <input
+                          type="checkbox"
+                          checked={selectedRoutes.has(rowData.RouteID)}
+                          onChange={() => handleRouteSelection(rowData.RouteID)}
+                          className="form-check-input"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      )}
                     />
                   )}
-
-                  {isUnlockMode && (
-                    <Column
-                      header="Unlock"
-                      style={{ width: "4rem" }}
-                      body={(rowData) =>
-                        rowData.isRouteFinalized === 1 ? (
-                          <input
-                            type="checkbox"
-                            checked={routesToUnlock.has(rowData.RouteID)}
-                            onChange={() => handleSelectRouteToUnlock(rowData.RouteID)}
-                            className="form-check-input"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : null
-                      }
-                    />
-                  )}
-
 
                   <Column
                     field=""
@@ -4315,6 +4093,7 @@ const ManageRoute = () => {
           </div>
         </div>
 
+        {/* UPDATED: Enhanced Floating Selection Panel */}
         <FloatingSelectionPanel
           selectedEmployees={selectedEmployees}
           routeDetails={routeDetails}
@@ -4328,6 +4107,7 @@ const ManageRoute = () => {
           onDeleteEmployee={handleDeleteFromPanel}
         />
 
+        {/* Floating Route Selection Panel */}
         <FloatingRouteSelectionPanel
           selectedRoutes={selectedRoutes}
           tableData={memoizedTableData}
@@ -4343,7 +4123,7 @@ const ManageRoute = () => {
           onClose={() => setShowOffcanvas(false)}
           routeId={selectedRouteId}
         />
-        <PrimeDialog
+        <Dialog
           visible={showProgressDialog}
           onHide={() => { }}
           closable={false}
@@ -4380,9 +4160,9 @@ const ManageRoute = () => {
               )}
             </div>
           </div>
-        </PrimeDialog>
+        </Dialog>
 
-        <PrimeDialog
+        <Dialog
           visible={showGenerateRouteDialog}
           onHide={() => setShowGenerateRouteDialog(false)}
           header="Are you sure?"
@@ -4426,9 +4206,10 @@ const ManageRoute = () => {
               </span>
             </p>
           </div>
-        </PrimeDialog>
+        </Dialog>
 
-        <PrimeDialog
+        {/* Enhanced Drag and Drop Confirmation Dialog */}
+        <Dialog
           visible={showDragDropConfirmDialog}
           onHide={cancelDragDropOperation}
           style={{ width: "692px", height: "auto" }}
@@ -4554,9 +4335,10 @@ const ManageRoute = () => {
               )}
             </div>
           )}
-        </PrimeDialog>
+        </Dialog>
 
-        <PrimeDialog
+        {/* Route Merge Confirmation Dialog */}
+        <Dialog
           visible={showRouteMergeDialog}
           onHide={cancelMergeOperation}
           header="Confirm Route Merge"
@@ -4657,7 +4439,7 @@ const ManageRoute = () => {
                 </div>
               </div>
 
-              {/* <div className="mt-3 rounded">
+              <div className="mt-3 rounded">
                 <strong className="mb-3 d-block">Merge Process:</strong>
                 <ol className="m-0">
                   <li>
@@ -4674,7 +4456,7 @@ const ManageRoute = () => {
                     with the new employee list.
                   </li>
                 </ol>
-              </div> */}
+              </div>
 
               <div className="alert alert-light mt-3">
                 <small>
@@ -4687,9 +4469,10 @@ const ManageRoute = () => {
               </div>
             </div>
           )}
-        </PrimeDialog>
+        </Dialog>
 
-        <PrimeDialog
+        {/* Route Split Confirmation Dialog */}
+        <Dialog
           visible={showSplitConfirmDialog}
           onHide={cancelSplitOperation}
           header="Confirm Route Split"
@@ -4772,9 +4555,55 @@ const ManageRoute = () => {
                   </div>
                 </div>
               </div>
+
+              {/* <div className="mt-3">
+                <strong className="mb-3 d-block">Employees to be moved:</strong>
+                <div
+                  className="border rounded p-2"
+                  style={{ maxHeight: "150px", overflowY: "auto" }}
+                >
+                  {pendingSplitOperation.employeeDetails.map(
+                    (employee, index) => (
+                      <div
+                        key={index}
+                        className="d-flex justify-content-between align-items-center py-1"
+                      >
+                        <span>
+                          <strong>{employee.empCode}</strong> -{" "}
+                          {employee.empName}
+                        </span>
+                        <div className="d-flex gap-1">
+                          {employee.isPWD && (
+                            <img
+                              src="images/icons/pwd.png"
+                              alt="PWD"
+                              style={{ width: "16px", height: "16px" }}
+                            />
+                          )}
+                          {employee.isOOB && (
+                            <img
+                              src="images/icons/oob.png"
+                              alt="OOB"
+                              style={{ width: "16px", height: "16px" }}
+                            />
+                          )}
+                          {employee.Gender === "F" && (
+                            <span
+                              className="badge bg-danger-subtle text-dark"
+                              style={{ fontSize: "8px" }}
+                            >
+                              F
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div> */}
             </div>
           )}
-        </PrimeDialog>
+        </Dialog>
 
         <PrimeSidebar
           visible={showDetailsSidebar}
@@ -4830,9 +4659,8 @@ const ManageRoute = () => {
                         </div>{" "}
                       </div>
                       <span className="fw-bold">
-                        {/* {(statsDetails?.[0]?.mediumVehicleCount || 0) -
-                          (statsDetails?.[0]?.FleetExhaustionCount || 0)} */}
-                          {statsDetails?.[0]?.mediumVehicleCount || 0}
+                        {(statsDetails?.[0]?.mediumVehicleCount || 0) -
+                          (statsDetails?.[0]?.FleetExhaustionCount || 0)}
                       </span>
                     </li>
                     <li className="list-group-item d-flex justify-content-between align-items-center">
@@ -5043,7 +4871,7 @@ const ManageRoute = () => {
           </div>
         </PrimeSidebar>
 
-        <PrimeDialog
+        <Dialog
           visible={showAutoVendorAllocationDialog}
           onHide={() => setShowAutoVendorAllocationDialog(false)}
           header="Confirmation"
@@ -5065,9 +4893,10 @@ const ManageRoute = () => {
           }
         >
           <p>Are you sure you want to automatically allocate the vendor?</p>
-        </PrimeDialog>
+        </Dialog>
 
-        <PrimeDialog
+        {/* Employee Delete Confirmation Dialog */}
+        <Dialog
           visible={showDeleteEmployeeDialog}
           onHide={() => setShowDeleteEmployeeDialog(false)}
           header={
@@ -5110,10 +4939,11 @@ const ManageRoute = () => {
               </p>
             </div>
           )}
-        </PrimeDialog>
+        </Dialog>
 
 
-        <PrimeDialog
+        {/* Modern Add Employee Modal */}
+        <Dialog
           visible={showAddEmployeeModal}
           onHide={handleCloseAddEmployeeModal}
           header={
@@ -5172,11 +5002,12 @@ const ManageRoute = () => {
               </div>
             )}
 
+            {/* [MODIFIED] Search Bar Layout */}
             <div className="mb-3">
               <span className="fw-semibold" style={{ fontSize: "14px" }}>
                 Search Employee
               </span>
-              <div className="input-group">
+              <div className="input-group"> {/* Use Bootstrap's input-group for clean alignment */}
                 <InputText
                   value={employeeSearchQuery}
                   onChange={(e) => setEmployeeSearchQuery(e.target.value)}
@@ -5188,7 +5019,7 @@ const ManageRoute = () => {
                   }
                 />
                 <Button
-                  label={isSearching ? "" : "Search"}
+                  label={isSearching ? "" : "Search"} // Hide label when loading to prevent resizing
                   onClick={handleSearchEmployees}
                   className="btn btn-dark"
                   icon={isSearching ? "pi pi-spinner pi-spin" : "pi pi-search"}
@@ -5196,7 +5027,9 @@ const ManageRoute = () => {
               </div>
             </div>
 
+            {/* Two-column layout for results and stop selection */}
             <div className="row">
+              {/* Left Column: Search Results */}
               <div className="col-md-8">
                 {searchResults.length > 0 && (
                   <div>
@@ -5263,6 +5096,7 @@ const ManageRoute = () => {
                 )}
               </div>
 
+              {/* Right Column: Stop Position */}
               <div className="col-md-4">
                 {selectedEmployee && availableStopNumbers.length > 0 && (
                   <div className="mb-3">
@@ -5315,33 +5149,10 @@ const ManageRoute = () => {
               </div>
             </div>
           </div>
-        </PrimeDialog>
-
-        <PrimeDialog
-          visible={showUnlockConfirmDialog}
-          onHide={() => setShowUnlockConfirmDialog(false)}
-          header="Confirm Unlock"
-          modal
-          footer={
-            <>
-              <Button label="Cancel" onClick={() => setShowUnlockConfirmDialog(false)} className="p-button-text" />
-              <Button label="Confirm" onClick={confirmUnlockOperation} autoFocus />
-            </>
-          }
-        >
-          {pendingUnlock && (
-            <div>
-              {pendingUnlock.type === 'shift' ? (
-                <p>Are you sure you want to unlock all {pendingUnlock.routeIds.length} finalized routes for this shift?</p>
-              ) : (
-                <p>Are you sure you want to unlock the selected {pendingUnlock.routeIds.length} route(s)?</p>
-              )}
-              <p className="mt-2 small text-muted">This will make them editable again.</p>
-            </div>
-          )}
-        </PrimeDialog>
+        </Dialog>
 
 
+        {/* Enhanced Drag Overlay */}
         <DragOverlay
           dropAnimation={{
             duration: 400,
@@ -5414,7 +5225,8 @@ const ManageRoute = () => {
           ) : null}
         </DragOverlay>
 
-        <PrimeDialog
+        {/* Recalculate Before Finalize Dialog */}
+        <Dialog
           visible={showRecalcBeforeFinalizeDialog}
           onHide={() => setShowRecalcBeforeFinalizeDialog(false)}
           header={
@@ -5487,7 +5299,7 @@ const ManageRoute = () => {
               </small>
             </p>
           </div>
-        </PrimeDialog>
+        </Dialog>
       </DndContext>
     </>
   );

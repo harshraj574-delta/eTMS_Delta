@@ -220,7 +220,7 @@ const VendorAllocation = () => {
           value: item.Id, // Using Id from your API response
         }))
         : [];
-      setVendors([{ label: "-Select Vendors-", value: 0 }, ...formattedData]);
+      setVendors([{ label: "-Select -", value: 0 }, ...formattedData]);
     } catch (error) {
       console.error("Error fetching vendors:", error);
     }
@@ -382,7 +382,7 @@ const VendorAllocation = () => {
                 options={shiftTimeOptions}
                 optionLabel="name" // Assuming shiftTime is the field you want to display
                 onChange={(e) => setSelectedShiftTime(e.value)}
-                placeholder="Select Shift Time"
+                placeholder="Select Shift"
                 value={selectedShiftTime}
                 className="w-100"
                 filter
@@ -458,7 +458,7 @@ const VendorAllocation = () => {
                               )
                             );
                           }}
-                          placeholder="Select Vendor"
+                          placeholder="Select "
                           className="w-100"
                           disabled={isBackDate}
                         />

@@ -944,7 +944,7 @@ const Dashboard = () => {
                           <RiNormalAdhoc filter={filter} />
                         </div>
                       </div>
-                      <div className="row d-flex">
+                      {/* <div className="row d-flex">
                         <div className="col-6">
                           <div className="card h-100">
                             1 <br />
@@ -954,7 +954,7 @@ const Dashboard = () => {
                         <div className="col-6">
                             <div className="card h-100">1</div>
                           </div>
-                      </div>
+                      </div> */}
                     </>
                   );
                 case 1:
