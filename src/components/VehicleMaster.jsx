@@ -45,20 +45,9 @@ const VehicleMaster = () => {
     const [selectedVehicleType, setSelectedVehicleType] = useState(null);
     const [selectedEditVehicleType, setSelectedEditVehicleType] = useState(null);
     // Fuel type options array
-    const fuelTypeOptions = [
-        { name: "CNG", value: 1 },
-        { name: "Electric", value: 2 },
-        { name: "Diesel", value: 3 },
-        { name: "Petrol", value: 4 },
-        { name: "LPG", value: 5 },
-    ];
-    const fuelTypeOptionsEdit = [
-        { name: "CNG", value: 1 },
-        { name: "Electric", value: 2 },
-        { name: "Diesel", value: 3 },
-        { name: "Petrol", value: 4 },
-        { name: "LPG", value: 5 },
-    ];
+    const [fuelType, setFuelType] = useState([]);
+    const [editFuelType, setEditFuelType] = useState([]);
+   
     const [documentDetails, setDocumentDetails] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
     const formatDate = (dateStr) => {
@@ -85,6 +74,8 @@ const VehicleMaster = () => {
     //const [editVehicle, setEditVehicle] = useState(false);
     useEffect(() => {
         fetchFacility();
+        fetchFuelMaster();
+        fetchFuelMasterEdit();
         fetchFacilityAdd();
         fetchFacilityEdit();
         fetchDocumentDetails();
@@ -106,16 +97,16 @@ const VehicleMaster = () => {
         if (selectedFacility) {
             fetchVendorsByFacilityAdd();
         }
-        if (editselectedFacility) {
-            fetchVendorsByFacilityEdit();
-        }
+        // if (editselectedFacility) {
+        //     fetchVendorsByFacilityEdit();
+        // }
         if (selectedVendorAdd) {
             fetchSelectVehicleType();
         }
-        if (selectedEditVendor) {
-            fetchSelectVehicleTypeEdit();
-        }
-    }, [selectedCity, selectedFacility, selectedVendorAdd, selectedEditVendor, editselectedFacility]);
+        // if (selectedEditVendor) {
+        //     fetchSelectVehicleTypeEdit();
+        // }
+    }, [selectedCity, selectedFacility, selectedVendorAdd]);
 
     // useEffect(() => {
     //     if (vendor.length > 0) {
@@ -124,7 +115,35 @@ const VehicleMaster = () => {
     //         setSelectedVendor(defaultVendor.value);
     //     }
     // }, [vendor]);
-
+    const fetchFuelMaster = async () => {
+        try {
+            const response = await VehicleMasterService.sp_getfuelmaster();
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            const formattedData = parsedData.map(item => ({
+                name: item.fueltype,
+                value: item.Id
+            }));
+            // console.log("Fuel Data:", formattedData);
+            setFuelType(formattedData);
+        } catch (error) {
+            console.error("Error while fetching fuel data:", error);
+            toastService.error("Failed to load fuel data.");
+        }
+    }
+    const fetchFuelMasterEdit = async () => {
+        try {
+            const response = await VehicleMasterService.sp_getfuelmaster();
+            const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
+            const formattedData = parsedData.map(item => ({
+                name: item.fueltype,
+                value: item.Id
+            }));
+            setEditFuelType(formattedData);
+        } catch (error) {
+            console.error("Error while fetching fuel data:", error);
+            toastService.error("Failed to load fuel data.");
+        }
+    }
     const fetchFacility = async () => {
         try {
             const response = await VehicleMasterService.SelectFacility({
@@ -280,6 +299,7 @@ const VehicleMaster = () => {
             toastService.error("Failed to fetch document details.");
         }
     }
+
     // Open sidebar with employee data
     const openEditSidebar = () => {
         setUpdateVehicle(true); // Open sidebar
@@ -539,9 +559,9 @@ const VehicleMaster = () => {
         VehicleId: "",
         VehicleNo: "",
         VehicleRegNo: "",
-        FacilityId: 0,
-        VendorId: 0,
-        VehicleTypeId: 0,
+        FacilityId: "",
+        VendorId: "",
+        VehicleTypeId: "",
         VehicleRegDate: "",
         PermitExpiryDate: "",
         InsuranceExpiryDate: "",
@@ -558,7 +578,7 @@ const VehicleMaster = () => {
         EmissionExpiryDate: "",
         CabInductionDate: "",
         CabExpiryDate: "",
-        FuleType: 1,
+        FuleType: "",
         Warning_1: "",
         Warning_2: "",
         FinalWarning: "",
@@ -576,8 +596,35 @@ const VehicleMaster = () => {
         AttritedDate: "",
         Attrited: 0,
     };
-    const [editVehicleFormData, setEditVehicleFormData] = useState(initialEditFormData); ``
+    const [editVehicleFormData, setEditVehicleFormData] = useState(initialEditFormData);
 
+    // 2. useEffect: fetch vendors when facility changes
+    useEffect(() => {
+        if (editselectedFacility) {
+            fetchVendorsByFacilityEdit(editselectedFacility);
+        }
+    }, [editselectedFacility]);
+
+    // 3. useEffect: fetch vehicle types when vendor changes
+    useEffect(() => {
+        if (selectedEditVendor) {
+            fetchSelectVehicleTypeEdit(selectedEditVendor);
+        }
+    }, [selectedEditVendor]);
+
+    // 4. useEffect: set selected vendor when vendor list loads
+    useEffect(() => {
+        if (editVendor.length > 0 && editVehicleFormData.VendorId) {
+            setSelectedEditVendor(editVehicleFormData.VendorId);
+        }
+    }, [editVendor, editVehicleFormData.VendorId]);
+
+    // 5. useEffect: set selected vehicle type when vehicle type list loads
+    useEffect(() => {
+        if (editVehicleType.length > 0 && editVehicleFormData.VehicleTypeId) {
+            setSelectedEditVehicleType(editVehicleFormData.VehicleTypeId);
+        }
+    }, [editVehicleType, editVehicleFormData.VehicleTypeId]);
     return (
         <>
             {isSubmitting && (
@@ -651,8 +698,7 @@ const VehicleMaster = () => {
                                         <a href="#" className="id-link"
                                             onClick={async (e) => {
                                                 e.preventDefault();
-                                                await fetchVendorsByFacilityEdit(rowData.FacilityId);
-                                                await fetchSelectVehicleTypeEdit(rowData.VendorId);
+
                                                 setEditVehicleFormData({
                                                     ...rowData,
                                                     VehicleRegDate: rowData.VehicleRegDate ? new Date(rowData.VehicleRegDate) : null,
@@ -677,8 +723,8 @@ const VehicleMaster = () => {
                                                     Documents: rowData.Documents === "Yes",
                                                 });
                                                 setEditAttrited(rowData.Attrited === "Yes");
-                                                setEditSelectedFacility(rowData.FacilityId);
-                                                setSelectedEditVendor(rowData.VendorId);
+                                                setEditSelectedFacility(rowData.FacilityId); // triggers vendor fetch
+                                                setSelectedEditVendor(rowData.VendorId);     // triggers vehicle type fetch
                                                 setSelectedEditVehicleType(rowData.VehicleTypeId);
                                                 setUpdateVehicle(true);
                                             }}
@@ -749,7 +795,7 @@ const VehicleMaster = () => {
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Registration Date</label>
-                                    <Calendar className="w-100" name="" placeholder="Vehicle Registration Date" value={vehicleFormData.VehicleRegDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, VehicleRegDate: e.value })} />
+                                    <Calendar className="w-100" name="" placeholder="Vehicle Registration Date" value={vehicleFormData.VehicleRegDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, VehicleRegDate: e.value })} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Facility</label>
@@ -757,7 +803,7 @@ const VehicleMaster = () => {
                                         setVehicleFormData({ ...vehicleFormData, FacilityId: e.value });
                                         setSelectedFacility(e.value);
                                         fetchVendorsByFacilityAdd(e.value);
-                                    }} options={facilityAdd} />
+                                    }} options={facilityAdd} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Vendor</label>
@@ -767,7 +813,7 @@ const VehicleMaster = () => {
                                             setSelectedVendorAdd(e.value);
                                             setVehicleFormData({ ...vehicleFormData, VendorId: e.value });
                                             fetchSelectVehicleType(e.value); // <-- vendor id pass karo
-                                        }} options={vendorAdd} />
+                                        }} options={vendorAdd} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Vehicle Type</label>
@@ -777,27 +823,27 @@ const VehicleMaster = () => {
                                             setSelectedVehicleType(e.value);
                                             setVehicleFormData({ ...vehicleFormData, VehicleTypeId: e.value });
                                         }}
-                                        options={vehicleType} />
+                                        options={vehicleType} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Permit Expiry Date</label>
-                                    <Calendar className="w-100" name="" placeholder="Permit Expiry Date" value={vehicleFormData.PermitExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PermitExpiryDate: e.value })} />
+                                    <Calendar className="w-100" name="" placeholder="Permit Expiry Date" value={vehicleFormData.PermitExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PermitExpiryDate: e.value })} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Insurance Expiry</label>
-                                    <Calendar className="w-100" name="" placeholder="Insurance Expiry Date" value={vehicleFormData.InsuranceExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceExpiryDate: e.value })} />
+                                    <Calendar className="w-100" name="" placeholder="Insurance Expiry Date" value={vehicleFormData.InsuranceExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceExpiryDate: e.value })} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Fitness Expiry </label>
-                                    <Calendar className="w-100" name="" placeholder="Fitness Expiry Date" value={vehicleFormData.FitnessExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FitnessExpiryDate: e.value })} />
+                                    <Calendar className="w-100" name="" placeholder="Fitness Expiry Date" value={vehicleFormData.FitnessExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FitnessExpiryDate: e.value })} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Tax Expiry </label>
-                                    <Calendar className="w-100" name="" placeholder="Tax Expiry Date" value={vehicleFormData.TaxExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, TaxExpiryDate: e.value })} />
+                                    <Calendar className="w-100" name="" placeholder="Tax Expiry Date" value={vehicleFormData.TaxExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, TaxExpiryDate: e.value })} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>PUC Expiry </label>
-                                    <Calendar className="w-100" name="" placeholder="PUC Expiry Date" value={vehicleFormData.PUCExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PUCExpiryDate: e.value })} />
+                                    <Calendar className="w-100" name="" placeholder="PUC Expiry Date" value={vehicleFormData.PUCExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PUCExpiryDate: e.value })} appendTo="self" />
                                 </div>
                                 {/* <div className="field col-4 mb-3">
                                     <label>Emission Expiry Date</label>
@@ -805,12 +851,11 @@ const VehicleMaster = () => {
                                 </div> */}
                                 <div className="field col-4 mb-3">
                                     <label>Cab Induction</label>
-                                    <Calendar className="w-100" name="" placeholder="Cab Induction Date" value={vehicleFormData.CabInductionDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabInductionDate: e.value })} />
-
+                                    <Calendar className="w-100" name="" placeholder="Cab Induction Date" value={vehicleFormData.CabInductionDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabInductionDate: e.value })} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Cab Expiry</label>
-                                    <Calendar className="w-100" name="" placeholder="Cab Expiry Date" value={vehicleFormData.CabExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabExpiryDate: e.value })} />
+                                    <Calendar className="w-100" name="" placeholder="Cab Expiry Date" value={vehicleFormData.CabExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabExpiryDate: e.value })} appendTo="self" />
 
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -836,7 +881,7 @@ const VehicleMaster = () => {
                                     <Dropdown optionLabel="name" placeholder="Select Fuel Type" className="w-100"
                                         value={vehicleFormData.FuleType}
                                         onChange={(e) => setVehicleFormData({ ...vehicleFormData, FuleType: e.value })}
-                                        options={fuelTypeOptions} />
+                                        options={fuelType} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Warning-1</label>
@@ -853,8 +898,7 @@ const VehicleMaster = () => {
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Attrited Date</label>
-                                    <Calendar className="w-100" name="" placeholder="Attrited Date" value={vehicleFormData.AttritedDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, AttritedDate: e.value })} />
-
+                                    <Calendar className="w-100" name="" placeholder="Attrited Date" value={vehicleFormData.AttritedDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, AttritedDate: e.value })} appendTo="self" />
                                 </div>
                                 {/* <div className="field col-3 d-flex align-items-center">
                                     <div className="d-flex mt-3">
@@ -986,7 +1030,7 @@ const VehicleMaster = () => {
                                     <label>Registration Date</label>
                                     <Calendar className="w-100" name="" placeholder="Vehicle Registration Date"
                                         value={editVehicleFormData.VehicleRegDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, VehicleRegDate: e.value })} />
+                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, VehicleRegDate: e.value })} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Facility</label>
@@ -996,30 +1040,39 @@ const VehicleMaster = () => {
                                             setEditVehicleFormData({ ...editVehicleFormData, FacilityId: e.value });
                                             //setSelectedEditVendor(null);
                                             setEditSelectedFacility(e.value);
-                                            fetchVendorsByFacilityEdit(e.value);
+                                            setSelectedEditVendor(null);
+                                            setSelectedEditVehicleType(null);
+                                            //fetchVendorsByFacilityEdit(e.value);
                                         }}
-                                        filter />
+                                        filter
+                                        appendTo="self"
+                                    />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Vendor</label>
-                                    <Dropdown optionLabel="name" placeholder="Select Vendor Name" className="w-100" filter
+                                    <Dropdown optionLabel="name" optionValue="value" placeholder="Select Vendor Name" className="w-100" filter
                                         options={editVendor} value={editVehicleFormData.VendorId}
                                         onChange={(e) => {
-                                            setSelectedEditVendor(e.value);
                                             setEditVehicleFormData({ ...editVehicleFormData, VendorId: e.value });
-                                            fetchSelectVehicleTypeEdit(e.value);
+                                            setSelectedEditVendor(e.value);
+                                            setSelectedEditVehicleType(null);
+                                            //fetchSelectVehicleTypeEdit(e.value);
                                         }}
+                                        appendTo="self"
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Vehicle Type</label>
-                                    <Dropdown optionLabel="name" placeholder="Select Vehicle Type" className="w-100" filter
+                                    <Dropdown optionLabel="name" optionValue="value" placeholder="Select Vehicle Type" className="w-100" filter
                                         value={editVehicleFormData.VehicleTypeId}
                                         onChange={(e) => {
                                             //setSelectedEditVehicleType(e.value);
                                             setEditVehicleFormData({ ...editVehicleFormData, VehicleTypeId: e.value })
+                                            setSelectedEditVehicleType(e.value);
+
                                         }}
                                         options={editVehicleType}
+                                        appendTo="self"
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1027,6 +1080,7 @@ const VehicleMaster = () => {
                                     <Calendar className="w-100" name="" placeholder="Permit Expiry Date"
                                         value={editVehicleFormData.PermitExpiryDate}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, PermitExpiryDate: e.value })}
+                                        appendTo="self"
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1034,6 +1088,7 @@ const VehicleMaster = () => {
                                     <Calendar className="w-100" name="" placeholder="Insurance Expiry Date"
                                         value={editVehicleFormData.InsuranceExpiryDate}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, InsuranceExpiryDate: e.value })}
+                                        appendTo="self"
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1041,6 +1096,7 @@ const VehicleMaster = () => {
                                     <Calendar className="w-100" name="" placeholder="Fitness Expiry Date"
                                         value={editVehicleFormData.FitnessExpiryDate}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, FitnessExpiryDate: e.value })}
+                                        appendTo="self"
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1048,6 +1104,7 @@ const VehicleMaster = () => {
                                     <Calendar className="w-100" name="" placeholder="Tax Expiry Date"
                                         value={editVehicleFormData.TaxExpiryDate}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, TaxExpiryDate: e.value })}
+                                        appendTo="self"
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1055,6 +1112,7 @@ const VehicleMaster = () => {
                                     <Calendar className="w-100" name="" placeholder="PUC Expiry Date"
                                         value={editVehicleFormData.PUCExpiryDate}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, PUCExpiryDate: e.value })}
+                                        appendTo="self"
                                     />
                                 </div>
                                 {/* <div className="field col-4 mb-3">
@@ -1066,6 +1124,7 @@ const VehicleMaster = () => {
                                     <Calendar className="w-100" name="" placeholder="Cab Induction Date"
                                         value={editVehicleFormData.CabInductionDate}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, CabInductionDate: e.value })}
+                                        appendTo="self"
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1073,6 +1132,7 @@ const VehicleMaster = () => {
                                     <Calendar className="w-100" name="" placeholder="Cab Expiry Date"
                                         value={editVehicleFormData.CabExpiryDate}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, CabExpiryDate: e.value })}
+                                        appendTo="self"
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1107,8 +1167,9 @@ const VehicleMaster = () => {
                                     <label className="d-block">Fuel Type</label>
                                     <Dropdown optionLabel="name" placeholder="Select Fuel Type" className="w-100" filter
                                         value={editVehicleFormData.FuleType}
-                                        options={fuelTypeOptionsEdit}
+                                        options={editFuelType}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, FuleType: e.value })}
+                                        appendTo="self"
                                     />
                                     {/* <div className=" d-flex align-items-center gap-4 mt-3">
                                         <div className="d-flex">
@@ -1155,6 +1216,7 @@ const VehicleMaster = () => {
                                     <Calendar className="w-100" name="" placeholder="Attrited Date"
                                         value={editVehicleFormData.AttritedDate}
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, AttritedDate: e.value })}
+                                        appendTo="self"
                                     />
                                 </div>
                                 {/* <div className="field col-3 d-flex align-items-center">

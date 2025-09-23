@@ -39,7 +39,8 @@ import AdminSchedule from "./components/AdminSchedule";
 import EmpDump from "./components/EmpDump";
 import PrivateRoute from "./components/PrivateRoute";
 import Unauthorized from "./components/Unauthorized"; // Make sure path matches
-
+import RouteDeletion from "./components/RouteDeletion";
+import ShiftTimeMasterAdhoc from "./components/ShiftTimeMasterAdhoc";
 // Deepak
 import Location from "./components/MasterPages/Location";
 import FacilityMaster from "./components/MasterPages/FacilityMaster";
@@ -82,6 +83,8 @@ function App() {
         <Route path="/MyAdhocRequest" element={<PrivateRoute element={<MyAdhocRequest />} />} />
         <Route path="/ViewMyRoutes" element={<PrivateRoute element={<ViewMyRoutes />} />} />
         <Route path="/ManageRoute" element={<PrivateRoute element={<ManageRoute />} />} />
+        <Route path="/RouteDeletion" element={<PrivateRoute element={<RouteDeletion />} />} />
+        <Route path="/ShiftTimeMasterAdhoc" element={<PrivateRoute element={<ShiftTimeMasterAdhoc />} />} />
         {/* <Route path="/RouteMap" element={<PrivateRoute element={<RouteMap />} />} /> */}
         <Route path="/RouteMap" element={<RouteMap />} />
 

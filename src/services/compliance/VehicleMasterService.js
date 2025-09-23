@@ -141,6 +141,15 @@ class VehicleMasterService {
             throw error;
         }
     }
+    async sp_getfuelmaster() {
+        try {
+            const response = await api.post("/sp_getfuelmaster");
+            return response.data;
+        } catch (error) {
+            console.error("Error in sp_getfuelmaster:", error);
+            throw error;
+        }
+    }
 
 }
 export default new VehicleMasterService();

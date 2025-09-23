@@ -937,7 +937,7 @@ const ManageRoute = () => {
   const [selectionStartRoute, setSelectionStartRoute] = useState(null);
 
   // Route selection states
-  const [selectedRoutes, setSelectedRoutes] = useState([]); // Use an array for the selection state
+  const [selectedRoutes, setSelectedRoutes] = useState(new Set());
   const [isRouteSelectMode, setIsRouteSelectMode] = useState(false);
   const [showFloatingRoutePanel, setShowFloatingRoutePanel] = useState(false);
   const [showRouteMergeDialog, setShowRouteMergeDialog] = useState(false);
@@ -1225,9 +1225,31 @@ const ManageRoute = () => {
     setShowSplitConfirmDialog(true);
   }, [selectedEmployees, routeDetails]);
 
+  // Route selection handlers (unchanged)
+  const handleRouteSelection = useCallback((routeId) => {
+  setSelectedRoutes((prev) => {
+    const newSelection = new Set(prev);
+
+    if (newSelection.has(routeId)) {
+      newSelection.delete(routeId);
+      setRouteSelectionOrder((prevOrder) =>
+        prevOrder.filter((id) => id !== routeId)
+      );
+      // Remove this line: if (newSelection.size === 0) setShowFloatingRoutePanel(false);
+    } else {
+      newSelection.add(routeId);
+      setRouteSelectionOrder((prevOrder) => [...prevOrder, routeId]);
+      // Remove this line: setShowFloatingRoutePanel(true);
+    }
+
+    return newSelection;
+  });
+}, []);
+
   const handleClearRouteSelection = useCallback(() => {
-    setSelectedRoutes([]); // Clear the array
+    setSelectedRoutes(new Set());
     setRouteSelectionOrder([]);
+    // setShowFloatingRoutePanel(false);
   }, []);
 
   // Cross-page drop handler
@@ -1413,7 +1435,7 @@ const ManageRoute = () => {
       if (isSelectionHeld) {
         className += "held-selection-active ";
       }
-      if (selectedRoutes.some(route => route.RouteID === rowData.RouteID)) {
+      if (selectedRoutes.has(rowData.RouteID)) {
         className += "route-selected ";
         if (
           routeSelectionOrder.length > 0 &&
@@ -1462,12 +1484,12 @@ const ManageRoute = () => {
   }, [autoExpandTimer]);
 
   useEffect(() => {
-    if (isRouteSelectMode) {
-      setShowFloatingRoutePanel(selectedRoutes.length > 0);
-    } else {
-      setShowFloatingRoutePanel(false);
-    }
-  }, [selectedRoutes.length, isRouteSelectMode]);
+  if (isRouteSelectMode) {
+    setShowFloatingRoutePanel(selectedRoutes.size > 0);
+  } else {
+    setShowFloatingRoutePanel(false);
+  }
+}, [selectedRoutes.size, isRouteSelectMode]);
 
   const handleSortChange = useCallback(async () => {
     if (
@@ -2304,7 +2326,7 @@ const ManageRoute = () => {
 
   // Route merge handlers
   const handleMergeRoutes = useCallback(() => {
-    if (selectedRoutes.length < 2) {
+    if (selectedRoutes.size < 2) {
       toastService.warn("Please select at least 2 routes to merge");
       return;
     }
@@ -2320,7 +2342,7 @@ const ManageRoute = () => {
     });
 
     setShowRouteMergeDialog(true);
-  }, [routeSelectionOrder, selectedRoutes.length]);
+  }, [routeSelectionOrder, selectedRoutes.size]);
 
   const confirmMergeOperation = useCallback(async () => {
     if (!pendingMergeOperation) return;
@@ -3402,11 +3424,6 @@ const ManageRoute = () => {
     <>
       <style>
         {`
-
-          .p-datatable .p-datatable-thead > tr > th.p-selection-column .p-checkbox {
-            display: none !important;
-          }
-
           .route-is-finalized {
             background-color: #f8f9fa !important;
             opacity: 0.7;
@@ -3932,56 +3949,40 @@ const ManageRoute = () => {
                         setIsUnlockMode(false);
                       }}
                     />
-                    {(() => {
-                      // Get today's date in YYYY-MM-DD format for comparison
-                      const today = new Date();
-                      const year = today.getFullYear();
-                      const month = String(today.getMonth() + 1).padStart(2, "0");
-                      const day = String(today.getDate()).padStart(2, "0");
-                      const todayString = `${year}-${month}-${day}`;
-                      
-                      // Check if the selected date is today or in the future
-                      const isDateCurrentOrFuture = shiftDate >= todayString;
-
-                      // The buttons will only render if the shift is locked AND the date is not in the past
-                      if (isShiftLocked && isDateCurrentOrFuture) {
-                        return (
-                          <div className="d-flex align-items-center">
-                            <Button
-                              label="Unlock Shift"
-                              icon="pi pi-lock-open"
-                              className="btn btn-danger"
-                              raised
-                              rounded
-                              onClick={handleUnlockShift}
-                            />
-                            <Button
-                              label={isUnlockMode ? "Cancel Unlock" : "Unlock Routes"}
-                              icon="pi pi-key"
-                              className="btn btn-danger ms-2"
-                              raised
-                              rounded
-                              onClick={() => {
-                                setIsUnlockMode(!isUnlockMode);
-                                if (isUnlockMode) setRoutesToUnlock(new Set());
-                                setIsRouteSelectMode(false);
-                              }}
-                            />
-                            {isUnlockMode && routesToUnlock.size > 0 && (
-                              <Button
-                                label={`Confirm Unlock (${routesToUnlock.size})`}
-                                icon="pi pi-check"
-                                className="p-button-success ms-2"
-                                raised
-                                rounded
-                                onClick={handleUnlockSelectedRoutes}
-                              />
-                            )}
-                          </div>
-                        );
-                      }
-                      return null; // Return nothing if conditions aren't met
-                    })()}
+                    {isShiftLocked && (
+                      <div className="d-flex align-items-center">
+                        <Button
+                          label="Unlock Shift"
+                          icon="pi pi-lock-open"
+                          className="btn btn-danger"
+                          raised
+                          rounded
+                          onClick={handleUnlockShift}
+                        />
+                        <Button
+                          label={isUnlockMode ? "Cancel Unlock" : "Unlock Routes"}
+                          icon="pi pi-key"
+                          className="btn btn-danger ms-2"
+                          raised
+                          rounded
+                          onClick={() => {
+                            setIsUnlockMode(!isUnlockMode);
+                            if (isUnlockMode) setRoutesToUnlock(new Set());
+                            setIsRouteSelectMode(false);
+                          }}
+                        />
+                        {isUnlockMode && routesToUnlock.size > 0 && (
+                          <Button
+                            label={`Confirm Unlock (${routesToUnlock.size})`}
+                            icon="pi pi-check"
+                            className="p-button-success ms-2"
+                            raised
+                            rounded
+                            onClick={handleUnlockSelectedRoutes}
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
 
 
@@ -4063,14 +4064,6 @@ const ManageRoute = () => {
                   onRowToggle={(e) => setExpandedRows(e.data)}
                   rowExpansionTemplate={rowExpansionTemplate}
                   dataKey="RouteID"
-                  selectionMode={isRouteSelectMode ? "checkbox" : null}
-                  selection={selectedRoutes}
-                  onSelectionChange={(e) => {
-                    // Only allow selection if the route is not finalized
-                    const selectableRoutes = e.value.filter(route => route.isRouteFinalized !== 1);
-                    setSelectedRoutes(selectableRoutes);
-                    setRouteSelectionOrder(selectableRoutes.map(r => r.RouteID));
-                  }}
                   onRowExpand={(e) =>
                     console.log("Expanded RouteID:", e.data.RouteID)
                   }
@@ -4087,23 +4080,40 @@ const ManageRoute = () => {
                     }`}
                   rowClassName={getRowClassName}
                   onRowClick={
-                    isUnlockMode
+                    isRouteSelectMode
                       ? (e) => {
-                        if (e.data.isRouteFinalized === 1) {
+                        if (e.data.isRouteFinalized !== 1) {
                           e.preventDefault();
-                          handleSelectRouteToUnlock(e.data.RouteID);
+                          handleRouteSelection(e.data.RouteID);
                         }
                       }
-                      : undefined
+                      : isUnlockMode
+                        ? (e) => {
+                          if (e.data.isRouteFinalized === 1) {
+                            e.preventDefault();
+                            handleSelectRouteToUnlock(e.data.RouteID);
+                          }
+                        }
+                        : undefined
                   }
                 >
                   <Column expander style={{ width: "3rem" }} />
 
                   {isRouteSelectMode && (
-                    <Column 
-                      selectionMode="multiple" 
-                      style={{ width: '4rem' }} 
-                      header="" 
+                    <Column
+                      header="Select"
+                      style={{ width: "4rem" }}
+                      body={(rowData) =>
+                        rowData.isRouteFinalized !== 1 ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedRoutes.has(rowData.RouteID)}
+                            onChange={() => handleRouteSelection(rowData.RouteID)}
+                            className="form-check-input"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : null
+                      }
                     />
                   )}
 
@@ -4319,7 +4329,7 @@ const ManageRoute = () => {
         />
 
         <FloatingRouteSelectionPanel
-          selectedRoutes={new Set(selectedRoutes.map(r => r.RouteID))}
+          selectedRoutes={selectedRoutes}
           tableData={memoizedTableData}
           onClearSelection={handleClearRouteSelection}
           onMergeRoutes={handleMergeRoutes}
@@ -4820,7 +4830,9 @@ const ManageRoute = () => {
                         </div>{" "}
                       </div>
                       <span className="fw-bold">
-                        {(statsDetails?.[0]?.mediumVehicleCount || 0)}
+                        {/* {(statsDetails?.[0]?.mediumVehicleCount || 0) -
+                          (statsDetails?.[0]?.FleetExhaustionCount || 0)} */}
+                          {statsDetails?.[0]?.mediumVehicleCount || 0}
                       </span>
                     </li>
                     <li className="list-group-item d-flex justify-content-between align-items-center">

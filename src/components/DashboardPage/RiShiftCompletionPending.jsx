@@ -40,6 +40,7 @@ const RiShiftCompletionPending = ({ filter }) => {
         const values = [
           Number(data?.TotalRoutes ?? 0),
           Number(data?.Allocated ?? 0),
+          Number(data?.NonAllocated ?? 0),
           Number(data?.Accepted ?? 0),
           Number(data?.VehicleStart ?? 0),
           Number(data?.VehicleEnd ?? 0),
@@ -49,6 +50,7 @@ const RiShiftCompletionPending = ({ filter }) => {
         const labels = [
           "Total Routes",
           "Allocated",
+          "Unallocated",
           "Accepted by Drivers",
           "Started",
           "Trip Completed",
