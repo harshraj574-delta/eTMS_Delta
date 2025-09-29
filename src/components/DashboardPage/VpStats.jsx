@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
-
+import React from "react";
 
 const VpStats = ({ filter }) => {
   const [stats, setStats] = useState({});
@@ -147,4 +147,4 @@ const VpStats = ({ filter }) => {
   );
 };
 
-export default VpStats;
+export default React.memo(VpStats);

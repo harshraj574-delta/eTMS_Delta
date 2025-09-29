@@ -160,7 +160,7 @@ const EmpDump = () => {
             <div className="middle">
                 <div className="card_tb p-3">
                     <div className="row">
-                        <div className="field col-4 mb-3">
+                        <div className="field col-2 mb-3">
                             <label>Facility</label>
                             <Dropdown
                                 id="facility"
@@ -202,7 +202,7 @@ const EmpDump = () => {
 
                             />
                         </div> */}
-                        <div className="field col-4 mb-3">
+                        <div className="field col-2 mb-3">
                             {/* <div className="form-check">
                                 <input type="radio" className="form-check-input" name="status" id="active" value="Active" />
                                 <label htmlFor="active" className="form-check-label">Active</label>
@@ -231,11 +231,12 @@ const EmpDump = () => {
                             {/* <button className="btn btn-primary w-100">Export Employee Dump</button> */}
                         </div>
                         <div className="field col-4 mb-3 no-label">
-                            <Button
+                            <button className="btn btn-primary" onClick={handleExport}>Export Employee Dump</button>
+                            {/* <Button
                                 label="Export Employee Dump"
-                                className="btn btn-primary"
+                                className="btn btn-primary no-label"
                                 onClick={handleExport}
-                            />
+                            /> */}
 
                         </div>
                     </div>

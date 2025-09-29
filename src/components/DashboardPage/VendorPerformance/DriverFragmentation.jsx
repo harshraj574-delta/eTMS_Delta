@@ -52,7 +52,7 @@ const DriverFragmentation = ({ filter = {} }) => {
         const formattedData = [
           { skill: 'On-time Count', current: Number(d.ontimecount ?? d.OnTimeCount ?? d.onTimeCount ?? 0) },
           { skill: 'BGC Done', current: Number(d.BGCDone ?? d.BGCDoneCount ?? d.bgcdone ?? 0) },
-          { skill: 'Driver Refusal Count', current: Number(d.DriverRefusalCount ?? d.DriverRefusal ?? d.driverRefusalCount ?? 0) },
+          { skill: 'Refusal Count', current: Number(d.DriverRefusalCount ?? d.DriverRefusal ?? d.driverRefusalCount ?? 0) },
           { skill: 'Drivers 50+ (%)', current: Number(d.DriverfifthyAbovePer ?? d.DriverFiftyAbovePer ?? d.Driver50AbovePer ?? 0) },
           { skill: 'Duty Hour >12 Count', current: Number(d.dutyhourAboveTwelvecount ?? d.DutyHourAbove12Count ?? d.dutyHourAbove12Count ?? 0) },
         ];
@@ -106,7 +106,7 @@ const DriverFragmentation = ({ filter = {} }) => {
       </div>
 
       {/* Bottom label counts */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 12, gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 2, gap: 4, flexWrap: 'wrap' }}>
         {driverData.map((d, i) => {
           const isPercent = d.skill && d.skill.includes('%');
           return (

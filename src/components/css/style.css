@@ -2006,8 +2006,8 @@ input[type="number"] {
 
 .cardNew ul li {
     border-left: solid 1px var(--grey-2);
-    padding: 12px 20px;
-    height: 110px;
+    padding: 4px 20px;
+    /* height: 110px; */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -2675,4 +2675,24 @@ label>span {
 
 input[type="date"], .p-multiselect-label {
   height: 35.5px !important;
+}
+
+.p-menuitem-text{ font-size: 15px;}
+
+.leaflet-bottom.leaflet-right{
+    display: none;
+}
+
+.p-datepicker-trigger{
+    background-color: #fff !important;
+    border-left: 0;
+    border-color: #d1d5db !important;
+    border-end-end-radius: 6px;
+    border-start-end-radius: 6px;
+    height: 37.5px;
+}
+
+.p-datepicker-trigger svg{
+    fill: var(--grey-3) !important;
+    background-color: #999 !important;
 }

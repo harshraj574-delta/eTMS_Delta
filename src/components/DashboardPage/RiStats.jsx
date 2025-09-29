@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 import { FiTrendingUp, FiTrendingDown } from "react-icons/fi";
-
+import React from "react";
 const RiStats = ({ filter }) => { 
   // console.log("-----", JSON.stringify(filter));
   const [statsData, setStatsData] = useState({});
@@ -136,6 +136,7 @@ const RiStats = ({ filter }) => {
                 <span className="badge bg-danger-subtle rounded-pill text-dark">
                   {statsData.femalecount ?? 0} Female
                 </span>
+                
               </div>
             </li>
             <li>
@@ -399,4 +400,4 @@ const RiStats = ({ filter }) => {
   );
 };
 
-export default RiStats;
+export default React.memo(RiStats);

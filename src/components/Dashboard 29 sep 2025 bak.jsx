@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "./Master/SidebarMenu";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "../components/css/style.css";
@@ -44,18 +44,10 @@ const Dashboard = () => {
   const [pendingPeriod1, setPendingPeriod1] = useState("last_7_days");
 
   const today = new Date();
-  // Pending states for the calendar UI
   const [pendingDateFrom, setPendingDateFrom] = useState(
     new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
   );
   const [pendingDateTo, setPendingDateTo] = useState(today);
-
-  // States to hold the final applied date range
-  const [appliedDateFrom, setAppliedDateFrom] = useState(
-    new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
-  );
-  const [appliedDateTo, setAppliedDateTo] = useState(today);
-
 
   const [visibleCalendar, setVisibleCalendar] = useState(false);
   const calendarRef = useRef(null);
@@ -65,10 +57,6 @@ const Dashboard = () => {
   const [checked, setChecked] = useState(false); // false: Employees, true: Routes
   const [activeIndex, setActiveIndex] = useState(0);
   const [scrolled, setScrolled] = useState(false);
-
-  // Loading states
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [isLoadingFilters, setIsLoadingFilters] = useState(false); // <-- NEW: For chained filter updates
 
   // default option so dropdown shows "All Cities" on first render
   const defaultCityOption = {
@@ -82,7 +70,11 @@ const Dashboard = () => {
     value: { Id: "allFacility", locationName: "All Facility" },
   };
 
+  // const userLocationName = sessionStorage.getItem("LocationName");
+  // const userFacilityName = sessionStorage.getItem("FacilityName");
+
   const [cities, setCities] = useState([]);
+  // store the nested `value` as selCity so it matches Dropdown when using optionValue
   const [selCity, setSelCity] = useState(null);
 
   const [selFacility, setSelFacility] = useState(null);
@@ -90,9 +82,41 @@ const Dashboard = () => {
   // Facility state
   const [facilities, setFacilities] = useState([]);
   const [filteredFacilities, setFilteredFacilities] = useState([]);
+  //const [selFacility, setSelFacility] = useState(null);
 
   const [venders, setVenders] = useState([]);
   const [selVendor, setSelVendor] = useState(null);
+
+  const [filter, setFilter] = useState({
+    sDate: null,
+    eDate: null,
+    locationid: null, // undefined for "All Cities"
+    facilityid: null,
+    vendorid: null,
+    triptype: "",
+    type: 1,
+  });
+  // useEffect(() => {
+  //   if (!selCity || !selFacility || !selVendor) return;
+
+  //   setFilter({
+  //     sDate: pendingDateFrom.toISOString().split("T")[0],
+  //     eDate: pendingDateTo.toISOString().split("T")[0],
+  //     locationid: selCity?.Id,
+  //     facilityid: selFacility,
+  //     vendorid: selVendor?.Id === "all" ? undefined : selVendor?.Id,
+  //     triptype: selectedTripType,
+  //     type,
+  //   });
+  // }, [
+  //   selCity,
+  //   selFacility,
+  //   selVendor,
+  //   selectedTripType,
+  //   pendingDateFrom,
+  //   pendingDateTo,
+  //   type,
+  // ]);
 
   // Date periods options
   const periodOptions1 = [
@@ -117,151 +141,19 @@ const Dashboard = () => {
     { label: "Facility Insights" },
   ];
 
-  const formatDateLocal = useCallback((date) => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    const year = d.getFullYear();
-    const month = (d.getMonth() + 1).toString().padStart(2, "0");
-    const day = d.getDate().toString().padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }, []);
-
-  // *** MODIFIED: useMemo now checks for isLoadingFilters ***
-  const filter = useMemo(() => {
-    // If initializing OR if chained filters are updating, return null to prevent re-renders
-    if (isInitializing || isLoadingFilters) return null;
-
-    let sDate = null, eDate = null;
-    const now = new Date();
-
-    switch (selectedPeriod1) {
-      case "today":
-        sDate = eDate = now;
-        break;
-      case "yesterday":
-        sDate = eDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-        break;
-      case "last_7_days":
-        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
-        eDate = now;
-        break;
-      case "last_30_days":
-        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
-        eDate = now;
-        break;
-      case "last_90_days":
-        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
-        eDate = now;
-        break;
-      case "last_12_months":
-        sDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-        eDate = now;
-        break;
-      case "custom":
-        sDate = appliedDateFrom;
-        eDate = appliedDateTo;
-        break;
-      default:
-        sDate = appliedDateFrom;
-        eDate = appliedDateTo;
-    }
-
-    return {
-      sDate: sDate ? formatDateLocal(sDate) : null,
-      eDate: eDate ? formatDateLocal(eDate) : null,
-      locationid: selCity?.Id === "all" ? undefined : selCity?.Id,
-      facilityid: selFacility === "allFacility" || selFacility?.Id === "allFacility" 
-        ? undefined 
-        : selFacility,
-      vendorid: selVendor?.Id === "all" ? undefined : selVendor?.Id,
-      triptype: selectedTripType,
-      type,
-    };
-  }, [
-    isInitializing,
-    isLoadingFilters, // <-- ADDED DEPENDENCY
-    selectedPeriod1,
-    appliedDateFrom,
-    appliedDateTo,
-    selCity,
-    selFacility,
-    selVendor,
-    selectedTripType,
-    type,
-    formatDateLocal
-  ]);
-
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        setIsInitializing(true);
-        
-        const res = await apiService.sp_getAllLocation();
-        const rawList = typeof res === "string" ? JSON.parse(res) : res || [];
-        
-        const formatted = rawList.map((city) => ({
-          name: city.locationName || city.name || "Unknown",
-          value: { Id: city.Id, locationName: city.locationName || city.name },
-        }));
-        
-        setCities(formatted);
-        
-        const defaultCity = formatted[0]?.value || null;
-        if (defaultCity) {
-          setSelCity(defaultCity);
-          
-          const facilityRes = await apiService.Getchart_Facility({ 
-            locationid: defaultCity.Id 
-          });
-          const facilityData = typeof facilityRes === "string" 
-            ? JSON.parse(facilityRes) 
-            : facilityRes || [];
-          
-          setFacilities(facilityData);
-          setFilteredFacilities(facilityData);
-          
-          const defaultFacility = facilityData[0]?.Id || null;
-          if (defaultFacility) {
-            setSelFacility(defaultFacility);
-            
-            const vendorRes = await apiService.sp_getVendorByFac({
-              facilityid: defaultFacility,
-            });
-            const vendorData = typeof vendorRes === "string" 
-              ? JSON.parse(vendorRes) 
-              : vendorRes || [];
-            
-            const allVendorOption = { vendorName: "All Vendor", Id: "all" };
-            setVenders([allVendorOption, ...vendorData]);
-            setSelVendor(allVendorOption);
-          }
-        }
-      } catch (err) {
-        console.error("Error initializing data:", err);
-        setCities([]);
-        setSelCity(null);
-        setFacilities([]);
-        setFilteredFacilities([]);
-        setVenders([]);
-        setSelVendor(null);
-      } finally {
-        setTimeout(() => setIsInitializing(false), 100);
-      }
-    };
-
-    initializeData();
-  }, []);
-
+  // Sync switch with type state
   useEffect(() => {
     setChecked(type === 2);
-  }, [type]);
+  }, [type, filter]);
 
+  // Scroll effect to toggle filter fix
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 200);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Close calendar on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target)) {
@@ -272,24 +164,101 @@ const Dashboard = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Fetch cities and all vendors on mount
+  useEffect(() => {
+    fetchAllCities();
+    // fetchVenders(""); // Bind all vendors on initial load
+  }, []);
+
+  // Ensure default city selection always after cities load
+  // useEffect(() => {
+  //   if (cities.length && !selCity) {
+  //     // Set default to "All Cities" nested value
+  //     setSelCity(userLocationName);
+  //   }
+  // }, [cities, selCity]);
+
+  // Fetch facilities when cities are loaded
+  // useEffect(() => {
+  //   if (cities.length > 0 && facilities.length === 0) {
+  //     fetchFacilities();
+  //   }
+  // }, [cities]);
+
+  // Fetch vendors when facility changes
+  // useEffect(() => {
+  //   // If no facility or city is selected, or if either is 'all' or empty, fetch all vendors
+  //   if (
+  //     !selFacility ||
+  //     selFacility === "" ||
+  //     selFacility === "allFacility" ||
+  //     selFacility?.Id === "allFacility" ||
+  //     !selCity ||
+  //     selCity === "" ||
+  //     selCity === "all" ||
+  //     selCity?.Id === "all"
+  //   ) {
+  //     //fetchVenders("");
+  //   } else {
+  //     //fetchVenders(selFacility.Id || selFacility);
+  //   }
+  // }, [selFacility, selCity]);
+  useEffect(() => {
+    if (!selCity || !selFacility || !selVendor) return;
+
+    setFilter({
+      sDate: pendingDateFrom ? formatDateLocal(pendingDateFrom) : null,
+      eDate: pendingDateTo ? formatDateLocal(pendingDateTo) : null,
+      locationid: selCity?.Id === "all" ? undefined : selCity?.Id,
+      facilityid:
+        selFacility === "allFacility" || selFacility?.Id === "allFacility"
+          ? undefined
+          : selFacility,
+      vendorid: selVendor?.Id === "all" ? undefined : selVendor?.Id,
+      triptype: selectedTripType,
+      type,
+    });
+  }, [
+    selCity,
+    selFacility,
+    selVendor,
+    selectedTripType,
+    pendingDateFrom,
+    pendingDateTo,
+    type,
+  ]);
+  // Ensure selVendor is always the actual object from venders array (not a new object)
+  useEffect(() => {
+    if (venders && venders.length > 0) {
+      const allVendorObj = venders.find((v) => v.Id === "all");
+      if (allVendorObj) setSelVendor(allVendorObj);
+    }
+  }, [venders]);
+
+  // Sync pendingPeriod1 when calendar opens
   useEffect(() => {
     if (visibleCalendar) {
       setPendingPeriod1(selectedPeriod1);
     }
   }, [visibleCalendar, selectedPeriod1]);
 
+  // Update date range when pendingPeriod1 changes and not custom
   useEffect(() => {
     if (pendingPeriod1 === "custom") return;
 
     const now = new Date();
-    let from = now, to = now;
-
+    let from = now;
+    let to = now;
     switch (pendingPeriod1) {
       case "today":
         from = to = now;
         break;
       case "yesterday":
-        from = to = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        from = to = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 1
+        );
         break;
       case "last_7_days":
         from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
@@ -311,58 +280,318 @@ const Dashboard = () => {
     setPendingDateTo(to);
   }, [pendingPeriod1]);
 
-  // *** MODIFIED: handleCityChange now uses the loading state ***
-  const handleCityChange = useCallback(async (e) => {
-    const selected = e.value;
-    setIsLoadingFilters(true); // START LOADING
+  // Helper: Format date as local yyyy-mm-dd avoiding timezone problems
+  const formatDateLocal = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    const year = d.getFullYear();
+    const month = (d.getMonth() + 1).toString().padStart(2, "0");
+    const day = d.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
+  // Update filter when selections change
+  useEffect(() => {
+    const period = selectedPeriod1;
+
+    let sDate = null,
+      eDate = null;
+
+    const now = new Date();
+
+    switch (period) {
+      case "today":
+        sDate = eDate = now;
+        break;
+      case "yesterday":
+        sDate = eDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 1
+        );
+        break;
+      case "last_7_days":
+        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+        eDate = now;
+        break;
+      case "last_30_days":
+        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        eDate = now;
+        break;
+      case "last_90_days":
+        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
+        eDate = now;
+        break;
+      case "last_12_months":
+        sDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        eDate = now;
+        break;
+      case "custom":
+        sDate = pendingDateFrom;
+        eDate = pendingDateTo;
+        break;
+      default:
+        sDate = pendingDateFrom;
+        eDate = pendingDateTo;
+    }
+
+    setFilter({
+      sDate: sDate ? formatDateLocal(sDate) : null,
+      eDate: eDate ? formatDateLocal(eDate) : null,
+      locationid: selCity?.Id === "all" ? undefined : selCity?.Id || "",
+      facilityid:
+        selFacility === "allFacility" || selFacility?.Id === "allFacility"
+          ? undefined
+          : selFacility || undefined,
+      vendorid:
+        selVendor?.Id === "all" ? undefined : selVendor?.Id || undefined,
+      triptype: selectedTripType || "",
+      type,
+    });
+  }, [
+    selectedPeriod1,
+    pendingDateFrom,
+    pendingDateTo,
+    selCity,
+    selFacility,
+    selVendor,
+    selectedTripType,
+    type,
+  ]);
+
+  // Fetch data functions
+  // const fetchAllCities = async () => {
+  //   try {
+  //     const response = await apiService.sp_getAllLocation();
+  //     let rawList = [];
+
+  //     if (typeof response === "string") rawList = JSON.parse(response);
+  //     else if (response?.data)
+  //       rawList = Array.isArray(response.data) ? response.data : [];
+  //     else if (Array.isArray(response)) rawList = response;
+
+  //     const formatted = [
+  //       ...rawList.map((city) => ({
+  //         name: city.locationName || city.name || "Unknown",
+  //         value: city,
+  //       })),
+  //     ];
+
+  //     setCities(formatted);
+
+  //     // Set default to All Cities option - ensure it's the first item
+  //     const allCitiesOption = formatted.find((city) => city.name === userLocationName );
+  //     // store nested value for consistency with Dropdown optionValue
+  //     setSelCity(allCitiesOption.value);
+
+  //     // Immediately fetch facilities for all cities
+  //     fetchFacilitiesByCity(allCitiesOption.value);
+  //   } catch (err) {
+  //     console.error("Error fetching cities:", err);
+  //     setCities([ ]);
+  //     setSelCity('');
+  //   }
+  // };
+
+  //   const fetchAllCities = async () => {
+  //   try {
+  //     const response = await apiService.sp_getAllLocation();
+  //     let rawList = [];
+
+  //     if (typeof response === "string") rawList = JSON.parse(response);
+  //     else if (response?.data)
+  //       rawList = Array.isArray(response.data) ? response.data : [];
+  //     else if (Array.isArray(response)) rawList = response;
+
+  //     // format for Dropdown
+  //     const formatted = rawList.map((city) => ({
+  //       name: city.locationName || city.name || "Unknown",
+  //       value: { Id: city.Id, locationName: city.locationName || city.name },
+  //     }));
+
+  //     setCities(formatted);
+
+  //     // find logged-in user's city
+  //     const userCity = formatted.find(
+  //       (c) =>
+  //         c.value.locationName?.toLowerCase() ===
+  //         userLocationName?.toLowerCase()
+  //     );
+
+  //     if (userCity) {
+  //       setSelCity(userCity.value);
+  //       fetchFacilitiesByCity(userCity.value.Id); // fetch facilities of that city
+  //     } else {
+  //       setSelCity(null);
+  //     }
+  //   } catch (err) {
+  //     console.error("Error fetching cities:", err);
+  //     setCities([]);
+  //     setSelCity(null);
+  //   }
+  // };
+  const fetchAllCities = async () => {
     try {
-      setSelCity(selected); 
+      const res = await apiService.sp_getAllLocation();
+      const rawList = typeof res === "string" ? JSON.parse(res) : res || [];
 
-      const res = await apiService.Getchart_Facility({ 
-        locationid: selected?.Id 
-      });
+      const formatted = rawList.map((city) => ({
+        name: city.locationName || city.name || "Unknown",
+        value: { Id: city.Id, locationName: city.locationName || city.name },
+      }));
+
+      setCities(formatted);
+
+      // Default: first city from API
+      const defaultCity = formatted[0]?.value || null;
+      setSelCity(defaultCity);
+
+      // Fetch facilities for that city
+      if (defaultCity?.Id) fetchFacilitiesByCity(defaultCity.Id);
+    } catch (err) {
+      console.error("Error fetching cities:", err);
+      setCities([]);
+      setSelCity(null);
+    }
+  };
+
+  // const fetchFacilitiesByCity = (cityId) => {
+  //   apiService
+  //     .Getchart_Facility({ cityId })
+  //     .then((res) => {
+  //       const data = JSON.parse(res.data) || [];
+  //       setFacilities(data);
+  //       setFilteredFacilities(data);
+
+  //       // find logged-in user's facility
+  //       const userFaci = data.find(
+  //         (f) =>
+  //           f.facilityName?.toLowerCase() === userFacilityName?.toLowerCase()
+  //       );
+  //       if (userFaci) {
+  //         setSelFacility(userFaci.Id);
+  //       } else {
+  //         setSelFacility(null);
+  //       }
+  //     })
+  //     .catch(() => {
+  //       setFacilities([]);
+  //       setFilteredFacilities([]);
+  //       setSelFacility(null);
+  //     });
+  // };
+  const fetchFacilitiesByCity = async (cityId) => {
+    try {
+      const res = await apiService.Getchart_Facility({ locationid: cityId });
       const data = typeof res === "string" ? JSON.parse(res) : res || [];
-      
+
       setFacilities(data);
       setFilteredFacilities(data);
-      
+
+      // Default: first facility from API
       const defaultFacility = data[0]?.Id || null;
       setSelFacility(defaultFacility);
-      
-      const allVendorOption = { vendorName: "All Vendor", Id: "all" };
-      if (defaultFacility) {
-        const vendorRes = await apiService.sp_getVendorByFac({
-          facilityid: defaultFacility,
-        });
-        const vendorData = typeof vendorRes === "string" 
-          ? JSON.parse(vendorRes) 
-          : vendorRes || [];
-        
-        setVenders([allVendorOption, ...vendorData]);
-      } else {
-        setVenders([allVendorOption]);
-      }
-      setSelVendor(allVendorOption);
 
+      // Fetch vendors for this facility
+      if (defaultFacility) fetchVendors(defaultFacility);
     } catch (err) {
       console.error("Error fetching facilities:", err);
       setFacilities([]);
       setFilteredFacilities([]);
       setSelFacility(null);
-    } finally {
-      setIsLoadingFilters(false); // STOP LOADING
     }
-  }, []);
-  
-  // *** MODIFIED: handleFacilityChange now uses the loading state ***
-  const handleFacilityChange = useCallback(async (e) => {
-    const facilityId = e.value;
-    setIsLoadingFilters(true); // START LOADING
+  };
 
+  const fetchFacilities = () => {
+    apiService
+      .Getchart_Facility(locationid)
+      .then((res) => {
+        const data = JSON.parse(res.data) || [];
+        setFacilities(data);
+        // Add 'All Facility' as the first option
+        // const allFacilityOption = { Id: "allFacility", facilityName: "All Facility" };
+        const facilitiesWithAll = [...data];
+
+        const cityFacilities = facilities.filter(
+          (facility) => facility.locationId === userLocationName
+        );
+        setFilteredFacilities(cityFacilities);
+
+        if (cityFacilities.length > 0) {
+          setSelFacility(userFacilityName);
+        } else {
+          setFilteredFacilities(facilitiesWithAll);
+
+          let cfaci = facilitiesWithAll.find(
+            (faci) => faci.facilityName === userFacilityName
+          );
+          if (cfaci) {
+            setSelFacility(cfaci.Id);
+          } else {
+            setSelFacility("");
+          }
+        }
+      })
+      .catch(() => {
+        setFacilities([]);
+        setFilteredFacilities([]);
+        //setSelFacility(userFacilityName);
+      });
+  };
+
+  // const fetchFacilitiesByCity = (cityId) => {
+  //   // if (cityId === "all") {
+  //   //   fetchFacilities();
+  //   // } else {
+  //     driverMasterService
+  //       .getFacilities({ cityId })
+  //       .then((res) => {
+  //         const data = JSON.parse(res.data) || [];
+  //         setFacilities(data);
+  //         // Add 'All Facility' as the first option
+  //         // const allFacilityOption = { Id: "allFacility", facilityName: "All Facility" };
+  //         const facilitiesWithAll = [...data];
+  //         setFilteredFacilities(facilitiesWithAll);
+  //         setSelFacility(userFacilityName || '');
+  //       })
+  //       .catch(() => {
+  //         setFacilities([]);
+  //         setFilteredFacilities([]);
+  //         setSelFacility(userFacilityName);
+  //       });
+  //   // }
+  // };
+
+  // const fetchVenders = (facilityId) => {
+  //   setSelVendor(null); // Reset before fetching
+  //   let param = {};
+  //   // If facilityId is null, undefined, or empty string, fetch all vendors
+  //   if (facilityId && facilityId !== "allFacility" && facilityId !== "") {
+  //     param.facilityid = facilityId;
+  //   }
+  //   driverMasterService
+  //     .getVenders(param)
+  //     .then((res) => {
+  //       const data = JSON.parse(res.data) || [];
+  //       const allVendorOption = { vendorName: "All Vendor", Id: "all" };
+  //       const vendorList = [allVendorOption, ...data];
+  //       setVenders(vendorList);
+  //       // Always select All Vendor by default
+  //       setSelVendor(allVendorOption);
+  //     })
+  //     .catch(() => {
+  //       setVenders([]);
+  //       setSelVendor(null);
+  //     });
+  // };
+  useEffect(() => {
+    if (selFacility) {
+      fetchVendors(selFacility);
+    }
+  }, [selFacility]);
+
+  const fetchVendors = async (facilityId) => {
     try {
-      setSelFacility(facilityId);
-
       const res = await apiService.sp_getVendorByFac({
         facilityid: facilityId,
       });
@@ -370,83 +599,59 @@ const Dashboard = () => {
 
       const allVendorOption = { vendorName: "All Vendor", Id: "all" };
       setVenders([allVendorOption, ...data]);
-      setSelVendor(allVendorOption);
+      setSelVendor(allVendorOption); // always default
     } catch (err) {
       console.error("Error fetching vendors:", err);
       setVenders([]);
       setSelVendor(null);
-    } finally {
-      setIsLoadingFilters(false); // STOP LOADING
     }
-  }, []);
+  };
 
-  const handleChange = useCallback((e) => {
-    setType(e.target.value === "2" ? 2 : 1);
-  }, []);
+  // Handlers
+  // const handleCityChange = (e) => {
+  //   // With optionValue="value", e.value is the nested city object
+  //   const selected = e.value;
+  //   setSelCity(selected);
 
-  const handleVendorChange = useCallback((e) => {
+  //   // Reset facility when city changes
+  //   setSelFacility(userFacilityName);
+
+  //   const cityId = selected?.Id;
+
+  //   // Filter facilities based on selected city
+  //   if (cityId === "all") {
+  //     setFilteredFacilities(facilities);
+  //     if (facilities.length > 0) {
+  //       setSelFacility(facilities[0]?.Id);
+  //     }
+  //   } else {
+  //     const cityFacilities = facilities.filter(
+  //       (facility) => facility.locationId === cityId
+  //     );
+  //     setFilteredFacilities(cityFacilities);
+  //     if (cityFacilities.length > 0) {
+  //       setSelFacility(cityFacilities[0]?.Id);
+  //     }
+  //   }
+  // };
+  const handleCityChange = (e) => {
+    const selected = e.value;
+    setSelCity(selected);
+    fetchFacilitiesByCity(selected?.Id);
+  };
+
+  const handleFacilityChange = (e) => {
+    const facilityId = e.value;
+    setSelFacility(facilityId);
+    fetchVendors(facilityId);
+  };
+  const handleChange = (e) => {
+    const value = e.target.value;
+    setType(value === "2" ? 2 : 1); // Set type based on selection
+  };
+  const handleVendorChange = (e) => {
     setSelVendor(e.value);
-  }, []);
-
-  const handleTripTypeChange = useCallback((e) => {
-    setSelectedTripType(e.value);
-  }, []);
-
-  const handleCalendarApply = useCallback(() => {
-    setSelectedPeriod1(pendingPeriod1);
-    setAppliedDateFrom(pendingDateFrom);
-    setAppliedDateTo(pendingDateTo);
-    setVisibleCalendar(false);
-  }, [pendingPeriod1, pendingDateFrom, pendingDateTo]);
-
-
-  const handleCalendarClose = useCallback(() => {
-    setVisibleCalendar(false);
-  }, []);
-
-  const handleCalendarToggle = useCallback(() => {
-    setVisibleCalendar((v) => !v);
-  }, []);
-
-  const handleTabChange = useCallback((e) => {
-    setActiveIndex(e.index);
-  }, []);
-
-  const handleDialogShow = useCallback(() => {
-    setDialogVisible(true);
-  }, []);
-
-  const handleDialogHide = useCallback(() => {
-    setDialogVisible(false);
-  }, []);
-
-  const handleDateFromChange = useCallback((date) => {
-    setPendingDateFrom(date);
-    setPendingPeriod1("custom");
-  }, []);
-
-  const handleDateToChange = useCallback((date) => {
-    setPendingDateTo(date);
-    setPendingPeriod1("custom");
-  }, []);
-
-  if (isInitializing) { // Simplified loading check
-    return (
-      <div className="container-fluid p-0" style={{ background: "#f9f9f9" }}>
-        <Header pageTitle="Dashboard" />
-        <Sidebar />
-        <div className="middle">
-          <div className="d-flex justify-content-center align-items-center" 
-               style={{ height: "400px" }}>
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  };
   return (
     <div className="container-fluid p-0" style={{ background: "#f9f9f9" }}>
       <Header pageTitle="Dashboard" />
@@ -455,16 +660,15 @@ const Dashboard = () => {
         <div className="row mb-4">
           <div className="col-12">
             <div
-              className={`cardx mt-3 p-3 border-0 ${
-                scrolled ? "filterFix shadow" : "hidden"
-              }`}
+              className={`cardx mt-3 p-3 border-0 ${scrolled ? "filterFix shadow" : "hidden"
+                }`}
             >
               <div className="row d-flex align-items-center">
                 <div className="col-12 col-md-12 col-lg-12 col-xl-4">
                   <TabMenu
                     model={tabItems}
                     activeIndex={activeIndex}
-                    onTabChange={handleTabChange}
+                    onTabChange={(e) => setActiveIndex(e.index)}
                   />
                 </div>
                 <div className="col-12 col-md-12 col-lg-12 col-xl-8 mt-3 mt-xl-0">
@@ -473,7 +677,7 @@ const Dashboard = () => {
                       <label>Date</label>
                       <div
                         className="custom-select"
-                        onClick={handleCalendarToggle}
+                        onClick={() => setVisibleCalendar((v) => !v)}
                       >
                         <BiCalendar style={{ marginRight: 4 }} />
                         {periodOptions1.find(
@@ -489,9 +693,8 @@ const Dashboard = () => {
                                   {periodOptions1.map(({ label, value }) => (
                                     <li
                                       key={value}
-                                      className={`time-filter-item ${
-                                        pendingPeriod1 === value ? "active" : ""
-                                      }`}
+                                      className={`time-filter-item ${pendingPeriod1 === value ? "active" : ""
+                                        }`}
                                       onClick={() => setPendingPeriod1(value)}
                                     >
                                       {label}
@@ -514,7 +717,10 @@ const Dashboard = () => {
                                 readOnly
                               />
                               <Calendar
-                                onChange={handleDateFromChange}
+                                onChange={(date) => {
+                                  setPendingDateFrom(date);
+                                  setPendingPeriod1("custom");
+                                }}
                                 value={pendingDateFrom}
                               />
                             </div>
@@ -532,20 +738,35 @@ const Dashboard = () => {
                                 readOnly
                               />
                               <Calendar
-                                onChange={handleDateToChange}
+                                onChange={(date) => {
+                                  setPendingDateTo(date);
+                                  setPendingPeriod1("custom");
+                                }}
                                 value={pendingDateTo}
                               />
                             </div>
                             <div className="col-12 mt-3 text-end">
                               <button
                                 className="btn btn-secondary me-2"
-                                onClick={handleCalendarClose}
+                                onClick={() => setVisibleCalendar(false)}
                               >
                                 Close
                               </button>
                               <button
                                 className="btn btn-primary"
-                                onClick={handleCalendarApply}
+                                onClick={() => {
+                                  setSelectedPeriod1(pendingPeriod1);
+                                  setVisibleCalendar(false);
+                                  setFilter((prev) => ({
+                                    ...prev,
+                                    sDate: pendingDateFrom
+                                      ? formatDateLocal(pendingDateFrom)
+                                      : null,
+                                    eDate: pendingDateTo
+                                      ? formatDateLocal(pendingDateTo)
+                                      : null,
+                                  }));
+                                }}
                               >
                                 Apply
                               </button>
@@ -587,7 +808,7 @@ const Dashboard = () => {
                       <Dropdown
                         value={selectedTripType}
                         options={tripTypeOptions}
-                        onChange={handleTripTypeChange}
+                        onChange={(e) => setSelectedTripType(e.value)}
                         optionLabel="label"
                         optionValue="value"
                         placeholder="Select Trip Type"
@@ -618,19 +839,12 @@ const Dashboard = () => {
         <div className="row">
           <div className="col-12">
             {(() => {
-              if (!filter) { // Show a spinner in the content area if filters are updating
-                return (
-                  <div className="d-flex justify-content-center align-items-center" style={{ height: "400px" }}>
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                  </div>
-                );
-              }
               switch (activeIndex) {
                 case 0:
                   return (
                     <>
+                      {" "}
+                      {/* {console.log("🔍 Routing Insights Filter:", filter)} */}
                       <RiStats filter={filter} />
                       <div className="row mt-4 d-flex align-items-stretch">
                         <div className="col-6 mb-3">
@@ -654,12 +868,12 @@ const Dashboard = () => {
                                   <Tooltip
                                     target="#expand-route-distribution"
                                     content="Expand Map"
-                                    position="top"
+                                    position="bottom"
                                   />
                                   <span
                                     id="expand-route-distribution"
                                     style={{ cursor: "pointer" }}
-                                    onClick={handleDialogShow}
+                                    onClick={() => setDialogVisible(true)}
                                   >
                                     <BiExpand />
                                   </span>
@@ -673,7 +887,8 @@ const Dashboard = () => {
                         <div className="col-6">
                           <RiShiftEmployeeOccupancy filter={filter} />
                         </div>
-                         <div className="row mb-3">
+                      </div>
+                      <div className="row mb-3">
                         <div className="col-8 h-100">
                           <RiPickDrop filter={filter} />
                         </div>
@@ -681,8 +896,7 @@ const Dashboard = () => {
                           <RiShiftCompletionPending filter={filter} />
                         </div>
                       </div>
-                      </div>
-                       <div className="row mb-3">
+                      <div className="row mb-3">
                         <div className="col-6">
                           <RiDropSafeChart filter={filter} />
                         </div>
@@ -702,6 +916,15 @@ const Dashboard = () => {
                         </div>
                         <div className="col-8">
                           <RouteBreakDuty filter={filter} />
+                          {/* <div className="cardx border-0 p-3">
+                            <h6>Routes vs Breakdowns vs Duty Hours</h6>
+                            <hr />
+                            <Image
+                              src="src/assets/chart4.png"
+                              alt="Routes vs Breakdowns"
+                              className="img-fluid"
+                            />
+                          </div> */}
                         </div>
                       </div>
                       <div className="row align-items-stretch">
@@ -711,6 +934,10 @@ const Dashboard = () => {
                         <div className="col-4 mb-3">
                           <DriverEfficiency filter={filter} />
                         </div>
+
+                        {/* <div className="col-4 mb-3">
+                          <TripEfficiency />
+                        </div> */}
                         <div className="col-4 mb-3">
                           <VehicleFragmentation filter={filter} />
                         </div>
@@ -812,15 +1039,11 @@ const Dashboard = () => {
       <Dialog
         header={`${checked ? "Routes" : "Employees"} Density`}
         visible={dialogVisible}
-        style={{ width: "90vw", minHeight: "90vh" }}
-        onHide={()=> setDialogVisible(false)}
+        style={{ width: "90vw", height: "90vh"}}
+        onHide={() => setDialogVisible(false)}
+        
       >
-          <LeafletHeatMap
-            filter={filter}
-            style={{
-              height: "100vh"
-            }}
-          />
+        <LeafletHeatMap filter={filter} style={{ height: "100vh" }} />
       </Dialog>
     </div>
   );

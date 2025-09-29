@@ -236,7 +236,7 @@ const LeafletHeatMap = ({ filter }) => {
   if (error) return <p>Error: {error}</p>;
 
   return (
-    <div style={{ height: "495px", width: "100%", position: "relative" }}>
+    <div style={{ height: "70vh", width: "100%", position: "relative" }}>
       <div
         style={{
           position: "absolute",
@@ -320,8 +320,12 @@ const LeafletHeatMap = ({ filter }) => {
           currentZoom={currentZoom}
         />
       </MapContainer>
+
+
+      
+      
     </div>
   );
 };
 
-export default LeafletHeatMap;
+export default React.memo(LeafletHeatMap);

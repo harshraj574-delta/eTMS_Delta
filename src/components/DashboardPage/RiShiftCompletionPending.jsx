@@ -4,7 +4,7 @@ import { apiService } from "../../services/api"; // Adjust if needed
 import { BiExpand, BiCalendar } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
-
+import React from "react";
 const RiShiftCompletionPending = ({ filter }) => {
   const [chartValues, setChartValues] = useState([]);
   const [isAllZero, setIsAllZero] = useState(false);
@@ -64,7 +64,7 @@ const RiShiftCompletionPending = ({ filter }) => {
           labels.map((label, idx) => ({
             label: label,
             value: values[idx],
-            color: colors [idx],
+            color: colors[idx],
           }))
         );
       } catch (error) {
@@ -77,7 +77,7 @@ const RiShiftCompletionPending = ({ filter }) => {
 
   return (
     <div className="cardx border-0 p-3">
-      <div className="d-flex justify-content-between align-items-center border-0">
+      <div className="d-flex justify-content-between align-items-center border-0 py-0">
         <h6>Route Completion</h6>
         {/* <span
           id="routeCompletion"
@@ -89,7 +89,7 @@ const RiShiftCompletionPending = ({ filter }) => {
       </div>
       <hr />
 
-      <div className="row py-5 mt-5 d-flex align-items-center">
+      <div className="row">
         <div className="col-12 px-0">
           {!isAllZero ? (
             <div className="mt-3 grid grid-cols-2 gap-2 text-sm p-3">
@@ -103,7 +103,7 @@ const RiShiftCompletionPending = ({ filter }) => {
                   </div>
                   <ProgressBar
                     value={item.value}
-                    style={{ height: "6px" }}
+                    style={{ height: "9px" }}
                     color={item.color}
                   />
                 </div>
@@ -124,8 +124,8 @@ const RiShiftCompletionPending = ({ filter }) => {
         onHide={() => setDialogVisible(false)}
       >
         <div
-          className="m-0 bg-light"
-          style={{ height: "710px", width: "100%", position: "relative" }}
+          // className="m-0 bg-light"
+          // style={{ height: "710px", width: "100%", position: "relative" }}
         >
           {chartValues.map((item, idx) => (
             <div key={idx} className="flex flex-col mb-3">
@@ -149,4 +149,4 @@ const RiShiftCompletionPending = ({ filter }) => {
   );
 };
 
-export default RiShiftCompletionPending;
+export default React.memo(RiShiftCompletionPending);

@@ -679,7 +679,7 @@ const VehicleMaster = () => {
                                 </div>
 
                                 <div className="col-2">
-                                    <Button label="Submit" className="btn btn-dark no-label-prime" onClick={VehiclesDetailsData} />
+                                    <Button label="Submit" className="btn btn-primary no-label" onClick={VehiclesDetailsData} />
                                 </div>
                                 <div className="col-2 offset-4 d-none">
                                     <label htmlFor="">Search Any</label>

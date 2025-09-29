@@ -4,7 +4,7 @@ import { Chart } from "primereact/chart";
 import { BiExpand, BiCalendar } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
-
+import React from "react";
 const RiShiftEmployeeOccupancy = ({ filter }) => {
   const [lineChartData, setLineChartData] = useState({});
   const [lineChartOptions, setLineChartOptions] = useState({});
@@ -83,7 +83,8 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
           labels, // only actual shift times, formatted as "HH:mm"
           datasets: [
             {
-              label: `Seat Utilization % (${occupancyData.reduce((a, b) => a + b, 0)})`,
+              //label: `Seat Utilization % (${occupancyData.reduce((a, b) => a + b, 0)})`,
+              label: `Seat Utilization %`,
               data: occupancyData,
               borderColor: "#63abfd",
               backgroundColor: "#63abfd",
@@ -92,7 +93,8 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
               yAxisID: "y",
             },
             {
-              label: `Number Of Employees (${employeeData.reduce((a, b) => a + b, 0)})`,
+              // label: `Number Of Employees (${employeeData.reduce((a, b) => a + b, 0)})`,
+              label: `Number Of Employees`,
               data: employeeData,
               borderColor: "#e697ff",
               backgroundColor: "#e697ff",
@@ -173,7 +175,7 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
 
   return (
     <div className="cardx border-0 p-3">
-      <div className="d-flex justify-content-between align-items-center border-0">
+      <div className="d-flex justify-content-between align-items-center border-0 py-1">
         <h6>Seat Utilization vs Employees Count</h6>
         <span
           id="chart"
@@ -197,15 +199,13 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
         style={{ width: "90vw", minHeight: "90vh" }}
         onHide={() => setDialogVisible(false)}
       >
-        <div
-          className="m-0 bg-light"
-          style={{ height: "710px", width: "100%", position: "relative" }}
-        >
+        <div>
           <Chart
             type="line"
             data={lineChartData}
             options={lineChartOptions}
             className="w-full md:w-30rem"
+            style={{ height: "75vh", width: "100%" }}
           />
         </div>
       </Dialog>
@@ -214,4 +214,4 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
   );
 };
 
-export default RiShiftEmployeeOccupancy;
+export default React.memo(RiShiftEmployeeOccupancy);

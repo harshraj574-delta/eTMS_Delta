@@ -487,7 +487,7 @@ const ShiftTimeMaster = () => {
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">
-            <div className="field col-3 mb-3">
+            <div className="field col-2 mb-3">
               <label>Facility</label>
               <Dropdown
                 id="facility"
@@ -505,7 +505,7 @@ const ShiftTimeMaster = () => {
               // defaultValue={1}
               />
             </div>
-            <div className="field col-3 mb-3">
+            <div className="field col-2 mb-3">
               <label>Process</label>
               <Dropdown
                 id="process"
@@ -518,7 +518,7 @@ const ShiftTimeMaster = () => {
 
               />
             </div>
-            <div className="field col-3 mb-3">
+            <div className="field col-2 mb-3">
               <label>Trip Type</label>
               <Dropdown
                 placeholder="Select"
@@ -528,7 +528,7 @@ const ShiftTimeMaster = () => {
                 onChange={(e) => setTripTypeValue(e.value)}
               />
             </div>
-            <div className="field col-3 mb-3">
+            <div className="field col-2 mb-3">
               <label>Day Type</label>
               <Dropdown
                 placeholder="Select"
@@ -556,7 +556,7 @@ const ShiftTimeMaster = () => {
                 rowsPerPageOptions={[50, 100, 150, 200]}
                 value={shiftData}
                 paginator
-                className="p-datatable-sm"
+                // className="p-datatable-sm"
                 responsiveLayout="scroll"
                 selection={selectedRows}
                 onSelectionChange={(e) => setSelectedRows(e.value)}
@@ -573,14 +573,14 @@ const ShiftTimeMaster = () => {
                   field="Active"
                   header="Status"
                   body={statusBodyTemplate}
-                  style={{ minWidth: "150px" }}
+                  // style={{ minWidth: "150px" }}
                 />
-                <Column
+                {/* <Column
                   field=""
                   header="Delete"
                   body={deleteBodyTemplate}
                   style={{ minWidth: "100px", display: "none" }}
-                />
+                /> */}
               </DataTable>
             </div>
           </div>

@@ -13,7 +13,7 @@ const RouteDeletion = () => {
   const [selFacility, setSelFacility] = useState(null);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const TypeOptions = [
-    { label: "Both", value: "" },
+    { label: "Both", value: "B" },
     { label: "Pick", value: "P" },
     { label: "Drop", value: "D" }
   ];
@@ -194,7 +194,7 @@ const RouteDeletion = () => {
               />
             </div>
             <div className="field col-2 mb-3">
-              <button className="btn btn-primary mt-4" type="button" onClick={handleSearchClick}>Submit</button>
+              <button className="btn btn-primary no-label" type="button" onClick={handleSearchClick}>Submit</button>
             </div>
           </div>
         </div>

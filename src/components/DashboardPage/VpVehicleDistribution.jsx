@@ -3,7 +3,7 @@ import { Pie, PieChart, ResponsiveContainer, Cell, Tooltip, Legend } from "recha
 import { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 import { filter } from "lodash";
-
+import React from "react";
 
 const VpVehicleDistribution = ({filter}) => {
   const [data, setData] = useState([]);
@@ -173,4 +173,4 @@ const VpVehicleDistribution = ({filter}) => {
   );
 };
 
-export default VpVehicleDistribution;
+export default React.memo(VpVehicleDistribution);

@@ -1642,11 +1642,13 @@ const handleLogoutFacilityChange = (e) => {
 
       {/* Middle Section */}
       <div className="middle">
-        <div className="row mt-3">
-          <div className="col-12">
+        <div className="row">
+          <div className="col-lg-12">
+            <div className="row mt-3">
+              <div className="col-12">
                 <button
                   type="button"
-                  className="btn btn-dark"
+                  className="btn btn-dark me-3"
                   onClick={handleReplicateClick}
                 >
                   Replicate Schedule
@@ -1655,6 +1657,8 @@ const handleLogoutFacilityChange = (e) => {
                   Roster Bulk Upload
                 </button> */}
               </div>
+            </div>
+          </div>
         </div>
         {/* Schedule Table */}
         <div className="row">

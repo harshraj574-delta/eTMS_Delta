@@ -4,7 +4,7 @@ import { Chart } from "primereact/chart";
 import { BiExpand, BiCalendar } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
-
+import React from "react";
 const RiPickDrop = ({ filter }) => {
   const [barChartData, setBarChartData] = useState({});
   const [barChartOptions, setBarChartOptions] = useState({});
@@ -156,6 +156,7 @@ const RiPickDrop = ({ filter }) => {
         data={barChartData}
         options={barChartOptions}
         className="w-full md:w-30rem"
+        // style={{ height: "50vh", width: "100%" }}
       />
 
       <Dialog
@@ -165,14 +166,15 @@ const RiPickDrop = ({ filter }) => {
         onHide={() => setDialogVisible(false)}
       >
         <div
-          className="m-0 bg-light"
-          style={{ height: "710px", width: "100%", position: "relative" }}
+          //className="m-0 bg-light"
+          //style={{ height: "710px", width: "100%", position: "relative" }}
         >
           <Chart
             type="bar"
             data={barChartData}
             options={barChartOptions}
             className="w-full md:w-30rem"
+            style={{ height: "75vh", width: "100%" }}
           />
         </div>
       </Dialog>
@@ -181,4 +183,4 @@ const RiPickDrop = ({ filter }) => {
   );
 };
 
-export default RiPickDrop;
+export default React.memo(RiPickDrop);

@@ -354,13 +354,15 @@ const exportToExcel = () => {
                     filter
                   />
                 </div>
-                <div className="col-2 d-flex align-items-end">
-                  <Button
+                <div className="col offset-8">
+                  <div className="d-flex justify-content-end">
+                    <Button
                     label="Export Excel"
                     icon="pi pi-file-excel"
-                    className="btn btn-success"
+                    className="btn btn-primary no-label"
                     onClick={exportToExcel}
                   />
+                  </div>
                 </div>
                 {/* <div className="col-2">
                                     <Button label="Submit" disabled={!selFacility} className="btn btn-dark no-label-prime" onClick={fetchGuardDetails} />

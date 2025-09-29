@@ -27,12 +27,12 @@ const getWeekDays = (startDate) => {
     date.setDate(date.getDate() + i);
     const day = dayNames[date.getDay()];
     const dayNum = date.getDate().toString().padStart(2, "0");
-    const month = date.toLocaleString("default", { month: "long" }); // <-- fixed here
+    const month = date.toLocaleString("default", { month: "short" }); // <-- fixed here
     days.push({
       label: (
         <>
-          {day}
-          <br />
+          {day},
+          
           {dayNum}-{month}
         </>
       ),
@@ -363,7 +363,7 @@ const AdminSchedule = () => {
     setDayWiseSchedule(updatedSchedule);
   };
   useEffect(() => {
-   fetchEmployeeSchedule();
+    fetchEmployeeSchedule();
   }, []);
   const fetchEmployeeSchedule = async (employeeId) => {
     try {
@@ -487,6 +487,8 @@ const AdminSchedule = () => {
                 onChange={(e) => {
                   if (e.value) setSelectedDate(e.value);
                 }}
+                toggleMask
+                // feedback={false}
                 showIcon
               />
             </div>
@@ -512,7 +514,7 @@ const AdminSchedule = () => {
             <div className="field col-2 mb-3 no-label">
               <Button
                 label="Search"
-                className="btn btn-dark"
+                className="btn btn-primary"
                 onClick={() => handleUpdateVendor()}
               />
             </div>
@@ -523,7 +525,7 @@ const AdminSchedule = () => {
         {hasSearched && (
           <div className="card_tb1">
             {/* table table-sm m-0 */}
-            <table className="table">
+            <table className="table mb-0">
               <thead>
                 <tr>
                   <th className="d-flex justify-content-between align-items-center">
@@ -723,7 +725,7 @@ const AdminSchedule = () => {
                 <tr>
                   <td colSpan="8" className="text-end">
                     <div className="d-flex justify-content-end align-items-center">
-                      <div className="d-flex align-items-center">
+                      <div className="">
                         <Checkbox
                           inputId="ingredient1"
                           name="pizza"
@@ -731,7 +733,7 @@ const AdminSchedule = () => {
                           checked={noChangeChecked}
                           onChange={(e) => setNoChangeChecked(e.checked)}
                         />
-                        <label htmlFor="ingredient1" className="ms-2">
+                        <label htmlFor="ingredient1" className="ms-2 mb-0">
                           Check For No Change Exception
                         </label>
                       </div>

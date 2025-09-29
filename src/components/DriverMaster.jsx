@@ -157,7 +157,7 @@ const DriverMaster = () => {
                                         placeholder="Select Vendor" className="w-100" filter />
                                 </div>
                                 <div className="col-2">
-                                    <Button label="Submit" disabled={!selFacility && !selVendor} className="btn btn-dark no-label-prime" onClick={fetchDriverDetails} />
+                                    <Button label="Submit" className="btn btn-primary no-label-prime" onClick={fetchDriverDetails} />
                                 </div>
                                 <div className="col-2 offset-4">
                                     <label htmlFor="" className="d-block">Search Any</label>
@@ -179,7 +179,7 @@ const DriverMaster = () => {
                                 removableSort
                                 paginator
                                 rows={50}
-                                rowsPerPageOptions={[50,100,150,200]} pt={customSortStyle}>
+                                rowsPerPageOptions={[50, 100, 150, 200]} pt={customSortStyle}>
                                 <Column field="Id" header="ID" body={(rowData) => (
                                     <a href="#" onClick={(e) => { e.preventDefault(); setVisibleLeft(true); }}>
                                         {rowData.Id}
@@ -205,7 +205,7 @@ const DriverMaster = () => {
                     </div>
 
                     {/* Edit Driver Master */}
-                    <PrimeSidebar visible={visibleLeft} position="right" onHide={() => setVisibleLeft(false)} width="50%" showCloseIcon={false} dismissable={false} style={{width:'70%', backdropFilter: 'blur(8px)'}}>
+                    <PrimeSidebar visible={visibleLeft} position="right" onHide={() => setVisibleLeft(false)} width="50%" showCloseIcon={false} dismissable={false} style={{ width: '70%', backdropFilter: 'blur(8px)' }}>
                         <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
                             <h6 className="sidebarTitle">Edit Driver Details</h6>
                             <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setVisibleLeft(false)} />
@@ -251,7 +251,7 @@ const DriverMaster = () => {
                                     <label>Mother's Name</label>
                                     <InputText className="form-control" name="" placeholder="Mother's Name" />
                                 </div>
-                                
+
                                 <div className="field col-6 mb-3">
                                     <label>Present Address</label>
                                     <InputText className="form-control" name="" placeholder="Present Address" />
@@ -358,21 +358,21 @@ const DriverMaster = () => {
                                     </div>
                                 </div>
 
-                                
+
 
                             </div>
                             {/* Fixed button container at bottom of sidebar */}
                             <div className="sidebar-fixed-bottom">
-                                    <div className="d-flex gap-3 justify-content-end">
-                                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setVisibleLeft(false)} />
-                                        <Button label="Save Changes" className="btn btn-success" />
-                                    </div>
+                                <div className="d-flex gap-3 justify-content-end">
+                                    <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setVisibleLeft(false)} />
+                                    <Button label="Save Changes" className="btn btn-success" />
                                 </div>
+                            </div>
                         </div>
                     </PrimeSidebar>
 
                     {/* Add Driver Master */}
-                    <PrimeSidebar visible={addDriverMaster} position="right" onHide={() => setAddDriverMaster(false)} showCloseIcon={false} dismissable={false} style={{width:'70%'}}>
+                    <PrimeSidebar visible={addDriverMaster} position="right" onHide={() => setAddDriverMaster(false)} showCloseIcon={false} dismissable={false} style={{ width: '70%' }}>
                         <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
                             <h6 className="sidebarTitle">Add Driver Details</h6>
                             <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setAddDriverMaster(false)} />
@@ -418,7 +418,7 @@ const DriverMaster = () => {
                                     <label>Mother's Name</label>
                                     <InputText className="form-control" name="" placeholder="Mother's Name" />
                                 </div>
-                                
+
                                 <div className="field col-6 mb-3">
                                     <label>Present Address</label>
                                     <InputText className="form-control" name="" placeholder="Present Address" />
@@ -525,16 +525,16 @@ const DriverMaster = () => {
                                     </div>
                                 </div>
 
-                                
+
 
                             </div>
                             {/* Fixed button container at bottom of sidebar */}
                             <div className="sidebar-fixed-bottom">
-                                    <div className="d-flex gap-3 justify-content-end">
-                                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setVisibleLeft(false)} />
-                                        <Button label="Save Changes" className="btn btn-success" />
-                                    </div>
+                                <div className="d-flex gap-3 justify-content-end">
+                                    <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setVisibleLeft(false)} />
+                                    <Button label="Save Changes" className="btn btn-success" />
                                 </div>
+                            </div>
                         </div>
                     </PrimeSidebar>
                 </div>

@@ -4,7 +4,7 @@ import { Chart } from "primereact/chart";
 import { BiExpand, BiCalendar } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
-
+import React from "react";
 const RiNormalAdhoc = ({ filter }) => {
   const [barChartData, setBarChartData] = useState({});
   const [barChartOptions, setBarChartOptions] = useState({});
@@ -124,7 +124,7 @@ const RiNormalAdhoc = ({ filter }) => {
 
   return (
     <div className="cardx border-0 p-3 h-100">
-      <div className="d-flex justify-content-between align-items-center border-0 h-100">
+      <div className="d-flex justify-content-between align-items-center">
       <h6>Normal vs Adhoc Trips</h6>
       <span
         id="adhoc"
@@ -140,6 +140,7 @@ const RiNormalAdhoc = ({ filter }) => {
         data={barChartData}
         options={barChartOptions}
         className="w-full md:w-30rem"
+        style={{ height: "50vh", width: "100%" }}
       />
 
       <Dialog
@@ -149,14 +150,15 @@ const RiNormalAdhoc = ({ filter }) => {
         onHide={() => setDialogVisible(false)}
       >
         <div
-          className="m-0 bg-light"
-          style={{ height: "710px", width: "100%", position: "relative" }}
+          className=""
+          //style={{ height: "710px", width: "100%", position: "relative" }}
         >
           <Chart
         type="bar"
         data={barChartData}
         options={barChartOptions}
         className="w-full md:w-30rem"
+        style={{ height: "75vh", width: "100%" }}
       />
         </div>
       </Dialog>
@@ -166,4 +168,4 @@ const RiNormalAdhoc = ({ filter }) => {
   );
 };
 
-export default RiNormalAdhoc;
+export default React.memo(RiNormalAdhoc);

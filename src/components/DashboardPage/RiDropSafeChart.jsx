@@ -5,7 +5,7 @@ import { BiExpand, BiCalendar } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
 import { data } from "react-router-dom";
-
+import React from "react";
 const RiDropSafeChart = ({ filter }) => {
   const [chartData, setChartData] = useState(null);
   const [chartOptions, setChartOptions] = useState({});
@@ -133,7 +133,7 @@ const RiDropSafeChart = ({ filter }) => {
 
   return (
     <div className="cardx border-0 p-3 h-100">
-      <div className="d-flex justify-content-between align-items-center border-0 h-100">
+      <div className="d-flex justify-content-between align-items-center">
         <h6>Women Employee & DSY Overview</h6>
         <span
           id="dsy"
@@ -145,9 +145,7 @@ const RiDropSafeChart = ({ filter }) => {
       </div>
       <hr />
       {chartData && chartData.datasets && chartData.datasets.length > 0 ? (
-        <div className="">
-          <Chart type="bar" data={chartData} options={chartOptions} />
-        </div>
+        <Chart type="bar" data={chartData} options={chartOptions} style={{ height: "50vh", width: "100%" }} />
       ) : (
         <div className="text-center text-muted py-5">
           <p style={{ fontSize: "16px", marginBottom: "8px" }}>
@@ -166,10 +164,10 @@ const RiDropSafeChart = ({ filter }) => {
         onHide={() => setDialogVisible(false)}
       >
         <div
-          className="m-0 bg-light"
-          style={{ height: "710px", width: "100%", position: "relative" }}
+          className=""
+          //style={{ height: "710px", width: "100%", position: "relative" }}
         >
-          <Chart type="bar" data={chartData} options={chartOptions} />
+          <Chart type="bar" data={chartData} options={chartOptions} style={{ height: "75vh", width: "100%" }} />
         </div>
       </Dialog>
       <Tooltip target="#dsy" content="Expand Map" position="left" />
@@ -178,4 +176,4 @@ const RiDropSafeChart = ({ filter }) => {
   );
 };
 
-export default RiDropSafeChart;
+export default React.memo(RiDropSafeChart);
