@@ -12,6 +12,7 @@ import { Row } from "react-bootstrap";
 import { ColumnGroup } from "primereact/columngroup";
 import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
+import { ToastContainer } from "react-toastify";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 const RepPlanAct = () => {
@@ -389,6 +390,7 @@ const RepPlanAct = () => {
             <Loader isVisible={loading} fullScreen={true} />
             <Header pageTitle={"Plan Vs Actual Information"} />
             <Sidebar />
+            <ToastContainer position="top-right" autoClose={3000} />
             <div className="middle">
                 <div className="card_tb p-3">
                     <div className="row">
