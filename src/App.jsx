@@ -54,6 +54,7 @@ import TrackingReport from "./components/TrackingReport";
 import RepFeedbackReport from "./components/FeedbackReport";
 import RepCabCompliance from "./components/RepCabCompliance";
 import PerEmployeeBilling from "./components/PerEmployeeBilling";
+import RepPlanAct from "./components/RepPlanAct";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -127,6 +128,7 @@ function App() {
         <Route path="/RepArrivalVendorWise" element={<PrivateRoute element={<OTAReport />} />} />
         <Route path="/RepArrivalShiftWise" element={<PrivateRoute element={<OTAReport />} />} />
         <Route path="/PerEmployeeBilling" element={<PrivateRoute element={<PerEmployeeBilling />} />} />
+        <Route path="/RepPlanAct" element={<PrivateRoute element={<RepPlanAct />} />} />
 
         {/* <Route path="/EmpDump" element={<EmpDump />} /> */}
       </Routes>

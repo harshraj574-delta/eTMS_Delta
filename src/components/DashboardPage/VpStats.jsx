@@ -177,7 +177,7 @@ const VpStats = ({ filter }) => {
       <style>{`
         .vp-stats-container {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 1.25rem; 
           padding: 0; 
           margin-bottom: 1rem; 
@@ -249,6 +249,7 @@ const VpStats = ({ filter }) => {
           font-style: normal;
           line-height: 1.2;
         }
+          
 
         @media (min-width: 1200px) {
           .vp-stats-container {
@@ -279,6 +280,18 @@ const VpStats = ({ filter }) => {
             grid-template-columns: 1fr;
           }
         }
+
+        @media (min-width: 1400px) {
+  .vp-stats-container {
+    grid-template-columns: repeat(4, 1fr); /* first row */
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1399px) {
+  .vp-stats-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
       `}</style>
 
       <div className="vp-stats-container">
