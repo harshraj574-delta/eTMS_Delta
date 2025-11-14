@@ -41,9 +41,19 @@ import PrivateRoute from "./components/PrivateRoute";
 import Unauthorized from "./components/Unauthorized"; // Make sure path matches
 import RouteDeletion from "./components/RouteDeletion";
 import ShiftTimeMasterAdhoc from "./components/ShiftTimeMasterAdhoc";
+
 // Deepak
 import Location from "./components/MasterPages/Location";
 import FacilityMaster from "./components/MasterPages/FacilityMaster";
+import ProcessMaster from "./components/ProcessMaster";
+import FeedbackMaster from "./components/FeedbackMaster";
+import OTAReport from "./components/OTAReport";
+import RepNoShow from "./components/RepNoShow";
+import RepVehUsgVen from "./components/RepVehUsgVen";
+import TrackingReport from "./components/TrackingReport";
+import RepFeedbackReport from "./components/FeedbackReport";
+import RepCabCompliance from "./components/RepCabCompliance";
+import PerEmployeeBilling from "./components/PerEmployeeBilling";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -106,6 +116,18 @@ function App() {
         <Route path="/VendorAllocation" element={<PrivateRoute element={<VendorAllocation />} />} />
         <Route path="/AdminSchedule" element={<PrivateRoute element={<AdminSchedule />} />} />
         <Route path="/EmpDump" element={<PrivateRoute element={<EmpDump />} />} />
+        <Route path="/ProcessMaster" element={<PrivateRoute element={<ProcessMaster />} />} />
+        <Route path="/FeedbackMater" element={<PrivateRoute element={<FeedbackMaster />} />} />
+        <Route path="/OTADetailReport" element={<PrivateRoute element={<OTAReport />} />} />
+        <Route path="/RepNoShow" element={<PrivateRoute element={<RepNoShow />} />} />
+        <Route path="/RepVehUsgVen" element={<PrivateRoute element={<RepVehUsgVen />} />} />
+        <Route path="/TrackingReport" element={<PrivateRoute element={<TrackingReport />} />} />
+        <Route path="/RepFeedbackReport" element={<PrivateRoute element={<RepFeedbackReport />} />} />
+        <Route path="/RepCabCompliance" element={<PrivateRoute element={<RepCabCompliance />} />} />
+        <Route path="/RepArrivalVendorWise" element={<PrivateRoute element={<OTAReport />} />} />
+        <Route path="/RepArrivalShiftWise" element={<PrivateRoute element={<OTAReport />} />} />
+        <Route path="/PerEmployeeBilling" element={<PrivateRoute element={<PerEmployeeBilling />} />} />
+
         {/* <Route path="/EmpDump" element={<EmpDump />} /> */}
       </Routes>
     </>

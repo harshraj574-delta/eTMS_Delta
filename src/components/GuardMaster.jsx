@@ -355,7 +355,7 @@ const exportToExcel = () => {
                   />
                 </div>
                 <div className="col offset-8">
-                  <div className="d-flex justify-content-end">
+                  <div className="d-flex justify-content-end d-none">
                     <Button
                     label="Export Excel"
                     icon="pi pi-file-excel"

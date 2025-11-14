@@ -1,17 +1,26 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 import { Chart } from "primereact/chart";
-import { BiExpand, BiCalendar } from "react-icons/bi";
+import { BiExpand } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
+import Loader from "../common/Loader";
 import React from "react";
+
 const RiPickDrop = ({ filter }) => {
   const [barChartData, setBarChartData] = useState({});
   const [barChartOptions, setBarChartOptions] = useState({});
   const [dialogVisible, setDialogVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
   useEffect(() => {
     const fetchAndPrepareChart = async () => {
+      setLoading(true);
+      setError(null);
+
       try {
         const params = {
           sDate: filter.sDate,
@@ -21,22 +30,8 @@ const RiPickDrop = ({ filter }) => {
           vendorid: filter.vendorid || "",
           triptype: filter.triptype || "",
         };
-        // console.log("RiPickDrop API params:", params);
+
         const res = await apiService.GetPickDropcount_shiftwise(params);
-        //const data = JSON.parse(res) || [];
-
-        // Utility to format shift time
-        // const formatShiftTime = (shiftTime) => {
-        //   if (!shiftTime) return "";
-        //   const hour = parseInt(shiftTime.slice(0, 2), 10);
-        //   const minute = shiftTime.slice(2);
-        //   const ampm = hour >= 12 ? "PM" : "AM";
-        //   const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-        //   return minute === "00"
-        //     ? `${hour12}${ampm}`
-        //     : `${hour12}:${minute}${ampm}`;
-        // };
-
         const data = JSON.parse(res) || [];
 
         const formatShiftTime = (shiftTime) => {
@@ -47,18 +42,18 @@ const RiPickDrop = ({ filter }) => {
         };
 
         const labels = data.map((entry) => formatShiftTime(entry.shiftTime));
-
-        //const labels = data.map((entry) => formatShiftTime(entry.shiftTime));
         const pickupCounts = data.map((entry) => entry.totalpickup || 0);
         const dropCounts = data.map((entry) => entry.totaldrop || 0);
 
-        // Chart style variables
         const documentStyle = getComputedStyle(document.documentElement);
         const textColorSecondary = documentStyle.getPropertyValue(
           "--text-color-secondary"
         );
         const surfaceBorder =
           documentStyle.getPropertyValue("--surface-border");
+
+        const totalPick = pickupCounts.reduce((a, b) => a + b, 0);
+        const totalDrop = dropCounts.reduce((a, b) => a + b, 0);
 
         setBarChartData({
           labels,
@@ -82,10 +77,6 @@ const RiPickDrop = ({ filter }) => {
           ],
         });
 
-        // Calculate totals for legend
-        const totalPick = pickupCounts.reduce((a, b) => a + b, 0);
-        const totalDrop = dropCounts.reduce((a, b) => a + b, 0);
-
         setBarChartOptions({
           maintainAspectRatio: false,
           aspectRatio: 0.8,
@@ -99,7 +90,6 @@ const RiPickDrop = ({ filter }) => {
                 padding: 30,
                 fontSize: "24px",
                 boxWidth: 20,
-                // Show total count in legend
                 generateLabels: (chart) => {
                   const datasets = chart.data.datasets;
                   return datasets.map((ds, i) => {
@@ -131,15 +121,70 @@ const RiPickDrop = ({ filter }) => {
             },
           },
         });
-      } catch {
-        setBarChartData({});
+
+        setRetryCount(0);
+        setError(null);
+      } catch (err) {
+        console.error("PickDrop Error:", err);
+        setError(err?.message || "Failed to load chart data");
+
+        if (retryCount < maxRetries) {
+          console.log(
+            `Auto-retrying PickDrop... Attempt ${retryCount + 1}/${maxRetries}`
+          );
+          setTimeout(() => {
+            setRetryCount((prev) => prev + 1);
+          }, 2000);
+        } else {
+          setBarChartData({});
+        }
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchAndPrepareChart();
-  }, [filter]);
+  }, [filter, retryCount]);
+
+  if (error && retryCount >= maxRetries) {
+    return (
+      <div className="cardx border-0 p-3">
+        <h6>Pick/Drop Trips</h6>
+        <hr />
+        <div
+          style={{
+            padding: "2rem",
+            background: "#fff3cd",
+            borderRadius: "8px",
+            textAlign: "center",
+            border: "1px solid #ffc107",
+          }}
+        >
+          <p style={{ color: "#856404", marginBottom: "1rem" }}>
+            ⚠️ Failed to load chart data
+          </p>
+          <button
+            onClick={() => setRetryCount(0)}
+            style={{
+              padding: "0.5rem 1rem",
+              background: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cardx border-0 p-3">
+      <Loader isVisible={loading} fullScreen={false} />
       <div className="d-flex align-items-center justify-content-between">
         <h6>Pick/Drop Trips</h6>
         <span
@@ -151,13 +196,14 @@ const RiPickDrop = ({ filter }) => {
         </span>
       </div>
       <hr />
-      <Chart
-        type="bar"
-        data={barChartData}
-        options={barChartOptions}
-        className="w-full md:w-30rem"
-        // style={{ height: "50vh", width: "100%" }}
-      />
+      {!loading && (
+        <Chart
+          type="bar"
+          data={barChartData}
+          options={barChartOptions}
+          className="w-full md:w-30rem"
+        />
+      )}
 
       <Dialog
         header={"Pick/Drop Trips"}
@@ -165,20 +211,15 @@ const RiPickDrop = ({ filter }) => {
         style={{ width: "90vw", minHeight: "90vh" }}
         onHide={() => setDialogVisible(false)}
       >
-        <div
-          //className="m-0 bg-light"
-          //style={{ height: "710px", width: "100%", position: "relative" }}
-        >
-          <Chart
-            type="bar"
-            data={barChartData}
-            options={barChartOptions}
-            className="w-full md:w-30rem"
-            style={{ height: "75vh", width: "100%" }}
-          />
-        </div>
+        <Chart
+          type="bar"
+          data={barChartData}
+          options={barChartOptions}
+          className="w-full md:w-30rem"
+          style={{ height: "75vh", width: "100%" }}
+        />
       </Dialog>
-      <Tooltip target="#pickDrop" content="Expand Map" position="left" />
+      <Tooltip target="#pickDrop" content="Expand Chart" position="left" />
     </div>
   );
 };

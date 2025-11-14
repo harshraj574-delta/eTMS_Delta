@@ -29,6 +29,7 @@ import { DataScroller } from 'primereact/datascroller';
 import { Badge } from "primereact/badge";
 import * as XLSX from "xlsx";
 import { set, throttle } from "lodash";
+import { ToastContainer } from "react-toastify";
 
 import {
   DndContext,
@@ -493,7 +494,7 @@ const FloatingRouteSelectionPanel = React.memo(
             rows={100}
             scrollHeight="100%"
           />
-
+          
           {selectedRoutes.size === 1 && (
             <div className="text-center text-muted py-3">
               <small>Select at least one more route to enable merging</small>
@@ -2751,7 +2752,8 @@ const ManageRoute = () => {
 
   const pushDataToUpdateTripsheetDetail = async (data) => {
     try {
-      const pushUrl = "/etmsApi/UpdateTripsheetDetail";
+      // Change the URL to use the new proxy path
+      const pushUrl = "/dataPushApi/UpdateTripsheetDetail"; // Use the new proxy route
       const response = await axios.post(pushUrl, data, {
         headers: {
           "Content-Type": "application/json",
@@ -3783,6 +3785,7 @@ const ManageRoute = () => {
           showNewButton={false}
         />
         <Sidebar />
+        <ToastContainer position="top-right" autoClose={3000} />
         <div className="middle">
           <div className="row">
             <div className="col-8">
@@ -3839,11 +3842,11 @@ const ManageRoute = () => {
                   </div>
                   <div className="col no-label">
                     <button
-                      className="btn btn-primary"
+                      className="btn btn-dark p-button p-component"
                       onClick={handleSubmit}
                       disabled={isLoading}
                     >
-                      Submit
+                      Search
                     </button>
                   </div>
                 </div>
@@ -3939,7 +3942,7 @@ const ManageRoute = () => {
                       const month = String(today.getMonth() + 1).padStart(2, "0");
                       const day = String(today.getDate()).padStart(2, "0");
                       const todayString = `${year}-${month}-${day}`;
-
+                      
                       // Check if the selected date is today or in the future
                       const isDateCurrentOrFuture = shiftDate >= todayString;
 
@@ -3983,6 +3986,8 @@ const ManageRoute = () => {
                       return null; // Return nothing if conditions aren't met
                     })()}
                   </div>
+
+
                   <div>
                     <Button
                       label="Recalculate"
@@ -3996,6 +4001,7 @@ const ManageRoute = () => {
                       tooltip="Recalculates ETA and distance for all modified routes in this shift"
                       tooltipOptions={{ position: "top" }}
                     />
+
                     <Button
                       label={
                         isLoading ? "Allocating..." : "Auto Vendor Allocation"
@@ -4007,6 +4013,7 @@ const ManageRoute = () => {
                       onClick={handleAutoVendorAllocation}
                       disabled={isLoading}
                     />
+
                     <Button
                       label={
                         isRecalcBeforeFinalize
@@ -4096,10 +4103,10 @@ const ManageRoute = () => {
                   <Column expander style={{ width: "3rem" }} />
 
                   {isRouteSelectMode && (
-                    <Column
-                      selectionMode="multiple"
-                      style={{ width: '4rem' }}
-                      header=""
+                    <Column 
+                      selectionMode="multiple" 
+                      style={{ width: '4rem' }} 
+                      header="" 
                     />
                   )}
 

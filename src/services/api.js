@@ -2,7 +2,9 @@ import axios from "axios";
 import { map } from "lodash";
 
 const api = axios.create({
-  baseURL: "/api/api/v1",
+  baseURL: import.meta.env.PROD
+    ? "https://www.etmsonline.in/etmsApi/api/v1" // PRODUCTION
+    : "/api/api/v1",                              // DEVELOPMENT (Vite proxy)
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -746,6 +748,7 @@ export const apiService = {
         vendorid: credentials.vendorid || "",
         triptype: credentials.triptype || "",
       });
+      // console.log("Get Drop Safe Shiftwise Response -------->:", response.data);
       return response.data;
     } catch (error) {
       console.error("API Error:", error);
@@ -1257,4 +1260,20 @@ export const apiService = {
     }
   },
 
+  getchart_DriverEfficiency: async (params) => {
+    try {
+      const response = await api.post("/getchart_DriverEfficiency", {
+        sDate: params.sDate,
+        eDate: params.eDate,
+        locationid: params.locationid,
+        facilityid: params.facilityid,
+        vendorid: params.vendorid,
+        triptype: params.triptype,
+      });
+      return response.data;
+    } catch (error) {
+      console.log("API Error:", error);
+      throw error.response.data || error.message;
+    }
+  }
 };

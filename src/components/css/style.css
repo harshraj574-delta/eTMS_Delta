@@ -2696,3 +2696,27 @@ input[type="date"], .p-multiselect-label {
     fill: var(--grey-3) !important;
     background-color: #999 !important;
 }
+
+/* .sidebar {
+  width: 250px;
+  transition: margin-left 0.3s ease, visibility 0.3s ease;
+  overflow-y: auto;
+} */
+
+.sidebar.collapsed {
+  margin-left: -250px;
+  visibility: hidden;
+  pointer-events: none !important;
+}
+
+.sidebar.collapsed * {
+  pointer-events: none !important;
+}
+
+/* .middle {
+  transition: margin-left 0.3s ease;
+}
+
+body.sidebar-collapsed .middle {
+  margin-left: -250px;
+} */

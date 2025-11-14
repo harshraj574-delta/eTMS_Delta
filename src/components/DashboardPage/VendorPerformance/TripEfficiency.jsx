@@ -1,9 +1,11 @@
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
+import React, { useEffect, useState } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import Loader from "../../common/Loader";
 
 const chartData = [
-  { name: 'Excellent', value: 35, color: '#666666' },
-  { name: 'Good', value: 40, color: '#e6a749' },
-  { name: 'Poor', value: 25, color: '#84c1e9' },
+  { name: "Excellent", value: 35, color: "#666666" },
+  { name: "Good", value: 40, color: "#e6a749" },
+  { name: "Poor", value: 25, color: "#84c1e9" },
 ];
 
 const RADIAN = Math.PI / 180;
@@ -35,17 +37,19 @@ const renderNeedle = (value, data, cx, cy, iR, oR, color) => {
 };
 
 const TripEfficiency = () => {
+  const [loading, setLoading] = useState(false);
   const cx = 150;
   const cy = 150;
   const iR = 50;
   const oR = 100;
-  const currentValue = 80; // Current efficiency percentage
+  const currentValue = 80;
 
   return (
     <div className="cardx border-0 p-3">
+      <Loader isVisible={loading} fullScreen={false} />
       <h6>Trip Efficiency</h6>
       <hr />
-      
+
       <div className="text-center">
         <ResponsiveContainer width="100%" height={250}>
           <PieChart>
@@ -64,24 +68,24 @@ const TripEfficiency = () => {
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
-            {renderNeedle(currentValue, chartData, cx, cy, iR, oR, '#374151')}
+            {renderNeedle(currentValue, chartData, cx, cy, iR, oR, "#374151")}
           </PieChart>
         </ResponsiveContainer>
-        
+
         <div className="mt-3">
           <h4 className="fw-bold text-primary">{currentValue}%</h4>
           <p className="text-muted mb-2">Current Efficiency</p>
-          
+
           <div className="d-flex justify-content-center gap-3 mt-3">
             {chartData.map((item, index) => (
               <div key={index} className="d-flex align-items-center">
-                <div 
-                  className="me-2" 
-                  style={{ 
-                    width: '12px', 
-                    height: '12px', 
+                <div
+                  className="me-2"
+                  style={{
+                    width: "12px",
+                    height: "12px",
                     backgroundColor: item.color,
-                    borderRadius: '50%'
+                    borderRadius: "50%",
                   }}
                 ></div>
                 <small className="text-muted">{item.name}</small>

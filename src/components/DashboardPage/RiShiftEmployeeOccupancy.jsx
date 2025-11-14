@@ -1,16 +1,21 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../../services/api";
 import { Chart } from "primereact/chart";
-import { BiExpand, BiCalendar } from "react-icons/bi";
+import { BiExpand } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
+import Loader from "../common/Loader";
 import React from "react";
+
 const RiShiftEmployeeOccupancy = ({ filter }) => {
   const [lineChartData, setLineChartData] = useState({});
   const [lineChartOptions, setLineChartOptions] = useState({});
   const [dialogVisible, setDialogVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
-  // Format shift time as "HH:mm" (e.g., "0430" -> "04:30")
   const formatTime = (timeStr) => {
     if (!timeStr) return "";
     const padded = timeStr.padStart(4, "0");
@@ -19,6 +24,9 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
 
   useEffect(() => {
     const fetchOccupancyData = async () => {
+      setLoading(true);
+      setError(null);
+
       try {
         const params = {
           sDate: filter.sDate,
@@ -32,27 +40,19 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
         const response = await apiService.GetEmpOccupancy(params);
 
         let data = [];
-        // Handle different response formats
-        if (Array.isArray(response)) {
-          data = response;
-        } else if (Array.isArray(response?.data)) {
-          data = response.data;
-        } else if (typeof response === "string") {
+        if (Array.isArray(response)) data = response;
+        else if (Array.isArray(response?.data)) data = response.data;
+        else if (typeof response === "string") {
           try {
             const parsed = JSON.parse(response);
             if (Array.isArray(parsed)) data = parsed;
-          } catch (e) {
-            console.error("Failed to parse string response:", e);
-            return;
+          } catch {
+            throw new Error("Invalid JSON response");
           }
         }
+        if (!Array.isArray(data) || data.length === 0)
+          throw new Error("No data available");
 
-        if (!Array.isArray(data) || data.length === 0) {
-          console.warn("No data to display");
-          return;
-        }
-
-        // Sort and map the data using "shiftTime" (API response key)
         const sortedData = data
           .filter((item) => item.shiftTime)
           .sort(
@@ -61,7 +61,6 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
               Number(b.shiftTime.padStart(4, "0"))
           );
 
-        // Prepare chart labels and datasets
         const labels = sortedData.map((item) => formatTime(item.shiftTime));
         const occupancyData = sortedData.map((item) =>
           Number(item.AvgOccupancyPer || 0)
@@ -70,21 +69,21 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
           Number(item.totalemplyee || item.totalemployee || 0)
         );
 
-        // UI style variables
         const documentStyle = getComputedStyle(document.documentElement);
         const textColor = documentStyle.getPropertyValue("--text-color");
-        const textColorSecondary = documentStyle.getPropertyValue(
-          "--text-color-secondary"
-        );
+        const textColorSecondary =
+          documentStyle.getPropertyValue("--text-color-secondary");
         const surfaceBorder =
           documentStyle.getPropertyValue("--surface-border");
 
         setLineChartData({
-          labels, // only actual shift times, formatted as "HH:mm"
+          labels,
           datasets: [
             {
-              //label: `Seat Utilization % (${occupancyData.reduce((a, b) => a + b, 0)})`,
-              label: `Seat Utilization %`,
+              label: `Seat Utilization % (${occupancyData.reduce(
+                (a, b) => a + b,
+                0
+              )})`,
               data: occupancyData,
               borderColor: "#63abfd",
               backgroundColor: "#63abfd",
@@ -93,8 +92,10 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
               yAxisID: "y",
             },
             {
-              // label: `Number Of Employees (${employeeData.reduce((a, b) => a + b, 0)})`,
-              label: `Number Of Employees`,
+              label: `Number Of Employees (${employeeData.reduce(
+                (a, b) => a + b,
+                0
+              )})`,
               data: employeeData,
               borderColor: "#e697ff",
               backgroundColor: "#e697ff",
@@ -109,6 +110,7 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
           responsive: true,
           maintainAspectRatio: false,
           aspectRatio: 0.6,
+          layout: { padding: { top: 6, right: 6, bottom: 6, left: 6 } },
           stacked: false,
           plugins: {
             legend: {
@@ -163,35 +165,97 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
             },
           },
         });
+
+        setRetryCount(0);
+        setError(null);
       } catch (error) {
         console.error("Error fetching occupancy data:", error);
+        setError(error?.message || "Failed to load chart data");
+
+        if (retryCount < maxRetries) {
+          console.log(
+            `Auto-retrying Occupancy... Attempt ${retryCount + 1}/${maxRetries}`
+          );
+          setTimeout(() => {
+            setRetryCount((prev) => prev + 1);
+          }, 2000);
+        } else {
+          setLineChartData({});
+        }
+      } finally {
+        setLoading(false);
       }
     };
 
     if (filter?.sDate && filter?.eDate) {
       fetchOccupancyData();
     }
-  }, [filter]);
+  }, [filter, retryCount]);
+
+  if (error && retryCount >= maxRetries) {
+    return (
+      <div className="cardx border-0 p-3 h-100 d-flex flex-column">
+        <h6>Seat Utilization vs Employees Count</h6>
+        <hr />
+        <div
+          style={{
+            padding: "2rem",
+            background: "#fff3cd",
+            borderRadius: "8px",
+            textAlign: "center",
+            border: "1px solid #ffc107",
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+          }}
+        >
+          <p style={{ color: "#856404", marginBottom: "1rem" }}>
+            ⚠️ Failed to load chart data
+          </p>
+          <button
+            onClick={() => setRetryCount(0)}
+            style={{
+              padding: "0.5rem 1rem",
+              background: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="cardx border-0 p-3">
-      <div className="d-flex justify-content-between align-items-center border-0 py-1">
-        <h6>Seat Utilization vs Employees Count</h6>
+    <div className="cardx border-0 p-3 h-100 d-flex flex-column">
+      <Loader isVisible={loading} fullScreen={false} />
+      <div className="cardx-header">
+        <h6 className="mb-0">Seat Utilization vs Employees Count</h6>
         <span
           id="chart"
-          style={{ cursor: "pointer" }}
+          className="icon-btn"
           onClick={() => setDialogVisible(true)}
         >
           <BiExpand />
         </span>
       </div>
-      <hr />
-      <Chart
-        type="line"
-        data={lineChartData}
-        options={lineChartOptions}
-        className="w-full md:w-30rem"
-      />
+      <div className="chart-container flex-grow-1">
+        {!loading && (
+          <Chart
+            type="line"
+            data={lineChartData}
+            options={lineChartOptions}
+            style={{ height: "100%", width: "100%" }}
+          />
+        )}
+      </div>
 
       <Dialog
         header={"Seat Utilization vs Employees Count"}
@@ -199,17 +263,14 @@ const RiShiftEmployeeOccupancy = ({ filter }) => {
         style={{ width: "90vw", minHeight: "90vh" }}
         onHide={() => setDialogVisible(false)}
       >
-        <div>
-          <Chart
-            type="line"
-            data={lineChartData}
-            options={lineChartOptions}
-            className="w-full md:w-30rem"
-            style={{ height: "75vh", width: "100%" }}
-          />
-        </div>
+        <Chart
+          type="line"
+          data={lineChartData}
+          options={lineChartOptions}
+          style={{ height: "75vh", width: "100%" }}
+        />
       </Dialog>
-      <Tooltip target="#chart" content="Expand Map" position="left" />
+      <Tooltip target="#chart" content="Expand" position="left" />
     </div>
   );
 };

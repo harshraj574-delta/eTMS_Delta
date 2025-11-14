@@ -1,0 +1,91 @@
+/* Map picker block for Add/Edit sidebars */
+.map-block {
+  background: #f8fafc;
+  border: 1px solid #e6eaef;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
+}
+
+.map-icon {
+  font-size: 18px;
+  color: #0d6efd;
+}
+
+.btn-map {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  transition: transform 0.04s ease, opacity 0.15s ease;
+}
+
+.btn-map:hover {
+  opacity: 0.95;
+}
+
+.btn-map:active {
+  transform: translateY(1px);
+}
+
+.btn-map .material-icons-round {
+  font-size: 18px;
+}
+
+/* Tiny label */
+.form-label-xs {
+  font-size: 11px;
+  letter-spacing: 0.2px;
+}
+
+/* Compact coordinate inputs with icons */
+.coord-input .input-group-text {
+  background: #f1f4f8;
+  border-color: #e6eaef;
+  padding: 0 8px;
+}
+
+.coord-input .input-group-text .material-icons-round {
+  font-size: 16px;
+  color: #6c757d;
+}
+
+.coord-input input.form-control {
+  border-color: #e6eaef;
+  font-size: 12px;
+}
+
+/* Map offcanvas footer layout for lat/long + button */
+.map-footer {
+  padding: 10px 12px;
+  border-top: 1px solid #e0e0e0;
+  background-color: #ffffff;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.map-footer .coord-col {
+  flex: 1 1 160px;
+  min-width: 120px;
+}
+
+.map-footer .coord-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 2px;
+  display: block;
+}
+
+@media (max-width: 576px) {
+  .map-block {
+    padding: 10px;
+  }
+}

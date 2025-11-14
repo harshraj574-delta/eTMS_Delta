@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Cell, Pie, PieChart } from 'recharts';
-import { apiService } from '../../../services/api';
+import React, { useEffect, useState } from "react";
+import { Cell, Pie, PieChart } from "recharts";
+import { apiService } from "../../../services/api";
+import Loader from "../../common/Loader";
 
 const SAMPLE_PAYLOAD = {
   deployedcount: 202,
@@ -21,7 +22,15 @@ const renderNeedle = (value, cx, cy, outerRadius, color) => {
   return (
     <>
       <circle cx={cx} cy={cy} r={5} fill={color} />
-      <line x1={cx} y1={cy} x2={x} y2={y} stroke={color} strokeWidth={3} strokeLinecap="round" />
+      <line
+        x1={cx}
+        y1={cy}
+        x2={x}
+        y2={y}
+        stroke={color}
+        strokeWidth={3}
+        strokeLinecap="round"
+      />
     </>
   );
 };
@@ -29,78 +38,123 @@ const renderNeedle = (value, cx, cy, outerRadius, color) => {
 const FleetEfficiency = ({ filter = {} }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [rawError, setRawError] = useState(null);
   const [chartData, setChartData] = useState([
-    { name: 'Operational Vehicle', value: 0, color: '#666666' },
-    { name: 'Not Deployed Count', value: 0, color: '#e6a749' },
-    { name: 'Breakdown Count', value: 0, color: '#84c1e9' },
+    { name: "Operational Vehicle", value: 0, color: "#666666" },
+    { name: "Not Deployed Count", value: 0, color: "#e6a749" },
+    { name: "Breakdown Count", value: 0, color: "#84c1e9" },
   ]);
   const [effPercent, setEffPercent] = useState(null);
-const { sDate = '', eDate = '', locationid = '', facilityid = '', vendorid = '', triptype = '' } = filter;
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+
+  const {
+    sDate = "",
+    eDate = "",
+    locationid = "",
+    facilityid = "",
+    vendorid = "",
+    triptype = "",
+  } = filter;
+
   useEffect(() => {
     let mounted = true;
 
     const requestWithTimeout = (promise, ms = 8000) => {
       let timeoutId;
       const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error('Request timed out')), ms);
+        timeoutId = setTimeout(
+          () => reject(new Error("Request timed out")),
+          ms
+        );
       });
-      return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+      return Promise.race([promise, timeoutPromise]).finally(() =>
+        clearTimeout(timeoutId)
+      );
     };
 
     const load = async () => {
       setLoading(true);
       setError(null);
-      try {
-        const res = await requestWithTimeout(apiService.getchart_Efficiency({
-          sDate: sDate || null,
-          eDate: eDate || null,
-          locationid: locationid || null,
-          facilityid: facilityid || null,
-          vendorid: vendorid || null,
-          triptype: triptype || null,
-        }), 8000);
-        console.log('FleetEfficiency API response:', res);
-        // apiService may return response.data or the data directly
-        let payload = res?.data ?? res;
-        if (typeof payload === 'string') {
-          try { payload = JSON.parse(payload); } catch (_) { }
-        }
-        const obj = Array.isArray(payload) ? payload[0] : (payload || {});
 
-        const operational = Number(obj.OperationalVehicle ?? obj.deployedcount ?? 0);
-        const notDeployed = Number(obj.NotDeployedcount ?? obj.NotDeployedCount ?? 0);
+      try {
+        const res = await requestWithTimeout(
+          apiService.getchart_Efficiency({
+            sDate: sDate || null,
+            eDate: eDate || null,
+            locationid: locationid || null,
+            facilityid: facilityid || null,
+            vendorid: vendorid || null,
+            triptype: triptype || null,
+          }),
+          8000
+        );
+
+        let payload = res?.data ?? res;
+        if (typeof payload === "string") {
+          try {
+            payload = JSON.parse(payload);
+          } catch (_) {}
+        }
+
+        const obj = Array.isArray(payload) ? payload[0] : payload || {};
+
+        const operational = Number(
+          obj.OperationalVehicle ?? obj.deployedcount ?? 0
+        );
+        const notDeployed = Number(
+          obj.NotDeployedcount ?? obj.NotDeployedCount ?? 0
+        );
         const breakdown = Number(obj.Breakdowncount ?? 0);
-        const vehicleEffPer = obj.VehicleEffPer ?? obj.vehicleEffPer ?? null;
+        const vehicleEffPer =
+          obj.VehicleEffPer ?? obj.vehicleEffPer ?? null;
 
         if (mounted) {
           setChartData([
-            { name: 'Operational Vehicle', value: operational, color: '#666666' },
-            { name: 'Not Deployed Count', value: notDeployed, color: '#e6a749' },
-            { name: 'Breakdown Count', value: breakdown, color: '#84c1e9' },
+            {
+              name: "Operational Vehicle",
+              value: operational,
+              color: "#666666",
+            },
+            {
+              name: "Not Deployed Count",
+              value: notDeployed,
+              color: "#e6a749",
+            },
+            { name: "Breakdown Count", value: breakdown, color: "#84c1e9" },
           ]);
-          setEffPercent(vehicleEffPer != null ? Number(vehicleEffPer) : null);
+          setEffPercent(
+            vehicleEffPer != null ? Number(vehicleEffPer) : null
+          );
+          setRetryCount(0);
           setError(null);
         }
       } catch (err) {
-        console.error('FleetEfficiency fetch error:', err);
-        setRawError(err);
+        console.error("FleetEfficiency fetch error:", err);
+        setError(err?.message || "Failed to load data");
 
-        const isTimeout = err && err.message === 'Request timed out';
-        const isServerError = err && (err.status >= 500 || (err.payload && typeof err.payload === 'string' && err.payload.toLowerCase().includes('internal')));
-        const useSample = isTimeout || isServerError || (typeof window !== 'undefined' && window.__USE_SAMPLE_ON_ERROR__);
-        if (mounted) {
-          if (useSample) {
+        if (retryCount < maxRetries) {
+          console.log(
+            `Auto-retrying FleetEfficiency... Attempt ${retryCount + 1}/${maxRetries}`
+          );
+          setTimeout(() => {
+            setRetryCount((prev) => prev + 1);
+          }, 2000);
+        } else {
+          if (mounted) {
             setChartData([
-              { name: 'Operational Vehicle', value: Number(SAMPLE_PAYLOAD.OperationalVehicle || 0), color: '#666666' },
-              { name: 'Not Deployed Count', value: Number(SAMPLE_PAYLOAD.NotDeployedcount || 0), color: '#e6a749' },
-              { name: 'Breakdown Count', value: Number(SAMPLE_PAYLOAD.Breakdowncount || 0), color: '#84c1e9' },
+              {
+                name: "Operational Vehicle",
+                value: 0,
+                color: "#666666",
+              },
+              {
+                name: "Not Deployed Count",
+                value: 0,
+                color: "#e6a749",
+              },
+              { name: "Breakdown Count", value: 0, color: "#84c1e9" },
             ]);
-            setEffPercent(Number(SAMPLE_PAYLOAD.VehicleEffPer ?? 0));
-            setError(isTimeout ? 'Request timed out — showing sample data' : null);
-          } else {
-            const msg = err?.message || (err?.payload ? (typeof err.payload === 'string' ? err.payload : JSON.stringify(err.payload)) : 'Failed to load fleet efficiency');
-            setError(msg);
+            setEffPercent(null);
           }
         }
       } finally {
@@ -109,29 +163,62 @@ const { sDate = '', eDate = '', locationid = '', facilityid = '', vendorid = '',
     };
 
     load();
-    return () => { mounted = false; };
-  }, [sDate, eDate, locationid, facilityid, vendorid, triptype]);
+    return () => {
+      mounted = false;
+    };
+  }, [sDate, eDate, locationid, facilityid, vendorid, triptype, retryCount]);
+
+  if (error && retryCount >= maxRetries) {
+    return (
+      <div className="cardx border-0 p-3 h-100">
+        <h6>Fleet Efficiency</h6>
+        <hr />
+        <div
+          style={{
+            padding: "2rem",
+            background: "#fff3cd",
+            borderRadius: "8px",
+            textAlign: "center",
+            border: "1px solid #ffc107",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "250px",
+          }}
+        >
+          <p style={{ color: "#856404", marginBottom: "1rem" }}>
+            ⚠️ Failed to load chart data
+          </p>
+          <button
+            onClick={() => setRetryCount(0)}
+            style={{
+              padding: "0.5rem 1rem",
+              background: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "0.9rem",
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cardx border-0 p-3 h-100">
+      <Loader isVisible={loading} fullScreen={false} />
       <h6>Fleet Efficiency</h6>
       <hr />
 
       <div className="text-center">
-        {loading ? (
-          <div>Loading...</div>
-        ) : error ? (
-          <div>
-            <div className="text-danger">{String(error)}</div>
-            {typeof window !== 'undefined' && window.__SHOW_API_ERROR_DETAILS__ && rawError && (
-              <pre style={{ textAlign: 'left', maxHeight: 200, overflow: 'auto' }}>
-                {JSON.stringify(rawError, null, 2)}
-              </pre>
-            )}
-          </div>
-        ) : (
+        {!loading && (
           <>
-            <div style={{ width: 300, height: 200, margin: '0 auto' }}>
+            <div style={{ width: 300, height: 200, margin: "0 auto" }}>
               <PieChart width={300} height={200}>
                 <Pie
                   dataKey="value"
@@ -145,10 +232,14 @@ const { sDate = '', eDate = '', locationid = '', facilityid = '', vendorid = '',
                   stroke="none"
                 >
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.color}
+                    />
                   ))}
                 </Pie>
-                {effPercent != null && renderNeedle(effPercent, 150, 150, 100, '#374151')}
+                {effPercent != null &&
+                  renderNeedle(effPercent, 150, 150, 100, "#374151")}
               </PieChart>
             </div>
 
@@ -169,10 +260,10 @@ const { sDate = '', eDate = '', locationid = '', facilityid = '', vendorid = '',
                         height: 36,
                         backgroundColor: item.color,
                         borderRadius: 6,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
                         fontWeight: 600,
                       }}
                     >
