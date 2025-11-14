@@ -2,14 +2,13 @@ import axios from "axios";
 import { map } from "lodash";
 
 const api = axios.create({
-  baseURL: import.meta.env.PROD
-    ? "https://www.etmsonline.in/etmsApi/api/v1" // PRODUCTION
-    : "/api/api/v1",                              // DEVELOPMENT (Vite proxy)
+  baseURL: "/api/api/v1",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
+
 
 export const apiService = {
   //Login Validation
