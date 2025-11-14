@@ -152,7 +152,7 @@ const Header = ({
               data-bs-target="#profileSidebar" 
               aria-controls="profileSidebar"
             >
-              <img src="public/images/al1i.png" alt="Profile" /> 
+              <img src="images/al1i.png" alt="Profile" /> 
               {employeeName}
             </a>
           </li>
