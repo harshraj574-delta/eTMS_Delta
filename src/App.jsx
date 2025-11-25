@@ -55,6 +55,8 @@ import RepFeedbackReport from "./components/FeedbackReport";
 import RepCabCompliance from "./components/RepCabCompliance";
 import PerEmployeeBilling from "./components/PerEmployeeBilling";
 import RepPlanAct from "./components/RepPlanAct";
+import RepScheduleSummery from "./components/RepScheduleSummery";
+import EmpAccessRights from "./components/EmpAccessRights";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -129,6 +131,10 @@ function App() {
         <Route path="/RepArrivalShiftWise" element={<PrivateRoute element={<OTAReport />} />} />
         <Route path="/PerEmployeeBilling" element={<PrivateRoute element={<PerEmployeeBilling />} />} />
         <Route path="/RepPlanAct" element={<PrivateRoute element={<RepPlanAct />} />} />
+        <Route path="/RepScheduleSummery" element={<PrivateRoute element={<RepScheduleSummery />} />} />
+        <Route path="/EmpAccessRights" element={<PrivateRoute element={<EmpAccessRights />} />} />
+
+
 
         {/* <Route path="/EmpDump" element={<EmpDump />} /> */}
       </Routes>

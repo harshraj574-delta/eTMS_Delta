@@ -69,12 +69,14 @@ const Dashboard = () => {
 
   const [visibleCalendar, setVisibleCalendar] = useState(false);
   const calendarRef = useRef(null);
+  const filterRef = useRef(null);
 
   const [selectedTripType, setSelectedTripType] = useState("");
   const [type, setType] = useState(1);
   const [checked, setChecked] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [scrolled, setScrolled] = useState(false);
+  const [filterHeight, setFilterHeight] = useState(0);
 
   const [isInitializing, setIsInitializing] = useState(true);
   const [isLoadingFilters, setIsLoadingFilters] = useState(false);
@@ -397,7 +399,7 @@ const Dashboard = () => {
   }, []);
 
   // ============ ALL EFFECTS (in order) ============
-  
+
   // Effect 1: Initialize data on mount
   useEffect(() => {
     initializeData();
@@ -421,11 +423,25 @@ const Dashboard = () => {
     setChecked(type === 2);
   }, [type]);
 
-  // Effect 4: Scroll listener
+  // Effect 4: Scroll listener with filter height measurement
   useEffect(() => {
+    const measureFilterHeight = () => {
+      if (filterRef.current) {
+        setFilterHeight(filterRef.current.offsetHeight);
+      }
+    };
+
     const onScroll = () => setScrolled(window.scrollY > 200);
+
+    // Measure on mount and resize
+    measureFilterHeight();
     window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("resize", measureFilterHeight);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", measureFilterHeight);
+    };
   }, []);
 
   // Effect 5: Click outside calendar
@@ -601,7 +617,9 @@ const Dashboard = () => {
 
   .form-select-map { border: 1px solid #ced4da; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.875rem; }
 
-  .content-with-sticky-filter { padding-top: 2rem; }
+  .content-with-sticky-filter {
+    transition: all 0.3s ease-out;
+  }
 
   .cardx {
     display: flex; flex-direction: column; height: 100%;
@@ -635,7 +653,6 @@ const Dashboard = () => {
   @media (max-width: 1399px) {
     :root { --header-height: 58px; }
     .filter-section .col-xl-4, .filter-section .col-xl-8 { flex: 0 0 100%; max-width: 100%; }
-    .content-with-sticky-filter { padding-top: 3rem; }
   }
 
   @media (max-width: 991px) {
@@ -654,12 +671,10 @@ const Dashboard = () => {
     .p-tabmenu .p-tabmenu-nav { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; }
     .cardx { padding: 0.75rem !important; }
     .cardx h6 { font-size: 0.875rem; }
-    .content-with-sticky-filter { padding-top: 4rem; }
   }
 
   @media (max-width: 575px) {
     :root { --header-height: 54px; }
-    .content-with-sticky-filter { padding-top: 5rem; }
   }
 
   .chart-container { position: relative; width: 100%; overflow-x: auto; }
@@ -674,6 +689,7 @@ const Dashboard = () => {
           <div className="row mb-2 mb-md-4">
             <div className="col-12">
               <div
+                ref={filterRef}
                 className={`filter-section border-0 ${
                   scrolled ? "filterFix shadow" : ""
                 }`}
@@ -841,7 +857,17 @@ const Dashboard = () => {
           {/* Tab Content */}
           <div className="row">
             <div className="col-12">
-              <div className={scrolled ? "content-with-sticky-filter" : ""}>
+              {/* Spacer for fixed filter */}
+              {scrolled && (
+                <div
+                  style={{
+                    height: `${filterHeight + 20}px`,
+                    marginBottom: "1rem",
+                  }}
+                />
+              )}
+
+              <div className="content-with-sticky-filter">
                 {(() => {
                   if (!filter) {
                     return null;
@@ -850,7 +876,9 @@ const Dashboard = () => {
                     case 0:
                       return (
                         <>
-                          <RiStats filter={filter} />
+                          <div className="mb-3">
+  <RiStats filter={filter} />
+</div>
 
                           {/* Row 1 */}
                           <div className="row chart-row row-first">
