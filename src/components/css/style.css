@@ -696,6 +696,7 @@ label {
 }
 
 .sidebar .accordion-button:focus {
+
     outline: 0;
     box-shadow: none;
 }
@@ -2673,17 +2674,20 @@ label>span {
   cursor: move;
 } */
 
-input[type="date"], .p-multiselect-label {
-  height: 35.5px !important;
+input[type="date"],
+.p-multiselect-label {
+    height: 35.5px !important;
 }
 
-.p-menuitem-text{ font-size: 15px;}
+.p-menuitem-text {
+    font-size: 15px;
+}
 
-.leaflet-bottom.leaflet-right{
+.leaflet-bottom.leaflet-right {
     display: none;
 }
 
-.p-datepicker-trigger{
+.p-datepicker-trigger {
     background-color: #fff !important;
     border-left: 0;
     border-color: #d1d5db !important;
@@ -2692,7 +2696,7 @@ input[type="date"], .p-multiselect-label {
     height: 37.5px;
 }
 
-.p-datepicker-trigger svg{
+.p-datepicker-trigger svg {
     fill: var(--grey-3) !important;
     background-color: #999 !important;
 }
@@ -2704,13 +2708,13 @@ input[type="date"], .p-multiselect-label {
 } */
 
 .sidebar.collapsed {
-  margin-left: -250px;
-  visibility: hidden;
-  pointer-events: none !important;
+    margin-left: -250px;
+    visibility: hidden;
+    pointer-events: none !important;
 }
 
 .sidebar.collapsed * {
-  pointer-events: none !important;
+    pointer-events: none !important;
 }
 
 /* .middle {

@@ -3,3 +3,8 @@
   to = "https://www.etmsonline.in/etmsApi/:splat"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
