@@ -62,10 +62,10 @@ const EmpAccessRights = () => {
   const [loading, setLoading] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState([]);
 
-  // Track initial load for animations - use state instead of ref
+  
   const [hasAnimated, setHasAnimated] = useState(false);
 
-  // Offcanvas states
+
   const [showEmployeeList, setShowEmployeeList] = useState(false);
   const [showMenuAccess, setShowMenuAccess] = useState(false);
   const [showUsersList, setShowUsersList] = useState(false);

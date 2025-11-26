@@ -6,9 +6,11 @@ import '../components/css/style.css';
 import { Form, Button, Container, Alert } from 'react-bootstrap';
 import { apiService } from '../services/api';
 import sessionManager from '../utils/SessionManager';
+import useSessionStore from '../store/useSessionStore';
 
 const Login = () => {
   const navigate = useNavigate();
+  const login = useSessionStore((state) => state.login);
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -83,7 +85,7 @@ const Login = () => {
             //sessionStorage.setItem('ManagerId', userdetails[0].ManagerId);
             //sessionStorage.setItem('userName', userdetails[0].userName);
             // Navigate to dashboard
-            sessionStorage.setItem("isLoggedIn", "true");
+            
             // 👇 Fetch allowed menus for the user
             const menus = await apiService.Spr_GetMenuItem_V2({ userID: userdetails[0].ID });
           
@@ -96,13 +98,14 @@ const Login = () => {
               menus.push({ MenuURL: "ReplicateSchedule" });
             }
 
-            //menus.push({ MenuURL: "RouteMap" });
+            // Update store
+            login(userdetails[0], menus);
 
+            // Calculate allowed paths for navigation
             const allowedPaths = menus
               .filter(item => item.MenuURL)
               .map(item => item.MenuURL.replace(/^\/+/, "")); // Clean leading slash if any
 
-            sessionStorage.setItem("allowedMenus", JSON.stringify(allowedPaths));
             sessionStorage.setItem("ID", userdetails[0].ID);
 
             // 👇 Navigate only if MySchedule is one of the allowed paths

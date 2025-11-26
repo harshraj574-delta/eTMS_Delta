@@ -1,9 +1,16 @@
 // src/components/Unauthorized.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import useSessionStore from "../store/useSessionStore";
 
 const Unauthorized = () => {
   const navigate = useNavigate();
+  const refreshRights = useSessionStore((state) => state.refreshRights);
+
+  const handleGoHome = async () => {
+    await refreshRights();
+    navigate("/MySchedule");
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -16,7 +23,7 @@ const Unauthorized = () => {
           You do not have permission to access this page.
         </p>
         <button style={{fontSize: '18px'}} 
-          onClick={() => navigate("/MySchedule")}
+          onClick={handleGoHome}
           className="btn btn-primary ms-auto"
         >
           Go to Home

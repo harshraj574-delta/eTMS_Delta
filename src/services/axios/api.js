@@ -12,4 +12,22 @@ const api = axios.create({
 
 })
 
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            try {
+                // Dynamic import to avoid circular dependency
+                const { default: useSessionStore } = await import('../../store/useSessionStore');
+                useSessionStore.getState().logout();
+                // Optional: Redirect to login if needed, but logout usually handles it via state change
+                // window.location.href = '/'; 
+            } catch (e) {
+                console.error("Error during logout interceptor:", e);
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 export { api }

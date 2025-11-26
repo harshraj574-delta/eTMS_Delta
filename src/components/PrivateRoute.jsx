@@ -1,18 +1,26 @@
-import { Navigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import useSessionStore from "../store/useSessionStore";
 
 const PrivateRoute = ({ element }) => {
-  const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true";
-  const allowedMenusRaw = sessionStorage.getItem("allowedMenus");
-  const allowedMenus = allowedMenusRaw ? JSON.parse(allowedMenusRaw) : [];
-
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
+  const allowedPaths = useSessionStore((state) => state.allowedPaths); // Subscribe to changes
+  const checkAccess = useSessionStore((state) => state.checkAccess);
+  const refreshRights = useSessionStore((state) => state.refreshRights);
   const location = useLocation();
-  const currentPath = location.pathname.replace(/^\/+/, ""); // e.g., "Dashboard"
+  const navigate = useNavigate();
 
-  if (!isLoggedIn) {
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshRights();
+    }
+  }, [location.pathname, isAuthenticated, refreshRights]);
+
+  if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
 
-  const isAllowed = allowedMenus.includes(currentPath);
+  const isAllowed = checkAccess(location.pathname);
 
   if (!isAllowed) {
     return <Navigate to="/Unauthorized" replace />;
