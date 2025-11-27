@@ -8,20 +8,22 @@ const useSessionStore = create(
         (set, get) => ({
             user: null,
             allowedPaths: [],
+            menuItems: [],
             isAuthenticated: false,
-            lastValidationTime: 0, 
+            lastValidationTime: 0,
 
             login: (userData, menuItems) => {
                 const allowedPaths = menuItems.map(item => {
-                    
+
                     return (item.MenuURL || "").trim().replace(/^\/+/, "");
                 }).filter(path => path !== "" && path !== "#");
 
                 set({
                     user: userData,
                     allowedPaths: allowedPaths,
+                    menuItems: menuItems,
                     isAuthenticated: true,
-                    lastValidationTime: Date.now(), 
+                    lastValidationTime: Date.now(),
                 });
             },
 
@@ -29,6 +31,7 @@ const useSessionStore = create(
                 set({
                     user: null,
                     allowedPaths: [],
+                    menuItems: [],
                     isAuthenticated: false,
                     lastValidationTime: 0,
                 });
@@ -41,14 +44,14 @@ const useSessionStore = create(
                 return allowedPaths.includes(cleanCurrentPath);
             },
 
-            refreshRights: async () => {
+            refreshRights: async (force = false) => {
                 const { user, allowedPaths: currentAllowedPaths, lastValidationTime } = get();
 
                 if (!user) return;
 
-                // Optimization: If validated recently (e.g., within 2 seconds), skip API call
+                // Optimization: If validated recently (e.g., within 2 seconds), skip API call unless forced
                 const now = Date.now();
-                if (now - lastValidationTime < 2000) {
+                if (!force && now - lastValidationTime < 2000) {
                     return;
                 }
 
@@ -64,7 +67,7 @@ const useSessionStore = create(
 
                     // Only update store if paths have changed
                     if (!isEqual(newAllowedPaths.sort(), currentAllowedPaths.sort())) {
-                        set({ allowedPaths: newAllowedPaths, lastValidationTime: now });
+                        set({ allowedPaths: newAllowedPaths, menuItems: menuItems, lastValidationTime: now });
                     } else {
                         set({ lastValidationTime: now });
                     }
@@ -74,8 +77,8 @@ const useSessionStore = create(
             },
         }),
         {
-            name: 'session-storage', 
-            storage: createJSONStorage(() => sessionStorage), 
+            name: 'session-storage',
+            storage: createJSONStorage(() => sessionStorage),
         },
     ),
 );

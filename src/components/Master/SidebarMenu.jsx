@@ -1,56 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { apiService } from '../../services/api';
+import useSessionStore from '../../store/useSessionStore';
 
 const SidebarMenu = () => {
-  const [menuItems, setMenuItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const menuItemsRaw = useSessionStore((state) => state.menuItems);
   const location = useLocation();
   const [openSubmenu, setOpenSubmenu] = useState(null);
 
-  const currentPath = location.pathname;
-
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      try {
-        const userID = sessionStorage.getItem('ID');
-        const menuItems = await apiService.Spr_GetMenuItem_V2({ userID });
-
-        const organizedMenu = organizeMenuItems(menuItems);
-        const allowedPaths = menuItems
-          .filter((item) => item.MenuURL)
-          .map((item) => `/${item.MenuURL?.replace(/^\/+/, '')}`);
-
-        sessionStorage.setItem(
-          'allowedPaths',
-          JSON.stringify(allowedPaths)
-        );
-        setMenuItems(organizedMenu);
-      } catch (err) {
-        console.error('Failed to fetch menu items:', err);
-        setError('Failed to load menu items');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMenuItems();
-  }, []);
-
-  useEffect(() => {
-    const matchedParent = menuItems.find((parent) =>
-      parent.subItems?.some(
-        (sub) =>
-          `/${sub.MenuURL?.replace(/^\/+/, '')}` === location.pathname
-      )
-    );
-    if (matchedParent) {
-      setOpenSubmenu(matchedParent.MenuId);
-    }
-  }, [location.pathname, menuItems]);
-
   const organizeMenuItems = (items) => {
+    if (!items) return [];
     const mainMenu = items.filter(
       (item) =>
         item.ParentId === null ||
@@ -70,6 +28,20 @@ const SidebarMenu = () => {
       ),
     }));
   };
+
+  const menuItems = useMemo(() => organizeMenuItems(menuItemsRaw), [menuItemsRaw]);
+
+  useEffect(() => {
+    const matchedParent = menuItems.find((parent) =>
+      parent.subItems?.some(
+        (sub) =>
+          `/${sub.MenuURL?.replace(/^\/+/, '')}` === location.pathname
+      )
+    );
+    if (matchedParent) {
+      setOpenSubmenu(matchedParent.MenuId);
+    }
+  }, [location.pathname, menuItems]);
 
   const renderSubMenuItems = (subItems) => {
     if (!subItems || subItems.length === 0) return null;
@@ -132,9 +104,6 @@ const SidebarMenu = () => {
       </div>
     ));
   };
-
-  if (loading) return <div>Loading menu...</div>;
-  if (error) return <div>Error: {error}</div>;
 
   return (
     <div className="sidebar">
