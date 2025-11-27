@@ -2,6 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import useSessionStore from "../store/useSessionStore";
+import unauthorizedImg from "../assets/unauthorized.png";
 
 const Unauthorized = () => {
   const navigate = useNavigate();
@@ -13,22 +14,24 @@ const Unauthorized = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="bg-white shadow-lg rounded-2xl p-10 max-w-md text-center">
-        <div className="text-red-500 text-5xl mb-4" style={{fontSize: '100px'}}>⚠️</div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          Unauthorized Access
-        </h2>
-        <p className="text-gray-600 mb-6" style={{fontSize: '18px'}}>
-          You do not have permission to access this page.
-        </p>
-        <button style={{fontSize: '18px'}} 
-          onClick={handleGoHome}
-          className="btn btn-primary ms-auto"
-        >
-          Go to Home
-        </button>
-      </div>
+    <div className="unauthorized-container">
+      <img 
+        src={unauthorizedImg} 
+        alt="Unauthorized Access" 
+        className="unauthorized-img"
+      />
+      <h2 className="unauthorized-title">
+        401 UNAUTHORIZED
+      </h2>
+      <p className="unauthorized-text">
+        Access denied due to invalid credentials.
+      </p>
+      <button 
+        onClick={handleGoHome}
+        className="unauthorized-btn"
+      >
+        Go to Home
+      </button>
     </div>
   );
 };
