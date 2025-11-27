@@ -15,6 +15,9 @@ const Unauthorized = () => {
 
   return (
     <div className="unauthorized-container">
+      <div className="logo-container" onClick={handleGoHome}>
+        <img src="images/logo.svg" alt="eTMS Logo" className="app-logo" />
+      </div>
       <img 
         src={unauthorizedImg} 
         alt="Unauthorized Access" 
