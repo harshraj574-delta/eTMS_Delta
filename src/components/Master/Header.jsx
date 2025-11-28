@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import sessionManager from '../../utils/SessionManager';
 import { FiLogOut } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import useSessionStore from '../../store/useSessionStore';
 
 const Header = ({ 
   mainTitle, 
@@ -14,6 +15,7 @@ const Header = ({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const headerRef = useRef(null);
+  const logout = useSessionStore((state) => state.logout);
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -33,8 +35,8 @@ const Header = ({
   }, []);
 
   const handleLogout = () => {
-    sessionStorage.clear();
-    navigate("/login");
+    logout();
+    navigate("/");
   };
 
   const userData = sessionManager.getUserSession();
