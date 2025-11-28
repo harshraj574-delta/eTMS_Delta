@@ -188,468 +188,191 @@ const RiStats = ({ filter }) => {
     );
   }
 
+  // Hover effect style
+  const cardHoverStyle = {
+    transition: "all 0.3s ease",
+    cursor: "default",
+  };
+
+  const handleMouseEnter = (e) => {
+    e.currentTarget.style.transform = "translateY(-5px)";
+    e.currentTarget.style.boxShadow = "0 1rem 3rem rgba(0,0,0,.175)";
+  };
+
+  const handleMouseLeave = (e) => {
+    e.currentTarget.style.transform = "translateY(0)";
+    e.currentTarget.style.boxShadow = "0 .125rem .25rem rgba(0,0,0,.075)";
+  };
+
+  const StatCard = ({ title, value, suffix, diff, diffStatus, diffSuffix, subtext, subtextClass, badge1, badge2 }) => (
+    <div className="col">
+      <div 
+        className="bg-white rounded-4 shadow-sm h-100 position-relative overflow-hidden p-3"
+        style={cardHoverStyle}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="d-flex flex-column h-100 justify-content-between">
+          <div>
+            <div className="d-flex justify-content-between align-items-start mb-2">
+              <h3 className="mb-0">
+                <strong className="fs-4 fw-bold">
+                  {value}
+                  {suffix && <small className="fs-6 text-muted ms-1">{suffix}</small>}
+                </strong>
+              </h3>
+            </div>
+            <div className="small fw-bold text-uppercase text-muted mb-2" style={{ letterSpacing: "0.5px", fontSize: "0.75rem" }}>
+              {title}
+            </div>
+          </div>
+          
+          <div>
+            {diff !== undefined && (
+              <div className={`d-flex align-items-center small fw-bold ${diffStatus === "down" ? "text-danger" : "text-success"}`}>
+                {diffStatus === "down" ? <FiTrendingDown className="me-1" /> : <FiTrendingUp className="me-1" />}
+                <AnimatedNumber value={diff} duration={1.2} decimals={2} suffix={diffSuffix || " %"} />
+              </div>
+            )}
+            
+            {subtext && (
+              <div className={`small mt-1 ${subtextClass}`}>
+                {subtext}
+              </div>
+            )}
+
+            {(badge1 || badge2) && (
+              <div className="d-flex gap-2 mt-2">
+                {badge1}
+                {badge2}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Loader isVisible={loading} fullScreen={false} />
 
-      <div className="row d-flex align-items-stretch">
-        <div className="col-lg-12 col-xl-7 d-flex">
-          <motion.div
-            className="cardNew w-100"
-            style={{
-              display: "flex",
-              justifyContent: "center",
-            }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          >
-            <ul className="py-2">
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-              >
-                <h3>
-                  <strong>
-                    <AnimatedNumber
-                      value={statsData.totalroute ?? 0}
-                      duration={1.2}
-                      decimals={0}
-                    />
-                  </strong>
-                  <span className="subtitle_sm">Routes</span>
-                </h3>
-                <span
-                  className={`overline_text d-flex align-items-center ${
-                    statsData.routediffStatus === "down"
-                      ? "text-danger"
-                      : "text-success"
-                  }`}
-                >
-                  {statsData.routediffStatus === "down" ? (
-                    <FiTrendingDown className="me-1" />
-                  ) : (
-                    <FiTrendingUp className="me-1" />
-                  )}
-                  <AnimatedNumber
-                    value={statsData.RouteDiffPer ?? 0}
-                    duration={1.2}
-                    decimals={2}
-                    suffix=" %"
-                  />
-                </span>
+      <div className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-5">
+        {/* Routes */}
+        <StatCard 
+          title="Routes"
+          value={<AnimatedNumber value={statsData.totalroute ?? 0} duration={1.2} decimals={0} />}
+          diff={statsData.RouteDiffPer ?? 0}
+          diffStatus={statsData.routediffStatus}
+          subtext={
+            <span className="text-warning">
+              <AnimatedNumber value={statsData.totalemployee ?? 0} duration={1.2} decimals={0} suffix=" Employees" />
+            </span>
+          }
+          badge1={
+            <span className="badge bg-primary-subtle rounded-pill text-dark border border-primary-subtle">
+              <AnimatedNumber value={statsData.malecount ?? 0} duration={1.2} decimals={0} suffix=" Male" />
+            </span>
+          }
+          badge2={
+            <span className="badge bg-danger-subtle rounded-pill text-dark border border-danger-subtle">
+              <AnimatedNumber value={statsData.femalecount ?? 0} duration={1.2} decimals={0} suffix=" Female" />
+            </span>
+          }
+        />
 
-                <span className="overline_text text-warning">
-                  <AnimatedNumber
-                    value={statsData.totalemployee ?? 0}
-                    duration={1.2}
-                    decimals={0}
-                    suffix=" Employees"
-                  />
-                </span>
-                <div className="d-flex justify-content-between align-items-center">
-                  <span className="badge bg-primary-subtle rounded-pill text-dark my-2 me-2">
-                    <AnimatedNumber
-                      value={statsData.malecount ?? 0}
-                      duration={1.2}
-                      decimals={0}
-                      suffix=" Male"
-                    />
-                  </span>
-                  <span className="badge bg-danger-subtle rounded-pill text-dark">
-                    <AnimatedNumber
-                      value={statsData.femalecount ?? 0}
-                      duration={1.2}
-                      decimals={0}
-                      suffix=" Female"
-                    />
-                  </span>
-                </div>
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <h3>
-                  <strong>
-                    <AnimatedNumber
-                      value={statsData.AvgOccupancy ?? 0}
-                      duration={1.2}
-                      decimals={2}
-                    />
-                  </strong>
-                </h3>
-                <span className="subtitle_sm">Avg. Vehicle Occupancy</span>
-                <span
-                  className={`overline_text d-flex align-items-center ${
-                    statsData.AvgOccupancyDiffStatus === "down"
-                      ? "text-danger"
-                      : "text-success"
-                  }`}
-                >
-                  {statsData.AvgOccupancyDiffStatus === "down" ? (
-                    <FiTrendingDown className="me-1" />
-                  ) : (
-                    <FiTrendingUp className="me-1" />
-                  )}
-                  <AnimatedNumber
-                    value={statsData.AvgOccupancyDiff ?? 0}
-                    duration={1.2}
-                    decimals={2}
-                    suffix=" %"
-                  />
-                </span>
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                <h3>
-                  <strong>
-                    <AnimatedNumber
-                      value={statsData.SeatUtilizePer || 0}
-                      duration={1.2}
-                      decimals={2}
-                    />
-                    <small className="fs-6 text-muted">%</small>
-                  </strong>
-                </h3>
-                <span className="subtitle_sm">Seat Utilization</span>
-              </motion.li>
+        {/* Avg. Vehicle Occupancy */}
+        <StatCard 
+          title="Avg. Vehicle Occupancy"
+          value={<AnimatedNumber value={statsData.AvgOccupancy ?? 0} duration={1.2} decimals={2} />}
+          diff={statsData.AvgOccupancyDiff ?? 0}
+          diffStatus={statsData.AvgOccupancyDiffStatus}
+          subtextClass="text-danger"
+          // subtext={statsData.AvgOccupancyDiffStatus === "down" ? `-${statsData.AvgOccupancyDiff}%` : null} 
+        />
 
-              <motion.li
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              >
-                <h3>
-                  <strong>
-                    <AnimatedNumber
-                      value={statsData.guardCount ?? 0}
-                      duration={1.2}
-                      decimals={0}
-                    />
-                  </strong>
-                </h3>
-                <span className="subtitle_sm">Guards Deployed</span>
+        {/* Seat Utilization */}
+        <StatCard 
+          title="Seat Utilization"
+          value={<AnimatedNumber value={statsData.SeatUtilizePer || 0} duration={1.2} decimals={2} />}
+          suffix="%"
+        />
 
-                <span
-                  className={`overline_text d-flex align-items-center ${
-                    statsData.gaurddiffstatus === "down"
-                      ? "text-danger"
-                      : "text-success"
-                  }`}
-                >
-                  {statsData.gaurddiffstatus === "down" ? (
-                    <FiTrendingDown className="me-1" />
-                  ) : (
-                    <FiTrendingUp className="me-1" />
-                  )}
-                  <AnimatedNumber
-                    value={statsData.guarddiffper ?? 0}
-                    duration={1.2}
-                    decimals={2}
-                    suffix=" %"
-                  />
-                </span>
-              </motion.li>
-            </ul>
-          </motion.div>
-        </div>
-        <div
-          className="col-lg-12 col-xl-5 d-flex mt-3 mt-xl-0"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
-          <motion.div
-            className="cardNew w-100  p-0 mb-3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-          >
-            <ul className="mb-2 last_stats">
-              {/* ---------- OTD ---------- */}
-              <motion.li
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <h3>
-                  <strong>
-                    {isDrop ? (
-                      "N/A"
-                    ) : isPick ? (
-                      statsData?.OTD > 0 ? (
-                        <AnimatedNumber
-                          value={statsData.OTD}
-                          duration={1.2}
-                          decimals={2}
-                        />
-                      ) : (
-                        "N/A"
-                      )
-                    ) : statsData?.OTD != null ? (
-                      <AnimatedNumber
-                        value={statsData.OTD}
-                        duration={1.2}
-                        decimals={2}
-                      />
-                    ) : (
-                      "0"
-                    )}
-                    <small className="fs-6 text-muted">%</small>
-                  </strong>
-                </h3>
-                <span
-                  className={`overline_text d-flex align-items-center ${
-                    statsData.OTDDiffStatus === "down"
-                      ? "text-danger"
-                      : "text-success"
-                  }`}
-                >
-                  {isDrop ? (
-                    "N/A"
-                  ) : isPick ? (
-                    statsData?.OTDDiff > 0 ? (
-                      <>
-                        {statsData.OTDDiffStatus === "down" ? (
-                          <FiTrendingDown className="me-1" />
-                        ) : (
-                          <FiTrendingUp className="me-1" />
-                        )}
-                        <AnimatedNumber
-                          value={statsData.OTDDiff}
-                          duration={1.2}
-                          decimals={2}
-                          suffix=" %"
-                        />
-                      </>
-                    ) : (
-                      "N/A"
-                    )
-                  ) : statsData?.OTDDiff != null ? (
-                    <>
-                      {statsData.OTDDiffStatus === "down" ? (
-                        <FiTrendingDown className="me-1" />
-                      ) : (
-                        <FiTrendingUp className="me-1" />
-                      )}
-                      <AnimatedNumber
-                        value={statsData.OTDDiff}
-                        duration={1.2}
-                        decimals={2}
-                        suffix=" %"
-                      />
-                    </>
-                  ) : (
-                    "0 %"
-                  )}
-                </span>
-                <span className="subtitle_sm">OTD</span>
-              </motion.li>
+        {/* Guards Deployed */}
+        <StatCard 
+          title="Guards Deployed"
+          value={<AnimatedNumber value={statsData.guardCount ?? 0} duration={1.2} decimals={0} />}
+          diff={statsData.guarddiffper ?? 0}
+          diffStatus={statsData.gaurddiffstatus}
+        />
 
-              {/* ---------- OTA ---------- */}
-              <motion.li
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                <h3>
-                  <strong>
-                    {isPick ? (
-                      "N/A"
-                    ) : isDrop ? (
-                      statsData?.OTA > 0 ? (
-                        <AnimatedNumber
-                          value={statsData.OTA}
-                          duration={1.2}
-                          decimals={2}
-                        />
-                      ) : (
-                        "N/A"
-                      )
-                    ) : statsData?.OTA != null ? (
-                      <AnimatedNumber
-                        value={statsData.OTA}
-                        duration={1.2}
-                        decimals={2}
-                      />
-                    ) : (
-                      "0"
-                    )}
-                    <small className="fs-6 text-muted">%</small>
-                  </strong>
-                </h3>
-                <span
-                  className={`overline_text d-flex align-items-center ${
-                    statsData.OTADiffStatus === "down"
-                      ? "text-danger"
-                      : "text-success"
-                  }`}
-                >
-                  {isPick ? (
-                    "N/A"
-                  ) : isDrop ? (
-                    statsData?.OTADiff > 0 ? (
-                      <>
-                        {statsData.OTADiffStatus === "down" ? (
-                          <FiTrendingDown className="me-1" />
-                        ) : (
-                          <FiTrendingUp className="me-1" />
-                        )}
-                        <AnimatedNumber
-                          value={statsData.OTADiff}
-                          duration={1.2}
-                          decimals={2}
-                          suffix=" %"
-                        />
-                      </>
-                    ) : (
-                      "N/A"
-                    )
-                  ) : statsData?.OTADiff != null ? (
-                    <>
-                      {statsData.OTADiffStatus === "down" ? (
-                        <FiTrendingDown className="me-1" />
-                      ) : (
-                        <FiTrendingUp className="me-1" />
-                      )}
-                      <AnimatedNumber
-                        value={statsData.OTADiff}
-                        duration={1.2}
-                        decimals={2}
-                        suffix=" %"
-                      />
-                    </>
-                  ) : (
-                    "0 %"
-                  )}
-                </span>
-                <span className="subtitle_sm">OTA</span>
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              >
-                <h3>
-                  <strong>
-                    <AnimatedNumber
-                      value={statsData.totalcompleted ?? 0}
-                      duration={1.2}
-                      decimals={0}
-                    />
-                  </strong>
-                </h3>
-                <span
-                  className={`overline_text d-flex align-items-center ${
-                    statsData.completedPerDiffStatus === "down"
-                      ? "text-danger"
-                      : "text-success"
-                  }`}
-                >
-                  {statsData.completedPerDiffStatus === "down" ? (
-                    <FiTrendingDown className="me-1" />
-                  ) : (
-                    <FiTrendingUp className="me-1" />
-                  )}
-                  <AnimatedNumber
-                    value={statsData.completedPerDiff ?? 0}
-                    duration={1.2}
-                    decimals={2}
-                    suffix=" %"
-                  />
-                </span>
-                <span className="subtitle_sm">Completed</span>
-              </motion.li>
-            </ul>
-          </motion.div>
-          <motion.div
-            className="cardNew w-100  p-0"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
-          >
-            <ul className="last_stats">
-              <motion.li
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.35 }}
-              >
-                <h3>
-                  <strong>
-                    <AnimatedNumber
-                      value={statsData.AvgTripHour || 0}
-                      duration={1.2}
-                      decimals={2}
-                    />
-                  </strong>
-                </h3>
-                <span className="subtitle_sm text-primary">Avg Trip Time</span>
-              </motion.li>
+        {/* OTD */}
+        <StatCard 
+          title="OTD"
+          value={
+            isDrop ? "N/A" : isPick ? (
+              statsData?.OTD > 0 ? <AnimatedNumber value={statsData.OTD} duration={1.2} decimals={2} /> : "N/A"
+            ) : statsData?.OTD != null ? (
+              <AnimatedNumber value={statsData.OTD} duration={1.2} decimals={2} />
+            ) : "0"
+          }
+          suffix={!isDrop && (isPick ? statsData?.OTD > 0 : statsData?.OTD != null) ? "%" : ""}
+          diff={
+            !isDrop && (isPick ? statsData?.OTDDiff > 0 : statsData?.OTDDiff != null) ? statsData.OTDDiff : undefined
+          }
+          diffStatus={statsData.OTDDiffStatus}
+        />
 
-              <motion.li
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.45 }}
-              >
-                <h3>
-                  <strong>
-                    <AnimatedNumber
-                      value={statsData.SingleEmpTrips || 0}
-                      duration={1.2}
-                      decimals={0}
-                    />
-                  </strong>
-                </h3>
-                <span
-                  className={`overline_text d-flex align-items-center ${
-                    statsData.SingleEmpTripPerDiffStatus === "down"
-                      ? "text-danger"
-                      : "text-success"
-                  }`}
-                >
-                  {statsData.SingleEmpTripPerDiffStatus === "down" ? (
-                    <FiTrendingDown className="me-1" />
-                  ) : (
-                    <FiTrendingUp className="me-1" />
-                  )}
-                  <AnimatedNumber
-                    value={statsData.SingleEmpTripPerDiff ?? 0}
-                    duration={1.2}
-                    decimals={2}
-                    suffix=" %"
-                  />
-                </span>
-                <span className="subtitle_sm text-warning">
-                  Single Emp. Trips
-                </span>
-              </motion.li>
-              <motion.li
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.55 }}
-              >
-                <h3>
-                  <strong>
-                    <AnimatedNumber
-                      value={statsData.totalnoshow ?? 0}
-                      duration={1.2}
-                      decimals={0}
-                    />
-                  </strong>
-                </h3>
-                <span className="subtitle_sm text-danger">No Shows</span>
-              </motion.li>
-            </ul>
-          </motion.div>
-        </div>
+        {/* OTA */}
+        <StatCard 
+          title="OTA"
+          value={
+            isPick ? "N/A" : isDrop ? (
+              statsData?.OTA > 0 ? <AnimatedNumber value={statsData.OTA} duration={1.2} decimals={2} /> : "N/A"
+            ) : statsData?.OTA != null ? (
+              <AnimatedNumber value={statsData.OTA} duration={1.2} decimals={2} />
+            ) : "0"
+          }
+          suffix={!isPick && (isDrop ? statsData?.OTA > 0 : statsData?.OTA != null) ? "%" : ""}
+          diff={
+            !isPick && (isDrop ? statsData?.OTADiff > 0 : statsData?.OTADiff != null) ? statsData.OTADiff : undefined
+          }
+          diffStatus={statsData.OTADiffStatus}
+        />
+
+        {/* Completed */}
+        <StatCard 
+          title="Completed"
+          value={<AnimatedNumber value={statsData.totalcompleted ?? 0} duration={1.2} decimals={0} />}
+          diff={statsData.completedPerDiff ?? 0}
+          diffStatus={statsData.completedPerDiffStatus}
+        />
+
+        {/* Avg Trip Time */}
+        <StatCard 
+          title="Avg Trip Time"
+          value={<AnimatedNumber value={statsData.AvgTripHour || 0} duration={1.2} decimals={2} suffix=" hrs" />}
+          subtext="Avg Trip Time"
+          subtextClass="text-primary fw-bold"
+        />
+
+        {/* Single Emp. Trips */}
+        <StatCard 
+          title="Single Emp. Trips"
+          value={<AnimatedNumber value={statsData.SingleEmpTrips || 0} duration={1.2} decimals={0} />}
+          diff={statsData.SingleEmpTripPerDiff ?? 0}
+          diffStatus={statsData.SingleEmpTripPerDiffStatus}
+          subtext="Single Emp. Trips"
+          subtextClass="text-warning fw-bold"
+        />
+
+        {/* No Shows */}
+        <StatCard 
+          title="No Shows"
+          value={<AnimatedNumber value={statsData.totalnoshow ?? 0} duration={1.2} decimals={0} />}
+          subtext="No Shows"
+          subtextClass="text-danger fw-bold"
+        />
       </div>
     </>
   );

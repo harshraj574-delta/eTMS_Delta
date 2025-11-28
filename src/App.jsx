@@ -41,6 +41,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import Unauthorized from "./components/Unauthorized"; // Make sure path matches
 import RouteDeletion from "./components/RouteDeletion";
 import ShiftTimeMasterAdhoc from "./components/ShiftTimeMasterAdhoc";
+import NotFound from "./components/NotFound";
 
 // Deepak
 import Location from "./components/MasterPages/Location";
@@ -137,6 +138,7 @@ function App() {
 
 
         {/* <Route path="/EmpDump" element={<EmpDump />} /> */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </>
   );

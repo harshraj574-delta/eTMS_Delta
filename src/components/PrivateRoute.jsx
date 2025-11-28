@@ -16,18 +16,10 @@ const PrivateRoute = ({ element }) => {
   useEffect(() => {
     const verifyAccess = async () => {
       if (isAuthenticated) {
-        // First check locally
-        const hasAccess = checkAccess(location.pathname);
-        
-        if (hasAccess) {
-          setIsVerifying(false);
-          // Refresh in background to keep updated
-          refreshRights(false);
-        } else {
-          // If denied locally, force refresh from server to be sure
-          await refreshRights(true);
-          setIsVerifying(false);
-        }
+        // Always refresh rights (cached for 2s) to ensure we are up to date
+        // This prevents the "blip" of showing the page before redirecting if rights were revoked
+        await refreshRights(false);
+        setIsVerifying(false);
       } else {
         setIsVerifying(false);
       }

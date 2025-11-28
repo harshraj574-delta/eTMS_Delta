@@ -212,7 +212,7 @@ const RepNoShow = () => {
                     filter
                   />
                 </div>
-                <div className="col-12 col-sm-6 col-md-3 col-lg-3 d-flex align-items-end">
+                <div className="col-12 col-sm-6 col-md-3 col-lg-2 d-flex align-items-end">
                   <Button
                     label="Run Report"
                     className="btn btn-primary w-100"

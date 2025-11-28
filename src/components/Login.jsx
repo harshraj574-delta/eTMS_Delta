@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // import '../components/css/bootstrap.min.css';   
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -10,7 +10,11 @@ import useSessionStore from '../store/useSessionStore';
 
 const Login = () => {
   const navigate = useNavigate();
+  // Split selectors to avoid infinite re-renders due to new object references
   const login = useSessionStore((state) => state.login);
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
+  const allowedPaths = useSessionStore((state) => state.allowedPaths);
+
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -18,6 +22,16 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (allowedPaths.includes("MySchedule")) {
+        navigate("/MySchedule", { replace: true });
+      } else if (allowedPaths.length > 0) {
+        navigate(`/${allowedPaths[0]}`, { replace: true });
+      }
+    }
+  }, [isAuthenticated, allowedPaths, navigate]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -130,6 +144,11 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  // Prevent flash of login screen if authenticated
+  if (isAuthenticated) {
+    return null; // Or a loading spinner
+  }
 
   return (
     <div className="container-fluid" id="loginBg">
