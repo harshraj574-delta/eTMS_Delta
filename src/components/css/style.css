@@ -663,6 +663,8 @@ label {
     position: fixed;
     background: #fff;
     transition: 0.3s;
+    overflow-y: auto;
+    overflow-x: hidden;
 
 }
 

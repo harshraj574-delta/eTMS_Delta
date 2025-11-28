@@ -397,23 +397,31 @@ const FacilityMaster = () => {
     const heading = isEdit ? "Update location" : "Set location";
 
     return (
-      <div className="map-block">
-        <div className="d-flex align-items-center justify-content-between">
-          <div className="d-flex align-items-center gap-2">
-            <strong className="small mb-0">{heading}</strong>
-          </div>
-          <Button label="Map" icon="pi pi-map-marker" loading={loading} onClick={openMap} raised />
+      <div className="map-block bg-light p-3 rounded-3 border">
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <label className="form-label mb-0 fw-bold text-secondary">{heading}</label>
+          <Button 
+            label="Open Map" 
+            icon="pi pi-map" 
+            className="p-button-outlined p-button-secondary p-button-sm py-1 px-3"
+            style={{ fontSize: '0.85rem' }}
+            loading={loading} 
+            onClick={openMap} 
+          />
         </div>
 
-        <div className="row g-2 mt-2">
+        <div className="row g-2">
           <div className="col-12 col-sm-6">
             <label className="form-label form-label-xs text-muted mb-1">
               Latitude
             </label>
             <div className="input-group input-group-sm coord-input">
+              <span className="input-group-text bg-white border-end-0">
+                <i className="pi pi-compass text-muted" style={{ fontSize: '0.8rem' }}></i>
+              </span>
               <input
                 type="text"
-                className="form-control"
+                className="form-control border-start-0 ps-0"
                 id={isEdit ? "txtEditGeoY" : "txtGeoY"}
                 placeholder="e.g. 28.4624669"
                 value={latVal}
@@ -426,9 +434,12 @@ const FacilityMaster = () => {
               Longitude
             </label>
             <div className="input-group input-group-sm coord-input">
+              <span className="input-group-text bg-white border-end-0">
+                <i className="pi pi-compass text-muted" style={{ fontSize: '0.8rem' }}></i>
+              </span>
               <input
                 type="text"
-                className="form-control"
+                className="form-control border-start-0 ps-0"
                 id={isEdit ? "txtEditGeoX" : "txtGeoX"}
                 placeholder="e.g. 77.0847776"
                 value={lngVal}
