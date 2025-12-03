@@ -58,6 +58,7 @@ import PerEmployeeBilling from "./components/PerEmployeeBilling";
 import RepPlanAct from "./components/RepPlanAct";
 import RepScheduleSummery from "./components/RepScheduleSummery";
 import EmpAccessRights from "./components/EmpAccessRights";
+import ManageMenu from "./components/ManageMenu";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -134,6 +135,7 @@ function App() {
         <Route path="/RepPlanAct" element={<PrivateRoute element={<RepPlanAct />} />} />
         <Route path="/RepScheduleSummery" element={<PrivateRoute element={<RepScheduleSummery />} />} />
         <Route path="/EmpAccessRights" element={<PrivateRoute element={<EmpAccessRights />} />} />
+        <Route path="/ManageMenu" element={<PrivateRoute element={<ManageMenu />} />} />
 
 
 

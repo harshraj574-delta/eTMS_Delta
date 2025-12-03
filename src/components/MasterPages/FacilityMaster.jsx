@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../Master/SidebarMenu";
+import MasterSidebar from "../Master/MasterSidebar";
 import Header from "../Master/Header";
 import LocationMapComponent from "../LocationMapComponent.jsx";
 import { apiService } from "../../services/api";
@@ -112,6 +113,16 @@ const FacilityMaster = () => {
   };
 
   // Open Map from Add
+  // Close Map and restore parent
+  const handleMapClose = () => {
+    setShowMap(false);
+    if (mapContext === "add") {
+      setShowAdd(true);
+    } else if (mapContext === "edit") {
+      setShowEdit(true);
+    }
+  };
+
   const openMapForAdd = () => {
     setMapContext("add");
     setMapLatitude(geoY || "28.4624669");
@@ -375,16 +386,6 @@ const FacilityMaster = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  const anyOffcanvasOpen = showAdd || showEdit || showMap || showViewMap || showAddContact;
-  
-  const closeAllOffcanvas = () => {
-    setShowAdd(false);
-    setShowEdit(false);
-    setShowMap(false);
-    setShowViewMap(false);
-    setShowAddContact(false);
-  };
 
   // Styled, reusable block for Map + Coordinates (Add/Edit)
   const MapPickerRow = ({ mode }) => {
@@ -658,8 +659,7 @@ const FacilityMaster = () => {
         <div className="row mt-3">
           <div className="col-12">
             <div className="card_tb">
-              <div className="d-flex flex-column flex-md-row p-2 p-md-3
-                              align-items-start align-md-items-center gap-2">
+              <div className="d-flex flex-column flex-md-row p-2 p-md-3 align-items-start align-md-items-center gap-2">
                 <InputText placeholder="Search Any Value" />
                 <a href="#!" className="ms-auto" onClick={() => setShowAddContact(true)}>
                   <span className="material-icons">add_circle</span>
@@ -671,39 +671,170 @@ const FacilityMaster = () => {
       </div>
 
       {/* Offcanvas: Add New Facility */}
-      <div
-        tabIndex="-1"
-        className={`offcanvas offcanvas-end${showAdd ? " show" : ""}`}
-        id="raise_Feedback"
-        aria-labelledby="offcanvasRightLabel"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
-        style={{ width: offcanvasWidth, maxWidth: "100%" }}
+      <MasterSidebar
+        show={showAdd}
+        onClose={() => setShowAdd(false)}
+        title="Add New Facility"
+        width={offcanvasWidth}
+        backdropOpacity={0.7}
+        backdropBlur="50px"
+        footer={
+          <div className="offcanvas-footer">
+            <button
+              className="btn btn-outline-secondary"
+              onClick={() => setShowAdd(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-success mx-3"
+              onClick={handleSaveFacility}
+            >
+              Save
+            </button>
+          </div>
+        }
       >
-        <div className="offcanvas-header bg-secondary text-white
-                        offcanvas-header-lg">
-          <h5 className="subtitle fw-normal">Add New Facility</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowAdd(false)}
-            aria-label="Close"
-          ></button>
-        </div>
+        <div className="row g-2">
+          <div className="col-12 col-sm-6 mb-2">
+            <label htmlFor="facilityName" className="form-label">
+              Facility Name <span>*</span>
+            </label>
+            <input
+              type="text"
+              className="form-control form-control-sm"
+              id="txtfacilityName"
+              value={newFacility}
+              onChange={(e) => setNewFacility(e.target.value)}
+              placeholder="Enter facility name"
+            />
+          </div>
 
-        <div className="offcanvas-body">
+          <div className="col-12 col-sm-6 mb-2">
+            <label htmlFor="ContactNo" className="form-label">
+              Contact No
+            </label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              id="txtContactNo"
+              placeholder="Enter Contact No"
+            />
+          </div>
+
+          <div className="col-12 col-sm-6 mb-2">
+            <label htmlFor="Location" className="form-label">
+              Location <span>*</span>
+            </label>
+            <select className="form-control form-control-sm" id="ddlLocation">
+              <option value="0">Select Location</option>
+              {location.map((loc, index) => (
+                <option key={index} value={loc.Id}>
+                  {loc.locationName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="col-12 col-sm-6 mb-2">
+            <label htmlFor="HelpdeskEmail" className="form-label">
+              Helpdesk Email
+            </label>
+            <input
+              type="email"
+              className="form-control form-control-sm"
+              id="txtHelpdeskemail"
+              placeholder="Enter Help desk Email"
+            />
+          </div>
+
+          <div className="col-12 col-sm-6 mb-2">
+            <label htmlFor="TeamLeadEmail" className="form-label">
+              Team Lead Email
+            </label>
+            <input
+              type="email"
+              className="form-control form-control-sm"
+              id="txtTeamLeademail"
+              placeholder="Enter Team Lead Email"
+            />
+          </div>
+
+          <div className="col-12 col-sm-6 mb-2">
+            <label htmlFor="ManagerEmail" className="form-label">
+              Manager Email
+            </label>
+            <input
+              type="email"
+              className="form-control form-control-sm"
+              id="txtManageremail"
+              placeholder="Enter Manager Email"
+            />
+          </div>
+
+          <div className="col-12 col-sm-6 mb-2">
+            <label htmlFor="SiteLeadEmail" className="form-label">
+              Site Lead Email
+            </label>
+            <input
+              type="email"
+              className="form-control form-control-sm"
+              id="txtSiteLeadEmail"
+              placeholder="Enter Site Lead Email"
+            />
+          </div>
+
+          <div className="col-12 mb-2">
+            <MapPickerRow mode="add" />
+          </div>
+        </div>
+      </MasterSidebar>
+
+      {/* Offcanvas: Edit Facility */}
+      <MasterSidebar
+        show={showEdit}
+        onClose={() => setShowEdit(false)}
+        title="Edit Facility"
+        width={offcanvasWidth}
+        backdropOpacity={0.7}
+        backdropBlur="50px"
+        footer={
+          <div className="offcanvas-footer">
+            <button
+              className="btn btn-outline-secondary "
+              onClick={() => setShowEdit(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-success mx-3"
+              onClick={handleEditFacility}
+            >
+              Save
+            </button>
+          </div>
+        }
+      >
+        {selectedFacility && (
           <div className="row g-2">
             <div className="col-12 col-sm-6 mb-2">
-              <label htmlFor="facilityName" className="form-label">
+              <label
+                htmlFor="editFacilityName"
+                className="form-label"
+              >
                 Facility Name <span>*</span>
               </label>
               <input
                 type="text"
                 className="form-control form-control-sm"
-                id="txtfacilityName"
-                value={newFacility}
-                onChange={(e) => setNewFacility(e.target.value)}
-                placeholder="Enter facility name"
+                id="editFacilityName"
+                value={selectedFacility.facilityName}
+                onChange={(e) =>
+                  setSelectedFacility({
+                    ...selectedFacility,
+                    facilityName: e.target.value,
+                  })
+                }
               />
             </div>
 
@@ -714,8 +845,14 @@ const FacilityMaster = () => {
               <input
                 type="number"
                 className="form-control form-control-sm"
-                id="txtContactNo"
-                placeholder="Enter Contact No"
+                id="txteditContactNo"
+                value={selectedFacility.tptContactNo}
+                onChange={(e) =>
+                  setSelectedFacility({
+                    ...selectedFacility,
+                    tptContactNo: e.target.value,
+                  })
+                }
               />
             </div>
 
@@ -723,7 +860,17 @@ const FacilityMaster = () => {
               <label htmlFor="Location" className="form-label">
                 Location <span>*</span>
               </label>
-              <select className="form-control form-control-sm" id="ddlLocation">
+              <select
+                className="form-control form-control-sm"
+                id="ddleditLocation"
+                value={selectedFacility.locationId}
+                onChange={(e) =>
+                  setSelectedFacility({
+                    ...selectedFacility,
+                    locationId: e.target.value,
+                  })
+                }
+              >
                 <option value="0">Select Location</option>
                 {location.map((loc, index) => (
                   <option key={index} value={loc.Id}>
@@ -734,506 +881,297 @@ const FacilityMaster = () => {
             </div>
 
             <div className="col-12 col-sm-6 mb-2">
-              <label htmlFor="HelpdeskEmail" className="form-label">
+              <label
+                htmlFor="HelpdeskEmail"
+                className="form-label"
+              >
                 Helpdesk Email
               </label>
               <input
                 type="email"
                 className="form-control form-control-sm"
-                id="txtHelpdeskemail"
-                placeholder="Enter Help desk Email"
+                id="txteditHelpdeskemail"
+                value={selectedFacility.tptEmail}
+                onChange={(e) =>
+                  setSelectedFacility({
+                    ...selectedFacility,
+                    tptEmail: e.target.value,
+                  })
+                }
               />
             </div>
 
             <div className="col-12 col-sm-6 mb-2">
-              <label htmlFor="TeamLeadEmail" className="form-label">
+              <label
+                htmlFor="TeamLeadEmail"
+                className="form-label"
+              >
                 Team Lead Email
               </label>
               <input
                 type="email"
                 className="form-control form-control-sm"
-                id="txtTeamLeademail"
-                placeholder="Enter Team Lead Email"
+                id="txteditTeamLeademail"
+                value={selectedFacility.ShiftInchargeMail}
+                onChange={(e) =>
+                  setSelectedFacility({
+                    ...selectedFacility,
+                    ShiftInchargeMail: e.target.value,
+                  })
+                }
               />
             </div>
 
             <div className="col-12 col-sm-6 mb-2">
-              <label htmlFor="ManagerEmail" className="form-label">
+              <label
+                htmlFor="ManagerEmail"
+                className="form-label"
+              >
                 Manager Email
               </label>
               <input
                 type="email"
                 className="form-control form-control-sm"
-                id="txtManageremail"
-                placeholder="Enter Manager Email"
+                id="txteditManageremail"
+                value={selectedFacility.SiteLeadMail}
+                onChange={(e) =>
+                  setSelectedFacility({
+                    ...selectedFacility,
+                    SiteLeadMail: e.target.value,
+                  })
+                }
               />
             </div>
 
             <div className="col-12 col-sm-6 mb-2">
-              <label htmlFor="SiteLeadEmail" className="form-label">
+              <label
+                htmlFor="SiteLeadEmail"
+                className="form-label"
+              >
                 Site Lead Email
               </label>
               <input
                 type="email"
                 className="form-control form-control-sm"
-                id="txtSiteLeadEmail"
-                placeholder="Enter Site Lead Email"
+                id="txteditSiteLeadEmail"
+                value={selectedFacility.LocLeadMail}
+                onChange={(e) =>
+                  setSelectedFacility({
+                    ...selectedFacility,
+                    LocLeadMail: e.target.value,
+                  })
+                }
               />
             </div>
 
             <div className="col-12 mb-2">
-              <MapPickerRow mode="add" />
+              <MapPickerRow mode="edit" />
             </div>
           </div>
-        </div>
-
-        <div className="offcanvas-footer">
-          <button
-            className="btn btn-outline-secondary"
-            onClick={() => setShowAdd(false)}
-          >
-            Cancel
-          </button>
-          <button
-            className="btn btn-success mx-3"
-            onClick={handleSaveFacility}
-          >
-            Save
-          </button>
-        </div>
-      </div>
-
-      {/* Offcanvas: Edit Facility */}
-      <div
-        className={`offcanvas offcanvas-end${showEdit ? " show" : ""}`}
-        tabIndex="-1"
-        id="FacilityEdit"
-        aria-labelledby="offcanvasRightLabel"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
-        style={{ width: offcanvasWidth, maxWidth: "100%" }}
-      >
-        <div className="offcanvas-header bg-secondary text-white
-                        offcanvas-header-lg">
-          <h5 className="subtitle fw-normal">Edit Facility</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowEdit(false)}
-            aria-label="Close"
-          ></button>
-        </div>
-
-        <div className="offcanvas-body">
-          {selectedFacility && (
-            <div className="row g-2">
-              <div className="col-12 col-sm-6 mb-2">
-                <label
-                  htmlFor="editFacilityName"
-                  className="form-label"
-                >
-                  Facility Name <span>*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control form-control-sm"
-                  id="editFacilityName"
-                  value={selectedFacility.facilityName}
-                  onChange={(e) =>
-                    setSelectedFacility({
-                      ...selectedFacility,
-                      facilityName: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="col-12 col-sm-6 mb-2">
-                <label htmlFor="ContactNo" className="form-label">
-                  Contact No
-                </label>
-                <input
-                  type="number"
-                  className="form-control form-control-sm"
-                  id="txteditContactNo"
-                  value={selectedFacility.tptContactNo}
-                  onChange={(e) =>
-                    setSelectedFacility({
-                      ...selectedFacility,
-                      tptContactNo: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="col-12 col-sm-6 mb-2">
-                <label htmlFor="Location" className="form-label">
-                  Location <span>*</span>
-                </label>
-                <select
-                  className="form-control form-control-sm"
-                  id="ddleditLocation"
-                  value={selectedFacility.locationId}
-                  onChange={(e) =>
-                    setSelectedFacility({
-                      ...selectedFacility,
-                      locationId: e.target.value,
-                    })
-                  }
-                >
-                  <option value="0">Select Location</option>
-                  {location.map((loc, index) => (
-                    <option key={index} value={loc.Id}>
-                      {loc.locationName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-12 col-sm-6 mb-2">
-                <label
-                  htmlFor="HelpdeskEmail"
-                  className="form-label"
-                >
-                  Helpdesk Email
-                </label>
-                <input
-                  type="email"
-                  className="form-control form-control-sm"
-                  id="txteditHelpdeskemail"
-                  value={selectedFacility.tptEmail}
-                  onChange={(e) =>
-                    setSelectedFacility({
-                      ...selectedFacility,
-                      tptEmail: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="col-12 col-sm-6 mb-2">
-                <label
-                  htmlFor="TeamLeadEmail"
-                  className="form-label"
-                >
-                  Team Lead Email
-                </label>
-                <input
-                  type="email"
-                  className="form-control form-control-sm"
-                  id="txteditTeamLeademail"
-                  value={selectedFacility.ShiftInchargeMail}
-                  onChange={(e) =>
-                    setSelectedFacility({
-                      ...selectedFacility,
-                      ShiftInchargeMail: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="col-12 col-sm-6 mb-2">
-                <label
-                  htmlFor="ManagerEmail"
-                  className="form-label"
-                >
-                  Manager Email
-                </label>
-                <input
-                  type="email"
-                  className="form-control form-control-sm"
-                  id="txteditManageremail"
-                  value={selectedFacility.SiteLeadMail}
-                  onChange={(e) =>
-                    setSelectedFacility({
-                      ...selectedFacility,
-                      SiteLeadMail: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="col-12 col-sm-6 mb-2">
-                <label
-                  htmlFor="SiteLeadEmail"
-                  className="form-label"
-                >
-                  Site Lead Email
-                </label>
-                <input
-                  type="email"
-                  className="form-control form-control-sm"
-                  id="txteditSiteLeadEmail"
-                  value={selectedFacility.LocLeadMail}
-                  onChange={(e) =>
-                    setSelectedFacility({
-                      ...selectedFacility,
-                      LocLeadMail: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="col-12 mb-2">
-                <MapPickerRow mode="edit" />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="offcanvas-footer">
-          <button
-            className="btn btn-outline-secondary "
-            onClick={() => setShowEdit(false)}
-          >
-            Cancel
-          </button>
-          <button
-            className="btn btn-success mx-3"
-            onClick={handleEditFacility}
-          >
-            Save
-          </button>
-        </div>
-      </div>
+        )}
+      </MasterSidebar>
 
       {/* Offcanvas: Facility Map Selector (Add/Edit) */}
-      <div
-        className={`offcanvas offcanvas-end${showMap ? " show" : ""}`}
-        tabIndex="-1"
-        id="FacilityMapSelector"
-        aria-labelledby="offcanvasRightLabel"
-        data-bs-backdrop="true"
-        data-bs-scroll="true"
-        style={{ width: mapOffcanvasWidth, maxWidth: "100%" }}
+      <MasterSidebar
+        show={showMap}
+        onClose={handleMapClose}
+        title={
+          mapContext === "add"
+            ? "Set Location"
+            : mapContext === "edit"
+            ? "Update Location"
+            : "Location Map"
+        }
+        width={mapOffcanvasWidth}
+        backdrop={false}
+        backdropOpacity={0.7}
+        backdropBlur="50px"
+        bodyStyle={{ padding: 0 }}
+        footer={
+          <div className="map-footer">
+            <div className="coord-col">
+              <label className="coord-label">Latitude</label>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Latitude"
+                id="txtMapLatitude"
+                value={mapLatitude}
+                onChange={(e) => setMapLatitude(e.target.value)}
+              />
+            </div>
+
+            <div className="coord-col">
+              <label className="coord-label">Longitude</label>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Longitude"
+                id="txtMapLongitude"
+                value={mapLongitude}
+                onChange={(e) => setMapLongitude(e.target.value)}
+              />
+            </div>
+
+            <button className="btn btn-primary btn-lg" onClick={saveMapCoords}>
+              <PlaceIcon />
+              Save
+            </button>
+          </div>
+        }
       >
-        <div className="offcanvas-header bg-secondary text-white
-                        offcanvas-header-lg">
-          <h5 className="subtitle fw-normal">
-            {mapContext === "add"
-              ? "Set Location"
-              : mapContext === "edit"
-              ? "Update Location"
-              : "Location Map"}
-          </h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowMap(false)}
-            aria-label="Close"
-          ></button>
-        </div>
-
-        <div className="offcanvas-body" style={{ padding: 0 }}>
-          {showMap && (
-            <LocationMapComponent
-              key={`${mapContext}-${mapLatitude}-${mapLongitude}`}
-              latitude={mapLatitude}
-              longitude={mapLongitude}
-              onCoordinatesChange={handleMapCoordinatesChange}
-            />
-          )}
-        </div>
-
-        <div className="map-footer">
-          <div className="coord-col">
-            <label className="coord-label">Latitude</label>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="Latitude"
-              id="txtMapLatitude"
-              value={mapLatitude}
-              onChange={(e) => setMapLatitude(e.target.value)}
-            />
-          </div>
-
-          <div className="coord-col">
-            <label className="coord-label">Longitude</label>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="Longitude"
-              id="txtMapLongitude"
-              value={mapLongitude}
-              onChange={(e) => setMapLongitude(e.target.value)}
-            />
-          </div>
-
-          <button className="btn btn-primary btn-lg" onClick={saveMapCoords}>
-            <PlaceIcon />
-            Save
-          </button>
-        </div>
-      </div>
+        {showMap && (
+          <LocationMapComponent
+            key={`${mapContext}-${mapLatitude}-${mapLongitude}`}
+            latitude={mapLatitude}
+            longitude={mapLongitude}
+            onCoordinatesChange={handleMapCoordinatesChange}
+          />
+        )}
+      </MasterSidebar>
 
       {/* Offcanvas: View Location Map */}
-      <div
-        className={`offcanvas offcanvas-end${showViewMap ? " show" : ""}`}
-        tabIndex="-1"
-        id="ViewLocationMap"
-        aria-labelledby="offcanvasRightLabel"
-        data-bs-backdrop="true"
-        data-bs-scroll="true"
-        style={{ width: mapOffcanvasWidth, maxWidth: "100%" }}
+      <MasterSidebar
+        show={showViewMap}
+        onClose={() => setShowViewMap(false)}
+        title="Location Map"
+        width={mapOffcanvasWidth}
+        backdrop={false}
+        backdropOpacity={0.7}
+        backdropBlur="50px"
+        bodyStyle={{ padding: 0 }}
+        footer={
+          <div className="map-footer">
+            <div className="coord-col">
+              <label className="coord-label">Latitude</label>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Latitude"
+                id="txtViewLatitude"
+                value={mapLatitude}
+                readOnly
+              />
+            </div>
+
+            <div className="coord-col">
+              <label className="coord-label">Longitude</label>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Longitude"
+                id="txtViewLongitude"
+                value={mapLongitude}
+                readOnly
+              />
+            </div>
+          </div>
+        }
       >
-        <div className="offcanvas-header bg-secondary text-white
-                        offcanvas-header-lg">
-          <h5 className="subtitle fw-normal">Location Map</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowViewMap(false)}
-            aria-label="Close"
-          ></button>
-        </div>
-
-        <div className="offcanvas-body" style={{ padding: 0 }}>
-          {showViewMap && (
-            <LocationMapComponent
-              key={`view-${mapLatitude}-${mapLongitude}`}
-              latitude={mapLatitude}
-              longitude={mapLongitude}
-              onCoordinatesChange={handleMapCoordinatesChange}
-            />
-          )}
-        </div>
-
-        <div className="map-footer">
-          <div className="coord-col">
-            <label className="coord-label">Latitude</label>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="Latitude"
-              id="txtViewLatitude"
-              value={mapLatitude}
-              readOnly
-            />
-          </div>
-
-          <div className="coord-col">
-            <label className="coord-label">Longitude</label>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="Longitude"
-              id="txtViewLongitude"
-              value={mapLongitude}
-              readOnly
-            />
-          </div>
-        </div>
-      </div>
+        {showViewMap && (
+          <LocationMapComponent
+            key={`view-${mapLatitude}-${mapLongitude}`}
+            latitude={mapLatitude}
+            longitude={mapLongitude}
+            onCoordinatesChange={handleMapCoordinatesChange}
+          />
+        )}
+      </MasterSidebar>
 
       {/* Offcanvas: Add New Contact Level */}
-      <div
-        tabIndex="-1"
-        className={`offcanvas offcanvas-end${showAddContact ? " show" : ""}`}
-        id="AddFacilityContact"
-        aria-labelledby="offcanvasRightLabel"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
-        style={{ width: offcanvasWidth, maxWidth: "100%" }}
+      <MasterSidebar
+        show={showAddContact}
+        onClose={() => setShowAddContact(false)}
+        title="Add New Contact Level"
+        width={offcanvasWidth}
+        backdropOpacity={0.7}
+        backdropBlur="50px"
+        footer={
+          <div className="offcanvas-footer">
+            <button
+              className="btn btn-outline-secondary"
+              onClick={() => setShowAddContact(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-success mx-3"
+              onClick={() => {
+                handleContactSave();
+                setShowAddContact(false);
+              }}
+            >
+              Save
+            </button>
+          </div>
+        }
       >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal">Add New Contact Level</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowAddContact(false)}
-            aria-label="Close"
-          ></button>
+        <div className="mb-3">
+          <label htmlFor="Location" className="form-label">
+            Location <span>*</span>
+          </label>
+          <select className="form-control" id="ddlContactLocation">
+            <option value="0">Select Location</option>
+            {facContactLocation.map((loc, index) => (
+              <option key={index} value={loc.Id}>
+                {loc.FullName}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="offcanvas-body">
-          <div className="mb-3">
-            <label htmlFor="Location" className="form-label">
-              Location <span>*</span>
-            </label>
-            <select className="form-control" id="ddlContactLocation">
-              <option value="0">Select Location</option>
-              {facContactLocation.map((loc, index) => (
-                <option key={index} value={loc.Id}>
-                  {loc.FullName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="mb-3">
-            <label htmlFor="Level" className="form-label">
-              Level <span>*</span>
-            </label>
-            <select className="form-control" id="ddlLevel">
-              <option value="0">Select Level</option>
-              <option value="level 1">level 1</option>
-              <option value="level 2">level 2</option>
-              <option value="level 3">level 3</option>
-              <option value="level 4">level 4</option>
-              <option value="level 5">level 5</option>
-              <option value="level 6">level 6</option>
-              <option value="level 7">level 7</option>
-              <option value="level 8">level 8</option>
-              <option value="level 9">level 9</option>
-              <option value="level 10">level 10</option>
-            </select>
-          </div>
-          <div className="mb-3">
-            <label htmlFor="ContactName" className="form-label">
-              Name <span>*</span>
-            </label>
-            <input
-              type="text"
-              className="form-control"
-              id="txtContactName"
-              placeholder="Enter Contact Name"
-            />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="ContactNo" className="form-label">
-              Contact No
-            </label>
-            <input
-              type="number"
-              className="form-control"
-              id="txtLevelContactNo"
-              placeholder="Enter Contact No"
-            />
-          </div>
-          <div className="mb-3">
-            <label htmlFor="ContactEmail" className="form-label">
-              Email <span>*</span>
-            </label>
-            <input
-              type="email"
-              className="form-control"
-              id="txtContactEmail"
-              placeholder="Enter Email"
-            />
-          </div>
+        <div className="mb-3">
+          <label htmlFor="Level" className="form-label">
+            Level <span>*</span>
+          </label>
+          <select className="form-control" id="ddlLevel">
+            <option value="0">Select Level</option>
+            <option value="level 1">level 1</option>
+            <option value="level 2">level 2</option>
+            <option value="level 3">level 3</option>
+            <option value="level 4">level 4</option>
+            <option value="level 5">level 5</option>
+            <option value="level 6">level 6</option>
+            <option value="level 7">level 7</option>
+            <option value="level 8">level 8</option>
+            <option value="level 9">level 9</option>
+            <option value="level 10">level 10</option>
+          </select>
         </div>
-        <div className="offcanvas-footer">
-          <button
-            className="btn btn-outline-secondary"
-            onClick={() => setShowAddContact(false)}
-          >
-            Cancel
-          </button>
-          <button
-            className="btn btn-success mx-3"
-            onClick={() => {
-              handleContactSave();
-              setShowAddContact(false);
-            }}
-          >
-            Save
-          </button>
+        <div className="mb-3">
+          <label htmlFor="ContactName" className="form-label">
+            Name <span>*</span>
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            id="txtContactName"
+            placeholder="Enter Contact Name"
+          />
         </div>
-      </div>
+        <div className="mb-3">
+          <label htmlFor="ContactNo" className="form-label">
+            Contact No
+          </label>
+          <input
+            type="number"
+            className="form-control"
+            id="txtLevelContactNo"
+            placeholder="Enter Contact No"
+          />
+        </div>
+        <div className="mb-3">
+          <label htmlFor="ContactEmail" className="form-label">
+            Email <span>*</span>
+          </label>
+          <input
+            type="email"
+            className="form-control"
+            id="txtContactEmail"
+            placeholder="Enter Email"
+          />
+        </div>
+      </MasterSidebar>
 
-      {/* Backdrop */}
-      {anyOffcanvasOpen && (
-        <div className="offcanvas-backdrop show" onClick={closeAllOffcanvas} />
-      )}
     </div>
   );
 };

@@ -11,6 +11,8 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
+import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
 
 const ProcessMaster = () => {
   const [processes, setProcesses] = useState([]);
@@ -157,7 +159,7 @@ const ProcessMaster = () => {
   };
 
   const processActionBodyTemplate = (rowData) => (
-    <div className="process-action-buttons d-flex gap-1 justify-content-center flex-wrap">
+    <div className="process-action-buttons d-flex gap-1 justify-content-start flex-wrap">
       <Button
         icon="pi pi-eye"
         className="p-button-rounded p-button-info p-button-sm action-btn"
@@ -165,31 +167,35 @@ const ProcessMaster = () => {
         tooltip="View Sub-Processes"
         tooltipPosition="top"
       />
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-rounded p-button-warning p-button-sm action-btn"
+      <IconButton
+        sx={{ color: '#1976d2' }}
+        size="small"
+        className="action-btn"
         onClick={() => {
           setEditingProcess(rowData);
           setShowEditProcessSidebar(true);
         }}
-        tooltip="Edit"
-        tooltipPosition="top"
-      />
+        title="Edit"
+      >
+        <EditIcon fontSize="small" />
+      </IconButton>
     </div>
   );
 
   const subProcessActionBodyTemplate = (rowData) => (
-    <div className="d-flex gap-1 justify-content-center">
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-rounded p-button-warning p-button-sm action-btn"
+    <div className="d-flex gap-1 justify-content-start">
+      <IconButton
+        sx={{ color: '#1976d2' }}
+        size="small"
+        className="action-btn"
         onClick={() => {
           setEditingSubProcess(rowData);
           setShowEditSubProcessSidebar(true);
         }}
-        tooltip="Edit"
-        tooltipPosition="top"
-      />
+        title="Edit"
+      >
+        <EditIcon fontSize="small" />
+      </IconButton>
     </div>
   );
 
@@ -712,7 +718,7 @@ const ProcessMaster = () => {
           gap: 0.2rem !important;
           display: flex;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
         }
 
         .action-btn {
@@ -948,6 +954,7 @@ const ProcessMaster = () => {
           .p-paginator {
             gap: 0.2rem !important;
             padding: 0.45rem !important;
+            gap: 0.2rem !important;
           }
 
           .p-paginator-left-content,

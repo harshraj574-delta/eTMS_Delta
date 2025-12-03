@@ -84,6 +84,9 @@
   display: block;
 }
 
+/* Custom Backdrop Blur */
+
+
 @media (max-width: 576px) {
   .map-block {
     padding: 10px;

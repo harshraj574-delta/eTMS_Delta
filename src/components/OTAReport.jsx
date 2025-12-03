@@ -7,9 +7,13 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { InputText } from "primereact/inputtext";
+import { MultiSelect } from "primereact/multiselect";
+import { OverlayPanel } from "primereact/overlaypanel";
 import OTAReportService from "../services/compliance/OTAReportService";
 import { toastService } from "../services/toastService";
 import { ToastContainer, toast } from "react-toastify";
+import noReportImage from "../assets/no_report.png";
 
 const OTAReport = () => {
   const [facilities, setFacilities] = useState([]);
@@ -23,15 +27,26 @@ const OTAReport = () => {
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [reportData, setReportData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [detailedData, setDetailedData] = useState([]);
   const [rawShiftData, setRawShiftData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedRows, setExpandedRows] = useState([]);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [filters, setFilters] = useState({
+    Unit: null,
+    TripDate: null,
+    Shift: null,
+    RouteID: null,
+    Vendor: null,
+    OTA_Category: null,
+  });
 
   const UserID = sessionStorage.getItem("ID");
   const dt = useRef(null);
+  const op = useRef(null);
 
   const reportTypes = [
     { label: "Detailed", value: "detailed" },
@@ -48,6 +63,10 @@ const OTAReport = () => {
       fetchVendors();
     }
   }, [selectedFacility]);
+
+  useEffect(() => {
+    applyFiltersAndSearch();
+  }, [reportData, filters, globalFilter]);
 
   const fetchFacilities = async () => {
     try {
@@ -182,6 +201,52 @@ const OTAReport = () => {
     return result;
   };
 
+  const applyFiltersAndSearch = () => {
+    let filtered = [...reportData];
+
+    // Apply advanced filters for detailed report
+    if (currentReportType === "detailed") {
+      Object.keys(filters).forEach((key) => {
+        if (filters[key] && filters[key].length > 0) {
+          filtered = filtered.filter((item) =>
+            filters[key].includes(item[key])
+          );
+        }
+      });
+    }
+
+    // Apply global search
+    if (globalFilter && globalFilter.trim() !== "") {
+      const searchLower = globalFilter.toLowerCase();
+      filtered = filtered.filter((item) => {
+        if (currentReportType === "detailed") {
+          return Object.values(item).some((val) =>
+            String(val).toLowerCase().includes(searchLower)
+          );
+        } else {
+          // For shift-wise and vendor-wise
+          const mainRowMatch = Object.values(item).some((val) =>
+            String(val).toLowerCase().includes(searchLower)
+          );
+          const nestedMatch =
+            item.shifts?.some((shift) =>
+              Object.values(shift).some((val) =>
+                String(val).toLowerCase().includes(searchLower)
+              )
+            ) ||
+            item.vendors?.some((vendor) =>
+              Object.values(vendor).some((val) =>
+                String(val).toLowerCase().includes(searchLower)
+              )
+            );
+          return mainRowMatch || nestedMatch;
+        }
+      });
+    }
+
+    setFilteredData(filtered);
+  };
+
   const handleSearch = async () => {
     if (!selectedReportType) {
       toastService.error("Please select a report type");
@@ -201,6 +266,16 @@ const OTAReport = () => {
     setIsSubmitting(true);
     setLoading(true);
     setError(null);
+    setExpandedRows([]);
+    setGlobalFilter("");
+    setFilters({
+      Unit: null,
+      TripDate: null,
+      Shift: null,
+      RouteID: null,
+      Vendor: null,
+      OTA_Category: null,
+    });
 
     try {
       const params = {
@@ -287,9 +362,7 @@ const OTAReport = () => {
 
       setTimeout(() => {
         if (validatedData.length > 0) {
-          toastService.success(
-            `Report data fetched successfully.`
-          );
+          toastService.success(`Report data fetched successfully.`);
         } else {
           toastService.warn("No records found");
         }
@@ -374,28 +447,6 @@ const OTAReport = () => {
     document.body.removeChild(link);
   };
 
-  const paginatorLeft = (
-    <Button
-      type="button"
-      icon="pi pi-refresh"
-      text
-      onClick={() => handleSearch()}
-      tooltip="Refresh"
-      tooltipOptions={{ position: "top" }}
-    />
-  );
-
-  const paginatorRight = (
-    <Button
-      type="button"
-      icon="pi pi-download"
-      text
-      onClick={exportExcel}
-      tooltip="Export"
-      tooltipOptions={{ position: "top" }}
-    />
-  );
-
   const formatArrivalTime = (rowData) => {
     if (!rowData.ArrivalTime) return "-";
     const date = new Date(rowData.ArrivalTime);
@@ -417,6 +468,215 @@ const OTAReport = () => {
       newExpandedRows.push(index);
     }
     setExpandedRows(newExpandedRows);
+  };
+
+  const getUniqueValues = (field) => {
+    const values = reportData.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
+  const clearAdvancedFilters = () => {
+    setFilters({
+      Unit: null,
+      TripDate: null,
+      Shift: null,
+      RouteID: null,
+      Vendor: null,
+      OTA_Category: null,
+    });
+    toastService.info("Filters cleared");
+  };
+
+  const renderToolbar = () => {
+    return (
+      <>
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-2 gap-2">
+          <div className="d-flex align-items-center">
+            <Button
+              label="Advanced Filter"
+              icon="pi pi-filter"
+              onClick={(e) => op.current.toggle(e)}
+              className="p-button-text p-button-plain p-0"
+              style={{ width: "auto", boxShadow: "none" }}
+            />
+          </div>
+          <div className="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+            <div style={{ position: "relative" }}>
+              <InputText
+                placeholder="Search"
+                className="p-inputtext-sm"
+                style={{ paddingRight: "2.5rem", width: "250px" }}
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+              />
+              <i
+                className="pi pi-search"
+                style={{
+                  position: "absolute",
+                  right: "0.75rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "#6c757d",
+                }}
+              />
+            </div>
+            <div className="d-flex align-items-center">
+              <Button
+                icon="pi pi-refresh"
+                rounded
+                text
+                severity="secondary"
+                aria-label="Refresh"
+                onClick={() => handleSearch()}
+                tooltip="Refresh"
+                tooltipOptions={{ position: "top" }}
+                className="p-0 mr-1"
+                style={{ width: "2rem", height: "2rem" }}
+              />
+              <Button
+                icon="pi pi-download"
+                rounded
+                text
+                severity="secondary"
+                aria-label="Export"
+                onClick={exportExcel}
+                tooltip="Export"
+                tooltipOptions={{ position: "top" }}
+                className="p-0 mr-1"
+                style={{ width: "2rem", height: "2rem" }}
+              />
+              <Button
+                icon="pi pi-ellipsis-h"
+                rounded
+                text
+                severity="secondary"
+                aria-label="More"
+                className="p-0"
+                style={{ width: "2rem", height: "2rem" }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <OverlayPanel ref={op} showCloseIcon dismissable style={{ width: '800px' }}>
+          {currentReportType === "detailed" ? (
+            <div className="p-2">
+              <div className="row g-3">
+                <div className="col-12 col-md-6">
+                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
+                    Facility
+                  </label>
+                  <MultiSelect
+                    value={filters.Unit}
+                    options={getUniqueValues("Unit")}
+                    onChange={(e) => setFilters({ ...filters, Unit: e.value })}
+                    placeholder="Select Facilities"
+                    maxSelectedLabels={2}
+                    className="w-100"
+                    display="chip"
+                  />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
+                    Trip Date
+                  </label>
+                  <MultiSelect
+                    value={filters.TripDate}
+                    options={getUniqueValues("TripDate")}
+                    onChange={(e) =>
+                      setFilters({ ...filters, TripDate: e.value })
+                    }
+                    placeholder="Select Dates"
+                    maxSelectedLabels={2}
+                    className="w-100"
+                    display="chip"
+                  />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
+                    Shift
+                  </label>
+                  <MultiSelect
+                    value={filters.Shift}
+                    options={getUniqueValues("Shift")}
+                    onChange={(e) => setFilters({ ...filters, Shift: e.value })}
+                    placeholder="Select Shifts"
+                    maxSelectedLabels={2}
+                    className="w-100"
+                    display="chip"
+                  />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
+                    Route ID
+                  </label>
+                  <MultiSelect
+                    value={filters.RouteID}
+                    options={getUniqueValues("RouteID")}
+                    onChange={(e) =>
+                      setFilters({ ...filters, RouteID: e.value })
+                    }
+                    placeholder="Select Route IDs"
+                    maxSelectedLabels={2}
+                    className="w-100"
+                    display="chip"
+                    filter
+                  />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
+                    Vendor
+                  </label>
+                  <MultiSelect
+                    value={filters.Vendor}
+                    options={getUniqueValues("Vendor")}
+                    onChange={(e) => setFilters({ ...filters, Vendor: e.value })}
+                    placeholder="Select Vendors"
+                    maxSelectedLabels={2}
+                    className="w-100"
+                    display="chip"
+                  />
+                </div>
+
+                <div className="col-12 col-md-6">
+                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
+                    OTA Category
+                  </label>
+                  <MultiSelect
+                    value={filters.OTA_Category}
+                    options={getUniqueValues("OTA_Category")}
+                    onChange={(e) =>
+                      setFilters({ ...filters, OTA_Category: e.value })
+                    }
+                    placeholder="Select Categories"
+                    maxSelectedLabels={2}
+                    className="w-100"
+                    display="chip"
+                  />
+                </div>
+
+                <div className="col-12">
+                  <Button
+                    label="Clear All Filters"
+                    icon="pi pi-filter-slash"
+                    className="p-button-outlined p-button-secondary"
+                    onClick={clearAdvancedFilters}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+             <div className="p-3">
+                <p className="m-0 text-muted">Advanced filters are only available for Detailed reports.</p>
+             </div>
+          )}
+        </OverlayPanel>
+      </>
+    );
   };
 
   return (
@@ -513,9 +773,22 @@ const OTAReport = () => {
                   </div>
                 )}
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2 d-flex align-items-end">
+                  <style>
+                    {`
+                      .run-report-btn {
+                        background-color: #1C1D20 !important;
+                        border-color: #1C1D20 !important;
+                        transition: background-color 0.3s, border-color 0.3s;
+                      }
+                      .run-report-btn:hover {
+                        background-color: #0d6efd !important; 
+                        border-color: #0d6efd !important;
+                      }
+                    `}
+                  </style>
                   <Button
                     label="Run Report"
-                    className="btn btn-primary w-100"
+                    className="btn btn-primary w-100 run-report-btn"
                     onClick={handleSearch}
                     disabled={isSubmitting}
                   />
@@ -528,326 +801,343 @@ const OTAReport = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              {currentReportType === "detailed" && (
-                <div className="table-responsive">
-                  <DataTable
-                    value={reportData}
-                    ref={dt}
-                    paginator
-                    rows={50}
-                    tableStyle={{ minWidth: "50rem" }}
-                    size="small"
-                    loading={loading}
-                    emptyMessage={
-                      error ? `Error: ${error}` : "No records found"
-                    }
-                    stripedRows
-                    paginatorLeft={paginatorLeft}
-                    paginatorRight={paginatorRight}
-                    rowsPerPageOptions={[50, 100, 200, 300]}
-                  >
-                    <Column field="Unit" header="Facility" sortable />
-                    <Column field="TripDate" header="Trip Date" sortable />
-                    <Column field="Shift" header="Shift" sortable />
-                    <Column
-                      field="ActShift"
-                      header="Reporting Time"
-                      sortable
-                    />
-                    <Column field="RouteID" header="Route ID" sortable />
-                    <Column
-                      field="PlanVendor"
-                      header="Plan Vendor"
-                      sortable
-                    />
-                    <Column field="Vendor" header="Vendor" sortable />
-                    <Column field="DAY" header="Day" sortable />
-                    <Column field="ZONE" header="Zone" sortable />
-                    <Column field="Area" header="Area" sortable />
-                    <Column
-                      field="DriverCode"
-                      header="Driver Code"
-                      sortable
-                    />
-                    <Column
-                      field="ActualCabNo"
-                      header="Actual Cab No"
-                      sortable
-                    />
-                    <Column
-                      field="ArrivalTime"
-                      header="Arr/Dep Time"
-                      sortable
-                      body={formatArrivalTime}
-                    />
-                    <Column field="TIME" header="Time" sortable />
-                    <Column field="Remark" header="Trip Remark" sortable />
-                    <Column field="NoOfPax" header="No Of Pax" sortable />
-                    <Column
-                      field="OTA_Category"
-                      header="OTA/OTD Category"
-                      sortable
-                    />
-                  </DataTable>
-                </div>
-              )}
-
-              {currentReportType === "shiftwise" && (
-                <div className="table-responsive">
-                  <table className="table table-sm mb-0">
-                    <thead className="table-light">
-                      <tr>
-                        <th className="text-center">Shift Date</th>
-                        <th className="text-center d-none d-md-table-cell">
-                          Total Cabs
-                        </th>
-                        <th className="text-center d-none d-md-table-cell">
-                          Arrived
-                        </th>
-                        <th className="text-center">On Time</th>
-                        <th className="text-center">Delayed</th>
-                        <th className="text-center d-none d-lg-table-cell">
-                          On Time %
-                        </th>
-                        <th className="text-center d-none d-lg-table-cell">
-                          Delayed %
-                        </th>
-                        <th style={{ width: "40px" }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportData.map((row, index) => (
-                        <React.Fragment key={index}>
-                          <tr>
-                            <td className="text-center">{row.shiftDate}</td>
-                            <td className="text-center d-none d-md-table-cell">
-                              {row.TotalCabs}
-                            </td>
-                            <td className="text-center d-none d-md-table-cell">
-                              {row.Arrived}
-                            </td>
-                            <td className="text-center">{row.OnTime}</td>
-                            <td className="text-center">{row.Delayed}</td>
-                            <td className="text-center d-none d-lg-table-cell">
-                              {row.OnTimePer}
-                            </td>
-                            <td className="text-center d-none d-lg-table-cell">
-                              {row.DelayedPer}
-                            </td>
-                            <td>
-                              <a
-                                href="#!"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  toggleRowExpansion(index);
-                                }}
-                              >
-                                {expandedRows.includes(index) ? (
-                                  <span
-                                    className="material-icons"
-                                    style={{ fontSize: "20px" }}
-                                  >
-                                    remove_circle
-                                  </span>
-                                ) : (
-                                  <span
-                                    className="material-icons"
-                                    style={{ fontSize: "20px" }}
-                                  >
-                                    add_circle
-                                  </span>
-                                )}
-                              </a>
-                            </td>
-                          </tr>
-
-                          {expandedRows.includes(index) && (
-                            <tr>
-                              <td colSpan="8" className="leftStrip p-2">
-                                <div className="expanded-content">
-                                  <div className="table-responsive">
-                                    <table className="table table-sm table-bordered mb-0">
-                                      <thead>
-                                        <tr>
-                                          <th>Shift</th>
-                                          <th>Total Cabs</th>
-                                          <th>Arrived</th>
-                                          <th>On Time</th>
-                                          <th>Delayed</th>
-                                          <th className="d-none d-md-table-cell">
-                                            On Time %
-                                          </th>
-                                          <th className="d-none d-md-table-cell">
-                                            Delayed %
-                                          </th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {row.shifts?.map((shift, sIdx) => (
-                                          <tr key={sIdx}>
-                                            <td>{shift.shiftTime}</td>
-                                            <td>{shift.TotalCabs}</td>
-                                            <td>{shift.Arrived}</td>
-                                            <td>{shift.OnTime}</td>
-                                            <td>{shift.Delayed}</td>
-                                            <td className="d-none d-md-table-cell">
-                                              {shift.OnTimePer}
-                                            </td>
-                                            <td className="d-none d-md-table-cell">
-                                              {shift.DelayedPer}
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="d-flex justify-content-between align-items-center p-2">
-                    {paginatorLeft}
-                    {paginatorRight}
-                  </div>
-                </div>
-              )}
-
-              {currentReportType === "vendorwise" && (
-                <div className="table-responsive">
-                  <table className="table table-sm mb-0">
-                    <thead className="table-light">
-                      <tr>
-                        <th className="text-center">Shift Date</th>
-                        <th className="text-center d-none d-md-table-cell">
-                          Total Cabs
-                        </th>
-                        <th className="text-center d-none d-md-table-cell">
-                          Arrived
-                        </th>
-                        <th className="text-center">On Time</th>
-                        <th className="text-center">Delayed</th>
-                        <th className="text-center d-none d-lg-table-cell">
-                          On Time %
-                        </th>
-                        <th className="text-center d-none d-lg-table-cell">
-                          Delayed %
-                        </th>
-                        <th style={{ width: "40px" }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportData.map((row, index) => (
-                        <React.Fragment key={index}>
-                          <tr>
-                            <td className="text-center">{row.shiftDate}</td>
-                            <td className="text-center d-none d-md-table-cell">
-                              {row.TotalCabs}
-                            </td>
-                            <td className="text-center d-none d-md-table-cell">
-                              {row.Arrived}
-                            </td>
-                            <td className="text-center">{row.OnTime}</td>
-                            <td className="text-center">{row.Delayed}</td>
-                            <td className="text-center d-none d-lg-table-cell">
-                              {row.OnTimePer}
-                            </td>
-                            <td className="text-center d-none d-lg-table-cell">
-                              {row.DelayedPer}
-                            </td>
-                            <td>
-                              <a
-                                href="#!"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  toggleRowExpansion(index);
-                                }}
-                              >
-                                {expandedRows.includes(index) ? (
-                                  <span
-                                    className="material-icons"
-                                    style={{ fontSize: "20px" }}
-                                  >
-                                    remove_circle
-                                  </span>
-                                ) : (
-                                  <span
-                                    className="material-icons"
-                                    style={{ fontSize: "20px" }}
-                                  >
-                                    add_circle
-                                  </span>
-                                )}
-                              </a>
-                            </td>
-                          </tr>
-
-                          {expandedRows.includes(index) && (
-                            <tr>
-                              <td colSpan="8" className="leftStrip p-2">
-                                <div className="expanded-content">
-                                  {row.vendors?.length === 0 ? (
-                                    <p>No vendor records found</p>
-                                  ) : (
-                                    <div className="table-responsive">
-                                      <table className="table table-sm table-bordered mb-0">
-                                        <thead>
-                                          <tr>
-                                            <th>Vendor</th>
-                                            <th>Total Cabs</th>
-                                            <th>Arrived</th>
-                                            <th>On Time</th>
-                                            <th>Delayed</th>
-                                            <th className="d-none d-md-table-cell">
-                                              On Time %
-                                            </th>
-                                            <th className="d-none d-md-table-cell">
-                                              Delayed %
-                                            </th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {row.vendors?.map((vendor, vIdx) => (
-                                            <tr key={vIdx}>
-                                              <td>{vendor.vendorName}</td>
-                                              <td>{vendor.TotalCabs}</td>
-                                              <td>{vendor.Arrived}</td>
-                                              <td>{vendor.OnTime}</td>
-                                              <td>{vendor.Delayed}</td>
-                                              <td className="d-none d-md-table-cell">
-                                                {vendor.OnTimePer}
-                                              </td>
-                                              <td className="d-none d-md-table-cell">
-                                                {vendor.DelayedPer}
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="d-flex justify-content-between align-items-center p-2">
-                    {paginatorLeft}
-                    {paginatorRight}
-                  </div>
-                </div>
-              )}
-
               {!currentReportType && (
-                <div className="p-4 text-center text-muted">
-                  Please select a report type and click "Show Data" to view
-                  results
+                <div
+                  className="d-flex flex-column align-items-center justify-content-center p-5"
+                  style={{ minHeight: "70vh" }}
+                >
+                  <img
+                    src={noReportImage}
+                    alt="No Report Selected"
+                    style={{
+                      maxWidth: "100px",
+                      opacity: 0.5,
+                      marginBottom: "1rem",
+                    }}
+                  />
+                  <p
+                    className="text-muted mb-0"
+                    style={{ fontSize: "0.9rem" }}
+                  >
+                    Please select above parameters to show report data
+                  </p>
+                </div>
+              )}
+
+              {currentReportType && (
+                <div className="p-3">
+                  {renderToolbar()}
+
+                  {currentReportType === "detailed" && (
+                    <div className="table-responsive">
+                      <DataTable
+                        value={filteredData}
+                        ref={dt}
+                        paginator
+                        rows={50}
+                        tableStyle={{ minWidth: "50rem" }}
+                        size="small"
+                        loading={loading}
+                        emptyMessage={
+                          error ? `Error: ${error}` : "No records found"
+                        }
+                        stripedRows
+                        rowsPerPageOptions={[50, 100, 200, 300]}
+                      >
+                        <Column field="Unit" header="Facility" sortable />
+                        <Column field="TripDate" header="Trip Date" sortable />
+                        <Column field="Shift" header="Shift" sortable />
+                        <Column
+                          field="ActShift"
+                          header="Reporting Time"
+                          sortable
+                        />
+                        <Column field="RouteID" header="Route ID" sortable />
+                        <Column
+                          field="PlanVendor"
+                          header="Plan Vendor"
+                          sortable
+                        />
+                        <Column field="Vendor" header="Vendor" sortable />
+                        <Column field="DAY" header="Day" sortable />
+                        <Column field="ZONE" header="Zone" sortable />
+                        <Column field="Area" header="Area" sortable />
+                        <Column
+                          field="DriverCode"
+                          header="Driver Code"
+                          sortable
+                        />
+                        <Column
+                          field="ActualCabNo"
+                          header="Actual Cab No"
+                          sortable
+                        />
+                        <Column
+                          field="ArrivalTime"
+                          header="Arr/Dep Time"
+                          sortable
+                          body={formatArrivalTime}
+                        />
+                        <Column field="TIME" header="Time" sortable />
+                        <Column field="Remark" header="Trip Remark" sortable />
+                        <Column field="NoOfPax" header="No Of Pax" sortable />
+                        <Column
+                          field="OTA_Category"
+                          header="OTA/OTD Category"
+                          sortable
+                        />
+                      </DataTable>
+                    </div>
+                  )}
+
+                  {currentReportType === "shiftwise" && (
+                    <div className="table-responsive">
+                      <table className="table table-sm mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th style={{ width: "40px" }}></th>
+                            <th className="text-center">Shift Date</th>
+                            <th className="text-center d-none d-md-table-cell">
+                              Total Cabs
+                            </th>
+                            <th className="text-center d-none d-md-table-cell">
+                              Arrived
+                            </th>
+                            <th className="text-center">On Time</th>
+                            <th className="text-center">Delayed</th>
+                            <th className="text-center d-none d-lg-table-cell">
+                              On Time %
+                            </th>
+                            <th className="text-center d-none d-lg-table-cell">
+                              Delayed %
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredData.map((row, index) => (
+                            <React.Fragment key={index}>
+                              <tr>
+                                <td>
+                                  <a
+                                    href="#!"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      toggleRowExpansion(index);
+                                    }}
+                                  >
+                                    {expandedRows.includes(index) ? (
+                                      <span
+                                        className="material-icons"
+                                        style={{ fontSize: "20px" }}
+                                      >
+                                        remove_circle
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="material-icons"
+                                        style={{ fontSize: "20px" }}
+                                      >
+                                        add_circle
+                                      </span>
+                                    )}
+                                  </a>
+                                </td>
+                                <td className="text-center">{row.shiftDate}</td>
+                                <td className="text-center d-none d-md-table-cell">
+                                  {row.TotalCabs}
+                                </td>
+                                <td className="text-center d-none d-md-table-cell">
+                                  {row.Arrived}
+                                </td>
+                                <td className="text-center">{row.OnTime}</td>
+                                <td className="text-center">{row.Delayed}</td>
+                                <td className="text-center d-none d-lg-table-cell">
+                                  {row.OnTimePer}
+                                </td>
+                                <td className="text-center d-none d-lg-table-cell">
+                                  {row.DelayedPer}
+                                </td>
+                              </tr>
+
+                              {expandedRows.includes(index) && (
+                                <tr>
+                                  <td colSpan="8" className="leftStrip p-2">
+                                    <div className="expanded-content">
+                                      <div className="table-responsive">
+                                        <table className="table table-sm table-bordered mb-0">
+                                          <thead>
+                                            <tr>
+                                              <th>Shift</th>
+                                              <th>Total Cabs</th>
+                                              <th>Arrived</th>
+                                              <th>On Time</th>
+                                              <th>Delayed</th>
+                                              <th className="d-none d-md-table-cell">
+                                                On Time %
+                                              </th>
+                                              <th className="d-none d-md-table-cell">
+                                                Delayed %
+                                              </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {row.shifts?.map((shift, sIdx) => (
+                                              <tr key={sIdx}>
+                                                <td>{shift.shiftTime}</td>
+                                                <td>{shift.TotalCabs}</td>
+                                                <td>{shift.Arrived}</td>
+                                                <td>{shift.OnTime}</td>
+                                                <td>{shift.Delayed}</td>
+                                                <td className="d-none d-md-table-cell">
+                                                  {shift.OnTimePer}
+                                                </td>
+                                                <td className="d-none d-md-table-cell">
+                                                  {shift.DelayedPer}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {currentReportType === "vendorwise" && (
+                    <div className="table-responsive">
+                      <table className="table table-sm mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th style={{ width: "40px" }}></th>
+                            <th className="text-center">Shift Date</th>
+                            <th className="text-center d-none d-md-table-cell">
+                              Total Cabs
+                            </th>
+                            <th className="text-center d-none d-md-table-cell">
+                              Arrived
+                            </th>
+                            <th className="text-center">On Time</th>
+                            <th className="text-center">Delayed</th>
+                            <th className="text-center d-none d-lg-table-cell">
+                              On Time %
+                            </th>
+                            <th className="text-center d-none d-lg-table-cell">
+                              Delayed %
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredData.map((row, index) => (
+                            <React.Fragment key={index}>
+                              <tr>
+                                <td>
+                                  <a
+                                    href="#!"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      toggleRowExpansion(index);
+                                    }}
+                                  >
+                                    {expandedRows.includes(index) ? (
+                                      <span
+                                        className="material-icons"
+                                        style={{ fontSize: "20px" }}
+                                      >
+                                        remove_circle
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="material-icons"
+                                        style={{ fontSize: "20px" }}
+                                      >
+                                        add_circle
+                                      </span>
+                                    )}
+                                  </a>
+                                </td>
+                                <td className="text-center">{row.shiftDate}</td>
+                                <td className="text-center d-none d-md-table-cell">
+                                  {row.TotalCabs}
+                                </td>
+                                <td className="text-center d-none d-md-table-cell">
+                                  {row.Arrived}
+                                </td>
+                                <td className="text-center">{row.OnTime}</td>
+                                <td className="text-center">{row.Delayed}</td>
+                                <td className="text-center d-none d-lg-table-cell">
+                                  {row.OnTimePer}
+                                </td>
+                                <td className="text-center d-none d-lg-table-cell">
+                                  {row.DelayedPer}
+                                </td>
+                              </tr>
+
+                              {expandedRows.includes(index) && (
+                                <tr>
+                                  <td colSpan="8" className="leftStrip p-2">
+                                    <div className="expanded-content">
+                                      {row.vendors?.length === 0 ? (
+                                        <p>No vendor records found</p>
+                                      ) : (
+                                        <div className="table-responsive">
+                                          <table className="table table-sm table-bordered mb-0">
+                                            <thead>
+                                              <tr>
+                                                <th>Vendor</th>
+                                                <th>Total Cabs</th>
+                                                <th>Arrived</th>
+                                                <th>On Time</th>
+                                                <th>Delayed</th>
+                                                <th className="d-none d-md-table-cell">
+                                                  On Time %
+                                                </th>
+                                                <th className="d-none d-md-table-cell">
+                                                  Delayed %
+                                                </th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {row.vendors?.map(
+                                                (vendor, vIdx) => (
+                                                  <tr key={vIdx}>
+                                                    <td>
+                                                      {vendor.Vendor ||
+                                                        vendor.vendorName}
+                                                    </td>
+                                                    <td>{vendor.TotalCabs}</td>
+                                                    <td>{vendor.Arrived}</td>
+                                                    <td>{vendor.OnTime}</td>
+                                                    <td>{vendor.Delayed}</td>
+                                                    <td className="d-none d-md-table-cell">
+                                                      {vendor.OnTimePer}
+                                                    </td>
+                                                    <td className="d-none d-md-table-cell">
+                                                      {vendor.DelayedPer}
+                                                    </td>
+                                                  </tr>
+                                                )
+                                              )}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
