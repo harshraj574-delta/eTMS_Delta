@@ -13,6 +13,7 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
+import MasterSidebar from "./Master/MasterSidebar";
 
 const ProcessMaster = () => {
   const [processes, setProcesses] = useState([]);
@@ -270,23 +271,28 @@ const ProcessMaster = () => {
       </div>
 
       {/* Add Process Sidebar */}
-      <div
-        className={`offcanvas offcanvas-end sidebar-responsive${showAddProcessSidebar ? ' show' : ''}`}
-        tabIndex="-1"
-        id="addProcessSidebar"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
+      <MasterSidebar
+        title="Add New Process"
+        show={showAddProcessSidebar}
+        onClose={() => setShowAddProcessSidebar(false)}
+        className="sidebar-responsive"
+        footer={
+          <div className="offcanvas-footer">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => setShowAddProcessSidebar(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-success btn-sm" form="addProcessForm">
+              Save
+            </button>
+          </div>
+        }
       >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal mb-0">Add New Process</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowAddProcessSidebar(false)}
-          ></button>
-        </div>
-        <form onSubmit={handleAddProcess}>
-          <div className="offcanvas-body p-3 p-sm-4">
+        <form id="addProcessForm" onSubmit={handleAddProcess}>
+          <div className="p-3 p-sm-4">
             <div className="mb-3">
               <label htmlFor="processName" className="form-label">
                 Process Name <span className="text-danger">*</span>
@@ -301,40 +307,33 @@ const ProcessMaster = () => {
               />
             </div>
           </div>
+        </form>
+      </MasterSidebar>
+
+      {/* Edit Process Sidebar */}
+      <MasterSidebar
+        title="Edit Process"
+        show={showEditProcessSidebar}
+        onClose={() => setShowEditProcessSidebar(false)}
+        className="sidebar-responsive"
+        footer={
           <div className="offcanvas-footer">
             <button
               type="button"
               className="btn btn-outline-secondary btn-sm"
-              onClick={() => setShowAddProcessSidebar(false)}
+              onClick={() => setShowEditProcessSidebar(false)}
             >
               Cancel
             </button>
-            <button type="submit" className="btn btn-success btn-sm">
-              Save
+            <button type="submit" className="btn btn-success btn-sm" form="editProcessForm">
+              Update
             </button>
           </div>
-        </form>
-      </div>
-
-      {/* Edit Process Sidebar */}
-      <div
-        className={`offcanvas offcanvas-end sidebar-responsive${showEditProcessSidebar ? ' show' : ''}`}
-        tabIndex="-1"
-        id="editProcessSidebar"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
+        }
       >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal mb-0">Edit Process</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowEditProcessSidebar(false)}
-          ></button>
-        </div>
         {editingProcess && (
-          <form onSubmit={handleUpdateProcess}>
-            <div className="offcanvas-body p-3 p-sm-4">
+          <form id="editProcessForm" onSubmit={handleUpdateProcess}>
+            <div className="p-3 p-sm-4">
               <div className="mb-3">
                 <label htmlFor="editProcessName" className="form-label">
                   Process Name <span className="text-danger">*</span>
@@ -354,43 +353,18 @@ const ProcessMaster = () => {
                 />
               </div>
             </div>
-            <div className="offcanvas-footer">
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => setShowEditProcessSidebar(false)}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-success btn-sm">
-                Update
-              </button>
-            </div>
           </form>
         )}
-      </div>
+      </MasterSidebar>
 
       {/* Sub-Processes Sidebar */}
-      <div
-        className={`offcanvas offcanvas-end sidebar-responsive${showSubProcessesSidebar ? ' show' : ''}`}
-        tabIndex="-1"
-        id="subProcessesSidebar"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
+      <MasterSidebar
+        title={selectedProcess?.name}
+        show={showSubProcessesSidebar}
+        onClose={() => setShowSubProcessesSidebar(false)}
+        className="sidebar-responsive"
+        bodyClassName="p-2 p-sm-3"
       >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <div>
-            <h5 className="subtitle fw-normal mb-1">
-              {selectedProcess?.name}
-            </h5>
-          </div>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowSubProcessesSidebar(false)}
-          ></button>
-        </div>
-        <div className="offcanvas-body p-2 p-sm-3">
           <button
             className="btn btn-primary mb-3 w-100 w-sm-auto d-flex align-items-center justify-content-center gap-2"
             onClick={() => {
@@ -429,27 +403,34 @@ const ProcessMaster = () => {
               />
             </DataTable>
           </div>
-        </div>
-      </div>
+      </MasterSidebar>
 
       {/* Add Sub-Process Sidebar */}
-      <div
-        className={`offcanvas offcanvas-end sidebar-responsive${showAddSubProcessSidebar ? ' show' : ''}`}
-        tabIndex="-1"
-        id="addSubProcessSidebar"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
+      <MasterSidebar
+        title="Add New Sub-Process"
+        show={showAddSubProcessSidebar}
+        onClose={() => setShowAddSubProcessSidebar(false)}
+        className="sidebar-responsive"
+        footer={
+          <div className="offcanvas-footer">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => {
+                setShowAddSubProcessSidebar(false);
+                setNewSubProcessName('');
+              }}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-success btn-sm" form="addSubProcessForm">
+              Save
+            </button>
+          </div>
+        }
       >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal mb-0">Add New Sub-Process</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowAddSubProcessSidebar(false)}
-          ></button>
-        </div>
-        <form onSubmit={handleAddSubProcess}>
-          <div className="offcanvas-body p-3 p-sm-4">
+        <form id="addSubProcessForm" onSubmit={handleAddSubProcess}>
+          <div className="p-3 p-sm-4">
             <div className="mb-3">
               <label className="form-label">Parent Process</label>
               <InputText
@@ -472,43 +453,33 @@ const ProcessMaster = () => {
               />
             </div>
           </div>
+        </form>
+      </MasterSidebar>
+
+      {/* Edit Sub-Process Sidebar */}
+      <MasterSidebar
+        title="Edit Sub-Process"
+        show={showEditSubProcessSidebar}
+        onClose={() => setShowEditSubProcessSidebar(false)}
+        className="sidebar-responsive"
+        footer={
           <div className="offcanvas-footer">
             <button
               type="button"
               className="btn btn-outline-secondary btn-sm"
-              onClick={() => {
-                setShowAddSubProcessSidebar(false);
-                setNewSubProcessName('');
-              }}
+              onClick={() => setShowEditSubProcessSidebar(false)}
             >
               Cancel
             </button>
-            <button type="submit" className="btn btn-success btn-sm">
-              Save
+            <button type="submit" className="btn btn-success btn-sm" form="editSubProcessForm">
+              Update
             </button>
           </div>
-        </form>
-      </div>
-
-      {/* Edit Sub-Process Sidebar */}
-      <div
-        className={`offcanvas offcanvas-end sidebar-responsive${showEditSubProcessSidebar ? ' show' : ''}`}
-        tabIndex="-1"
-        id="editSubProcessSidebar"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
+        }
       >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal mb-0">Edit Sub-Process</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowEditSubProcessSidebar(false)}
-          ></button>
-        </div>
         {editingSubProcess && (
-          <form onSubmit={handleUpdateSubProcess}>
-            <div className="offcanvas-body p-3 p-sm-4">
+          <form id="editSubProcessForm" onSubmit={handleUpdateSubProcess}>
+            <div className="p-3 p-sm-4">
               <div className="mb-3">
                 <label className="form-label">Parent Process</label>
                 <InputText
@@ -536,40 +507,12 @@ const ProcessMaster = () => {
                 />
               </div>
             </div>
-            <div className="offcanvas-footer">
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => setShowEditSubProcessSidebar(false)}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-success btn-sm">
-                Update
-              </button>
-            </div>
           </form>
         )}
-      </div>
+      </MasterSidebar>
 
-      {/* Single Backdrop for all sidebars */}
-      {anySidebarOpen && (
-        <div className="offcanvas-backdrop show" onClick={closeAllSidebars}></div>
-      )}
 
       <style>{`
-        /* Offcanvas Transition - KEY FIX */
-        .offcanvas {
-          visibility: hidden;
-          transform: translateX(100%);
-          transition: transform 0.3s ease-in-out, visibility 0.3s ease-in-out;
-        }
-
-        .offcanvas.show {
-          visibility: visible;
-          transform: translateX(0);
-        }
-
         /* Fix dropdown overflow in offcanvas */
         .sidebar-responsive .offcanvas-body {
           overflow: visible !important;
@@ -592,7 +535,6 @@ const ProcessMaster = () => {
         /* Responsive Sidebar */
         .sidebar-responsive {
           width: 35% !important;
-          border: none !important;
         }
 
         @media (max-width: 992px) {
@@ -916,78 +858,7 @@ const ProcessMaster = () => {
         @media (max-width: 576px) {
           .btn-sm {
             padding: 0.35rem 0.6rem !important;
-            font-size: 0.8rem !important;
             height: 36px;
-          }
-        }
-
-        /* Typography Responsive */
-        .card-title {
-          font-size: 1.15rem;
-        }
-
-        @media (max-width: 768px) {
-          .card-title {
-            font-size: 1.05rem;
-          }
-        }
-
-        @media (max-width: 576px) {
-          .card-title {
-            font-size: 0.95rem;
-          }
-        }
-
-        /* Pagination Responsive */
-        .p-paginator {
-          flex-wrap: wrap;
-          padding: 0.6rem !important;
-          gap: 0.3rem;
-        }
-
-        .p-paginator .p-paginator-left-content,
-        .p-paginator .p-paginator-right-content {
-          font-size: 0.85rem;
-        }
-
-        @media (max-width: 576px) {
-          .p-paginator {
-            gap: 0.2rem !important;
-            padding: 0.45rem !important;
-            gap: 0.2rem !important;
-          }
-
-          .p-paginator-left-content,
-          .p-paginator-right-content {
-            font-size: 0.8rem !important;
-          }
-        }
-
-        /* Input Responsive */
-        .p-inputtext {
-          padding: 0.5rem 0.75rem !important;
-          font-size: 1rem;
-          width: 100%;
-        }
-
-        @media (max-width: 576px) {
-          .p-inputtext {
-            padding: 0.4rem 0.6rem !important;
-            font-size: 0.95rem;
-          }
-        }
-
-        /* Tooltip Responsive */
-        @media (max-width: 576px) {
-          .p-tooltip {
-            display: none !important;
-          }
-        }
-
-        /* Flexbox Utilities */
-        @media (max-width: 576px) {
-          .gap-1 {
-            gap: 0.5rem !important;
           }
 
           .gap-2 {
@@ -1027,21 +898,6 @@ const ProcessMaster = () => {
           border-color: #4338ca !important;
           color: white !important;
           box-shadow: none !important;
-        }
-
-        /* Backdrop */
-        .offcanvas-backdrop {
-          position: fixed;
-          top: 0;
-          left: 0;
-          z-index: 1040;
-          width: 100vw;
-          height: 100vh;
-          background-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .offcanvas-backdrop.show {
-          opacity: 1;
         }
       `}</style>
     </div>

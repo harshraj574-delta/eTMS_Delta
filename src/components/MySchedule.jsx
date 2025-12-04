@@ -9,6 +9,7 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import { Offcanvas } from "bootstrap";
+import { ToastContainer } from "react-toastify";
 
 const formatDateTime = (dateStr, timeStr) => {
   if (!dateStr || !timeStr || timeStr === 'null' || timeStr.trim().toUpperCase() === 'N/A') {
@@ -1639,6 +1640,7 @@ const handleLogoutFacilityChange = (e) => {
       )}
       <Header pageTitle="My Schedule" showNewButton={true} onNewButtonClick={handleNewButtonClick} />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
 
       {/* Middle Section */}
       <div className="middle">

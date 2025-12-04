@@ -9,7 +9,7 @@ import { toastService } from '../../services/toastService';
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from 'primereact/button';
-import { Sidebar as PrimeSidebar } from 'primereact/sidebar';
+import MasterSidebar from "../Master/MasterSidebar";
 
 const Location = () => {
   const [locationData, setLocationData] = useState([]);
@@ -30,7 +30,6 @@ const Location = () => {
       const locationData = await apiService.SelectLocation({
         Userid: sessionManager.getUserSession().Userid,
       });
-     // console.log("Location Data:", locationData); // Add this line to log the location data t
       setLocationData(locationData);
     } catch (error) {
       console.error("Error fetching locations:", error);
@@ -55,7 +54,7 @@ const Location = () => {
 
       if (apiresponse[0].result === 1) {
         toastService.success('Data Saved Successfully!!');
-        setAddLocation(false); // Close the sidebar after successful insertion
+        setAddLocation(false);
         setNewLocation('');
         await fetchLocationData();
       } else {
@@ -85,6 +84,7 @@ const Location = () => {
       if (response[0].result === 1) {
         toastService.success('Location Updated Successfully!!');
         await fetchLocationData();
+        setEditLocation(false);
       } else {
         toastService.warn('Location Name Already Exists!!');
       }
@@ -98,7 +98,7 @@ const Location = () => {
 
   return (
     <div className="container-fluid p-0">
-      <Header pageTitle="Location" showNewButton={true} onNewButtonClick={setAddLocation} />
+      <Header pageTitle="Location" showNewButton={true} onNewButtonClick={() => setAddLocation(true)} />
       <Sidebar />
 
       <div className="middle">
@@ -108,39 +108,7 @@ const Location = () => {
           </div>
           <div className="col-lg-12">
             <div className="card_tb">
-              {/* <table className="table" id="tbLocation">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Location Name</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {locationData.map((location) => (
-                    <tr key={location.Id}>
-                      <td>{location.Id}</td>
-                      <td>
-                        <a
-                          href="#!"
-                          className="btn-text"
-                          data-bs-toggle="offcanvas"
-                          data-bs-target="#LocationEdit"
-                          aria-controls="offcanvasRight"
-                          onClick={() => setSelectedLocation({
-                            locationName: location.locationName,
-                            Id: location.Id
-                          })}
-                        >
-                          <span className="ms-3">{location.locationName}</span>
-                        </a>
-                      </td>
-                      
-                    </tr>
-                  ))}
-                </tbody>
-              </table> */}
-
-              <DataTable value={locationData}> 
+              <DataTable value={locationData} paginator rows={10} rowsPerPageOptions={[5, 10, 25]}> 
                   <Column field="Id" header="ID"></Column>
                   <Column header="Location Name" body={(location) => (
                     <a
@@ -163,26 +131,21 @@ const Location = () => {
         </div>
       </div>
 
-      {/* Add Location Sidebar */}
-      <PrimeSidebar
-                visible={addLocation}
-                position="right"
-                onHide={() => setAddLocation(false)}
-                width="50%"
-                showCloseIcon={false}
-                dismissable={false}
-                style={{
-                    width: '25%',
-                }}
-            >
-                <div className="d-flex justify-content-between align-items-center sidebarTitle p-0">
-                    <h6 className="sidebarTitle">Add New Location</h6>
-                    <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setAddLocation(false)} />
-                </div>
-                <div className="sidebarBody">
-                  <div className="row">
-                      <div className="col-12 mb-3">
-                      <div className="mb-3">
+      
+      <MasterSidebar
+        title="Add New Location"
+        show={addLocation}
+        onClose={() => setAddLocation(false)}
+        className="sidebar-responsive"
+        footer={
+          <div className="offcanvas-footer">
+            <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setAddLocation(false)} />
+            <Button label="Save" className="btn btn-success ms-3" onClick={handleSaveLocation} />
+          </div>
+        }
+      >
+        <div className="p-3">
+          <div className="mb-3">
             <label htmlFor="locationName" className="form-label">Location Name</label>
             <input
               type="text"
@@ -193,66 +156,24 @@ const Location = () => {
               placeholder="Enter location name"
             />
           </div>
-                      </div>
-                  </div>
-                  {/* Fixed button container at bottom of sidebar */}
-                  <div className="sidebar-fixed-bottom position-absolute pe-3">
-                                    <div className="d-flex gap-3 justify-content-end me-3">
-                                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setAddLocation(false)} />
-                                      <Button label="Update" className="btn btn-success" onClick={() => {
-                                        handleSaveLocation();
-                                        //setAddLocation(false);
-                                      }} />
-                                    </div>
-                                </div>
-                </div>
-            </PrimeSidebar>
-
-      {/* Add Location Offcanvas */}
-      {/* <div
-        tabIndex="-1"
-        className="offcanvas offcanvas-end"
-        id="raise_Feedback"
-        aria-labelledby="offcanvasRightLabel">
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal">Add New Location</h5>
-          <button type="button" className="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-        <div className="offcanvas-body">
-          
-        </div>
-        <div className="offcanvas-footer">
-          <button className="btn btn-outline-secondary" data-bs-dismiss="offcanvas">
-            Cancel
-          </button>
-          <button
-            className="btn btn-success mx-3"
-            onClick={handleSaveLocation}
-            data-bs-dismiss="offcanvas">
-            Save
-          </button>
-        </div>
-      </div> */}
+      </MasterSidebar>
 
-
-      {/* Edit Location Sidebar */}
-      <PrimeSidebar
-                visible={editLocation}
-                position="right"
-                onHide={() => setEditLocation(false)}
-                width="50%"
-                showCloseIcon={false}
-                dismissable={false}
-                style={{
-                    width: '25%',
-                }}
-            >
-              <div className="d-flex justify-content-between align-items-center sidebarTitle p-0">
-                    <h6 className="sidebarTitle">{selectedLocation?.locationName || 'Edit Location'}</h6>
-                    <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setEditLocation(false)} />
-                </div>
-                <div className="sidebarBody">
-                {selectedLocation && (
+      
+      <MasterSidebar
+        title={selectedLocation?.locationName || 'Edit Location'}
+        show={editLocation}
+        onClose={() => setEditLocation(false)}
+        className="sidebar-responsive"
+        footer={
+          <div className="offcanvas-footer">
+            <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setEditLocation(false)} />
+            <Button label="Update" className="btn btn-success ms-3" onClick={handleEditLocation} />
+          </div>
+        }
+      >
+        <div className="p-3">
+          {selectedLocation && (
             <div className="mb-3">
               <label htmlFor="editLocationName" className="form-label">Location Name</label>
               <input
@@ -263,53 +184,53 @@ const Location = () => {
                 onChange={(e) => setSelectedLocation({ ...selectedLocation, locationName: e.target.value })}
               />
             </div>
-            
           )}
-          {/* Fixed button container at bottom of sidebar */}
-          <div className="sidebar-fixed-bottom position-absolute pe-3">
-                                    <div className="d-flex gap-3 justify-content-end me-3">
-                                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setEditLocation(false)} />
-                                      <Button label="Update" className="btn btn-success" onClick={() => {
-                                        handleEditLocation();
-                                        setEditLocation(false);
-                                      }} />
-                                    </div>
-                                </div>
-                </div>
+        </div>
+      </MasterSidebar>
 
-            </PrimeSidebar>
+      <style>{`
+        /* Responsive Sidebar */
+        .sidebar-responsive {
+          width: 35% !important;
+        }
 
-      {/* Edit Location Offcanvas */}
-      {/* <div
-        className="offcanvas offcanvas-end"
-        tabIndex="-1"
-        id="LocationEdit"
-        aria-labelledby="offcanvasRightLabel"
-      >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal">Edit Location</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            data-bs-dismiss="offcanvas"
-            aria-label="Close"
-          ></button>
-        </div>
-        <div className="offcanvas-body">
-          
-        </div>
-        <div className="offcanvas-footer">
-          <button className="btn btn-outline-secondary" data-bs-dismiss="offcanvas">
-            Cancel
-          </button>
-          <button
-            className="btn btn-success mx-3"
-            onClick={handleEditLocation}
-            data-bs-dismiss="offcanvas">
-            Save
-          </button>
-        </div>
-      </div> */}
+        @media (max-width: 992px) {
+          .sidebar-responsive {
+            width: 45% !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .sidebar-responsive {
+            width: 60% !important;
+          }
+        }
+
+        @media (max-width: 576px) {
+          .sidebar-responsive {
+            width: 85% !important;
+          }
+        }
+
+        /* Offcanvas Footer */
+        .offcanvas-footer {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          padding: 1rem;
+          background-color: #f9fafb;
+          border-top: 1px solid #e5e7eb;
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          height: auto;
+        }
+
+        .offcanvas-body {
+          padding-bottom: 5.5rem;
+        }
+      `}</style>
     </div>
   );
 };

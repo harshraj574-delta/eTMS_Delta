@@ -10,6 +10,8 @@ import { Column } from "primereact/column";
 import RepNoShowService from "../services/compliance/RepNoShowService";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
+import TableToolbar from "./common/TableToolbar";
+import noReportImage from "../assets/no_report.png";
 
 const RepNoShow = () => {
   const [facilities, setFacilities] = useState([]);
@@ -20,9 +22,13 @@ const RepNoShow = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
 
   const UserID = sessionStorage.getItem("ID");
   const dt = useRef(null);
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
 
   useEffect(() => {
     fetchFacilities();
@@ -66,6 +72,8 @@ const RepNoShow = () => {
     setIsSubmitting(true);
     setLoading(true);
     setError(null);
+    setGlobalFilter("");
+    setHasSearched(true);
 
     try {
       const params = {
@@ -134,28 +142,6 @@ const RepNoShow = () => {
     }
   };
 
-  const paginatorLeft = (
-    <Button
-      type="button"
-      icon="pi pi-refresh"
-      text
-      onClick={() => handleSearch()}
-      tooltip="Refresh"
-      tooltipOptions={{ position: "top" }}
-    />
-  );
-
-  const paginatorRight = (
-    <Button
-      type="button"
-      icon="pi pi-download"
-      text
-      onClick={exportExcel}
-      tooltip="Export"
-      tooltipOptions={{ position: "top" }}
-    />
-  );
-
   return (
     <>
       <Loader isVisible={isSubmitting} fullScreen={true} />
@@ -213,9 +199,22 @@ const RepNoShow = () => {
                   />
                 </div>
                 <div className="col-12 col-sm-6 col-md-3 col-lg-2 d-flex align-items-end">
+                  <style>
+                    {`
+                      .run-report-btn {
+                        background-color: #1C1D20 !important;
+                        border-color: #1C1D20 !important;
+                        transition: background-color 0.3s, border-color 0.3s;
+                      }
+                      .run-report-btn:hover {
+                        background-color: #0d6efd !important;
+                        border-color: #0d6efd !important;
+                      }
+                    `}
+                  </style>
                   <Button
                     label="Run Report"
-                    className="btn btn-primary w-100"
+                    className="btn btn-primary w-100 run-report-btn"
                     onClick={handleSearch}
                     disabled={isSubmitting}
                   />
@@ -228,43 +227,87 @@ const RepNoShow = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              <div className="table-responsive">
-                <DataTable
-                  value={reportData}
-                  ref={dt}
-                  paginator
-                  rows={50}
-                  tableStyle={{ minWidth: "50rem" }}
-                  size="small"
-                  loading={loading}
-                  emptyMessage={error ? `Error: ${error}` : "No records found"}
-                  stripedRows
-                  paginatorLeft={paginatorLeft}
-                  paginatorRight={paginatorRight}
-                  rowsPerPageOptions={[50, 100, 200, 300]}
+              {!hasSearched && (
+                <div
+                  className="d-flex flex-column align-items-center justify-content-center p-5"
+                  style={{ minHeight: "70vh" }}
                 >
-                  <Column field="facilityName" header="Facility" sortable />
-                  <Column field="empCode" header="Emp ID" sortable />
-                  <Column field="empName" header="Emp Name" sortable />
-                  <Column field="processName" header="Project" sortable />
-                  <Column field="Manager" header="Manager" sortable />
-                  <Column
-                    field="RoutedInstances"
-                    header="Routes Instances"
-                    sortable
+                  <img
+                    src={noReportImage}
+                    alt="No Report Selected"
+                    style={{
+                      maxWidth: "100px",
+                      opacity: 0.5,
+                      marginBottom: "1rem",
+                    }}
                   />
-                  <Column
-                    field="NoShowInstances"
-                    header="No Show Instances"
-                    sortable
-                  />
-                </DataTable>
-              </div>
+                  <p
+                    className="text-muted mb-0"
+                    style={{ fontSize: "0.9rem" }}
+                  >
+                    Please select above parameters to show report data
+                  </p>
+                </div>
+              )}
 
-              {!reportData.length && !loading && (
-                <div className="p-4 text-center text-muted">
-                  Please select a facility and click "Run Report" to view
-                  results
+              {hasSearched && (
+                <div className="p-3">
+                  <TableToolbar
+                    search={globalFilter}
+                    onSearch={(e) => setGlobalFilter(e.target.value)}
+                    onRefresh={handleSearch}
+                    onExport={exportExcel}
+                    showFilter={true}
+                    overlayRef={op}
+                    filterButtonRef={filterButtonRef}
+                  >
+                    <div className="p-4 text-center">
+                      <i
+                        className="pi pi-info-circle text-muted mb-3 d-block"
+                        style={{ fontSize: "2rem" }}
+                      />
+                      <p
+                        className="m-0 text-muted"
+                        style={{ fontSize: "0.875rem" }}
+                      >
+                        No advanced filters available.
+                      </p>
+                    </div>
+                  </TableToolbar>
+
+                  <div className="table-responsive">
+                    <DataTable
+                      value={reportData}
+                      ref={dt}
+                      paginator
+                      rows={50}
+                      tableStyle={{ minWidth: "50rem" }}
+                      size="small"
+                      loading={loading}
+                      emptyMessage={
+                        error ? `Error: ${error}` : "No records found"
+                      }
+                      stripedRows
+                      rowsPerPageOptions={[50, 100, 200, 300]}
+                      globalFilter={globalFilter}
+                    >
+                      <Column field="facilityName" header="Facility" sortable />
+                      <Column field="empCode" header="Emp ID" sortable />
+                      <Column field="empName" header="Emp Name" sortable />
+                      <Column field="processName" header="Project" sortable />
+                      <Column field="Manager" header="Manager" sortable />
+                      <Column
+                        field="RoutedInstances"
+                        header="Routes Instances"
+                        sortable
+                      />
+                      <Column
+                        field="NoShowInstances"
+                        header="No Show Instances"
+                        sortable
+                      />
+                    </DataTable>
+                  </div>
                 </div>
               )}
             </div>

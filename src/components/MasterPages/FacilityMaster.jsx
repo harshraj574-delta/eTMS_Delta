@@ -474,6 +474,7 @@ const FacilityMaster = () => {
                 <table className="table table-sm mb-0" id="tbFacility">
                   <thead className="table-light">
                     <tr>
+                      <th style={{ width: "40px" }}></th>
                       <th className="text-center" style={{ minWidth: "90px" }}>
                         Facility Name
                       </th>
@@ -513,13 +514,41 @@ const FacilityMaster = () => {
                       >
                         Site Lead Email
                       </th>
-                      <th style={{ width: "40px" }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {facilityData.map((facility, index) => (
                       <React.Fragment key={index}>
                         <tr>
+                          <td>
+                            <a
+                              href="#!"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                const next = [...expandedRows];
+                                const rowIndex = next.indexOf(index);
+                                if (rowIndex > -1) next.splice(rowIndex, 1);
+                                else next.push(index);
+                                setExpandedRows(next);
+                              }}
+                            >
+                              {expandedRows.includes(index) ? (
+                                <span
+                                  className="material-icons"
+                                  style={{ fontSize: "20px" }}
+                                >
+                                  remove_circle
+                                </span>
+                              ) : (
+                                <span
+                                  className="material-icons"
+                                  style={{ fontSize: "20px" }}
+                                >
+                                  add_circle
+                                </span>
+                              )}
+                            </a>
+                          </td>
                           <td className="text-center">
                             <a
                               href="#!"
@@ -576,36 +605,6 @@ const FacilityMaster = () => {
                           </td>
                           <td className="text-center d-none d-xl-table-cell">
                             {facility.LocLeadMail}
-                          </td>
-
-                          <td>
-                            <a
-                              href="#!"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                const next = [...expandedRows];
-                                const rowIndex = next.indexOf(index);
-                                if (rowIndex > -1) next.splice(rowIndex, 1);
-                                else next.push(index);
-                                setExpandedRows(next);
-                              }}
-                            >
-                              {expandedRows.includes(index) ? (
-                                <span
-                                  className="material-icons"
-                                  style={{ fontSize: "20px" }}
-                                >
-                                  remove_circle
-                                </span>
-                              ) : (
-                                <span
-                                  className="material-icons"
-                                  style={{ fontSize: "20px" }}
-                                >
-                                  add_circle
-                                </span>
-                              )}
-                            </a>
                           </td>
                         </tr>
 
@@ -676,8 +675,9 @@ const FacilityMaster = () => {
         onClose={() => setShowAdd(false)}
         title="Add New Facility"
         width={offcanvasWidth}
-        backdropOpacity={0.7}
-        backdropBlur="50px"
+        backdropOpacity={0.5}
+        headerBgColor = "bg-secondary"
+        backdropBlur="10px"
         footer={
           <div className="offcanvas-footer">
             <button

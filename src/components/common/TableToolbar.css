@@ -1,0 +1,119 @@
+/* Filter trigger button (small, pill, smooth) */
+.ota-filter-trigger.p-button {
+    border-radius: 999px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    color: #111827;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.15rem 0.75rem;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    box-shadow: none;
+}
+
+.ota-filter-trigger .p-button-icon {
+    font-size: 0.8rem;
+}
+
+.ota-filter-trigger .p-button-label {
+    padding: 0;
+}
+
+.ota-filter-trigger:hover {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #111827;
+}
+
+.ota-filter-trigger:focus-visible {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
+}
+
+/* Overlay panel styling (compact, sharp) */
+.ota-filter-overlay {
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+    border: 1px solid #e5e7eb;
+}
+
+.ota-filter-overlay .p-overlaypanel-content {
+    padding: 0;
+}
+
+.ota-filter-header {
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(90deg, #f9fafb 0%, #ffffff 60%);
+}
+
+.ota-filter-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.ota-filter-subtitle {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.ota-filter-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: #e0edff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #2563eb;
+    font-size: 0.85rem;
+}
+
+.ota-filter-body {
+    padding: 0.6rem 0.9rem 0.8rem;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.ota-filter-footer {
+    padding: 0.5rem 0.9rem 0.75rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.ota-filter-field {
+    margin-bottom: 0.55rem;
+}
+
+.ota-filter-label {
+    display: block;
+    margin-bottom: 0.18rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+}
+
+.ota-filter-overlay .p-multiselect {
+    width: 100%;
+}
+
+.ota-filter-overlay .p-inputtext,
+.ota-filter-overlay .p-multiselect-label {
+    font-size: 0.8rem;
+    padding-top: 0.32rem;
+    padding-bottom: 0.32rem;
+}
+
+.ota-filter-overlay .p-overlaypanel-close {
+    top: 0.6rem;
+    right: 0.6rem;
+}
+
+.ota-filter-overlay .p-overlaypanel-close .p-overlaypanel-close-icon {
+    font-size: 0.8rem;
+}

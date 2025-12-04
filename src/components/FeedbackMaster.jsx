@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
+import MasterSidebar from "./Master/MasterSidebar";
 import Loader from "./common/Loader";
 import FeedbackMasterService from '../services/compliance/FeedbackMasterService';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import sessionManager from '../utils/SessionManager';
 
+import { IconButton } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -152,10 +155,11 @@ const FeedbackMaster = () => {
   };
 
   const actionBodyTemplate = (rowData) => (
-    <div className="process-action-buttons d-flex gap-1 justify-content-center flex-wrap">
-      <Button
-        icon="pi pi-pencil"
-        className="p-button-rounded p-button-warning p-button-sm action-btn"
+    <div className="process-action-buttons d-flex gap-1 justify-content-start flex-wrap">
+      <IconButton
+        sx={{ color: '#1976d2' }}
+        size="small"
+        className="action-btn"
         onClick={() => {
           setEditingComplaint({
             Id: rowData.Id,
@@ -165,9 +169,11 @@ const FeedbackMaster = () => {
           });
           setShowEditComplaintSidebar(true);
         }}
-        tooltip="Edit"
-        tooltipPosition="top"
-      />
+        title="Edit"
+
+      >
+        <EditIcon fontSize="small" />
+      </IconButton>
     </div>
   );
 
@@ -178,13 +184,7 @@ const FeedbackMaster = () => {
     setShowAddComplaintSidebar(true);
   };
 
-  // Close all sidebars
-  const closeAllSidebars = () => {
-    setShowAddComplaintSidebar(false);
-    setShowEditComplaintSidebar(false);
-  };
 
-  const anySidebarOpen = showAddComplaintSidebar || showEditComplaintSidebar;
 
   return (
     <div>
@@ -264,177 +264,164 @@ const FeedbackMaster = () => {
       </div>
 
       {/* Add Complaint Sidebar */}
-      <div
-        className={`offcanvas offcanvas-end sidebar-responsive${showAddComplaintSidebar ? ' show' : ''}`}
-        tabIndex="-1"
+      <MasterSidebar
+        show={showAddComplaintSidebar}
+        onClose={() => setShowAddComplaintSidebar(false)}
+        title="Add New Complaint Type"
+        width="35%"
+        className="sidebar-responsive"
         id="addComplaintSidebar"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
+        backdropOpacity={0.5}
+        backdropBlur="10px"
+        headerBgColor="bg-secondary"
+        headerTextColor="text-white"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary btn-sm",
+            onClick: () => setShowAddComplaintSidebar(false)
+          },
+          {
+            label: "Save",
+            type: "submit",
+            className: "btn btn-success btn-sm",
+            onClick: handleAddComplaint
+          }
+        ]}
       >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal mb-0">Add New Complaint Type</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowAddComplaintSidebar(false)}
-          ></button>
-        </div>
         {categoriesLoaded && (
-          <form onSubmit={handleAddComplaint}>
-            <div className="offcanvas-body p-3 p-sm-4">
-              <div className="mb-3">
-                <label className="form-label">
-                  Category <span className="text-danger">*</span>
-                </label>
-                <Dropdown
-                  value={newCategoryId}
-                  onChange={(e) => setNewCategoryId(e.value)}
-                  options={categoryOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select Category"
-                  className="w-100"
-                />
-              </div>
-              <div className="mb-3">
-                <label htmlFor="complaintName" className="form-label">
-                  Complaint Name <span className="text-danger">*</span>
-                </label>
-                <InputText
-                  id="complaintName"
-                  value={newComplaintName}
-                  onChange={(e) => setNewComplaintName(e.target.value)}
-                  placeholder="Enter complaint name"
-                  className="w-100"
-                  required
-                />
-              </div>
-              <div className="mb-6">
-                <label className="form-label">
-                  Severity <span className="text-danger">*</span>
-                </label>
-                <Dropdown
-                  value={newSeverity}
-                  onChange={(e) => setNewSeverity(e.value)}
-                  options={severityOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select Severity"
-                  className="w-100"
-                />
-              </div>
+          <div className="p-3 p-sm-4">
+            <div className="mb-3">
+              <label className="form-label">
+                Category <span className="text-danger">*</span>
+              </label>
+              <Dropdown
+                value={newCategoryId}
+                onChange={(e) => setNewCategoryId(e.value)}
+                options={categoryOptions}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select Category"
+                className="w-100"
+              />
             </div>
-            <div className="offcanvas-footer">
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => setShowAddComplaintSidebar(false)}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-success btn-sm">
-                Save
-              </button>
+            <div className="mb-3">
+              <label htmlFor="complaintName" className="form-label">
+                Complaint Name <span className="text-danger">*</span>
+              </label>
+              <InputText
+                id="complaintName"
+                value={newComplaintName}
+                onChange={(e) => setNewComplaintName(e.target.value)}
+                placeholder="Enter complaint name"
+                className="w-100"
+                required
+              />
             </div>
-          </form>
+            <div className="mb-6">
+              <label className="form-label">
+                Severity <span className="text-danger">*</span>
+              </label>
+              <Dropdown
+                value={newSeverity}
+                onChange={(e) => setNewSeverity(e.value)}
+                options={severityOptions}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select Severity"
+                className="w-100"
+              />
+            </div>
+          </div>
         )}
-      </div>
+      </MasterSidebar>
 
       {/* Edit Complaint Sidebar */}
-      <div
-        className={`offcanvas offcanvas-end sidebar-responsive${showEditComplaintSidebar ? ' show' : ''}`}
-        tabIndex="-1"
+      <MasterSidebar
+        show={showEditComplaintSidebar}
+        onClose={() => setShowEditComplaintSidebar(false)}
+        title="Edit Complaint Type"
+        width="35%"
+        className="sidebar-responsive"
         id="editComplaintSidebar"
-        data-bs-backdrop="static"
-        data-bs-scroll="true"
+        backdropOpacity={0.5}
+        backdropBlur="10px"
+        headerBgColor="bg-secondary"
+        headerTextColor="text-white"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary btn-sm",
+            onClick: () => setShowEditComplaintSidebar(false)
+          },
+          {
+            label: "Update",
+            type: "submit",
+            className: "btn btn-success btn-sm",
+            onClick: handleUpdateComplaint
+          }
+        ]}
       >
-        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal mb-0">Edit Complaint Type</h5>
-          <button
-            type="button"
-            className="btn-close btn-close-white"
-            onClick={() => setShowEditComplaintSidebar(false)}
-          ></button>
-        </div>
         {editingComplaint && categoriesLoaded && (
-          <form onSubmit={handleUpdateComplaint}>
-            <div className="offcanvas-body p-3 p-sm-4">
-              <div className="mb-3">
-                <label className="form-label">
-                  Category <span className="text-danger">*</span>
-                </label>
-                <Dropdown
-                  value={editingComplaint.categoryId}
-                  onChange={(e) =>
-                    setEditingComplaint({
-                      ...editingComplaint,
-                      categoryId: e.value,
-                    })
-                  }
-                  options={categoryOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select Category"
-                  className="w-100"
-                />
-              </div>
-              <div className="mb-3">
-                <label className="form-label">
-                  Complaint Name <span className="text-danger">*</span>
-                </label>
-                <InputText
-                  value={editingComplaint.CompName}
-                  onChange={(e) =>
-                    setEditingComplaint({
-                      ...editingComplaint,
-                      CompName: e.target.value,
-                    })
-                  }
-                  placeholder="Enter complaint name"
-                  className="w-100"
-                  required
-                />
-              </div>
-              <div className="mb-6">
-                <label className="form-label">
-                  Severity <span className="text-danger">*</span>
-                </label>
-                <Dropdown
-                  value={editingComplaint.severity}
-                  onChange={(e) =>
-                    setEditingComplaint({
-                      ...editingComplaint,
-                      severity: e.value,
-                    })
-                  }
-                  options={severityOptions}
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select Severity"
-                  className="w-100"
-                />
-              </div>
+          <div className="p-3 p-sm-4">
+            <div className="mb-3">
+              <label className="form-label">
+                Category <span className="text-danger">*</span>
+              </label>
+              <Dropdown
+                value={editingComplaint.categoryId}
+                onChange={(e) =>
+                  setEditingComplaint({
+                    ...editingComplaint,
+                    categoryId: e.value,
+                  })
+                }
+                options={categoryOptions}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select Category"
+                className="w-100"
+              />
             </div>
-            <div className="offcanvas-footer">
-              <button
-                type="button"
-                className="btn btn-outline-secondary btn-sm"
-                onClick={() => setShowEditComplaintSidebar(false)}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="btn btn-success btn-sm">
-                Update
-              </button>
+            <div className="mb-3">
+              <label className="form-label">
+                Complaint Name <span className="text-danger">*</span>
+              </label>
+              <InputText
+                value={editingComplaint.CompName}
+                onChange={(e) =>
+                  setEditingComplaint({
+                    ...editingComplaint,
+                    CompName: e.target.value,
+                  })
+                }
+                placeholder="Enter complaint name"
+                className="w-100"
+                required
+              />
             </div>
-          </form>
+            <div className="mb-6">
+              <label className="form-label">
+                Severity <span className="text-danger">*</span>
+              </label>
+              <Dropdown
+                value={editingComplaint.severity}
+                onChange={(e) =>
+                  setEditingComplaint({
+                    ...editingComplaint,
+                    severity: e.value,
+                  })
+                }
+                options={severityOptions}
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select Severity"
+                className="w-100"
+              />
+            </div>
+          </div>
         )}
-      </div>
-
-      {/* Single Backdrop for all sidebars */}
-      {anySidebarOpen && (
-        <div className="offcanvas-backdrop show" onClick={closeAllSidebars}></div>
-      )}
+      </MasterSidebar>
 
       <style>{`
         /* Offcanvas Transition - KEY FIX */
@@ -471,7 +458,7 @@ const FeedbackMaster = () => {
         /* Responsive Sidebar */
         .sidebar-responsive {
           width: 35% !important;
-          border: none !important;
+          // border: none !important;
         }
 
         @media (max-width: 992px) {
@@ -1076,25 +1063,207 @@ const FeedbackMaster = () => {
 
         /* When used inside offcanvas or dialog modals */
         .p-dialog .p-dropdown-panel,
+        .offcanvas-body .p-dropdown,
+        .p-dialog .p-dropdown {
+          padding: 0.5rem 0.75rem !important;
+          font-size: 0.95rem !important;
+          height: 40px !important;
+          width: 100% !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+
+        .offcanvas-body .p-dropdown .p-dropdown-label,
+        .p-dialog .p-dropdown .p-dropdown-label {
+          padding: 0.3rem 0 !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+
+        .offcanvas-body .p-dropdown .p-dropdown-trigger,
+        .p-dialog .p-dropdown .p-dropdown-trigger {
+          width: 2.5rem !important;
+          padding-right: 0.5rem !important;
+        }
+
+        .offcanvas-body .p-dropdown .p-dropdown-trigger .pi,
+        .p-dialog .p-dropdown .p-dropdown-trigger .pi {
+          font-size: 0.9rem !important;
+        }
+
+        @media (max-width: 768px) {
+          .card_tb .p-dropdown {
+            padding: 0.3rem 0.45rem !important;
+            height: 34px !important;
+            font-size: 0.85rem !important;
+          }
+
+          .card_tb .p-dropdown .p-dropdown-trigger {
+            width: 1.8rem !important;
+          }
+
+          .offcanvas-body .p-dropdown,
+          .p-dialog .p-dropdown {
+            padding: 0.45rem 0.65rem !important;
+            height: 38px !important;
+            font-size: 0.9rem !important;
+          }
+        }
+
+        @media (max-width: 576px) {
+          .card_tb .p-dropdown {
+            padding: 0.25rem 0.4rem !important;
+            height: 32px !important;
+            font-size: 0.8rem !important;
+          }
+
+          .card_tb .p-dropdown .p-dropdown-trigger {
+            width: 1.6rem !important;
+            padding-right: 0.3rem !important;
+          }
+
+          .offcanvas-body .p-dropdown,
+          .p-dialog .p-dropdown {
+            padding: 0.4rem 0.6rem !important;
+            height: 36px !important;
+            font-size: 0.85rem !important;
+          }
+
+          .offcanvas-body .p-dropdown .p-dropdown-trigger,
+          .p-dialog .p-dropdown .p-dropdown-trigger {
+            width: 2rem !important;
+            padding-right: 0.4rem !important;
+          }
+        }
+
+        /* Tooltip Responsive */
+        @media (max-width: 576px) {
+          .p-tooltip {
+            display: none !important;
+          }
+        }
+
+        /* Flexbox Utilities */
+        @media (max-width: 576px) {
+          .gap-1 {
+            gap: 0.5rem !important;
+          }
+
+          .gap-2 {
+            gap: 0.75rem !important;
+          }
+
+          .d-flex {
+            flex-direction: column;
+          }
+
+          .d-flex.flex-wrap {
+            flex-direction: row;
+            flex-wrap: wrap;
+          }
+
+          .justify-content-end {
+            justify-content: flex-start;
+          }
+        }
+
+        /* Paginator Dropdown - Compact Style */
+        .p-paginator .p-dropdown {
+          padding: 0.25rem 0.4rem !important;
+          font-size: 0.8rem !important;
+          height: 28px !important;
+          width: auto !important;
+          max-width: 70px !important;
+          min-width: 50px !important;
+          display: flex !important;
+          align-items: center !important;
+          border-radius: 3px !important;
+        }
+
+        .p-paginator .p-dropdown .p-dropdown-label {
+          padding: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          height: 100% !important;
+          font-size: 0.8rem !important;
+          white-space: nowrap !important;
+        }
+
+        .p-paginator .p-dropdown .p-dropdown-trigger {
+          width: 1.5rem !important;
+          padding-right: 0.2rem !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          flex-shrink: 0 !important;
+        }
+
+        .p-paginator .p-dropdown .p-dropdown-trigger .pi {
+          font-size: 0.65rem !important;
+        }
+
+        .p-paginator .p-dropdown .p-dropdown-items {
+          max-height: 150px !important;
+          min-width: 50px !important;
+        }
+
+        @media (max-width: 768px) {
+          .p-paginator .p-dropdown {
+            padding: 0.2rem 0.35rem !important;
+            height: 26px !important;
+            font-size: 0.75rem !important;
+            max-width: 65px !important;
+          }
+
+          .p-paginator .p-dropdown .p-dropdown-trigger {
+            width: 1.4rem !important;
+            padding-right: 0.15rem !important;
+          }
+        }
+
+        @media (max-width: 576px) {
+          .p-paginator .p-dropdown {
+            padding: 0.15rem 0.3rem !important;
+            height: 24px !important;
+            font-size: 0.7rem !important;
+            max-width: 60px !important;
+          }
+
+          .p-paginator .p-dropdown .p-dropdown-trigger {
+            width: 1.3rem !important;
+            padding-right: 0.1rem !important;
+          }
+
+          .p-paginator .p-dropdown .p-dropdown-trigger .pi {
+            font-size: 0.6rem !important;
+          }
+        }
+
+        .offcanvas-body {
+          overflow: visible !important;
+        }
+
+        .p-dropdown-panel {
+          z-index: 1200 !important;
+          position: absolute !important;
+        }
+
+        .offcanvas {
+          overflow: visible !important;
+        }
+
+        .p-dropdown-panel {
+          z-index: 9999 !important;
+        }
+
+        /* When used inside offcanvas or dialog modals */
+        .p-dialog .p-dropdown-panel,
         .offcanvas .p-dropdown-panel {
           z-index: 11000 !important;
           position: fixed !important;
         }
 
-        /* Backdrop */
-        .offcanvas-backdrop {
-          position: fixed;
-          top: 0;
-          left: 0;
-          z-index: 1040;
-          width: 100vw;
-          height: 100vh;
-          background-color: rgba(0, 0, 0, 0.5);
-        }
 
-        .offcanvas-backdrop.show {
-          opacity: 1;
-        }
       `}</style>
     </div>
   );

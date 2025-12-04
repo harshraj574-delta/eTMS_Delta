@@ -12,8 +12,9 @@ import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
 import OTAReportService from "../services/compliance/OTAReportService";
 import { toastService } from "../services/toastService";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
+import TableToolbar from "./common/TableToolbar";
 
 const OTAReport = () => {
   const [facilities, setFacilities] = useState([]);
@@ -47,6 +48,7 @@ const OTAReport = () => {
   const UserID = sessionStorage.getItem("ID");
   const dt = useRef(null);
   const op = useRef(null);
+  const filterButtonRef = useRef(null);
 
   const reportTypes = [
     { label: "Detailed", value: "detailed" },
@@ -65,7 +67,10 @@ const OTAReport = () => {
   }, [selectedFacility]);
 
   useEffect(() => {
-    applyFiltersAndSearch();
+    const timer = setTimeout(() => {
+      applyFiltersAndSearch();
+    }, 300);
+    return () => clearTimeout(timer);
   }, [reportData, filters, globalFilter]);
 
   const fetchFacilities = async () => {
@@ -82,8 +87,8 @@ const OTAReport = () => {
           }))
         : [];
       setFacilities(formattedData);
-    } catch (error) {
-      console.error("Error fetching facilities:", error);
+    } catch (err) {
+      console.error("Error fetching facilities:", err);
       toastService.error("Error fetching facilities");
     }
   };
@@ -102,8 +107,8 @@ const OTAReport = () => {
           }))
         : [];
       setVendors([{ label: "-All Vendors-", value: 0 }, ...formattedData]);
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
+    } catch (err) {
+      console.error("Error fetching vendors:", err);
       toastService.error("Error fetching vendors");
     }
   };
@@ -139,7 +144,7 @@ const OTAReport = () => {
       grouped[date].Delayed += shift.Delayed || 0;
     });
 
-    const result = Object.values(grouped).map((group) => {
+    return Object.values(grouped).map((group) => {
       const onTimePer =
         group.TotalCabs > 0
           ? ((group.OnTime / group.TotalCabs) * 100).toFixed(1)
@@ -155,8 +160,6 @@ const OTAReport = () => {
         DelayedPer: parseFloat(delayedPer),
       };
     });
-
-    return result;
   };
 
   const groupVendorDataByDate = (vendorData) => {
@@ -181,7 +184,7 @@ const OTAReport = () => {
       grouped[date].Delayed += item.Delayed || 0;
     });
 
-    const result = Object.values(grouped).map((group) => {
+    return Object.values(grouped).map((group) => {
       const onTimePer =
         group.TotalCabs > 0
           ? ((group.OnTime / group.TotalCabs) * 100).toFixed(1)
@@ -197,25 +200,20 @@ const OTAReport = () => {
         DelayedPer: parseFloat(delayedPer),
       };
     });
-
-    return result;
   };
 
   const applyFiltersAndSearch = () => {
     let filtered = [...reportData];
 
-    // Apply advanced filters for detailed report
     if (currentReportType === "detailed") {
       Object.keys(filters).forEach((key) => {
-        if (filters[key] && filters[key].length > 0) {
-          filtered = filtered.filter((item) =>
-            filters[key].includes(item[key])
-          );
+        const val = filters[key];
+        if (Array.isArray(val) && val.length > 0) {
+          filtered = filtered.filter((item) => val.includes(item[key]));
         }
       });
     }
 
-    // Apply global search
     if (globalFilter && globalFilter.trim() !== "") {
       const searchLower = globalFilter.toLowerCase();
       filtered = filtered.filter((item) => {
@@ -224,21 +222,22 @@ const OTAReport = () => {
             String(val).toLowerCase().includes(searchLower)
           );
         } else {
-          // For shift-wise and vendor-wise
           const mainRowMatch = Object.values(item).some((val) =>
             String(val).toLowerCase().includes(searchLower)
           );
           const nestedMatch =
-            item.shifts?.some((shift) =>
-              Object.values(shift).some((val) =>
-                String(val).toLowerCase().includes(searchLower)
-              )
-            ) ||
-            item.vendors?.some((vendor) =>
-              Object.values(vendor).some((val) =>
-                String(val).toLowerCase().includes(searchLower)
-              )
-            );
+            (item.shifts &&
+              item.shifts.some((shift) =>
+                Object.values(shift).some((val) =>
+                  String(val).toLowerCase().includes(searchLower)
+                )
+              )) ||
+            (item.vendors &&
+              item.vendors.some((vendor) =>
+                Object.values(vendor).some((val) =>
+                  String(val).toLowerCase().includes(searchLower)
+                )
+              ));
           return mainRowMatch || nestedMatch;
         }
       });
@@ -362,28 +361,30 @@ const OTAReport = () => {
 
       setTimeout(() => {
         if (validatedData.length > 0) {
-          toastService.success(`Report data fetched successfully.`);
+          toastService.success("Report data fetched successfully.");
         } else {
           toastService.warn("No records found");
         }
       }, 100);
-    } catch (error) {
-      console.error("Error fetching report data:", error);
+    } catch (err) {
+      console.error("Error fetching report data:", err);
       setReportData([]);
       setDetailedData([]);
-      setError(error.message);
+      setError(err.message);
 
       setLoading(false);
       setIsSubmitting(false);
 
       setTimeout(() => {
-        toastService.error("Error fetching report data: " + error.message);
+        toastService.error("Error fetching report data: " + err.message);
       }, 100);
     }
   };
 
   const exportExcel = () => {
-    const fileName = `ota_report_${currentReportType}_${new Date().toISOString().slice(0, 10)}`;
+    const fileName = `ota_report_${currentReportType}_${new Date()
+      .toISOString()
+      .slice(0, 10)}`;
 
     if (currentReportType === "detailed") {
       if (dt.current) {
@@ -484,198 +485,172 @@ const OTAReport = () => {
       Vendor: null,
       OTA_Category: null,
     });
+    if (op.current) op.current.hide();
     toastService.info("Filters cleared");
   };
 
   const renderToolbar = () => {
+    const activeFilterCount = Object.values(filters).filter(
+      (f) => Array.isArray(f) && f.length > 0
+    ).length;
+
     return (
-      <>
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-2 gap-2">
-          <div className="d-flex align-items-center">
-            <Button
-              label="Advanced Filter"
-              icon="pi pi-filter"
-              onClick={(e) => op.current.toggle(e)}
-              className="p-button-text p-button-plain p-0"
-              style={{ width: "auto", boxShadow: "none" }}
-            />
-          </div>
-          <div className="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-            <div style={{ position: "relative" }}>
-              <InputText
-                placeholder="Search"
-                className="p-inputtext-sm"
-                style={{ paddingRight: "2.5rem", width: "250px" }}
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-              />
-              <i
-                className="pi pi-search"
-                style={{
-                  position: "absolute",
-                  right: "0.75rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#6c757d",
-                }}
-              />
-            </div>
-            <div className="d-flex align-items-center">
-              <Button
-                icon="pi pi-refresh"
-                rounded
-                text
-                severity="secondary"
-                aria-label="Refresh"
-                onClick={() => handleSearch()}
-                tooltip="Refresh"
-                tooltipOptions={{ position: "top" }}
-                className="p-0 mr-1"
-                style={{ width: "2rem", height: "2rem" }}
-              />
-              <Button
-                icon="pi pi-download"
-                rounded
-                text
-                severity="secondary"
-                aria-label="Export"
-                onClick={exportExcel}
-                tooltip="Export"
-                tooltipOptions={{ position: "top" }}
-                className="p-0 mr-1"
-                style={{ width: "2rem", height: "2rem" }}
-              />
-              <Button
-                icon="pi pi-ellipsis-h"
-                rounded
-                text
-                severity="secondary"
-                aria-label="More"
-                className="p-0"
-                style={{ width: "2rem", height: "2rem" }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <OverlayPanel ref={op} showCloseIcon dismissable style={{ width: '800px' }}>
-          {currentReportType === "detailed" ? (
-            <div className="p-2">
-              <div className="row g-3">
-                <div className="col-12 col-md-6">
-                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
-                    Facility
-                  </label>
-                  <MultiSelect
-                    value={filters.Unit}
-                    options={getUniqueValues("Unit")}
-                    onChange={(e) => setFilters({ ...filters, Unit: e.value })}
-                    placeholder="Select Facilities"
-                    maxSelectedLabels={2}
-                    className="w-100"
-                    display="chip"
-                  />
+      <TableToolbar
+        search={globalFilter}
+        onSearch={(e) => setGlobalFilter(e.target.value)}
+        onRefresh={() => handleSearch()}
+        onExport={exportExcel}
+        activeFilterCount={activeFilterCount}
+        overlayRef={op}
+        filterButtonRef={filterButtonRef}
+      >
+        {currentReportType === "detailed" ? (
+          <>
+            <div className="ota-filter-header">
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="ota-filter-icon">
+                    <i className="pi pi-filter" />
+                  </span>
+                  <div>
+                    <div className="ota-filter-title">Advanced filters</div>
+                    <div className="ota-filter-subtitle">
+                      Refine detailed OTA report
+                    </div>
+                  </div>
                 </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
-                    Trip Date
-                  </label>
-                  <MultiSelect
-                    value={filters.TripDate}
-                    options={getUniqueValues("TripDate")}
-                    onChange={(e) =>
-                      setFilters({ ...filters, TripDate: e.value })
-                    }
-                    placeholder="Select Dates"
-                    maxSelectedLabels={2}
-                    className="w-100"
-                    display="chip"
-                  />
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
-                    Shift
-                  </label>
-                  <MultiSelect
-                    value={filters.Shift}
-                    options={getUniqueValues("Shift")}
-                    onChange={(e) => setFilters({ ...filters, Shift: e.value })}
-                    placeholder="Select Shifts"
-                    maxSelectedLabels={2}
-                    className="w-100"
-                    display="chip"
-                  />
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
-                    Route ID
-                  </label>
-                  <MultiSelect
-                    value={filters.RouteID}
-                    options={getUniqueValues("RouteID")}
-                    onChange={(e) =>
-                      setFilters({ ...filters, RouteID: e.value })
-                    }
-                    placeholder="Select Route IDs"
-                    maxSelectedLabels={2}
-                    className="w-100"
-                    display="chip"
-                    filter
-                  />
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
-                    Vendor
-                  </label>
-                  <MultiSelect
-                    value={filters.Vendor}
-                    options={getUniqueValues("Vendor")}
-                    onChange={(e) => setFilters({ ...filters, Vendor: e.value })}
-                    placeholder="Select Vendors"
-                    maxSelectedLabels={2}
-                    className="w-100"
-                    display="chip"
-                  />
-                </div>
-
-                <div className="col-12 col-md-6">
-                  <label className="form-label" style={{ fontSize: "0.875rem" }}>
-                    OTA Category
-                  </label>
-                  <MultiSelect
-                    value={filters.OTA_Category}
-                    options={getUniqueValues("OTA_Category")}
-                    onChange={(e) =>
-                      setFilters({ ...filters, OTA_Category: e.value })
-                    }
-                    placeholder="Select Categories"
-                    maxSelectedLabels={2}
-                    className="w-100"
-                    display="chip"
-                  />
-                </div>
-
-                <div className="col-12">
-                  <Button
-                    label="Clear All Filters"
-                    icon="pi pi-filter-slash"
-                    className="p-button-outlined p-button-secondary"
-                    onClick={clearAdvancedFilters}
-                  />
-                </div>
+                {activeFilterCount > 0 && (
+                  <span
+                    className="badge bg-primary"
+                    style={{ fontSize: "0.7rem", borderRadius: "999px" }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
               </div>
             </div>
-          ) : (
-             <div className="p-3">
-                <p className="m-0 text-muted">Advanced filters are only available for Detailed reports.</p>
-             </div>
-          )}
-        </OverlayPanel>
-      </>
+
+            <div className="ota-filter-body">
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Facility</label>
+                <MultiSelect
+                  value={filters.Unit}
+                  options={getUniqueValues("Unit")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, Unit: e.value })
+                  }
+                  placeholder="Select facilities"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Trip Date</label>
+                <MultiSelect
+                  value={filters.TripDate}
+                  options={getUniqueValues("TripDate")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, TripDate: e.value })
+                  }
+                  placeholder="Select dates"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Shift</label>
+                <MultiSelect
+                  value={filters.Shift}
+                  options={getUniqueValues("Shift")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, Shift: e.value })
+                  }
+                  placeholder="Select shifts"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Route ID</label>
+                <MultiSelect
+                  value={filters.RouteID}
+                  options={getUniqueValues("RouteID")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, RouteID: e.value })
+                  }
+                  placeholder="Select route IDs"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  filter
+                  showClear
+                />
+              </div>
+
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Vendor</label>
+                <MultiSelect
+                  value={filters.Vendor}
+                  options={getUniqueValues("Vendor")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, Vendor: e.value })
+                  }
+                  placeholder="Select vendors"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">OTA Category</label>
+                <MultiSelect
+                  value={filters.OTA_Category}
+                  options={getUniqueValues("OTA_Category")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, OTA_Category: e.value })
+                  }
+                  placeholder="Select categories"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+            </div>
+
+            <div className="ota-filter-footer">
+              <Button
+                label="Clear all filters"
+                icon="pi pi-filter-slash"
+                className="p-button-outlined p-button-secondary w-100"
+                onClick={clearAdvancedFilters}
+                size="small"
+              />
+            </div>
+          </>
+        ) : (
+          <div className="p-4 text-center">
+            <i
+              className="pi pi-info-circle text-muted mb-3 d-block"
+              style={{ fontSize: "2rem" }}
+            />
+            <p className="m-0 text-muted" style={{ fontSize: "0.875rem" }}>
+              Advanced filters are only available for Detailed reports.
+            </p>
+          </div>
+        )}
+      </TableToolbar>
     );
   };
 
@@ -685,12 +660,15 @@ const OTAReport = () => {
       <Header pageTitle="OTA Reports" showNewButton={false} />
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
+
       <div className="middle">
         <div className="row">
           <div className="col-12">
             <h6 className="pageTitle">On Time Arrival Reports</h6>
           </div>
         </div>
+
+        {/* Top filters */}
         <div className="row">
           <div className="col-12">
             <div className="card_tb p-3">
@@ -781,7 +759,7 @@ const OTAReport = () => {
                         transition: background-color 0.3s, border-color 0.3s;
                       }
                       .run-report-btn:hover {
-                        background-color: #0d6efd !important; 
+                        background-color: #0d6efd !important;
                         border-color: #0d6efd !important;
                       }
                     `}
@@ -798,6 +776,7 @@ const OTAReport = () => {
           </div>
         </div>
 
+        {/* Main report card */}
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
@@ -895,7 +874,7 @@ const OTAReport = () => {
                       <table className="table table-sm mb-0">
                         <thead className="table-light">
                           <tr>
-                            <th style={{ width: "40px" }}></th>
+                            <th style={{ width: "40px" }} />
                             <th className="text-center">Shift Date</th>
                             <th className="text-center d-none d-md-table-cell">
                               Total Cabs
@@ -961,7 +940,7 @@ const OTAReport = () => {
 
                               {expandedRows.includes(index) && (
                                 <tr>
-                                  <td colSpan="8" className="leftStrip p-2">
+                                  <td colSpan={8} className="leftStrip p-2">
                                     <div className="expanded-content">
                                       <div className="table-responsive">
                                         <table className="table table-sm table-bordered mb-0">
@@ -981,21 +960,22 @@ const OTAReport = () => {
                                             </tr>
                                           </thead>
                                           <tbody>
-                                            {row.shifts?.map((shift, sIdx) => (
-                                              <tr key={sIdx}>
-                                                <td>{shift.shiftTime}</td>
-                                                <td>{shift.TotalCabs}</td>
-                                                <td>{shift.Arrived}</td>
-                                                <td>{shift.OnTime}</td>
-                                                <td>{shift.Delayed}</td>
-                                                <td className="d-none d-md-table-cell">
-                                                  {shift.OnTimePer}
-                                                </td>
-                                                <td className="d-none d-md-table-cell">
-                                                  {shift.DelayedPer}
-                                                </td>
-                                              </tr>
-                                            ))}
+                                            {row.shifts &&
+                                              row.shifts.map((shift, sIdx) => (
+                                                <tr key={sIdx}>
+                                                  <td>{shift.shiftTime}</td>
+                                                  <td>{shift.TotalCabs}</td>
+                                                  <td>{shift.Arrived}</td>
+                                                  <td>{shift.OnTime}</td>
+                                                  <td>{shift.Delayed}</td>
+                                                  <td className="d-none d-md-table-cell">
+                                                    {shift.OnTimePer}
+                                                  </td>
+                                                  <td className="d-none d-md-table-cell">
+                                                    {shift.DelayedPer}
+                                                  </td>
+                                                </tr>
+                                              ))}
                                           </tbody>
                                         </table>
                                       </div>
@@ -1015,7 +995,7 @@ const OTAReport = () => {
                       <table className="table table-sm mb-0">
                         <thead className="table-light">
                           <tr>
-                            <th style={{ width: "40px" }}></th>
+                            <th style={{ width: "40px" }} />
                             <th className="text-center">Shift Date</th>
                             <th className="text-center d-none d-md-table-cell">
                               Total Cabs
@@ -1081,9 +1061,9 @@ const OTAReport = () => {
 
                               {expandedRows.includes(index) && (
                                 <tr>
-                                  <td colSpan="8" className="leftStrip p-2">
+                                  <td colSpan={8} className="leftStrip p-2">
                                     <div className="expanded-content">
-                                      {row.vendors?.length === 0 ? (
+                                      {row.vendors && row.vendors.length === 0 ? (
                                         <p>No vendor records found</p>
                                       ) : (
                                         <div className="table-responsive">
@@ -1104,26 +1084,27 @@ const OTAReport = () => {
                                               </tr>
                                             </thead>
                                             <tbody>
-                                              {row.vendors?.map(
-                                                (vendor, vIdx) => (
-                                                  <tr key={vIdx}>
-                                                    <td>
-                                                      {vendor.Vendor ||
-                                                        vendor.vendorName}
-                                                    </td>
-                                                    <td>{vendor.TotalCabs}</td>
-                                                    <td>{vendor.Arrived}</td>
-                                                    <td>{vendor.OnTime}</td>
-                                                    <td>{vendor.Delayed}</td>
-                                                    <td className="d-none d-md-table-cell">
-                                                      {vendor.OnTimePer}
-                                                    </td>
-                                                    <td className="d-none d-md-table-cell">
-                                                      {vendor.DelayedPer}
-                                                    </td>
-                                                  </tr>
-                                                )
-                                              )}
+                                              {row.vendors &&
+                                                row.vendors.map(
+                                                  (vendor, vIdx) => (
+                                                    <tr key={vIdx}>
+                                                      <td>
+                                                        {vendor.Vendor ||
+                                                          vendor.vendorName}
+                                                      </td>
+                                                      <td>{vendor.TotalCabs}</td>
+                                                      <td>{vendor.Arrived}</td>
+                                                      <td>{vendor.OnTime}</td>
+                                                      <td>{vendor.Delayed}</td>
+                                                      <td className="d-none d-md-table-cell">
+                                                        {vendor.OnTimePer}
+                                                      </td>
+                                                      <td className="d-none d-md-table-cell">
+                                                        {vendor.DelayedPer}
+                                                      </td>
+                                                    </tr>
+                                                  )
+                                                )}
                                             </tbody>
                                           </table>
                                         </div>
