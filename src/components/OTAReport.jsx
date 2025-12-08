@@ -14,6 +14,7 @@ import OTAReportService from "../services/compliance/OTAReportService";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
+import calendarIcon from "../assets/calendar.png";
 import TableToolbar from "./common/TableToolbar";
 
 const OTAReport = () => {
@@ -677,27 +678,31 @@ const OTAReport = () => {
                   <label htmlFor="startDate" className="form-label">
                     From Date <span>*</span>
                   </label>
-                  <Calendar
-                    id="startDate"
-                    className="w-100"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.value)}
-                    dateFormat="mm/dd/yy"
-                    showIcon
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="startDate"
+                      className="w-100 custom-calendar-input"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.value)}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2">
                   <label htmlFor="endDate" className="form-label">
                     To Date <span>*</span>
                   </label>
-                  <Calendar
-                    id="endDate"
-                    className="w-100"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.value)}
-                    dateFormat="mm/dd/yy"
-                    showIcon
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="endDate"
+                      className="w-100 custom-calendar-input"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.value)}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2">
                   <label htmlFor="reportType" className="form-label">
@@ -761,6 +766,31 @@ const OTAReport = () => {
                       .run-report-btn:hover {
                         background-color: #0d6efd !important;
                         border-color: #0d6efd !important;
+                      }
+                      .ota-row-odd > * {
+                        background-color: #fafafa !important;
+                      }
+                      .ota-row-hover:hover > * {
+                        background-color: #e9ecef !important;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                      }
+                      .custom-calendar-wrapper {
+                        position: relative;
+                        width: 100%;
+                      }
+                      .custom-calendar-icon {
+                        position: absolute;
+                        left: 10px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 22px;
+                        height: 22px;
+                        z-index: 2;
+                        pointer-events: none;
+                      }
+                      .custom-calendar-input .p-inputtext {
+                        padding-left: 35px !important;
                       }
                     `}
                   </style>
@@ -895,7 +925,7 @@ const OTAReport = () => {
                         <tbody>
                           {filteredData.map((row, index) => (
                             <React.Fragment key={index}>
-                              <tr>
+                              <tr className={`${index % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
                                 <td>
                                   <a
                                     href="#!"
@@ -962,7 +992,7 @@ const OTAReport = () => {
                                           <tbody>
                                             {row.shifts &&
                                               row.shifts.map((shift, sIdx) => (
-                                                <tr key={sIdx}>
+                                                <tr key={sIdx} className={`${sIdx % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
                                                   <td>{shift.shiftTime}</td>
                                                   <td>{shift.TotalCabs}</td>
                                                   <td>{shift.Arrived}</td>
@@ -1016,7 +1046,7 @@ const OTAReport = () => {
                         <tbody>
                           {filteredData.map((row, index) => (
                             <React.Fragment key={index}>
-                              <tr>
+                              <tr className={`${index % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
                                 <td>
                                   <a
                                     href="#!"
@@ -1087,7 +1117,7 @@ const OTAReport = () => {
                                               {row.vendors &&
                                                 row.vendors.map(
                                                   (vendor, vIdx) => (
-                                                    <tr key={vIdx}>
+                                                    <tr key={vIdx} className={`${vIdx % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
                                                       <td>
                                                         {vendor.Vendor ||
                                                           vendor.vendorName}

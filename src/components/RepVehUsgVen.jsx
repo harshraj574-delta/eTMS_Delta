@@ -10,6 +10,7 @@ import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
 import noReportImage from "../assets/no_report.png";
+import calendarIcon from "../assets/calendar.png";
 
 const VehicleUtilizationReport = () => {
   const [facilities, setFacilities] = useState([]);
@@ -326,27 +327,31 @@ const VehicleUtilizationReport = () => {
                   <label htmlFor="startDate" className="form-label">
                     From Date <span>*</span>
                   </label>
-                  <Calendar
-                    id="startDate"
-                    className="w-100"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.value)}
-                    dateFormat="mm/dd/yy"
-                    showIcon
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="startDate"
+                      className="w-100 custom-calendar-input"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.value)}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-3 col-lg-2">
                   <label htmlFor="endDate" className="form-label">
                     To Date <span>*</span>
                   </label>
-                  <Calendar
-                    id="endDate"
-                    className="w-100"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.value)}
-                    dateFormat="mm/dd/yy"
-                    showIcon
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="endDate"
+                      className="w-100 custom-calendar-input"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.value)}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-3 col-lg-2">
                   <label htmlFor="facility" className="form-label">
@@ -385,6 +390,31 @@ const VehicleUtilizationReport = () => {
                       .run-report-btn:hover {
                         background-color: #0d6efd !important;
                         border-color: #0d6efd !important;
+                      }
+                      .custom-calendar-wrapper {
+                        position: relative;
+                        width: 100%;
+                      }
+                      .custom-calendar-icon {
+                        position: absolute;
+                        left: 10px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 22px;
+                        height: 22px;
+                        z-index: 2;
+                        pointer-events: none;
+                      }
+                      .custom-calendar-input .p-inputtext {
+                        padding-left: 35px !important;
+                      }
+                      .ota-row-odd > * {
+                        background-color: #fafafa !important;
+                      }
+                      .ota-row-hover:hover > * {
+                        background-color: #e9ecef !important;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
                       }
                     `}
                   </style>
@@ -484,7 +514,7 @@ const VehicleUtilizationReport = () => {
                           {reportData.map((dateRow, dateIndex) => (
                             <React.Fragment key={dateIndex}>
                               {/* Date Level Row */}
-                              <tr>
+                              <tr className={`${dateIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
                                 <td>
                                   <a
                                     href="#!"
@@ -568,7 +598,7 @@ const VehicleUtilizationReport = () => {
                                                 <React.Fragment
                                                   key={`${dateIndex}-${vendorIndex}`}
                                                 >
-                                                  <tr>
+                                                  <tr className={`${vendorIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
                                                     <td>
                                                       <a
                                                         href="#!"
@@ -688,6 +718,7 @@ const VehicleUtilizationReport = () => {
                                                                       key={
                                                                         vehicleIndex
                                                                       }
+                                                                      className={`${vehicleIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}
                                                                     >
                                                                       <td>
                                                                         {

@@ -2,14 +2,14 @@ import React, { useMemo, useEffect, useState } from 'react';
 import Loader from "./common/Loader";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
-import { DataTable } from 'primereact/datatable';
-import { Column } from "primereact/column";
 import ManageMenuService from '../services/compliance/ManageMenuService';
 import sessionManager from "../utils/SessionManager";
 import { Sidebar as PrimeSidebar } from 'primereact/sidebar';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { toastService } from '../services/toastService';
+import { ToastContainer } from 'react-toastify';
+
 const ManageMenu = () => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -25,15 +25,18 @@ const ManageMenu = () => {
     const [editSubMenuText, setEditSubMenuText] = useState('');
     const [editSubMenuDescription, setEditSubMenuDescription] = useState('');
     const [editSubMenuNavigateUrl, setEditSubMenuNavigateUrl] = useState('');
-    // expansion state for submenus
-    const [expandedMenuId, setExpandedMenuId] = useState(null);
+    
+    // Expansion state using index array (like OTAReport/RepScheduleSummery)
+    const [expandedRows, setExpandedRows] = useState([]);
     const [subMenuData, setSubMenuData] = useState({});
     const [showEditSubMenuSidebar, setShowEditSubMenuSidebar] = useState(false);
     const [parentMenuList, setParentMenuList] = useState([]);
     const [selectedParent, setSelectedParent] = useState(null);
+
     useEffect(() => {
         fetchMenuData();
     }, []);
+
     const fetchMenuData = async () => {
         try {
             setLoading(true);
@@ -49,6 +52,7 @@ const ManageMenu = () => {
             setLoading(false);
         }
     };
+
     const handleSave = async () => {
         if (!newText || newText.trim() === "") {
             toastService.warn("Please enter the menu text.");
@@ -64,17 +68,9 @@ const ManageMenu = () => {
 
         try {
             setLoading(true);
-
-            //console.log("InsertMenu Params:", params);
-
             const resp = await ManageMenuService.InsertMenu(params);
-            //console.log("InsertMenu Response:", resp);
 
-            // ---------------------------
-            // 🔥 UNIVERSAL SAFE PARSING
-            // ---------------------------
             let parsed;
-
             if (typeof resp === "string") {
                 try {
                     parsed = JSON.parse(resp);
@@ -85,7 +81,6 @@ const ManageMenu = () => {
                 parsed = resp;
             }
 
-            // Ensure array → object
             if (Array.isArray(parsed) && parsed.length > 0) {
                 parsed = parsed[0];
             }
@@ -98,32 +93,21 @@ const ManageMenu = () => {
                 parsed?.Status ??
                 null;
 
-            console.log("Final Parsed Result =", result);
-
-            // ---------------------------
-            // ❗ CHECK result VALUE
-            // ---------------------------
             if (String(result) === "0") {
                 toastService.warn("This menu already exists.");
-                return; // stop process
+                return;
             }
 
             if (String(result) === "1") {
                 toastService.success("The menu has been saved successfully.");
-
-                // refresh list from server
                 await fetchMenuData();
-
-                // clear inputs and close sidebar
                 setNewText("");
                 setNewDescription("");
                 setShowNewSidebar(false);
                 return;
             }
 
-            // If result is something else (not 0 or 1)
             toastService.warn("Unexpected response from the server.");
-
         } catch (err) {
             console.error("Error saving menu:", err);
             toastService.error("Unable to save the menu. Please try again.");
@@ -132,7 +116,6 @@ const ManageMenu = () => {
         }
     };
 
-    // Similar update for handleUpdateSave
     const handleUpdateSave = async () => {
         if (!editText || editText.trim() === "") {
             toastService.warn("Please enter the menu text");
@@ -151,11 +134,7 @@ const ManageMenu = () => {
             setLoading(true);
             const resp = await ManageMenuService.UpdateMenu(params);
 
-            // ---------------------------
-            // 🔥 UNIVERSAL SAFE PARSING
-            // ---------------------------
             let parsed;
-
             if (typeof resp === "string") {
                 try {
                     parsed = JSON.parse(resp);
@@ -166,7 +145,6 @@ const ManageMenu = () => {
                 parsed = resp;
             }
 
-            // Ensure array → object
             if (Array.isArray(parsed) && parsed.length > 0) {
                 parsed = parsed[0];
             }
@@ -179,19 +157,13 @@ const ManageMenu = () => {
                 parsed?.Status ??
                 null;
 
-            console.log("Final Parsed Result =", result);
-
-            // ---------------------------
-            // ❗ CHECK result VALUE
-            // ---------------------------
             if (String(result) === "0") {
                 toastService.warn("This menu already exists");
-                return; // stop process
+                return;
             }
 
             if (String(result) === "1") {
                 toastService.success("The menu has been updated successfully");
-
                 await fetchMenuData();
                 setEditText("");
                 setEditDescription("");
@@ -200,9 +172,7 @@ const ManageMenu = () => {
                 return;
             }
 
-            // If result is something else (not 0 or 1)
             toastService.warn("The server returned an unexpected response. Please try again.");
-
         } catch (err) {
             console.error("Error updating menu:", err);
             toastService.error("Unable to update the menu. Please try again.");
@@ -218,71 +188,48 @@ const ManageMenu = () => {
         setShowEditSidebar(true);
     };
 
-    // const handleUpdateSave = async () => {
-    //     if (!editText || editText.trim() === "") {
-    //         toastService.warn("Please enter Menu Text");
-    //         return;
-    //     }
-
-    //     const params = {
-    //         MenuID: editingRow?.MenuID || editingRow?.menuid,
-    //         Text: editText,
-    //         Description: editDescription,
-    //         ParentID: null,
-    //         NavigateUrl: ""
-    //     };
-
-    //     try {
-    //         setLoading(true);
-    //         const resp = await ManageMenuService.UpdateMenu(params);
-    //         await fetchMenuData();
-    //         setEditText("");
-    //         setEditDescription("");
-    //         setEditingRow(null);
-    //         setShowEditSidebar(false);
-    //         toastService.success("Menu updated");
-    //     } catch (err) {
-    //         console.error("Error updating menu:", err);
-    //         toastService.error("Failed to update menu");
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
     const extractMenuId = (row) => {
         if (!row) return null;
         return String(row?.MenuID ?? row?.menuid ?? row?.id ?? "");
     };
 
-    const handleExpanderClick = async (e, rowData) => {
-        e.stopPropagation();
-        const menuId = extractMenuId(rowData);
-        if (!menuId) return;
+    // Toggle row expansion (like OTAReport/RepScheduleSummery)
+    const toggleRowExpansion = async (index, rowData) => {
+        const newExpandedRows = [...expandedRows];
+        const rowIndex = newExpandedRows.indexOf(index);
 
-        if (expandedMenuId === menuId) {
-            setExpandedMenuId(null);
+        if (rowIndex > -1) {
+            // Collapse
+            newExpandedRows.splice(rowIndex, 1);
+            setExpandedRows(newExpandedRows);
             return;
         }
 
-        setExpandedMenuId(menuId);
+        // Expand
+        const menuId = extractMenuId(rowData);
 
-        // fetch submenu data if not cached
-        if (subMenuData[menuId]) return;
-
-        try {
-            setLoading(true);
-            const resp = await ManageMenuService.SelectSubMenu({ menuid: menuId });
-            const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
-            const childArr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
-            setSubMenuData(prev => ({ ...prev, [menuId]: childArr }));
-        } catch (err) {
-            console.error("Error fetching submenu data:", err);
-            toastService.error("Could not load submenu data");
-        } finally {
-            setLoading(false);
+        // Fetch submenu data if not cached
+        if (menuId && !subMenuData[menuId]) {
+            try {
+                setLoading(true);
+                const resp = await ManageMenuService.SelectSubMenu({ menuid: menuId });
+                const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
+                const childArr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+                setSubMenuData((prev) => ({ ...prev, [menuId]: childArr }));
+            } catch (err) {
+                console.error("Error fetching submenu data:", err);
+                toastService.error("Could not load submenu data");
+                setLoading(false);
+                return;
+            } finally {
+                setLoading(false);
+            }
         }
+
+        newExpandedRows.push(index);
+        setExpandedRows(newExpandedRows);
     };
 
-    // new: delete single submenu row
     const handleDeleteSubmenu = async (e, rowData, parentMenuId) => {
         e.stopPropagation();
         const submenuId = rowData?.MenuID ?? rowData?.menuid ?? rowData?.ID ?? rowData?.MENUID;
@@ -298,12 +245,11 @@ const ManageMenu = () => {
             await ManageMenuService.DeleteMenu({ menuid: submenuId });
             toastService.success("Submenu deleted successfully");
 
-            // refresh only this parent's submenu list
             try {
                 const resp = await ManageMenuService.SelectSubMenu({ menuid: parentMenuId });
                 const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
                 const childArr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
-                setSubMenuData(prev => ({ ...prev, [parentMenuId]: childArr }));
+                setSubMenuData((prev) => ({ ...prev, [parentMenuId]: childArr }));
             } catch (refreshErr) {
                 console.error("Error refreshing submenu after delete:", refreshErr);
             }
@@ -314,22 +260,19 @@ const ManageMenu = () => {
             setLoading(false);
         }
     };
-    // new: handle edit submenu
+
     const handleEditSubMenu = async (rowData) => {
         setEditingSubMenu(rowData);
-
         setEditSubMenuText(rowData?.TEXT || '');
         setEditSubMenuDescription(rowData?.DESCRIPTION || '');
         setEditSubMenuNavigateUrl(rowData?.NAVIGATEURL || '');
 
-        // Load parent menu list
         try {
             const resp = await ManageMenuService.SelectMainMenu({ IsAdmin: "Y" });
             const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
             const arr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
             setParentMenuList(arr);
 
-            // Pre-select parent
             const parentId = rowData?.PARENTID ?? rowData?.parentid ?? null;
             setSelectedParent(parentId);
         } catch (err) {
@@ -340,66 +283,7 @@ const ManageMenu = () => {
         setShowEditSubMenuSidebar(true);
     };
 
-    const subMenuRowExpansionTemplate = (parentRow) => {
-        const menuId = extractMenuId(parentRow);
-        const submenus = subMenuData[menuId] || [];
-
-        return (
-            <div className="p-2">
-                <div style={{ marginBottom: 12 }}>
-                    <Button
-                        icon="pi pi-plus"
-                        label="Add SubMenu"
-                        className="p-button-sm p-button-success"
-                        onClick={() => handleAddSubMenu(menuId)}
-                    />
-                </div>
-                <DataTable
-                    value={submenus}
-                    size="small"
-                    tableStyle={{ minWidth: "60rem" }}
-                    emptyMessage="No submenus found"
-                    stripedRows
-                >
-                    <Column field="TEXT" header="SubMenu Text" />
-                    <Column field="DESCRIPTION" header="Description" />
-                    <Column field="mtext" header="Parent Menu" />
-                    <Column field="NAVIGATEURL" header="Navigate URL" />
-                    <Column
-                        header="Actions"
-                        body={(rowData) => (
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                <span
-                                    className="material-icons"
-                                    title="Edit"
-                                    style={{ fontSize: 20, cursor: 'pointer', color: '#1976d2' }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        // reuse parent edit handler or add submenu edit logic
-                                        handleEditSubMenu(rowData);
-                                    }}
-                                >
-                                    edit
-                                </span>
-
-                                <span
-                                    className="material-icons"
-                                    title="Delete"
-                                    style={{ fontSize: 20, cursor: 'pointer', color: '#d32f2f' }}
-                                    onClick={(e) => handleDeleteSubmenu(e, rowData, menuId)}
-                                >
-                                    delete
-                                </span>
-                            </div>
-                        )}
-                    />
-                </DataTable>
-            </div>
-        );
-    };
-    // new: handle add submenu
     const handleAddSubMenu = async (parentMenuId) => {
-        // Load parent menu list for dropdown
         try {
             const resp = await ManageMenuService.SelectMainMenu({ IsAdmin: "Y" });
             const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
@@ -412,26 +296,24 @@ const ManageMenu = () => {
             return;
         }
 
-        // Clear form and set for new submenu
         setEditingSubMenu(null);
         setEditSubMenuText('');
         setEditSubMenuDescription('');
         setEditSubMenuNavigateUrl('');
         setShowEditSubMenuSidebar(true);
     };
-   const handleUpdateSubMenuSave = async () => {
+
+    const handleUpdateSubMenuSave = async () => {
         if (!editSubMenuText || editSubMenuText.trim() === "") {
             toastService.warn("Please enter the submenu text.");
             return;
         }
 
-        // Validate that a parent is selected (empty string or null means none)
         if (selectedParent === null || selectedParent === "") {
             toastService.warn("Please select a parent menu.");
             return;
         }
 
-        // convert selectedParent to number if numeric, otherwise keep string
         const normalizedParent = isNaN(selectedParent) ? selectedParent : Number(selectedParent);
 
         const isUpdate = !!editingSubMenu;
@@ -442,7 +324,6 @@ const ManageMenu = () => {
             editingSubMenu?.ID ??
             editingSubMenu?.id;
 
-        // ensure ParentID passed explicitly (use number if numeric)
         const params = {
             Text: editSubMenuText,
             Description: editSubMenuDescription,
@@ -457,22 +338,14 @@ const ManageMenu = () => {
         try {
             setLoading(true);
 
-            // debug payload to confirm ParentID
-            //console.log("Insert/Update SubMenu payload:", params);
-
             let apiResponse;
-
             if (isUpdate) {
                 apiResponse = await ManageMenuService.UpdateMenu(params);
             } else {
                 apiResponse = await ManageMenuService.InsertMenu(params);
             }
 
-            // ---------------------------
-            // 🔥 UNIVERSAL SAFE PARSING
-            // ---------------------------
             let parsed;
-
             if (typeof apiResponse === "string") {
                 try {
                     parsed = JSON.parse(apiResponse);
@@ -502,17 +375,15 @@ const ManageMenu = () => {
 
             toastService.success(isUpdate ? "Submenu item updated successfully." : "Submenu item added successfully.");
 
-            // refresh submenu list for the selected parent (use normalizedParent)
             try {
                 const resp = await ManageMenuService.SelectSubMenu({ menuid: normalizedParent });
                 let parsedChild = typeof resp === "string" ? JSON.parse(resp) : resp;
                 const childArr = Array.isArray(parsedChild) ? parsedChild : parsedChild ? [parsedChild] : [];
-                setSubMenuData(prev => ({ ...prev, [String(normalizedParent)]: childArr }));
+                setSubMenuData((prev) => ({ ...prev, [String(normalizedParent)]: childArr }));
             } catch (refreshErr) {
                 console.error("Error refreshing submenu list:", refreshErr);
             }
 
-            // reset form
             setEditSubMenuText("");
             setEditSubMenuDescription("");
             setEditSubMenuNavigateUrl("");
@@ -530,61 +401,154 @@ const ManageMenu = () => {
     return (
         <div>
             <Loader isVisible={loading} fullScreen={true} />
-            <Header mainTitle="Super Admin" pageTitle={"Manage Menu"}
-                showNewButton={true} onNewButtonClick={() => setShowNewSidebar(true)} />
+            <Header
+                mainTitle="Super Admin"
+                pageTitle={"Manage Menu"}
+                showNewButton={true}
+                onNewButtonClick={() => setShowNewSidebar(true)}
+            />
             <Sidebar />
+            <ToastContainer position="top-right" autoClose={3000} />
+
+            <style>
+                {`
+                    .ota-row-odd > * {
+                        background-color: #fafafa !important;
+                    }
+                    .ota-row-hover:hover > * {
+                        background-color: #e9ecef !important;
+                        cursor: pointer;
+                        transition: background-color 0.2s;
+                    }
+                    .menu-table thead th {
+                        background-color: #f8f9fa !important;
+                        font-weight: 600;
+                        border: 1px solid #dee2e6;
+                        padding: 0.5rem;
+                        font-size: 0.875rem;
+                        text-align: center;
+                        vertical-align: middle;
+                    }
+                    .menu-table tbody td {
+                        padding: 0.5rem;
+                        border: 1px solid #dee2e6;
+                        font-size: 0.875rem;
+                        text-align: center;
+                        vertical-align: middle;
+                    }
+                    .menu-table .table-light th {
+                        background-color: #f8f9fa !important;
+                    }
+                    .nested-menu-table thead th {
+                        background-color: #f8f9fa !important;
+                        font-weight: 600;
+                        border: 1px solid #dee2e6;
+                        padding: 0.5rem;
+                        font-size: 0.8125rem;
+                        text-align: center;
+                    }
+                    .nested-menu-table tbody td {
+                        padding: 0.5rem;
+                        border: 1px solid #dee2e6;
+                        font-size: 0.8125rem;
+                        text-align: center;
+                    }
+                    .expansion-icon {
+                        color: #0d6efd;
+                        font-size: 20px;
+                        vertical-align: middle;
+                        cursor: pointer;
+                    }
+                    .expansion-icon:hover {
+                        color: #0a58ca;
+                    }
+                    .action-icon {
+                        font-size: 20px;
+                        cursor: pointer;
+                        margin: 0 4px;
+                    }
+                    .action-icon.edit {
+                        color: #1976d2;
+                    }
+                    .action-icon.edit:hover {
+                        color: #1565c0;
+                    }
+                    .action-icon.delete {
+                        color: #d32f2f;
+                    }
+                    .action-icon.delete:hover {
+                        color: #c62828;
+                    }
+                `}
+            </style>
+
             {/* Add Menu Sidebar */}
-            <PrimeSidebar visible={showNewSidebar} showCloseIcon={false}
+            <PrimeSidebar
+                visible={showNewSidebar}
+                showCloseIcon={false}
                 dismissable={false}
                 position="right"
-                style={{ width: "360px" }}>
+                style={{ width: "360px" }}
+            >
                 <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
                     <h6 className="sidebarTitle">Add Menu</h6>
                     <Button
                         icon="pi pi-times"
                         className="p-button-rounded p-button-text"
-                        onClick={() => {
-                            setShowNewSidebar(false);
-                        }}
+                        onClick={() => setShowNewSidebar(false)}
                     />
                 </div>
                 <div className="sidebarBody">
-                    <div className="row">
-
-                    </div>
-
                     <div className="offcanvas-body px-4">
                         <div className="col-11 mb-3">
                             <label className="form-label">Menu Text:</label>
-                            <InputText value={newText} className='form-control' onChange={(e) => setNewText(e.target.value)} />
+                            <InputText
+                                value={newText}
+                                className="form-control"
+                                onChange={(e) => setNewText(e.target.value)}
+                            />
                         </div>
                         <div className="col-11 mb-3">
-                            <label className="form-label"> Description:</label>
-                            <InputText value={newDescription} className='form-control' onChange={(e) => setNewDescription(e.target.value)} />
+                            <label className="form-label">Description:</label>
+                            <InputText
+                                value={newDescription}
+                                className="form-control"
+                                onChange={(e) => setNewDescription(e.target.value)}
+                            />
                         </div>
                     </div>
                 </div>
                 <div className="sidebar-fixed-bottom position-absolute pe-3">
                     <div className="d-flex gap-3 justify-content-end">
-                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setShowNewSidebar(false)} />
-                        <Button label="Save" className="btn btn-success" onClick={handleSave} />
+                        <Button
+                            label="Cancel"
+                            className="btn btn-outline-secondary"
+                            onClick={() => setShowNewSidebar(false)}
+                        />
+                        <Button
+                            label="Save"
+                            className="btn btn-success"
+                            onClick={handleSave}
+                        />
                     </div>
                 </div>
             </PrimeSidebar>
+
             {/* Edit Menu Sidebar */}
-            <PrimeSidebar visible={showEditSidebar} showCloseIcon={false}
+            <PrimeSidebar
+                visible={showEditSidebar}
+                showCloseIcon={false}
                 dismissable={false}
                 position="right"
                 onHide={() => setShowEditSidebar(false)}
-                style={{ width: "360px" }}>
+                style={{ width: "360px" }}
+            >
                 <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
                     <h6 className="sidebarTitle">Edit Menu</h6>
                     <Button
                         icon="pi pi-times"
                         className="p-button-rounded p-button-text"
-                        onClick={() => {
-                            setShowEditSidebar(false);
-                        }}
+                        onClick={() => setShowEditSidebar(false)}
                     />
                 </div>
                 <div className="sidebarBody">
@@ -593,7 +557,7 @@ const ManageMenu = () => {
                             <label className="form-label">Menu Text:</label>
                             <InputText
                                 value={editText}
-                                className='form-control'
+                                className="form-control"
                                 onChange={(e) => setEditText(e.target.value)}
                                 placeholder="Enter menu text"
                             />
@@ -602,7 +566,7 @@ const ManageMenu = () => {
                             <label className="form-label">Description:</label>
                             <InputText
                                 value={editDescription}
-                                className='form-control'
+                                className="form-control"
                                 onChange={(e) => setEditDescription(e.target.value)}
                                 placeholder="Enter description"
                             />
@@ -611,17 +575,29 @@ const ManageMenu = () => {
                 </div>
                 <div className="sidebar-fixed-bottom position-absolute pe-3" style={{ bottom: 16, right: 16 }}>
                     <div className="d-flex gap-3 justify-content-end">
-                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setShowEditSidebar(false)} />
-                        <Button label="Update" className="btn btn-success" onClick={handleUpdateSave} />
+                        <Button
+                            label="Cancel"
+                            className="btn btn-outline-secondary"
+                            onClick={() => setShowEditSidebar(false)}
+                        />
+                        <Button
+                            label="Update"
+                            className="btn btn-success"
+                            onClick={handleUpdateSave}
+                        />
                     </div>
                 </div>
             </PrimeSidebar>
+
             {/* Edit SubMenu Sidebar */}
-            <PrimeSidebar visible={showEditSubMenuSidebar} showCloseIcon={false}
+            <PrimeSidebar
+                visible={showEditSubMenuSidebar}
+                showCloseIcon={false}
                 dismissable={false}
                 position="right"
                 onHide={() => setShowEditSubMenuSidebar(false)}
-                style={{ width: "360px" }}>
+                style={{ width: "360px" }}
+            >
                 <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
                     <h6 className="sidebarTitle">{editingSubMenu ? 'Edit' : 'Add'} SubMenu</h6>
                     <Button
@@ -636,7 +612,7 @@ const ManageMenu = () => {
                             <label className="form-label">SubMenu Text:</label>
                             <InputText
                                 value={editSubMenuText}
-                                className='form-control'
+                                className="form-control"
                                 onChange={(e) => setEditSubMenuText(e.target.value)}
                                 placeholder="Enter submenu text"
                             />
@@ -645,7 +621,7 @@ const ManageMenu = () => {
                             <label className="form-label">Description:</label>
                             <InputText
                                 value={editSubMenuDescription}
-                                className='form-control'
+                                className="form-control"
                                 onChange={(e) => setEditSubMenuDescription(e.target.value)}
                                 placeholder="Enter description"
                             />
@@ -669,7 +645,7 @@ const ManageMenu = () => {
                             <label className="form-label">Navigate URL:</label>
                             <InputText
                                 value={editSubMenuNavigateUrl}
-                                className='form-control'
+                                className="form-control"
                                 onChange={(e) => setEditSubMenuNavigateUrl(e.target.value)}
                                 placeholder="Enter navigate URL"
                             />
@@ -678,76 +654,188 @@ const ManageMenu = () => {
                 </div>
                 <div className="sidebar-fixed-bottom position-absolute pe-3" style={{ bottom: 16, right: 16 }}>
                     <div className="d-flex gap-3 justify-content-end">
-                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setShowEditSubMenuSidebar(false)} />
-                        <Button label={editingSubMenu ? "Update" : "Save"} className="btn btn-success" onClick={handleUpdateSubMenuSave} />
+                        <Button
+                            label="Cancel"
+                            className="btn btn-outline-secondary"
+                            onClick={() => setShowEditSubMenuSidebar(false)}
+                        />
+                        <Button
+                            label={editingSubMenu ? "Update" : "Save"}
+                            className="btn btn-success"
+                            onClick={handleUpdateSubMenuSave}
+                        />
                     </div>
                 </div>
             </PrimeSidebar>
-            <div className="middle">
 
+            <div className="middle">
                 <div className="row">
                     <div className="col-12">
                         <div className="card_tb">
-                            <DataTable
-                                value={data}
-                                paginator
-                                rows={100}
-                                tableStyle={{ minWidth: "10rem" }}
-                                size="small"
-                                loading={loading}
-                                emptyMessage={error ? `Error: ${error}` : "No records found"}
-                                stripedRows
-                                rowsPerPageOptions={[50, 100, 200, 300]}
-                                className="p-datatable-gridlines process-datatable"
-                                expandedRows={expandedMenuId ? { [expandedMenuId]: true } : null}
-                                rowExpansionTemplate={subMenuRowExpansionTemplate}
-                                dataKey="MenuID"
-                            >
-                                <Column
-                                    expander
-                                    body={(rowData) => {
-                                        const id = extractMenuId(rowData);
-                                        const isExpanded = expandedMenuId === id;
-                                        return (
-                                            <span
-                                                className="material-icons"
-                                                style={{
-                                                    fontSize: "20px",
-                                                    cursor: "pointer",
-                                                    color: isExpanded ? "red" : "blue",
-                                                }}
-                                                onClick={(e) => handleExpanderClick(e, rowData)}
-                                            >
-                                                {isExpanded ? "remove_circle" : "add_circle"}
-                                            </span>
-                                        );
-                                    }}
-                                    style={{ width: "3rem" }}
-                                />
-                                <Column field="Text" header="Menu Text" />
-                                <Column field="Description" header="Menu Description" />
-                                <Column
-                                    header="Actions"
-                                    body={(rowData) => (
-                                        <span
-                                            className="material-icons"
-                                            title="Edit"
-                                            style={{ fontSize: 20, cursor: 'pointer', color: '#1976d2' }}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEdit(rowData);
-                                            }}
-                                        >
-                                            edit
-                                        </span>
-                                    )}
-                                />
-                            </DataTable>
+                            <div className="p-3">
+                                <div className="table-responsive">
+                                    <table className="table table-sm mb-0 menu-table">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th style={{ width: "40px" }}></th>
+                                                <th style={{ textAlign: "left" }}>Menu Text</th>
+                                                <th style={{ textAlign: "left" }}>Menu Description</th>
+                                                <th style={{ width: "100px" }}>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {data.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={4} className="text-center p-4">
+                                                        {error ? `Error: ${error}` : "No records found"}
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                data.map((row, index) => {
+                                                    const menuId = extractMenuId(row);
+                                                    const isExpanded = expandedRows.includes(index);
+                                                    const childData = subMenuData[menuId] || [];
+
+                                                    return (
+                                                        <React.Fragment key={index}>
+                                                            <tr
+                                                                className={`${
+                                                                    index % 2 !== 0 ? "ota-row-odd" : ""
+                                                                } ota-row-hover`}
+                                                            >
+                                                                <td>
+                                                                    <a
+                                                                        href="#!"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            toggleRowExpansion(index, row);
+                                                                        }}
+                                                                    >
+                                                                        {isExpanded ? (
+                                                                            <span className="material-icons expansion-icon">
+                                                                                remove_circle
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="material-icons expansion-icon">
+                                                                                add_circle
+                                                                            </span>
+                                                                        )}
+                                                                    </a>
+                                                                </td>
+                                                                <td style={{ textAlign: "left" }}>
+                                                                    {row.Text}
+                                                                </td>
+                                                                <td style={{ textAlign: "left" }}>
+                                                                    {row.Description}
+                                                                </td>
+                                                                <td>
+                                                                    <span
+                                                                        className="material-icons action-icon edit"
+                                                                        title="Edit"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleEdit(row);
+                                                                        }}
+                                                                    >
+                                                                        edit
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+
+                                                            {isExpanded && (
+                                                                <tr>
+                                                                    <td colSpan={4} className="leftStrip p-2">
+                                                                        <div className="expanded-content">
+                                                                            <div style={{ marginBottom: 12 }}>
+                                                                                <Button
+                                                                                    className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                                                                                    onClick={() => handleAddSubMenu(menuId)}
+                                                                                >
+                                                                                    <span className="material-icons me-1" style={{ fontSize: "18px" }}>
+                                                                                        add_circle
+                                                                                    </span>
+                                                                                    New SubMenu
+                                                                                </Button>
+                                                                            </div>
+                                                                            {childData.length === 0 ? (
+                                                                                <p className="text-center text-muted m-3">
+                                                                                    No submenus found
+                                                                                </p>
+                                                                            ) : (
+                                                                                <div className="table-responsive">
+                                                                                    <table className="table table-sm table-bordered mb-0 nested-menu-table">
+                                                                                        <thead>
+                                                                                            <tr>
+                                                                                                <th style={{ textAlign: "left" }}>SubMenu Text</th>
+                                                                                                <th style={{ textAlign: "left" }}>Description</th>
+                                                                                                <th>Parent Menu</th>
+                                                                                                <th style={{ textAlign: "left" }}>Navigate URL</th>
+                                                                                                <th style={{ width: "100px" }}>Actions</th>
+                                                                                            </tr>
+                                                                                        </thead>
+                                                                                        <tbody>
+                                                                                            {childData.map((childRow, cIdx) => (
+                                                                                                <tr
+                                                                                                    key={cIdx}
+                                                                                                    className={`${
+                                                                                                        cIdx % 2 !== 0 ? "ota-row-odd" : ""
+                                                                                                    } ota-row-hover`}
+                                                                                                >
+                                                                                                    <td style={{ textAlign: "left" }}>
+                                                                                                        {childRow.TEXT}
+                                                                                                    </td>
+                                                                                                    <td style={{ textAlign: "left" }}>
+                                                                                                        {childRow.DESCRIPTION}
+                                                                                                    </td>
+                                                                                                    <td>
+                                                                                                        {childRow.mtext}
+                                                                                                    </td>
+                                                                                                    <td style={{ textAlign: "left" }}>
+                                                                                                        {childRow.NAVIGATEURL}
+                                                                                                    </td>
+                                                                                                    <td>
+                                                                                                        <span
+                                                                                                            className="material-icons action-icon edit"
+                                                                                                            title="Edit"
+                                                                                                            onClick={(e) => {
+                                                                                                                e.stopPropagation();
+                                                                                                                handleEditSubMenu(childRow);
+                                                                                                            }}
+                                                                                                        >
+                                                                                                            edit
+                                                                                                        </span>
+                                                                                                        <span
+                                                                                                            className="material-icons action-icon delete"
+                                                                                                            title="Delete"
+                                                                                                            onClick={(e) => handleDeleteSubmenu(e, childRow, menuId)}
+                                                                                                        >
+                                                                                                            delete
+                                                                                                        </span>
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                            ))}
+                                                                                        </tbody>
+                                                                                    </table>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </React.Fragment>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     );
-}
+};
+
 export default ManageMenu;

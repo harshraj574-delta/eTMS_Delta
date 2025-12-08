@@ -2641,22 +2641,23 @@ const ManageRoute = () => {
         shifttimes: selectedShifts,
       };
 
-      const bulkRouteData = await ManageRouteService.WBS_GetBulkRouteData(
+      const bulkRouteData = await ManageRouteService.PushRouteToDashbaord(
         params
       );
 
       if (bulkRouteData && bulkRouteData.length > 0) {
-        await pushDataToUpdateTripsheetDetail(bulkRouteData);
+        //await pushDataToUpdateTripsheetDetail(bulkRouteData);
         toastService.success(
-          "Route finalization and data push completed successfully."
+          "Route finalization  completed successfully."
         );
+        await handleSubmit();
       } else {
         toastService.warn("No route data available to finalize.");
       }
     } catch (error) {
       console.error("Error finalizing routes:", error);
       toastService.error(
-        "Finalization and data push failed. Please try again."
+        "Finalization  data  failed. Please try again."
       );
     } finally {
       setIsFinalizing(false);

@@ -8,6 +8,9 @@ import { Calendar } from "primereact/calendar";
 import RepFeedbackReportService from "../services/compliance/RepFeedbackReportService";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
+import TableToolbar from "./common/TableToolbar";
+import noReportImage from "../assets/no_report.png";
+import calendarIcon from "../assets/calendar.png";
 
 const FeedbackReport = () => {
   const [facilities, setFacilities] = useState([]);
@@ -26,6 +29,10 @@ const FeedbackReport = () => {
 
   const UserID = sessionStorage.getItem("ID");
   const dt = useRef(null);
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
 
   const statusOptions = [
     { label: "Both", value: "2" },
@@ -124,6 +131,7 @@ const FeedbackReport = () => {
       setReportData(validatedData);
       setLoading(false);
       setIsSubmitting(false);
+      setHasSearched(true);
 
       setTimeout(() => {
         if (validatedData.length > 0) {
@@ -414,6 +422,14 @@ const FeedbackReport = () => {
     );
   };
 
+  const filteredData = reportData.filter((item) => {
+    if (!globalFilter) return true;
+    const searchTerm = globalFilter.toLowerCase();
+    return Object.values(item).some(
+      (val) => val && val.toString().toLowerCase().includes(searchTerm)
+    );
+  });
+
   return (
     <>
       <Loader isVisible={isSubmitting} fullScreen={true} />
@@ -438,27 +454,31 @@ const FeedbackReport = () => {
                   <label htmlFor="startDate" className="form-label">
                     From Date <span>*</span>
                   </label>
-                  <Calendar
-                    id="startDate"
-                    className="w-100"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.value)}
-                    dateFormat="mm/dd/yy"
-                    showIcon
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="startDate"
+                      className="w-100 custom-calendar-input"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.value)}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-3 col-lg-3">
                   <label htmlFor="endDate" className="form-label">
                     To Date <span>*</span>
                   </label>
-                  <Calendar
-                    id="endDate"
-                    className="w-100"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.value)}
-                    dateFormat="mm/dd/yy"
-                    showIcon
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="endDate"
+                      className="w-100 custom-calendar-input"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.value)}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-2 col-lg-2">
                   <label htmlFor="facility" className="form-label">
@@ -488,9 +508,39 @@ const FeedbackReport = () => {
                   />
                 </div>
                 <div className="col-12 col-sm-6 col-md-2 col-lg-2 d-flex align-items-end">
+                  <style>
+                    {`
+                      .run-report-btn {
+                        background-color: #1C1D20 !important;
+                        border-color: #1C1D20 !important;
+                        transition: background-color 0.3s, border-color 0.3s;
+                      }
+                      .run-report-btn:hover {
+                        background-color: #0d6efd !important;
+                        border-color: #0d6efd !important;
+                      }
+                      .custom-calendar-wrapper {
+                        position: relative;
+                        width: 100%;
+                      }
+                      .custom-calendar-icon {
+                        position: absolute;
+                        left: 10px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 22px;
+                        height: 22px;
+                        z-index: 2;
+                        pointer-events: none;
+                      }
+                      .custom-calendar-input .p-inputtext {
+                        padding-left: 35px !important;
+                      }
+                    `}
+                  </style>
                   <Button
                     label="Run Report"
-                    className="btn btn-primary w-100"
+                    className="btn btn-primary w-100 run-report-btn"
                     onClick={handleSearch}
                     disabled={isSubmitting}
                   />
@@ -503,161 +553,185 @@ const FeedbackReport = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              {/* Action buttons */}
-              {reportData.length > 0 && (
-                <div className="d-flex justify-content-end p-2 border-bottom">
-                  <Button
-                    type="button"
-                    icon="pi pi-refresh"
-                    text
-                    onClick={handleReload}
-                    tooltip="Reload"
-                    tooltipOptions={{ position: "bottom" }}
-                    className="p-button-rounded p-button-text"
+              {!hasSearched && (
+                <div
+                  className="d-flex flex-column align-items-center justify-content-center p-5"
+                  style={{ minHeight: "70vh" }}
+                >
+                  <img
+                    src={noReportImage}
+                    alt="No Report Selected"
+                    style={{
+                      maxWidth: "100px",
+                      opacity: 0.5,
+                      marginBottom: "1rem",
+                    }}
                   />
-                  <Button
-                    type="button"
-                    icon="pi pi-download"
-                    text
-                    onClick={exportExcel}
-                    tooltip="Export"
-                    tooltipOptions={{ position: "bottom" }}
-                    className="p-button-rounded p-button-text"
-                  />
+                  <p
+                    className="text-muted mb-0"
+                    style={{ fontSize: "0.9rem" }}
+                  >
+                    Please select above parameters to show report data
+                  </p>
                 </div>
               )}
 
-              <div className="table-responsive">
-                <table className="table table-sm table-hover mb-0">
-                  <thead className="table-light">
-                    <tr>
-                      <th className="text-center">Ticket No</th>
-                      <th className="text-center">Facility</th>
-                      <th className="text-center">Employee Code</th>
-                      <th className="text-center">Employee Name</th>
-                      <th className="text-center">Description</th>
-                      <th className="text-center">Shift Date</th>
-                      <th className="text-center">Raised Time</th>
-                      <th className="text-center">Updated By</th>
-                      <th className="text-center">Updated Time</th>
-                      <th className="text-center">Updated Remark</th>
-                      <th className="text-center">Status</th>
-                      <th style={{ width: "40px" }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan="12" className="text-center p-4">
-                          <div
-                            className="spinner-border text-primary"
-                            role="status"
-                          >
-                            <span className="visually-hidden">Loading...</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : reportData.length === 0 ? (
-                      <tr>
-                        <td colSpan="12" className="text-center p-4 text-muted">
-                          {error
-                            ? `Error: ${error}`
-                            : "Please select a facility and click 'Run Report' to view results"}
-                        </td>
-                      </tr>
-                    ) : (
-                      reportData.map((feedback, index) => (
-                        <React.Fragment key={index}>
+              {hasSearched && (
+                <div className="p-3">
+                  <TableToolbar
+                    search={globalFilter}
+                    onSearch={(e) => setGlobalFilter(e.target.value)}
+                    onRefresh={handleReload}
+                    onExport={exportExcel}
+                    showFilter={true}
+                    overlayRef={op}
+                    filterButtonRef={filterButtonRef}
+                  >
+                    <div className="p-4 text-center">
+                      <i
+                        className="pi pi-info-circle text-muted mb-3 d-block"
+                        style={{ fontSize: "2rem" }}
+                      />
+                      <p
+                        className="m-0 text-muted"
+                        style={{ fontSize: "0.875rem" }}
+                      >
+                        No advanced filters available.
+                      </p>
+                    </div>
+                  </TableToolbar>
+
+                  <div className="table-responsive">
+                    <table className="table table-sm table-hover mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ width: "40px" }}></th>
+                          <th className="text-center">Ticket No</th>
+                          <th className="text-center">Facility</th>
+                          <th className="text-center">Employee Code</th>
+                          <th className="text-center">Employee Name</th>
+                          <th className="text-center">Description</th>
+                          <th className="text-center">Shift Date</th>
+                          <th className="text-center">Raised Time</th>
+                          <th className="text-center">Updated By</th>
+                          <th className="text-center">Updated Time</th>
+                          <th className="text-center">Updated Remark</th>
+                          <th className="text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loading ? (
                           <tr>
-                            <td className="text-center">
-                              <a
-                                href="#!"
-                                className="text-decoration-none"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleRowToggle(feedback);
-                                }}
+                            <td colSpan="12" className="text-center p-4">
+                              <div
+                                className="spinner-border text-primary"
+                                role="status"
                               >
-                                {feedback.TicketNo}
-                              </a>
-                            </td>
-                            <td className="text-center">
-                              {feedback.facilityname}
-                            </td>
-                            <td className="text-center">{feedback.empCode}</td>
-                            <td className="text-center">{feedback.empName}</td>
-                            <td className="text-center">
-                              <span
-                                className="text-truncate d-inline-block"
-                                style={{ maxWidth: "200px" }}
-                                title={feedback.Desrp}
-                              >
-                                {feedback.Desrp}
-                              </span>
-                            </td>
-                            <td className="text-center">
-                              {feedback.Shiftdate}
-                            </td>
-                            <td className="text-center">
-                              {feedback.RaisedTime}
-                            </td>
-                            <td className="text-center">{feedback.ActionBy}</td>
-                            <td className="text-center">
-                              {feedback.ActionAt || "-"}
-                            </td>
-                            <td className="text-center">
-                              {feedback.Remark || "-"}
-                            </td>
-                            <td className="text-center">
-                              <span
-                                className={`badge ${
-                                  feedback.Status === "Closed"
-                                    ? "bg-success"
-                                    : "bg-warning text-dark"
-                                }`}
-                              >
-                                {feedback.Status}
-                              </span>
-                            </td>
-                            <td>
-                              <a
-                                href="#!"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  handleRowToggle(feedback);
-                                }}
-                              >
-                                {expandedRows.includes(feedback.TicketNo) ? (
-                                  <span
-                                    className="material-icons"
-                                    style={{ fontSize: "20px" }}
-                                  >
-                                    remove_circle
-                                  </span>
-                                ) : (
-                                  <span
-                                    className="material-icons"
-                                    style={{ fontSize: "20px" }}
-                                  >
-                                    add_circle
-                                  </span>
-                                )}
-                              </a>
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
                             </td>
                           </tr>
-                          {expandedRows.includes(feedback.TicketNo) && (
-                            <tr>
-                              <td colSpan="12" className="leftStrip p-0">
-                                {rowExpansionTemplate(feedback)}
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                        ) : filteredData.length === 0 ? (
+                          <tr>
+                            <td colSpan="12" className="text-center p-4 text-muted">
+                              {error ? `Error: ${error}` : "No records found matching your search"}
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredData.map((feedback, index) => (
+                            <React.Fragment key={index}>
+                              <tr>
+                                <td>
+                                  <a
+                                    href="#!"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleRowToggle(feedback);
+                                    }}
+                                  >
+                                    {expandedRows.includes(feedback.TicketNo) ? (
+                                      <span
+                                        className="material-icons"
+                                        style={{ fontSize: "20px" }}
+                                      >
+                                        remove_circle
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="material-icons"
+                                        style={{ fontSize: "20px" }}
+                                      >
+                                        add_circle
+                                      </span>
+                                    )}
+                                  </a>
+                                </td>
+                                <td className="text-center">
+                                  <a
+                                    href="#!"
+                                    className="text-decoration-none"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleRowToggle(feedback);
+                                    }}
+                                  >
+                                    {feedback.TicketNo}
+                                  </a>
+                                </td>
+                                <td className="text-center">
+                                  {feedback.facilityname}
+                                </td>
+                                <td className="text-center">{feedback.empCode}</td>
+                                <td className="text-center">{feedback.empName}</td>
+                                <td className="text-center">
+                                  <span
+                                    className="text-truncate d-inline-block"
+                                    style={{ maxWidth: "200px" }}
+                                    title={feedback.Desrp}
+                                  >
+                                    {feedback.Desrp}
+                                  </span>
+                                </td>
+                                <td className="text-center">
+                                  {feedback.Shiftdate}
+                                </td>
+                                <td className="text-center">
+                                  {feedback.RaisedTime}
+                                </td>
+                                <td className="text-center">{feedback.ActionBy}</td>
+                                <td className="text-center">
+                                  {feedback.ActionAt || "-"}
+                                </td>
+                                <td className="text-center">
+                                  {feedback.Remark || "-"}
+                                </td>
+                                <td className="text-center">
+                                  <span
+                                    className={`badge ${
+                                      feedback.Status === "Closed"
+                                        ? "bg-success"
+                                        : "bg-warning text-dark"
+                                    }`}
+                                  >
+                                    {feedback.Status}
+                                  </span>
+                                </td>
+                              </tr>
+                              {expandedRows.includes(feedback.TicketNo) && (
+                                <tr>
+                                  <td colSpan="12" className="leftStrip p-0">
+                                    {rowExpansionTemplate(feedback)}
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

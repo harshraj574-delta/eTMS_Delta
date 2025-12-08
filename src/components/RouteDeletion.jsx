@@ -7,6 +7,7 @@ import RouteDeletionService from "../services/compliance/RouteDeletionService";
 // import Calendar from "react-calendar";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { toastService } from "../services/toastService";
+import { ToastContainer } from "react-toastify";
 const RouteDeletion = () => {
   const UserId = sessionStorage.getItem("ID");
   const [facility, setFacility] = useState([]);
@@ -157,6 +158,7 @@ const RouteDeletion = () => {
       )}
       <Header pageTitle="Route Deletion" showNewButton={false} />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <ConfirmDialog />
       <div className="middle">
         <div className="card_tb p-3">

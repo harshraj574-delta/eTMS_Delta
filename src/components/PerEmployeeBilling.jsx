@@ -10,6 +10,9 @@ import { Column } from "primereact/column";
 import PerEmployeeBillingService from "../services/compliance/PerEmployeeBillingService";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
+import TableToolbar from "./common/TableToolbar";
+import noReportImage from "../assets/no_report.png";
+import calendarIcon from "../assets/calendar.png";
 
 const PerEmployeeBilling = () => {
   const [facilities, setFacilities] = useState([]);
@@ -25,6 +28,10 @@ const PerEmployeeBilling = () => {
 
   const UserID = sessionStorage.getItem("ID");
   const dt = useRef(null);
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
 
   const reportTypes = [
     { label: "Detailed", value: "detailed" },
@@ -113,7 +120,11 @@ const PerEmployeeBilling = () => {
       setReportData(validatedData);
       setCurrentReportType(selectedReportType);
       setLoading(false);
+      setReportData(validatedData);
+      setCurrentReportType(selectedReportType);
+      setLoading(false);
       setIsSubmitting(false);
+      setHasSearched(true);
 
       setTimeout(() => {
         if (validatedData.length > 0) {
@@ -144,27 +155,7 @@ const PerEmployeeBilling = () => {
     }
   };
 
-  const paginatorLeft = (
-    <Button
-      type="button"
-      icon="pi pi-refresh"
-      text
-      onClick={() => handleSearch()}
-      tooltip="Refresh"
-      tooltipOptions={{ position: "top" }}
-    />
-  );
 
-  const paginatorRight = (
-    <Button
-      type="button"
-      icon="pi pi-download"
-      text
-      onClick={exportExcel}
-      tooltip="Export"
-      tooltipOptions={{ position: "top" }}
-    />
-  );
 
   return (
     <>
@@ -186,27 +177,31 @@ const PerEmployeeBilling = () => {
                   <label htmlFor="startDate" className="form-label">
                     From Date <span>*</span>
                   </label>
-                  <Calendar
-                    id="startDate"
-                    className="w-100"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.value)}
-                    dateFormat="mm/dd/yy"
-                    showIcon
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="startDate"
+                      className="w-100 custom-calendar-input"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.value)}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2">
                   <label htmlFor="endDate" className="form-label">
                     To Date <span>*</span>
                   </label>
-                  <Calendar
-                    id="endDate"
-                    className="w-100"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.value)}
-                    dateFormat="mm/dd/yy"
-                    showIcon
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="endDate"
+                      className="w-100 custom-calendar-input"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.value)}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2">
                   <label htmlFor="reportType" className="form-label">
@@ -236,9 +231,39 @@ const PerEmployeeBilling = () => {
                   />
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2 d-flex align-items-end">
+                  <style>
+                    {`
+                      .run-report-btn {
+                        background-color: #1C1D20 !important;
+                        border-color: #1C1D20 !important;
+                        transition: background-color 0.3s, border-color 0.3s;
+                      }
+                      .run-report-btn:hover {
+                        background-color: #0d6efd !important;
+                        border-color: #0d6efd !important;
+                      }
+                      .custom-calendar-wrapper {
+                        position: relative;
+                        width: 100%;
+                      }
+                      .custom-calendar-icon {
+                        position: absolute;
+                        left: 10px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 22px;
+                        height: 22px;
+                        z-index: 2;
+                        pointer-events: none;
+                      }
+                      .custom-calendar-input .p-inputtext {
+                        padding-left: 35px !important;
+                      }
+                    `}
+                  </style>
                   <Button
                     label="Run Report"
-                    className="btn btn-primary w-100"
+                    className="btn btn-primary w-100 run-report-btn"
                     onClick={handleSearch}
                     disabled={isSubmitting}
                   />
@@ -251,206 +276,265 @@ const PerEmployeeBilling = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              {currentReportType === "detailed" && (
-                <div className="table-responsive">
-                  <DataTable
-                    value={reportData}
-                    ref={dt}
-                    paginator
-                    rows={50}
-                    tableStyle={{ minWidth: "50rem" }}
-                    size="small"
-                    loading={loading}
-                    emptyMessage={
-                      error ? `Error: ${error}` : "No records found"
-                    }
-                    stripedRows
-                    paginatorLeft={paginatorLeft}
-                    paginatorRight={paginatorRight}
-                    rowsPerPageOptions={[50, 100, 200, 300]}
+              {!hasSearched && (
+                <div
+                  className="d-flex flex-column align-items-center justify-content-center p-5"
+                  style={{ minHeight: "70vh" }}
+                >
+                  <img
+                    src={noReportImage}
+                    alt="No Report Selected"
+                    style={{
+                      maxWidth: "100px",
+                      opacity: 0.5,
+                      marginBottom: "1rem",
+                    }}
+                  />
+                  <p
+                    className="text-muted mb-0"
+                    style={{ fontSize: "0.9rem" }}
                   >
-                    <Column
-                      field="FacilityName"
-                      header="Facility"
-                      sortable
-                    />
-                    <Column field="ShiftDate" header="Shift Date" sortable />
-                    <Column field="TripType" header="Trip Type" sortable />
-                    <Column field="ShiftTime" header="Shift Time" sortable />
-                    <Column
-                      field="VendorName"
-                      header="Vendor Name"
-                      sortable
-                    />
-                    <Column
-                      field="VehicleType"
-                      header="Vehicle Type"
-                      sortable
-                    />
-                    <Column field="RouteId" header="Route ID" sortable />
-                    <Column
-                      field="EmployeeId"
-                      header="Employee ID"
-                      sortable
-                    />
-                    <Column
-                      field="EmployeeName"
-                      header="Employee Name"
-                      sortable
-                    />
-                    <Column
-                      field="ManagerName"
-                      header="Manager Name"
-                      sortable
-                    />
-                    <Column
-                      field="ManagerId"
-                      header="Manager ID"
-                      sortable
-                    />
-                    <Column field="Gender" header="Gender" sortable />
-                    <Column
-                      field="ProcessName"
-                      header="Process Name"
-                      sortable
-                    />
-                    <Column
-                      field="TravelStatus"
-                      header="Travel Status"
-                      sortable
-                    />
-                    <Column
-                      field="Cost"
-                      header="Cost"
-                      sortable
-                      body={(rowData) => rowData.Cost?.toFixed(2)}
-                    />
-                    <Column
-                      field="PerEmpCost"
-                      header="Per Emp Cost"
-                      sortable
-                      body={(rowData) => rowData.PerEmpCost?.toFixed(2)}
-                    />
-                    <Column
-                      field="GuardCost"
-                      header="Guard Cost"
-                      sortable
-                      body={(rowData) => rowData.GuardCost?.toFixed(2)}
-                    />
-                    <Column
-                      field="PerEmpGuardCost"
-                      header="Per Emp Guard Cost"
-                      sortable
-                      body={(rowData) => rowData.PerEmpGuardCost?.toFixed(2)}
-                    />
-                    <Column field="ActPax" header="Act Pax" sortable />
-                    <Column
-                      field="NoShowPax"
-                      header="No Show Pax"
-                      sortable
-                    />
-                    <Column
-                      field="TotalCost"
-                      header="Total Cost"
-                      sortable
-                      body={(rowData) => rowData.TotalCost?.toFixed(2)}
-                    />
-                    <Column
-                      field="PerEmpTotalCost"
-                      header="Per Emp Total Cost"
-                      sortable
-                      body={(rowData) => rowData.PerEmpTotalCost?.toFixed(2)}
-                    />
-                    <Column field="SchPax" header="Sch Pax" sortable />
-                  </DataTable>
+                    Please select above parameters to show report data
+                  </p>
                 </div>
               )}
 
-              {currentReportType === "processwise" && (
-                <div className="table-responsive">
-                  <DataTable
-                    value={reportData}
-                    ref={dt}
-                    paginator
-                    rows={50}
-                    tableStyle={{ minWidth: "50rem" }}
-                    size="small"
-                    loading={loading}
-                    emptyMessage={
-                      error ? `Error: ${error}` : "No records found"
-                    }
-                    stripedRows
-                    paginatorLeft={paginatorLeft}
-                    paginatorRight={paginatorRight}
-                    rowsPerPageOptions={[50, 100, 200, 300]}
+              {hasSearched && (
+                <div className="p-3">
+                  <TableToolbar
+                    search={globalFilter}
+                    onSearch={(e) => setGlobalFilter(e.target.value)}
+                    onRefresh={handleSearch}
+                    onExport={exportExcel}
+                    showFilter={true}
+                    overlayRef={op}
+                    filterButtonRef={filterButtonRef}
                   >
-                    <Column
-                      field="FacilityName"
-                      header="Facility"
-                      sortable
-                    />
-                    <Column field="ShiftDate" header="Shift Date" sortable />
-                    <Column field="TripType" header="Trip Type" sortable />
-                    <Column field="ShiftTime" header="Shift Time" sortable />
-                    <Column
-                      field="VendorName"
-                      header="Vendor Name"
-                      sortable
-                    />
-                    <Column
-                      field="VehicleType"
-                      header="Vehicle Type"
-                      sortable
-                    />
-                    <Column
-                      field="ProcessName"
-                      header="Process Name"
-                      sortable
-                    />
-                    <Column
-                      field="Cost"
-                      header="Trip Cost"
-                      sortable
-                      body={(rowData) => rowData.Cost?.toFixed(2)}
-                    />
-                    <Column
-                      field="GuardCost"
-                      header="Guard Cost"
-                      sortable
-                      body={(rowData) => rowData.GuardCost?.toFixed(2)}
-                    />
-                    <Column
-                      field="TotalCost"
-                      header="Total Cost"
-                      sortable
-                      body={(rowData) => rowData.TotalCost?.toFixed(2)}
-                    />
-                    <Column
-                      field="PerEmpCost"
-                      header="Per Emp Cost"
-                      sortable
-                      body={(rowData) => rowData.PerEmpCost?.toFixed(2)}
-                    />
-                    <Column
-                      field="PerEmpGuardCost"
-                      header="Per Emp Guard Cost"
-                      sortable
-                      body={(rowData) => rowData.PerEmpGuardCost?.toFixed(2)}
-                    />
-                    <Column
-                      field="PerEmpTotalCost"
-                      header="Per Emp Total Cost"
-                      sortable
-                      body={(rowData) => rowData.PerEmpTotalCost?.toFixed(2)}
-                    />
-                  </DataTable>
-                </div>
-              )}
+                    <div className="p-4 text-center">
+                      <i
+                        className="pi pi-info-circle text-muted mb-3 d-block"
+                        style={{ fontSize: "2rem" }}
+                      />
+                      <p
+                        className="m-0 text-muted"
+                        style={{ fontSize: "0.875rem" }}
+                      >
+                        No advanced filters available.
+                      </p>
+                    </div>
+                  </TableToolbar>
 
-              {!currentReportType && (
-                <div className="p-4 text-center text-muted">
-                  Please select a report type and click "Show Data" to view
-                  results
+                  {currentReportType === "detailed" && (
+                    <div className="table-responsive">
+                      <DataTable
+                        value={reportData}
+                        ref={dt}
+                        paginator
+                        rows={50}
+                        tableStyle={{ minWidth: "50rem" }}
+                        size="small"
+                        loading={loading}
+                        emptyMessage={
+                          error ? `Error: ${error}` : "No records found"
+                        }
+                        stripedRows
+                        globalFilter={globalFilter}
+                        rowsPerPageOptions={[50, 100, 200, 300]}
+                      >
+                        <Column
+                          field="FacilityName"
+                          header="Facility"
+                          sortable
+                        />
+                        <Column
+                          field="ShiftDate"
+                          header="Shift Date"
+                          sortable
+                        />
+                        <Column field="TripType" header="Trip Type" sortable />
+                        <Column
+                          field="ShiftTime"
+                          header="Shift Time"
+                          sortable
+                        />
+                        <Column
+                          field="VendorName"
+                          header="Vendor Name"
+                          sortable
+                        />
+                        <Column
+                          field="VehicleType"
+                          header="Vehicle Type"
+                          sortable
+                        />
+                        <Column field="RouteId" header="Route ID" sortable />
+                        <Column
+                          field="EmployeeId"
+                          header="Employee ID"
+                          sortable
+                        />
+                        <Column
+                          field="EmployeeName"
+                          header="Employee Name"
+                          sortable
+                        />
+                        <Column
+                          field="ManagerName"
+                          header="Manager Name"
+                          sortable
+                        />
+                        <Column
+                          field="ManagerId"
+                          header="Manager ID"
+                          sortable
+                        />
+                        <Column field="Gender" header="Gender" sortable />
+                        <Column
+                          field="ProcessName"
+                          header="Process Name"
+                          sortable
+                        />
+                        <Column
+                          field="TravelStatus"
+                          header="Travel Status"
+                          sortable
+                        />
+                        <Column
+                          field="Cost"
+                          header="Cost"
+                          sortable
+                          body={(rowData) => rowData.Cost?.toFixed(2)}
+                        />
+                        <Column
+                          field="PerEmpCost"
+                          header="Per Emp Cost"
+                          sortable
+                          body={(rowData) => rowData.PerEmpCost?.toFixed(2)}
+                        />
+                        <Column
+                          field="GuardCost"
+                          header="Guard Cost"
+                          sortable
+                          body={(rowData) => rowData.GuardCost?.toFixed(2)}
+                        />
+                        <Column
+                          field="PerEmpGuardCost"
+                          header="Per Emp Guard Cost"
+                          sortable
+                          body={(rowData) => rowData.PerEmpGuardCost?.toFixed(2)}
+                        />
+                        <Column field="ActPax" header="Act Pax" sortable />
+                        <Column
+                          field="NoShowPax"
+                          header="No Show Pax"
+                          sortable
+                        />
+                        <Column
+                          field="TotalCost"
+                          header="Total Cost"
+                          sortable
+                          body={(rowData) => rowData.TotalCost?.toFixed(2)}
+                        />
+                        <Column
+                          field="PerEmpTotalCost"
+                          header="Per Emp Total Cost"
+                          sortable
+                          body={(rowData) => rowData.PerEmpTotalCost?.toFixed(2)}
+                        />
+                        <Column field="SchPax" header="Sch Pax" sortable />
+                      </DataTable>
+                    </div>
+                  )}
+
+                  {currentReportType === "processwise" && (
+                    <div className="table-responsive">
+                      <DataTable
+                        value={reportData}
+                        ref={dt}
+                        paginator
+                        rows={50}
+                        tableStyle={{ minWidth: "50rem" }}
+                        size="small"
+                        loading={loading}
+                        emptyMessage={
+                          error ? `Error: ${error}` : "No records found"
+                        }
+                        stripedRows
+                        globalFilter={globalFilter}
+                        rowsPerPageOptions={[50, 100, 200, 300]}
+                      >
+                        <Column
+                          field="FacilityName"
+                          header="Facility"
+                          sortable
+                        />
+                        <Column
+                          field="ShiftDate"
+                          header="Shift Date"
+                          sortable
+                        />
+                        <Column field="TripType" header="Trip Type" sortable />
+                        <Column
+                          field="ShiftTime"
+                          header="Shift Time"
+                          sortable
+                        />
+                        <Column
+                          field="VendorName"
+                          header="Vendor Name"
+                          sortable
+                        />
+                        <Column
+                          field="VehicleType"
+                          header="Vehicle Type"
+                          sortable
+                        />
+                        <Column
+                          field="ProcessName"
+                          header="Process Name"
+                          sortable
+                        />
+                        <Column
+                          field="Cost"
+                          header="Trip Cost"
+                          sortable
+                          body={(rowData) => rowData.Cost?.toFixed(2)}
+                        />
+                        <Column
+                          field="GuardCost"
+                          header="Guard Cost"
+                          sortable
+                          body={(rowData) => rowData.GuardCost?.toFixed(2)}
+                        />
+                        <Column
+                          field="TotalCost"
+                          header="Total Cost"
+                          sortable
+                          body={(rowData) => rowData.TotalCost?.toFixed(2)}
+                        />
+                        <Column
+                          field="PerEmpCost"
+                          header="Per Emp Cost"
+                          sortable
+                          body={(rowData) => rowData.PerEmpCost?.toFixed(2)}
+                        />
+                        <Column
+                          field="PerEmpGuardCost"
+                          header="Per Emp Guard Cost"
+                          sortable
+                          body={(rowData) => rowData.PerEmpGuardCost?.toFixed(2)}
+                        />
+                        <Column
+                          field="PerEmpTotalCost"
+                          header="Per Emp Total Cost"
+                          sortable
+                          body={(rowData) =>
+                            rowData.PerEmpTotalCost?.toFixed(2)
+                          }
+                        />
+                      </DataTable>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

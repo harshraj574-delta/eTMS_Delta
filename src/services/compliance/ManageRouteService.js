@@ -185,8 +185,22 @@ class ManageRouteService {
       console.error("Error in WBS_GetBulkRouteData:", error);
       throw error;
     }
+  } 
+async PushRouteToDashbaord(params) {
+    try {
+      const response = await api.post("/PushRouteToDashbaord", {
+        sDate: params.sDate,
+        eDate: params.eDate,
+        facilityid: params.facilityid,
+        triptype: params.triptype,
+        shifttimes: params.shifttimes,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error in PushRouteToDashbaord:", error);
+      throw error;
+    }
   }
-
   async getvehtypeCountVendorwise(params) {
     try {
       const response = await api.post("/getvehtypeCountVendorwise", {
