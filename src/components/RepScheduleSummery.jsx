@@ -281,11 +281,12 @@ const RepScheduleSummery = () => {
             transition: background-color 0.2s;
           }
           .vendor-table thead th {
-            background-color: #f8f9fa !important;
-            font-weight: 600;
+            background-color: #f9f9fb !important;
+            font-weight: 800;
+            color: var(--grey-4);
             border: 1px solid #dee2e6;
-            padding: 0.5rem;
-            font-size: 0.875rem;
+            padding: 16px 10px;
+            font-size: 13px;
             text-align: center;
             vertical-align: middle;
           }
@@ -297,7 +298,7 @@ const RepScheduleSummery = () => {
             vertical-align: middle;
           }
           .vendor-table .table-light th {
-            background-color: #f8f9fa !important;
+            background-color: #f9f9fb !important;
           }
           .nested-vendor-table thead th {
             background-color: #f8f9fa !important;
