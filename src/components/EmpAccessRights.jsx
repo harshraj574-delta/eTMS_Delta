@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import Sidebar from "./Master/SidebarMenu";
 import Header from "./Master/Header";
 import EmpAccessRightsService from "../services/compliance/EmpAccessRightsService";
@@ -9,16 +9,75 @@ import { toastService } from "../services/toastService";
 import { InputText } from "primereact/inputtext";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { ToastContainer } from "react-toastify";
 import Loader from "./common/Loader";
+import {
+  BsGrid,
+  BsPersonGear,
+  BsShieldCheck,
+  BsGear,
+  BsFileEarmarkText,
+  BsPeople,
+  BsClipboardData,
+  BsBarChart,
+  BsHouseDoor,
+  BsTruck,
+} from "react-icons/bs";
 import "./empAccessRights.css";
+
+// Animated Number Component
+const AnimatedNumber = ({ value = 0, duration = 1 }) => {
+  const motionValue = useMotionValue(0);
+  const rounded = useTransform(motionValue, (latest) =>
+    Math.round(latest).toLocaleString()
+  );
+
+  useEffect(() => {
+    const controls = animate(motionValue, Number(value) || 0, {
+      duration,
+      ease: "easeOut",
+    });
+    return controls.stop;
+  }, [value, duration, motionValue]);
+
+  return <motion.span>{rounded}</motion.span>;
+};
+
+// Icon mapping for different menu types
+const getMenuIcon = (menuName) => {
+  const name = menuName?.toLowerCase() || "";
+  if (name.includes("admin")) return BsPersonGear;
+  if (name.includes("report")) return BsFileEarmarkText;
+  if (name.includes("dashboard")) return BsBarChart;
+  if (name.includes("transport")) return BsTruck;
+  if (name.includes("compliance")) return BsShieldCheck;
+  if (name.includes("employee") || name.includes("user")) return BsPeople;
+  if (name.includes("master")) return BsClipboardData;
+  if (name.includes("setting")) return BsGear;
+  if (name.includes("home")) return BsHouseDoor;
+  return BsGrid;
+};
 
 const AccessCard = ({ menu, index, hasAnimated, onMenuClick }) => {
   const shouldAnimate = !hasAnimated;
+  const Icon = getMenuIcon(menu.Menu);
+
+  const handleMouseEnter = (e) => {
+    e.currentTarget.style.transform = "translateY(-5px)";
+    e.currentTarget.style.boxShadow = "0 1rem 3rem rgba(0,0,0,.175)";
+    e.currentTarget.style.zIndex = "2";
+  };
+
+  const handleMouseLeave = (e) => {
+    e.currentTarget.style.transform = "translateY(0)";
+    e.currentTarget.style.boxShadow = "0 .125rem .25rem rgba(0,0,0,.075)";
+    e.currentTarget.style.zIndex = "1";
+  };
 
   return (
     <motion.div
-      className="access-stat-card"
+      className="col"
       initial={shouldAnimate ? { opacity: 0, y: 20, scale: 0.98 } : false}
       animate={shouldAnimate ? { opacity: 1, y: 0, scale: 1 } : {}}
       transition={
@@ -30,25 +89,102 @@ const AccessCard = ({ menu, index, hasAnimated, onMenuClick }) => {
             }
           : {}
       }
-      onClick={() => onMenuClick(menu)}
     >
-      <div className="access-stat-title">{menu.Menu}</div>
-      <div className="access-stat-value">
-        <motion.span
-          initial={shouldAnimate ? { opacity: 0 } : false}
-          animate={shouldAnimate ? { opacity: 1 } : {}}
-          transition={
-            shouldAnimate
-              ? { duration: 0.5, delay: index * 0.08 + 0.3 }
-              : {}
-          }
+      <div
+        className="bg-white rounded-4 shadow-sm h-100 position-relative overflow-hidden p-3 access-stat-card-new"
+        onClick={() => onMenuClick(menu)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Icon at top right */}
+        <div
+          className="position-absolute d-flex align-items-center justify-content-center"
+          style={{
+            top: "12px",
+            right: "12px",
+            width: "40px",
+            height: "40px",
+            backgroundColor: "#f5f5f5",
+            borderRadius: "10px",
+          }}
         >
-          {menu.TotalEmployee}
-        </motion.span>
+          <Icon size={20} color="#1a1a1a" />
+        </div>
+
+        <div className="d-flex flex-column h-100 justify-content-between">
+          <div>
+            <div className="d-flex justify-content-between align-items-start mb-2">
+              <h3 className="mb-0" style={{ paddingRight: "50px" }}>
+                <strong className="fs-4 fw-bold">
+                  <motion.span
+                    initial={shouldAnimate ? { opacity: 0 } : false}
+                    animate={shouldAnimate ? { opacity: 1 } : {}}
+                    transition={
+                      shouldAnimate
+                        ? { duration: 0.5, delay: index * 0.08 + 0.3 }
+                        : {}
+                    }
+                  >
+                    <AnimatedNumber value={menu.TotalEmployee} duration={1.2} />
+                  </motion.span>
+                </strong>
+              </h3>
+            </div>
+            <div
+              className="small fw-bold text-uppercase text-muted mb-2"
+              style={{
+                letterSpacing: "0.5px",
+                fontSize: "0.75rem",
+                lineHeight: "1.3",
+              }}
+            >
+              {menu.Menu}
+            </div>
+          </div>
+
+          <div>
+            <span className="badge bg-primary-subtle rounded-pill text-dark border border-primary-subtle">
+              View Users
+            </span>
+          </div>
+        </div>
       </div>
     </motion.div>
   );
 };
+
+// Skeleton Card Component for loading state
+const SkeletonCard = () => (
+  <div className="col">
+    <div
+      className="bg-white rounded-4 shadow-sm h-100 p-3"
+      style={{ minHeight: "140px" }}
+    >
+      <div className="placeholder-glow d-flex flex-column h-100">
+        <div className="d-flex justify-content-between mb-2">
+          <span
+            className="placeholder col-4 rounded"
+            style={{ height: "28px" }}
+          />
+          <span
+            className="placeholder rounded"
+            style={{ width: "40px", height: "40px" }}
+          />
+        </div>
+        <span
+          className="placeholder col-8 rounded mb-2"
+          style={{ height: "12px" }}
+        />
+        <div className="mt-auto">
+          <span
+            className="placeholder col-5 rounded"
+            style={{ height: "14px" }}
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const EmpAccessRights = () => {
   // State management
@@ -59,12 +195,10 @@ const EmpAccessRights = () => {
   const [userRights, setUserRights] = useState([]);
   const [menuUsersDetails, setMenuUsersDetails] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [expandedMenus, setExpandedMenus] = useState([]);
 
-  
   const [hasAnimated, setHasAnimated] = useState(false);
-
 
   const [showEmployeeList, setShowEmployeeList] = useState(false);
   const [showMenuAccess, setShowMenuAccess] = useState(false);
@@ -95,8 +229,7 @@ const EmpAccessRights = () => {
       } else {
         setMenuAccessCounts([]);
       }
-      
-      // Set animation flag immediately when data loads
+
       if (!hasAnimated) {
         setHasAnimated(true);
       }
@@ -323,8 +456,7 @@ const EmpAccessRights = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const anyOffcanvasOpen =
-    showEmployeeList || showMenuAccess || showUsersList;
+  const anyOffcanvasOpen = showEmployeeList || showMenuAccess || showUsersList;
 
   const closeAllOffcanvas = () => {
     setShowEmployeeList(false);
@@ -347,37 +479,50 @@ const EmpAccessRights = () => {
     <div className="container-fluid p-0 emp-access-rights-wrapper">
       <Header pageTitle="Manage User Access Rights" />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
 
-      <Loader isVisible={loading} fullScreen={true} />
+      <Loader
+        isVisible={loading && !menuAccessCounts.length}
+        fullScreen={true}
+      />
 
       <div className="middle">
-        {/* Summary Cards */}
-        <div className="emp-access-stats-container">
-          <div className="emp-access-header">
-            {/* <h6 className="emp-access-page-title">
-              Total Assigned Module to Users
-            </h6> */}
-          </div>
-
-          <div className="access-cards-grid">
-            {Array.isArray(menuAccessCounts) && menuAccessCounts.length > 0 ? (
-              menuAccessCounts.map((menu, index) => (
-                <AccessCard 
-                  key={menu.ParentID || index} 
-                  menu={menu} 
-                  index={index} 
+        {/* Summary Cards - Fixed with proper padding for hover effect */}
+        <div
+          className="emp-access-stats-container"
+          style={{ paddingTop: "10px", position: "relative", zIndex: 1 }}
+        >
+          {loading && !menuAccessCounts.length ? (
+            <div
+              className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-5"
+              style={{ paddingTop: "8px" }}
+            >
+              {[...Array(10)].map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </div>
+          ) : Array.isArray(menuAccessCounts) && menuAccessCounts.length > 0 ? (
+            <div
+              className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-5"
+              style={{ paddingTop: "8px" }}
+            >
+              {menuAccessCounts.map((menu, index) => (
+                <AccessCard
+                  key={menu.ParentID || index}
+                  menu={menu}
+                  index={index}
                   hasAnimated={hasAnimated}
                   onMenuClick={handleMenuClick}
                 />
-              ))
-            ) : (
-              !loading && (
-                <div className="col-12">
-                  <div className="alert alert-info">No data available</div>
-                </div>
-              )
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="row">
+              <div className="col-12">
+                <div className="alert alert-info">No data available</div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Search Section */}
@@ -420,9 +565,7 @@ const EmpAccessRights = () => {
 
       {/* Employee List Offcanvas */}
       <div
-        className={`offcanvas offcanvas-end${
-          showEmployeeList ? " show" : ""
-        }`}
+        className={`offcanvas offcanvas-end${showEmployeeList ? " show" : ""}`}
         tabIndex="-1"
         style={{ width: offcanvasWidth, maxWidth: "100%" }}
       >
@@ -499,9 +642,8 @@ const EmpAccessRights = () => {
                     );
                     const isExpanded = expandedMenus.includes(menu.MenuID);
                     const isChecked = isParentMenuChecked(menu.MenuID);
-                    const isIndeterminate = isParentMenuIndeterminate(
-                      menu.MenuID
-                    );
+                    const isIndeterminate =
+                      isParentMenuIndeterminate(menu.MenuID);
 
                     return (
                       <React.Fragment key={menu.MenuID}>
@@ -535,7 +677,9 @@ const EmpAccessRights = () => {
                                 handleParentCheckChange(menu.MenuID, e.checked)
                               }
                               className={
-                                isIndeterminate ? "p-checkbox-indeterminate" : ""
+                                isIndeterminate
+                                  ? "p-checkbox-indeterminate"
+                                  : ""
                               }
                             />
                           </td>

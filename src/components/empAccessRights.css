@@ -1,3 +1,4 @@
+/* Main Container */
 .emp-access-rights-wrapper .emp-access-stats-container {
   margin-bottom: 1.5rem;
   background-color: transparent;
@@ -16,6 +17,40 @@
   padding: 0;
 }
 
+/* New Stat Card Styling - Enhanced Shadow for better visibility */
+.emp-access-rights-wrapper .access-stat-card-new {
+  transition: all 0.3s ease;
+  cursor: pointer;
+  min-height: 140px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.emp-access-rights-wrapper .access-stat-card-new:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+  border-color: transparent;
+}
+
+/* Skeleton Placeholder Styles */
+.emp-access-rights-wrapper .placeholder-glow .placeholder {
+  background-color: #e2e8f0;
+}
+
+/* Badge Styles */
+.emp-access-rights-wrapper .badge.bg-primary-subtle {
+  background-color: rgba(13, 110, 253, 0.1) !important;
+  color: #0d6efd !important;
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.35em 0.65em;
+}
+
+.emp-access-rights-wrapper .badge.border-primary-subtle {
+  border-color: rgba(13, 110, 253, 0.3) !important;
+}
+
+/* Legacy Card Styles (keeping for backward compatibility) */
 .emp-access-rights-wrapper .access-cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -23,65 +58,12 @@
   width: 100%;
 }
 
-.emp-access-rights-wrapper .access-stat-card {
-  background: linear-gradient(to right, #ffffff, #fafbfc);
-  border-radius: 16px;
-  padding: 1.5rem;
-  border: 1px solid rgba(229, 231, 235, 0.7);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
-    0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-.emp-access-rights-wrapper .access-stat-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(to right, #6366f1, #8b5cf6);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.emp-access-rights-wrapper .access-stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-.emp-access-rights-wrapper .access-stat-card:hover::before {
-  opacity: 1;
-}
-
-.emp-access-rights-wrapper .access-stat-title {
-  font-size: 0.875rem;
-  color: #64748b;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.75rem;
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-}
-
-.emp-access-rights-wrapper .access-stat-value {
-  font-size: 2rem;
-  color: #1e293b;
-  font-family: "VT323", monospace;
-  font-weight: 400;
-  line-height: 1.2;
-}
-
 .emp-access-rights-wrapper .leftStrip {
-  background: linear-gradient(to right,
-      rgba(99, 102, 241, 0.05),
-      rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    to right,
+    rgba(99, 102, 241, 0.05),
+    rgba(255, 255, 255, 0)
+  );
   border-left: 3px solid #6366f1;
 }
 
@@ -105,6 +87,7 @@
   color: #4f46e5;
 }
 
+/* DataTable Styles */
 .emp-access-rights-wrapper .emp-access-table {
   width: 100%;
 }
@@ -113,7 +96,7 @@
   border-radius: 0;
 }
 
-.emp-access-rights-wrapper .emp-access-table .p-datatable-thead>tr>th {
+.emp-access-rights-wrapper .emp-access-table .p-datatable-thead > tr > th {
   background: #f8fafc;
   color: #475569;
   font-weight: 600;
@@ -123,15 +106,15 @@
   text-align: left;
 }
 
-.emp-access-rights-wrapper .emp-access-table .p-datatable-tbody>tr {
+.emp-access-rights-wrapper .emp-access-table .p-datatable-tbody > tr {
   transition: background 0.2s ease;
 }
 
-.emp-access-rights-wrapper .emp-access-table .p-datatable-tbody>tr:hover {
+.emp-access-rights-wrapper .emp-access-table .p-datatable-tbody > tr:hover {
   background: #f8fafc;
 }
 
-.emp-access-rights-wrapper .emp-access-table .p-datatable-tbody>tr>td {
+.emp-access-rights-wrapper .emp-access-table .p-datatable-tbody > tr > td {
   padding: 12px;
   font-size: 13px;
   color: #334155;
@@ -143,6 +126,7 @@
   padding: 1rem;
 }
 
+/* Checkbox Styles */
 .emp-access-rights-wrapper .p-checkbox {
   width: 20px;
   height: 20px;
@@ -175,6 +159,7 @@
   font-size: 12px;
 }
 
+/* Expanded Content Table */
 .emp-access-rights-wrapper .expanded-content table {
   margin-bottom: 0;
 }
@@ -202,60 +187,40 @@
   background-color: #f8f9fa;
 }
 
+/* Responsive Grid - Matching RiStats */
 @media (min-width: 1400px) {
-  .emp-access-rights-wrapper .access-cards-grid {
-    grid-template-columns: repeat(5, 1fr);
+  .emp-access-rights-wrapper .row-cols-lg-5 > * {
+    flex: 0 0 auto;
+    width: 20%;
   }
 }
 
-@media (min-width: 1200px) and (max-width: 1399px) {
-  .emp-access-rights-wrapper .access-cards-grid {
-    grid-template-columns: repeat(4, 1fr);
+@media (min-width: 992px) and (max-width: 1399px) {
+  .emp-access-rights-wrapper .row-cols-lg-5 > * {
+    flex: 0 0 auto;
+    width: 20%;
   }
 }
 
-@media (min-width: 992px) and (max-width: 1199px) {
-  .emp-access-rights-wrapper .access-cards-grid {
-    grid-template-columns: repeat(3, 1fr);
+@media (max-width: 991px) {
+  .emp-access-rights-wrapper .row-cols-sm-2 > * {
+    flex: 0 0 auto;
+    width: 50%;
   }
 }
 
-@media (min-width: 768px) and (max-width: 991px) {
-  .emp-access-rights-wrapper .access-cards-grid {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 575px) {
+  .emp-access-rights-wrapper .row-cols-1 > * {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .emp-access-rights-wrapper .access-stat-card-new {
+    min-height: 120px;
   }
 }
 
-@media (max-width: 767px) {
-  .emp-access-rights-wrapper .access-cards-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-
-  .emp-access-rights-wrapper .access-stat-card {
-    padding: 1rem;
-  }
-
-  .emp-access-rights-wrapper .access-stat-title {
-    font-size: 0.75rem;
-    min-height: 32px;
-  }
-
-  .emp-access-rights-wrapper .access-stat-value {
-    font-size: 1.5rem;
-  }
-
-  .emp-access-rights-wrapper .emp-access-page-title {
-    font-size: 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .emp-access-rights-wrapper .access-cards-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
+/* Offcanvas Styles */
 .emp-access-rights-wrapper .offcanvas {
   z-index: 1050;
 }
@@ -282,6 +247,7 @@
   gap: 0.5rem;
 }
 
+/* Button Styles */
 .emp-access-rights-wrapper .p-button {
   font-size: 0.875rem;
   padding: 0.5rem 1rem;
@@ -291,6 +257,7 @@
   opacity: 0.7;
 }
 
+/* Input Styles */
 .emp-access-rights-wrapper .p-inputtext {
   font-size: 0.875rem;
   padding: 0.5rem 0.75rem;
@@ -307,6 +274,7 @@
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
+/* Alert Styles */
 .emp-access-rights-wrapper .alert {
   padding: 1rem;
   border-radius: 8px;
@@ -319,22 +287,23 @@
   color: #084298;
 }
 
+/* Menu Access Table */
 .emp-access-rights-wrapper .menu-access-table {
   width: 100%;
   background: white;
 }
 
-.emp-access-rights-wrapper .menu-access-table>tbody>tr {
+.emp-access-rights-wrapper .menu-access-table > tbody > tr {
   transition: all 0.2s ease;
   border-bottom: 1px solid #e6eaef;
 }
 
-.emp-access-rights-wrapper .menu-access-table>tbody>tr:hover {
+.emp-access-rights-wrapper .menu-access-table > tbody > tr:hover {
   background: #f8fafc;
   cursor: pointer;
 }
 
-.emp-access-rights-wrapper .menu-access-table>tbody>tr>td {
+.emp-access-rights-wrapper .menu-access-table > tbody > tr > td {
   padding: 12px;
   vertical-align: middle;
   font-size: 14px;
@@ -383,10 +352,13 @@
   transform: rotate(180deg);
 }
 
+/* Submenu Styles */
 .emp-access-rights-wrapper .submenu-row {
-  background: linear-gradient(to right,
-      rgba(99, 102, 241, 0.02),
-      rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    to right,
+    rgba(99, 102, 241, 0.02),
+    rgba(255, 255, 255, 0)
+  );
   border-left: 3px solid #6366f1;
 }
 
@@ -446,6 +418,7 @@
   text-align: center;
 }
 
+/* Enhanced Checkbox Styles */
 .emp-access-rights-wrapper .p-checkbox {
   width: 20px;
   height: 20px;
@@ -502,6 +475,7 @@
   vertical-align: middle;
 }
 
+/* Animations */
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -518,6 +492,7 @@
   animation: slideDown 0.3s ease;
 }
 
+/* Empty State */
 .emp-access-rights-wrapper .empty-menu-state {
   padding: 40px 20px;
   text-align: center;
@@ -529,4 +504,20 @@
   background: #f8fafc;
   color: #64748b;
   margin-bottom: 0;
+}
+
+/* Card Background Gradient for Rounded Corners */
+.emp-access-rights-wrapper .rounded-4 {
+  border-radius: 1rem !important;
+}
+
+/* Shadow Utilities - Enhanced for better visibility */
+.emp-access-rights-wrapper .shadow-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Skeleton Card Enhanced Shadow */
+.emp-access-rights-wrapper .col > .bg-white.rounded-4.shadow-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }

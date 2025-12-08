@@ -8,6 +8,8 @@ import { Calendar } from "primereact/calendar";
 import RepVehUsgVenService from "../services/compliance/RepVehUsgVenService";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
+import TableToolbar from "./common/TableToolbar";
+import noReportImage from "../assets/no_report.png";
 
 const VehicleUtilizationReport = () => {
   const [facilities, setFacilities] = useState([]);
@@ -22,8 +24,12 @@ const VehicleUtilizationReport = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedDates, setExpandedDates] = useState([]);
   const [expandedVendors, setExpandedVendors] = useState({});
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
 
   const UserID = sessionStorage.getItem("ID");
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
 
   const tripTypes = [
     { label: "Pick", value: "P" },
@@ -192,6 +198,7 @@ const VehicleUtilizationReport = () => {
 
       setLoading(false);
       setIsSubmitting(false);
+      setHasSearched(true);
 
       setTimeout(() => {
         if (validatedData.length > 0) {
@@ -297,27 +304,7 @@ const VehicleUtilizationReport = () => {
     setExpandedVendors(newExpandedVendors);
   };
 
-  const paginatorLeft = (
-    <Button
-      type="button"
-      icon="pi pi-refresh"
-      text
-      onClick={() => handleSearch()}
-      tooltip="Refresh"
-      tooltipOptions={{ position: "top" }}
-    />
-  );
 
-  const paginatorRight = (
-    <Button
-      type="button"
-      icon="pi pi-download"
-      text
-      onClick={exportExcel}
-      tooltip="Export"
-      tooltipOptions={{ position: "top" }}
-    />
-  );
 
   return (
     <>
@@ -388,9 +375,22 @@ const VehicleUtilizationReport = () => {
                   />
                 </div>
                 <div className="col-12 col-sm-6 col-md-3 col-lg-2 d-flex align-items-end">
+                  <style>
+                    {`
+                      .run-report-btn {
+                        background-color: #1C1D20 !important;
+                        border-color: #1C1D20 !important;
+                        transition: background-color 0.3s, border-color 0.3s;
+                      }
+                      .run-report-btn:hover {
+                        background-color: #0d6efd !important;
+                        border-color: #0d6efd !important;
+                      }
+                    `}
+                  </style>
                   <Button
                     label="Run Report"
-                    className="btn btn-primary w-100"
+                    className="btn btn-primary w-100 run-report-btn"
                     onClick={handleSearch}
                     disabled={isSubmitting}
                   />
@@ -403,302 +403,357 @@ const VehicleUtilizationReport = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              {loading ? (
-                <div className="p-4 text-center">Loading...</div>
-              ) : reportData.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table table-sm mb-0">
-                    <thead className="table-light">
-                      <tr>
-                        <th className="text-center">Shift Date</th>
-                        <th className="text-center">Vendor</th>
-                        <th className="text-center d-none d-md-table-cell">
-                          Vehicle Type
-                        </th>
-                        <th className="text-center">Total Trips</th>
-                        <th className="text-center d-none d-lg-table-cell">
-                          Total Capacity
-                        </th>
-                        <th className="text-center d-none d-md-table-cell">
-                          Employee Scheduled
-                        </th>
-                        <th className="text-center d-none d-xl-table-cell">
-                          Planned Utilization%
-                        </th>
-                        <th className="text-center d-none d-lg-table-cell">
-                          Actual Employees Boarded
-                        </th>
-                        <th className="text-center">Actual Occupancy %</th>
-                        <th style={{ width: "40px" }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportData.map((dateRow, dateIndex) => (
-                        <React.Fragment key={dateIndex}>
-                          {/* Date Level Row */}
-                          <tr>
-                            <td className="text-center fw-bold">
-                              {dateRow.shiftDate}
-                            </td>
-                            <td className="text-center"></td>
-                            <td className="text-center d-none d-md-table-cell"></td>
-                            <td className="text-center fw-bold">
-                              {dateRow.TotalRoutes}
-                            </td>
-                            <td className="text-center fw-bold d-none d-lg-table-cell">
-                              {dateRow.TotalCapacity}
-                            </td>
-                            <td className="text-center fw-bold d-none d-md-table-cell">
-                              {dateRow.TotalEmps}
-                            </td>
-                            <td className="text-center fw-bold d-none d-xl-table-cell">
-                              {dateRow.PlanOccPer}
-                            </td>
-                            <td className="text-center fw-bold d-none d-lg-table-cell">
-                              {dateRow.ActTotalEmps}
-                            </td>
-                            <td className="text-center fw-bold">
-                              {dateRow.ActOccPer}
-                            </td>
-                            <td>
-                              <a
-                                href="#!"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  toggleDateExpansion(dateIndex);
-                                }}
-                              >
-                                {expandedDates.includes(dateIndex) ? (
-                                  <span
-                                    className="material-icons"
-                                    style={{ fontSize: "20px" }}
-                                  >
-                                    remove_circle
-                                  </span>
-                                ) : (
-                                  <span
-                                    className="material-icons"
-                                    style={{ fontSize: "20px" }}
-                                  >
-                                    add_circle
-                                  </span>
-                                )}
-                              </a>
-                            </td>
-                          </tr>
-
-                          {/* Vendor Level Rows - Expanded Section */}
-                          {expandedDates.includes(dateIndex) && (
-                            <tr>
-                              <td colSpan="10" className="leftStrip p-2">
-                                <div className="expanded-content">
-                                  <div className="table-responsive">
-                                    <table className="table table-sm table-bordered mb-0">
-                                      <thead>
-                                        <tr>
-                                          <th>Vendor</th>
-                                          <th>Total Trips</th>
-                                          <th className="d-none d-lg-table-cell">
-                                            Total Capacity
-                                          </th>
-                                          <th className="d-none d-md-table-cell">
-                                            Employee Scheduled
-                                          </th>
-                                          <th className="d-none d-xl-table-cell">
-                                            Planned Utilization%
-                                          </th>
-                                          <th className="d-none d-lg-table-cell">
-                                            Actual Employees Boarded
-                                          </th>
-                                          <th>Actual Occupancy %</th>
-                                          <th style={{ width: "40px" }}></th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {dateRow.vendors.map(
-                                          (vendorRow, vendorIndex) => (
-                                            <React.Fragment
-                                              key={`${dateIndex}-${vendorIndex}`}
-                                            >
-                                              <tr>
-                                                <td className="fw-bold">
-                                                  {vendorRow.Vendor}
-                                                </td>
-                                                <td className="fw-bold">
-                                                  {vendorRow.TotalRoutes}
-                                                </td>
-                                                <td className="fw-bold d-none d-lg-table-cell">
-                                                  {vendorRow.TotalCapacity}
-                                                </td>
-                                                <td className="fw-bold d-none d-md-table-cell">
-                                                  {vendorRow.TotalEmps}
-                                                </td>
-                                                <td className="fw-bold d-none d-xl-table-cell">
-                                                  {vendorRow.PlanOccPer}
-                                                </td>
-                                                <td className="fw-bold d-none d-lg-table-cell">
-                                                  {vendorRow.ActTotalEmps}
-                                                </td>
-                                                <td className="fw-bold">
-                                                  {vendorRow.ActOccPer}
-                                                </td>
-                                                <td>
-                                                  <a
-                                                    href="#!"
-                                                    onClick={(e) => {
-                                                      e.preventDefault();
-                                                      toggleVendorExpansion(
-                                                        dateIndex,
-                                                        vendorIndex
-                                                      );
-                                                    }}
-                                                  >
-                                                    {expandedVendors[
-                                                      dateIndex
-                                                    ]?.includes(vendorIndex) ? (
-                                                      <span
-                                                        className="material-icons"
-                                                        style={{
-                                                          fontSize: "20px",
-                                                        }}
-                                                      >
-                                                        remove_circle
-                                                      </span>
-                                                    ) : (
-                                                      <span
-                                                        className="material-icons"
-                                                        style={{
-                                                          fontSize: "20px",
-                                                        }}
-                                                      >
-                                                        add_circle
-                                                      </span>
-                                                    )}
-                                                  </a>
-                                                </td>
-                                              </tr>
-
-                                              {/* Vehicle Type Level Rows - Expanded Section */}
-                                              {expandedVendors[
-                                                dateIndex
-                                              ]?.includes(vendorIndex) && (
-                                                <tr>
-                                                  <td
-                                                    colSpan="8"
-                                                    className="leftStrip p-2"
-                                                  >
-                                                    <div className="expanded-content">
-                                                      <div className="table-responsive">
-                                                        <table className="table table-sm table-bordered mb-0">
-                                                          <thead>
-                                                            <tr>
-                                                              <th>
-                                                                Vehicle Type
-                                                              </th>
-                                                              <th>
-                                                                Total Trips
-                                                              </th>
-                                                              <th className="d-none d-lg-table-cell">
-                                                                Total Capacity
-                                                              </th>
-                                                              <th className="d-none d-md-table-cell">
-                                                                Employee
-                                                                Scheduled
-                                                              </th>
-                                                              <th className="d-none d-xl-table-cell">
-                                                                Planned
-                                                                Utilization%
-                                                              </th>
-                                                              <th className="d-none d-lg-table-cell">
-                                                                Actual Employees
-                                                                Boarded
-                                                              </th>
-                                                              <th>
-                                                                Actual Occupancy
-                                                                %
-                                                              </th>
-                                                            </tr>
-                                                          </thead>
-                                                          <tbody>
-                                                            {vendorRow.vehicles.map(
-                                                              (
-                                                                vehicleRow,
-                                                                vehicleIndex
-                                                              ) => (
-                                                                <tr
-                                                                  key={
-                                                                    vehicleIndex
-                                                                  }
-                                                                >
-                                                                  <td>
-                                                                    {
-                                                                      vehicleRow.vehicleType
-                                                                    }
-                                                                  </td>
-                                                                  <td>
-                                                                    {
-                                                                      vehicleRow.TotalRoutes
-                                                                    }
-                                                                  </td>
-                                                                  <td className="d-none d-lg-table-cell">
-                                                                    {
-                                                                      vehicleRow.TotalCapacity
-                                                                    }
-                                                                  </td>
-                                                                  <td className="d-none d-md-table-cell">
-                                                                    {
-                                                                      vehicleRow.TotalEmps
-                                                                    }
-                                                                  </td>
-                                                                  <td className="d-none d-xl-table-cell">
-                                                                    {vehicleRow.PlanOccPer?.toFixed(
-                                                                      2
-                                                                    )}
-                                                                  </td>
-                                                                  <td className="d-none d-lg-table-cell">
-                                                                    {
-                                                                      vehicleRow.ActTotalEmps
-                                                                    }
-                                                                  </td>
-                                                                  <td>
-                                                                    {vehicleRow.ActOccPer?.toFixed(
-                                                                      2
-                                                                    )}
-                                                                  </td>
-                                                                </tr>
-                                                              )
-                                                            )}
-                                                          </tbody>
-                                                        </table>
-                                                      </div>
-                                                    </div>
-                                                  </td>
-                                                </tr>
-                                              )}
-                                            </React.Fragment>
-                                          )
-                                        )}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="d-flex justify-content-between align-items-center p-2">
-                    {paginatorLeft}
-                    {paginatorRight}
-                  </div>
+              {!hasSearched && (
+                <div
+                  className="d-flex flex-column align-items-center justify-content-center p-5"
+                  style={{ minHeight: "70vh" }}
+                >
+                  <img
+                    src={noReportImage}
+                    alt="No Report Selected"
+                    style={{
+                      maxWidth: "100px",
+                      opacity: 0.5,
+                      marginBottom: "1rem",
+                    }}
+                  />
+                  <p
+                    className="text-muted mb-0"
+                    style={{ fontSize: "0.9rem" }}
+                  >
+                    Please select above parameters to show report data
+                  </p>
                 </div>
-              ) : (
-                <div className="p-4 text-center text-muted">
-                  {error
-                    ? `Error: ${error}`
-                    : "Please select a facility and click 'Run Report' to view results"}
+              )}
+
+              {hasSearched && (
+                <div className="p-3">
+                  <TableToolbar
+                    search={globalFilter}
+                    onSearch={(e) => setGlobalFilter(e.target.value)}
+                    onRefresh={handleSearch}
+                    onExport={exportExcel}
+                    showFilter={true}
+                    overlayRef={op}
+                    filterButtonRef={filterButtonRef}
+                  >
+                    <div className="p-4 text-center">
+                      <i
+                        className="pi pi-info-circle text-muted mb-3 d-block"
+                        style={{ fontSize: "2rem" }}
+                      />
+                      <p
+                        className="m-0 text-muted"
+                        style={{ fontSize: "0.875rem" }}
+                      >
+                        No advanced filters available.
+                      </p>
+                    </div>
+                  </TableToolbar>
+
+                  {loading ? (
+                    <div className="p-4 text-center">Loading...</div>
+                  ) : reportData.length > 0 ? (
+                    <div className="table-responsive">
+                      <table className="table table-sm mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th style={{ width: "40px" }}></th>
+                            <th className="text-center">Shift Date</th>
+                            <th className="text-center">Vendor</th>
+                            <th className="text-center d-none d-md-table-cell">
+                              Vehicle Type
+                            </th>
+                            <th className="text-center">Total Trips</th>
+                            <th className="text-center d-none d-lg-table-cell">
+                              Total Capacity
+                            </th>
+                            <th className="text-center d-none d-md-table-cell">
+                              Employee Scheduled
+                            </th>
+                            <th className="text-center d-none d-xl-table-cell">
+                              Planned Utilization%
+                            </th>
+                            <th className="text-center d-none d-lg-table-cell">
+                              Actual Employees Boarded
+                            </th>
+                            <th className="text-center">Actual Occupancy %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportData.map((dateRow, dateIndex) => (
+                            <React.Fragment key={dateIndex}>
+                              {/* Date Level Row */}
+                              <tr>
+                                <td>
+                                  <a
+                                    href="#!"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      toggleDateExpansion(dateIndex);
+                                    }}
+                                  >
+                                    {expandedDates.includes(dateIndex) ? (
+                                      <span
+                                        className="material-icons"
+                                        style={{ fontSize: "20px" }}
+                                      >
+                                        remove_circle
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="material-icons"
+                                        style={{ fontSize: "20px" }}
+                                      >
+                                        add_circle
+                                      </span>
+                                    )}
+                                  </a>
+                                </td>
+                                <td className="text-center fw-bold">
+                                  {dateRow.shiftDate}
+                                </td>
+                                <td className="text-center"></td>
+                                <td className="text-center d-none d-md-table-cell"></td>
+                                <td className="text-center fw-bold">
+                                  {dateRow.TotalRoutes}
+                                </td>
+                                <td className="text-center fw-bold d-none d-lg-table-cell">
+                                  {dateRow.TotalCapacity}
+                                </td>
+                                <td className="text-center fw-bold d-none d-md-table-cell">
+                                  {dateRow.TotalEmps}
+                                </td>
+                                <td className="text-center fw-bold d-none d-xl-table-cell">
+                                  {dateRow.PlanOccPer}
+                                </td>
+                                <td className="text-center fw-bold d-none d-lg-table-cell">
+                                  {dateRow.ActTotalEmps}
+                                </td>
+                                <td className="text-center fw-bold">
+                                  {dateRow.ActOccPer}
+                                </td>
+                              </tr>
+
+                              {/* Vendor Level Rows - Expanded Section */}
+                              {expandedDates.includes(dateIndex) && (
+                                <tr>
+                                  <td colSpan="10" className="leftStrip p-2">
+                                    <div className="expanded-content">
+                                      <div className="table-responsive">
+                                        <table className="table table-sm table-bordered mb-0">
+                                          <thead>
+                                            <tr>
+                                              <th style={{ width: "40px" }}></th>
+                                              <th>Vendor</th>
+                                              <th>Total Trips</th>
+                                              <th className="d-none d-lg-table-cell">
+                                                Total Capacity
+                                              </th>
+                                              <th className="d-none d-md-table-cell">
+                                                Employee Scheduled
+                                              </th>
+                                              <th className="d-none d-xl-table-cell">
+                                                Planned Utilization%
+                                              </th>
+                                              <th className="d-none d-lg-table-cell">
+                                                Actual Employees Boarded
+                                              </th>
+                                              <th>Actual Occupancy %</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {dateRow.vendors.map(
+                                              (vendorRow, vendorIndex) => (
+                                                <React.Fragment
+                                                  key={`${dateIndex}-${vendorIndex}`}
+                                                >
+                                                  <tr>
+                                                    <td>
+                                                      <a
+                                                        href="#!"
+                                                        onClick={(e) => {
+                                                          e.preventDefault();
+                                                          toggleVendorExpansion(
+                                                            dateIndex,
+                                                            vendorIndex
+                                                          );
+                                                        }}
+                                                      >
+                                                        {expandedVendors[
+                                                          dateIndex
+                                                        ]?.includes(
+                                                          vendorIndex
+                                                        ) ? (
+                                                          <span
+                                                            className="material-icons"
+                                                            style={{
+                                                              fontSize:
+                                                                "20px",
+                                                            }}
+                                                          >
+                                                            remove_circle
+                                                          </span>
+                                                        ) : (
+                                                          <span
+                                                            className="material-icons"
+                                                            style={{
+                                                              fontSize:
+                                                                "20px",
+                                                            }}
+                                                          >
+                                                            add_circle
+                                                          </span>
+                                                        )}
+                                                      </a>
+                                                    </td>
+                                                    <td className="fw-bold">
+                                                      {vendorRow.Vendor}
+                                                    </td>
+                                                    <td className="fw-bold">
+                                                      {vendorRow.TotalRoutes}
+                                                    </td>
+                                                    <td className="fw-bold d-none d-lg-table-cell">
+                                                      {vendorRow.TotalCapacity}
+                                                    </td>
+                                                    <td className="fw-bold d-none d-md-table-cell">
+                                                      {vendorRow.TotalEmps}
+                                                    </td>
+                                                    <td className="fw-bold d-none d-xl-table-cell">
+                                                      {vendorRow.PlanOccPer}
+                                                    </td>
+                                                    <td className="fw-bold d-none d-lg-table-cell">
+                                                      {
+                                                        vendorRow.ActTotalEmps
+                                                      }
+                                                    </td>
+                                                    <td className="fw-bold">
+                                                      {vendorRow.ActOccPer}
+                                                    </td>
+                                                  </tr>
+
+                                                  {/* Vehicle Type Level Rows - Expanded Section */}
+                                                  {expandedVendors[
+                                                    dateIndex
+                                                  ]?.includes(vendorIndex) && (
+                                                    <tr>
+                                                      <td
+                                                        colSpan="8"
+                                                        className="leftStrip p-2"
+                                                      >
+                                                        <div className="expanded-content">
+                                                          <div className="table-responsive">
+                                                            <table className="table table-sm table-bordered mb-0">
+                                                              <thead>
+                                                                <tr>
+                                                                  <th>
+                                                                    Vehicle
+                                                                    Type
+                                                                  </th>
+                                                                  <th>
+                                                                    Total
+                                                                    Trips
+                                                                  </th>
+                                                                  <th className="d-none d-lg-table-cell">
+                                                                    Total
+                                                                    Capacity
+                                                                  </th>
+                                                                  <th className="d-none d-md-table-cell">
+                                                                    Employee
+                                                                    Scheduled
+                                                                  </th>
+                                                                  <th className="d-none d-xl-table-cell">
+                                                                    Planned
+                                                                    Utilization%
+                                                                  </th>
+                                                                  <th className="d-none d-lg-table-cell">
+                                                                    Actual
+                                                                    Employees
+                                                                    Boarded
+                                                                  </th>
+                                                                  <th>
+                                                                    Actual
+                                                                    Occupancy
+                                                                    %
+                                                                  </th>
+                                                                </tr>
+                                                              </thead>
+                                                              <tbody>
+                                                                {vendorRow.vehicles.map(
+                                                                  (
+                                                                    vehicleRow,
+                                                                    vehicleIndex
+                                                                  ) => (
+                                                                    <tr
+                                                                      key={
+                                                                        vehicleIndex
+                                                                      }
+                                                                    >
+                                                                      <td>
+                                                                        {
+                                                                          vehicleRow.vehicleType
+                                                                        }
+                                                                      </td>
+                                                                      <td>
+                                                                        {
+                                                                          vehicleRow.TotalRoutes
+                                                                        }
+                                                                      </td>
+                                                                      <td className="d-none d-lg-table-cell">
+                                                                        {
+                                                                          vehicleRow.TotalCapacity
+                                                                        }
+                                                                      </td>
+                                                                      <td className="d-none d-md-table-cell">
+                                                                        {
+                                                                          vehicleRow.TotalEmps
+                                                                        }
+                                                                      </td>
+                                                                      <td className="d-none d-xl-table-cell">
+                                                                        {vehicleRow.PlanOccPer?.toFixed(
+                                                                          2
+                                                                        )}
+                                                                      </td>
+                                                                      <td className="d-none d-lg-table-cell">
+                                                                        {
+                                                                          vehicleRow.ActTotalEmps
+                                                                        }
+                                                                      </td>
+                                                                      <td>
+                                                                        {vehicleRow.ActOccPer?.toFixed(
+                                                                          2
+                                                                        )}
+                                                                      </td>
+                                                                    </tr>
+                                                                  )
+                                                                )}
+                                                              </tbody>
+                                                            </table>
+                                                          </div>
+                                                        </div>
+                                                      </td>
+                                                    </tr>
+                                                  )}
+                                                </React.Fragment>
+                                              )
+                                            )}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-muted">
+                      {error ? `Error: ${error}` : "No records found"}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

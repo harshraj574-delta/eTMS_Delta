@@ -44,14 +44,10 @@ const Dashboard = () => {
   const userId = sessionManager.getUserSession().ID;
   const locationid = sessionManager.getUserSession().LocationId;
 
-  // ============ ALL HOOKS MUST BE DEFINED HERE (before any conditional returns) ============
-
-  // Error handling states
   const [initError, setInitError] = useState(null);
   const [initRetryCount, setInitRetryCount] = useState(0);
   const maxInitRetries = 3;
 
-  // Main states
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedPeriod1, setSelectedPeriod1] = useState("last_7_days");
   const [pendingPeriod1, setPendingPeriod1] = useState("last_7_days");
@@ -89,7 +85,6 @@ const Dashboard = () => {
   const [venders, setVenders] = useState([]);
   const [selVendor, setSelVendor] = useState(null);
 
-  // ============ OPTIONS DATA ============
   const periodOptions1 = [
     { label: "Today", value: "today" },
     { label: "Yesterday", value: "yesterday" },
@@ -112,7 +107,6 @@ const Dashboard = () => {
     { label: "Facility Insights" },
   ];
 
-  // ============ CALLBACKS (defined before effects) ============
   const formatDateLocal = useCallback((date) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -122,7 +116,7 @@ const Dashboard = () => {
     return `${year}-${month}-${day}`;
   }, []);
 
-  // ============ USEMEMO ============
+  // Filter object WITHOUT type - this prevents re-renders of other components
   const filter = useMemo(() => {
     if (isInitializing || isLoadingFilters) return null;
 
@@ -146,19 +140,11 @@ const Dashboard = () => {
         eDate = now;
         break;
       case "last_30_days":
-        sDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() - 29
-        );
+        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
         eDate = now;
         break;
       case "last_90_days":
-        sDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() - 89
-        );
+        sDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
         eDate = now;
         break;
       case "last_12_months":
@@ -184,7 +170,6 @@ const Dashboard = () => {
           : selFacility,
       vendorid: selVendor?.Id === "all" ? undefined : selVendor?.Id,
       triptype: selectedTripType,
-      type,
     };
   }, [
     isInitializing,
@@ -196,11 +181,9 @@ const Dashboard = () => {
     selFacility,
     selVendor,
     selectedTripType,
-    type,
     formatDateLocal,
   ]);
 
-  // ============ INITIALIZE DATA CALLBACK ============
   const initializeData = useCallback(async () => {
     try {
       setIsInitializing(true);
@@ -273,7 +256,6 @@ const Dashboard = () => {
     }
   }, [initRetryCount]);
 
-  // ============ RETRY HANDLER ============
   const handleRetryInit = useCallback(() => {
     setInitRetryCount(0);
     setInitError(null);
@@ -281,7 +263,6 @@ const Dashboard = () => {
     initializeData();
   }, [initializeData]);
 
-  // ============ HANDLER CALLBACKS ============
   const handleCityChange = useCallback(async (e) => {
     const selected = e.value;
     setIsLoadingFilters(true);
@@ -398,14 +379,10 @@ const Dashboard = () => {
     setPendingPeriod1("custom");
   }, []);
 
-  // ============ ALL EFFECTS (in order) ============
-
-  // Effect 1: Initialize data on mount
   useEffect(() => {
     initializeData();
   }, []);
 
-  // Effect 2: Auto-retry if failed
   useEffect(() => {
     if (initError && initRetryCount < maxInitRetries && !isInitializing) {
       const timer = setTimeout(() => {
@@ -418,12 +395,10 @@ const Dashboard = () => {
     }
   }, [initError, initRetryCount, isInitializing, initializeData]);
 
-  // Effect 3: Set checked state
   useEffect(() => {
     setChecked(type === 2);
   }, [type]);
 
-  // Effect 4: Scroll listener with filter height measurement
   useEffect(() => {
     const measureFilterHeight = () => {
       if (filterRef.current) {
@@ -433,7 +408,6 @@ const Dashboard = () => {
 
     const onScroll = () => setScrolled(window.scrollY > 200);
 
-    // Measure on mount and resize
     measureFilterHeight();
     window.addEventListener("scroll", onScroll);
     window.addEventListener("resize", measureFilterHeight);
@@ -444,7 +418,6 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Effect 5: Click outside calendar
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target)) {
@@ -455,14 +428,12 @@ const Dashboard = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Effect 6: Update pending period when calendar opens
   useEffect(() => {
     if (visibleCalendar) {
       setPendingPeriod1(selectedPeriod1);
     }
   }, [visibleCalendar, selectedPeriod1]);
 
-  // Effect 7: Update pending dates based on period
   useEffect(() => {
     if (pendingPeriod1 === "custom") return;
 
@@ -485,18 +456,10 @@ const Dashboard = () => {
         from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
         break;
       case "last_30_days":
-        from = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() - 29
-        );
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
         break;
       case "last_90_days":
-        from = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() - 89
-        );
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89);
         break;
       case "last_12_months":
         from = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
@@ -509,9 +472,6 @@ const Dashboard = () => {
     setPendingDateTo(to);
   }, [pendingPeriod1]);
 
-  // ============ CONDITIONAL RENDER (after all hooks) ============
-
-  // Show error if max retries exceeded
   if (initError && initRetryCount >= maxInitRetries) {
     return (
       <>
@@ -529,7 +489,6 @@ const Dashboard = () => {
     );
   }
 
-  // Show retry loader
   if (isInitializing && initRetryCount > 0) {
     return (
       <div className="container-fluid p-0" style={{ background: "#f9f9f9" }}>
@@ -555,7 +514,6 @@ const Dashboard = () => {
     );
   }
 
-  // Show initial loader
   if (isInitializing) {
     return (
       <div className="container-fluid p-0" style={{ background: "#f9f9f9" }}>
@@ -566,7 +524,6 @@ const Dashboard = () => {
     );
   }
 
-  // ============ MAIN RENDER ============
   return (
     <ErrorBoundary>
       <Loader isVisible={isLoadingFilters} fullScreen={true} />
@@ -577,116 +534,402 @@ const Dashboard = () => {
     --row1-height: clamp(320px, 50vh, 520px);
   }
 
-  .dashboard-container { background: #f9f9f9; }
+  .dashboard-container {
+    background: #f9f9f9;
+  }
 
-  .middle { padding-top: calc(var(--header-height) + 1rem) !important; }
+  .middle {
+    padding-top: calc(var(--header-height) + 1rem) !important;
+  }
 
+  /* Filter Section */
   .filter-section {
-    background: white; border-radius: 8px; padding: 1rem; margin-top: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background: white;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-top: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
+
   .filterFix {
-    position: fixed; top: var(--header-height); left: 0; right: 0; z-index: 99;
-    background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    padding: 1rem; margin: 0; animation: slideDown 0.3s ease-out;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    z-index: 99;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 0.75rem 1rem;
+    margin: 0;
+    border-radius: 0;
+    animation: slideDown 0.3s ease-out;
   }
+
   @keyframes slideDown {
     from { transform: translateY(-100%); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
 
+  /* Main filter row - always horizontal */
+  .filter-main-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+  }
+
+  /* Tabs section - pushes filters to the right */
+  .filter-tabs-section {
+    flex: 0 0 auto;
+    margin-right: auto;
+  }
+
+  /* Filters section - compact, stays on right */
+  .filter-dropdowns-section {
+    flex: 0 1 auto;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  /* Individual filter */
+  .filter-item {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    width: 110px;
+    min-width: 90px;
+  }
+
+  .filter-item-date {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    width: 120px;
+    min-width: 100px;
+    position: relative;
+  }
+
+  .filter-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-bottom: 2px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  /* Custom date select - compact */
   .custom-select {
-    display: flex; align-items: center; padding: 0.5rem 0.75rem;
-    border: 1px solid #ced4da; border-radius: 4px; background: white;
-    cursor: pointer; font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    height: 34px;
   }
 
+  .custom-select:hover {
+    border-color: #adb5bd;
+  }
+
+  .custom-select svg {
+    flex-shrink: 0;
+    margin-right: 4px;
+    width: 14px;
+    height: 14px;
+  }
+
+  .custom-select-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Calendar dropdown */
   .custom-calender {
-    position: absolute; top: 100%; left: 0; right: 0; background: white;
-    border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1000; margin-top: 0.5rem; padding: 1rem;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    margin-top: 0.5rem;
+    padding: 1rem;
+    min-width: 580px;
   }
 
-  .time-filter-list { list-style: none; padding: 0; margin: 0; }
+  .time-filter-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
   .time-filter-item {
-    padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px;
-    transition: background-color 0.2s; font-size: 0.875rem;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    font-size: 0.8rem;
   }
-  .time-filter-item:hover { background-color: #f0f0f0; }
-  .time-filter-item.active { background-color: #007bff; color: white; }
 
-  .form-select-map { border: 1px solid #ced4da; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+  .time-filter-item:hover {
+    background-color: #f0f0f0;
+  }
+
+  .time-filter-item.active {
+    background-color: #007bff;
+    color: white;
+  }
+
+  /* TabMenu - Compact */
+  .p-tabmenu {
+    overflow: visible !important;
+  }
+
+  .p-tabmenu .p-tabmenu-nav {
+    border: none !important;
+    background: transparent !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow: visible !important;
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+
+  .p-tabmenu .p-tabmenuitem {
+    margin: 0 !important;
+  }
+
+  .p-tabmenu .p-tabmenuitem .p-menuitem-link {
+    padding: 0.5rem 0.75rem !important;
+    border: none !important;
+    background: transparent !important;
+    color: #6c757d !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    border-bottom: 2px solid transparent !important;
+    font-size: 0.875rem !important;
+  }
+
+  .p-tabmenu .p-tabmenuitem.p-highlight .p-menuitem-link {
+    color: #ff5722 !important;
+    border-bottom-color: #ff5722 !important;
+  }
+
+  .p-tabmenu .p-tabmenuitem .p-menuitem-link:hover {
+    background: transparent !important;
+    color: #ff5722 !important;
+  }
+
+  /* Dropdown - Compact */
+  .p-dropdown {
+    width: 100% !important;
+    height: 34px !important;
+  }
+
+  .p-dropdown .p-dropdown-label {
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .p-dropdown .p-dropdown-trigger {
+    width: 2rem !important;
+  }
+
+  /* Responsive - Stack only on smaller screens */
+  @media (max-width: 1100px) {
+    .filter-main-row {
+      flex-wrap: wrap;
+    }
+
+    .filter-tabs-section {
+      flex: 0 0 100%;
+      margin-right: 0;
+      margin-bottom: 0.5rem;
+    }
+
+    .filter-dropdowns-section {
+      flex: 0 0 100%;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .filter-item,
+    .filter-item-date {
+      flex: 1 1 calc(20% - 0.5rem);
+      width: auto;
+      min-width: 100px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .filter-item,
+    .filter-item-date {
+      flex: 1 1 calc(33.333% - 0.5rem);
+    }
+
+    .custom-calender {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      right: auto;
+      width: 90%;
+      max-width: 600px;
+      min-width: auto;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .filter-item,
+    .filter-item-date {
+      flex: 1 1 calc(50% - 0.5rem);
+    }
+
+    .p-tabmenu .p-tabmenuitem .p-menuitem-link {
+      padding: 0.4rem 0.5rem !important;
+      font-size: 0.8rem !important;
+    }
+  }
+
+  /* Card styles */
+  .cardx {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .cardx .chart-container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .row-first .cardx {
+    height: var(--row1-height);
+  }
+
+  .cardx-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .cardx-header h6 {
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cardx-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    color: #555;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .icon-btn:hover {
+    background: #f6f7fb;
+  }
+
+  .form-select-map {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .chart-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .chart-row > [class*="col-"] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (min-width: 992px) {
+    .chart-row {
+      align-items: stretch;
+    }
+    .chart-row:not(.row-first) > [class*="col-"] {
+      min-height: 360px;
+    }
+  }
+
+  @media (max-width: 991px) {
+    .chart-row > [class*="col-"] {
+      min-height: auto;
+    }
+  }
+
+  @media (max-width: 767px) {
+    :root {
+      --header-height: 56px;
+    }
+    .middle {
+      padding: calc(var(--header-height) + 0.5rem) 0.5rem 0.5rem !important;
+    }
+    .cardx {
+      padding: 0.75rem !important;
+    }
+    .cardx h6 {
+      font-size: 0.875rem;
+    }
+  }
+
+  @media (max-width: 575px) {
+    :root {
+      --header-height: 54px;
+    }
+  }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+  }
 
   .content-with-sticky-filter {
     transition: all 0.3s ease-out;
   }
-
-  .cardx {
-    display: flex; flex-direction: column; height: 100%;
-    background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  .cardx .chart-container { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-
-  .row-first .cardx { height: var(--row1-height); }
-
-  .cardx-header {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 8px; margin-bottom: 8px;
-  }
-  .cardx-header h6 { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cardx-controls { display: flex; align-items: center; gap: 8px; }
-  .icon-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 34px; height: 34px; border-radius: 6px; border: 1px solid #e5e7eb;
-    color: #555; background: #fff; cursor: pointer; transition: background 0.15s;
-  }
-  .icon-btn:hover { background: #f6f7fb; }
-
-  .chart-row { display: flex; flex-wrap: wrap; margin-bottom: 1rem; }
-  .chart-row > [class*="col-"] { display: flex; flex-direction: column; }
-
-  @media (min-width: 992px) {
-    .chart-row { align-items: stretch; }
-    .chart-row:not(.row-first) > [class*="col-"] { min-height: 360px; }
-  }
-
-  @media (max-width: 1399px) {
-    :root { --header-height: 58px; }
-    .filter-section .col-xl-4, .filter-section .col-xl-8 { flex: 0 0 100%; max-width: 100%; }
-  }
-
-  @media (max-width: 991px) {
-    .custom-calender {
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
-    }
-    .chart-row > [class*="col-"] { min-height: auto; }
-  }
-
-  @media (max-width: 767px) {
-    :root { --header-height: 56px; }
-    .middle { padding: calc(var(--header-height) + 0.5rem) 0.5rem 0.5rem !important; }
-    .filter-section, .filterFix { padding: 0.75rem; }
-    .p-tabmenu { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .p-tabmenu .p-tabmenu-nav { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; }
-    .cardx { padding: 0.75rem !important; }
-    .cardx h6 { font-size: 0.875rem; }
-  }
-
-  @media (max-width: 575px) {
-    :root { --header-height: 54px; }
-  }
-
-  .chart-container { position: relative; width: 100%; overflow-x: auto; }
-
-  @media (max-width: 767px) { .p-dropdown { width: 100% !important; } }
 `}</style>
 
       <div className="container-fluid p-0 dashboard-container">
         <Header pageTitle="Dashboard" />
         <Sidebar />
         <div className="middle">
-          <div className="row mb-2 mb-md-4">
+          <div className="row mb-2 mb-md-3">
             <div className="col-12">
               <div
                 ref={filterRef}
@@ -694,159 +937,156 @@ const Dashboard = () => {
                   scrolled ? "filterFix shadow" : ""
                 }`}
               >
-                <div className="row d-flex align-items-center">
-                  <div className="col-12 col-xl-4 mb-3 mb-xl-0">
+                <div className="filter-main-row">
+                  {/* Tabs */}
+                  <div className="filter-tabs-section">
                     <TabMenu
                       model={tabItems}
                       activeIndex={activeIndex}
                       onTabChange={handleTabChange}
                     />
                   </div>
-                  <div className="col-12 col-xl-8">
-                    <div className="row g-2">
-                      <div className="col-12 col-sm-6 col-lg position-relative">
-                        <label className="d-block mb-1 small">Date</label>
-                        <div
-                          className="custom-select w-100"
-                          onClick={handleCalendarToggle}
-                        >
-                          <BiCalendar style={{ marginRight: 4 }} />
+
+                  {/* All Filters in one row */}
+                  <div className="filter-dropdowns-section">
+                    {/* Date */}
+                    <div className="filter-item-date">
+                      <label className="filter-label">Date</label>
+                      <div
+                        className="custom-select"
+                        onClick={handleCalendarToggle}
+                      >
+                        <BiCalendar />
+                        <span className="custom-select-text">
                           {periodOptions1.find(
                             (opt) => opt.value === selectedPeriod1
-                          )?.label || "Custom Calendar"}
-                        </div>
-                        {visibleCalendar && (
-                          <div className="custom-calender" ref={calendarRef}>
-                            <div className="row">
-                              <div className="col-12 col-lg-3">
-                                <div className="time-filter">
-                                  <ul className="time-filter-list">
-                                    {periodOptions1.map(({ label, value }) => (
-                                      <li
-                                        key={value}
-                                        className={`time-filter-item ${
-                                          pendingPeriod1 === value
-                                            ? "active"
-                                            : ""
-                                        }`}
-                                        onClick={() => setPendingPeriod1(value)}
-                                      >
-                                        {label}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              </div>
-                              <div className="col-12 col-lg">
-                                <input
-                                  type="text"
-                                  className="form-control mb-3 form-control-sm"
-                                  value={
-                                    pendingDateFrom?.toLocaleDateString(
-                                      "en-GB",
-                                      {
-                                        day: "2-digit",
-                                        month: "long",
-                                        year: "numeric",
-                                      }
-                                    ) || ""
-                                  }
-                                  readOnly
-                                />
-                                <Calendar
-                                  onChange={handleDateFromChange}
-                                  value={pendingDateFrom}
-                                />
-                              </div>
-                              <div className="col-12 col-lg">
-                                <input
-                                  type="text"
-                                  className="form-control mb-3 form-control-sm"
-                                  value={
-                                    pendingDateTo?.toLocaleDateString("en-GB", {
-                                      day: "2-digit",
-                                      month: "long",
-                                      year: "numeric",
-                                    }) || ""
-                                  }
-                                  readOnly
-                                />
-                                <Calendar
-                                  onChange={handleDateToChange}
-                                  value={pendingDateTo}
-                                />
-                              </div>
-                              <div className="col-12 mt-3 text-end">
-                                <button
-                                  className="btn btn-secondary btn-sm me-2"
-                                  onClick={handleCalendarClose}
-                                >
-                                  Close
-                                </button>
-                                <button
-                                  className="btn btn-primary btn-sm"
-                                  onClick={handleCalendarApply}
-                                >
-                                  Apply
-                                </button>
-                              </div>
+                          )?.label || "Custom"}
+                        </span>
+                      </div>
+                      {visibleCalendar && (
+                        <div className="custom-calender" ref={calendarRef}>
+                          <div className="row">
+                            <div className="col-12 col-lg-3">
+                              <ul className="time-filter-list">
+                                {periodOptions1.map(({ label, value }) => (
+                                  <li
+                                    key={value}
+                                    className={`time-filter-item ${
+                                      pendingPeriod1 === value ? "active" : ""
+                                    }`}
+                                    onClick={() => setPendingPeriod1(value)}
+                                  >
+                                    {label}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="col-12 col-lg">
+                              <input
+                                type="text"
+                                className="form-control mb-3 form-control-sm"
+                                value={
+                                  pendingDateFrom?.toLocaleDateString("en-GB", {
+                                    day: "2-digit",
+                                    month: "long",
+                                    year: "numeric",
+                                  }) || ""
+                                }
+                                readOnly
+                              />
+                              <Calendar
+                                onChange={handleDateFromChange}
+                                value={pendingDateFrom}
+                              />
+                            </div>
+                            <div className="col-12 col-lg">
+                              <input
+                                type="text"
+                                className="form-control mb-3 form-control-sm"
+                                value={
+                                  pendingDateTo?.toLocaleDateString("en-GB", {
+                                    day: "2-digit",
+                                    month: "long",
+                                    year: "numeric",
+                                  }) || ""
+                                }
+                                readOnly
+                              />
+                              <Calendar
+                                onChange={handleDateToChange}
+                                value={pendingDateTo}
+                              />
+                            </div>
+                            <div className="col-12 mt-3 text-end">
+                              <button
+                                className="btn btn-secondary btn-sm me-2"
+                                onClick={handleCalendarClose}
+                              >
+                                Close
+                              </button>
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={handleCalendarApply}
+                              >
+                                Apply
+                              </button>
                             </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
+                    </div>
 
-                      <div className="col-12 col-sm-6 col-lg">
-                        <label className="d-block mb-1 small">City</label>
-                        <Dropdown
-                          value={selCity}
-                          optionLabel="name"
-                          optionValue="value"
-                          onChange={handleCityChange}
-                          options={cities}
-                          placeholder="Select City"
-                          className="w-100"
-                          showClear={false}
-                        />
-                      </div>
+                    {/* City */}
+                    <div className="filter-item">
+                      <label className="filter-label">City</label>
+                      <Dropdown
+                        value={selCity}
+                        optionLabel="name"
+                        optionValue="value"
+                        onChange={handleCityChange}
+                        options={cities}
+                        placeholder="City"
+                        showClear={false}
+                      />
+                    </div>
 
-                      <div className="col-12 col-sm-6 col-lg">
-                        <label className="d-block mb-1 small">Facility</label>
-                        <Dropdown
-                          value={selFacility}
-                          optionLabel="facilityName"
-                          optionValue="Id"
-                          onChange={handleFacilityChange}
-                          options={filteredFacilities}
-                          placeholder="Select Facility"
-                          className="w-100"
-                        />
-                      </div>
+                    {/* Facility */}
+                    <div className="filter-item">
+                      <label className="filter-label">Facility</label>
+                      <Dropdown
+                        value={selFacility}
+                        optionLabel="facilityName"
+                        optionValue="Id"
+                        onChange={handleFacilityChange}
+                        options={filteredFacilities}
+                        placeholder="Facility"
+                      />
+                    </div>
 
-                      <div className="col-12 col-sm-6 col-lg">
-                        <label className="d-block mb-1 small">Trip Type</label>
-                        <Dropdown
-                          value={selectedTripType}
-                          options={tripTypeOptions}
-                          onChange={handleTripTypeChange}
-                          optionLabel="label"
-                          optionValue="value"
-                          placeholder="Select Trip Type"
-                          className="w-100"
-                        />
-                      </div>
+                    {/* Trip Type */}
+                    <div className="filter-item">
+                      <label className="filter-label">Trip Type</label>
+                      <Dropdown
+                        value={selectedTripType}
+                        options={tripTypeOptions}
+                        onChange={handleTripTypeChange}
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Type"
+                      />
+                    </div>
 
-                      <div className="col-12 col-sm-6 col-lg">
-                        <label className="d-block mb-1 small">Vendor</label>
-                        <Dropdown
-                          value={selVendor}
-                          onChange={handleVendorChange}
-                          options={venders}
-                          optionLabel="vendorName"
-                          placeholder="Select Vendor"
-                          className="w-100"
-                          filter
-                        />
-                      </div>
+                    {/* Vendor */}
+                    <div className="filter-item">
+                      <label className="filter-label">Vendor</label>
+                      <Dropdown
+                        value={selVendor}
+                        onChange={handleVendorChange}
+                        options={venders}
+                        optionLabel="vendorName"
+                        placeholder="Vendor"
+                        filter
+                      />
                     </div>
                   </div>
                 </div>
@@ -857,7 +1097,6 @@ const Dashboard = () => {
           {/* Tab Content */}
           <div className="row">
             <div className="col-12">
-              {/* Spacer for fixed filter */}
               {scrolled && (
                 <div
                   style={{
@@ -869,18 +1108,16 @@ const Dashboard = () => {
 
               <div className="content-with-sticky-filter">
                 {(() => {
-                  if (!filter) {
-                    return null;
-                  }
+                  if (!filter) return null;
+
                   switch (activeIndex) {
                     case 0:
                       return (
                         <>
                           <div className="mb-3">
-  <RiStats filter={filter} />
-</div>
+                            <RiStats filter={filter} />
+                          </div>
 
-                          {/* Row 1 */}
                           <div className="row chart-row row-first">
                             <div className="col-12 col-lg-6 mb-3 mb-lg-0">
                               <div className="cardx border-0 p-2 p-md-3 h-100 d-flex flex-column">
@@ -914,6 +1151,7 @@ const Dashboard = () => {
                                 <div className="chart-container flex-grow-1">
                                   <LeafletHeatMap
                                     filter={filter}
+                                    type={type}
                                     height="100%"
                                   />
                                 </div>
@@ -924,7 +1162,6 @@ const Dashboard = () => {
                             </div>
                           </div>
 
-                          {/* Row 2 */}
                           <div className="row chart-row">
                             <div className="col-12 col-lg-8 mb-3 mb-lg-0">
                               <RiPickDrop filter={filter} />
@@ -934,7 +1171,6 @@ const Dashboard = () => {
                             </div>
                           </div>
 
-                          {/* Row 3 */}
                           <div className="row chart-row">
                             <div className="col-12 col-lg-6 mb-3 mb-lg-0">
                               <RiNormalAdhoc filter={filter} />
@@ -1006,13 +1242,6 @@ const Dashboard = () => {
                               </div>
                             </div>
                           </div>
-                          <div className="row chart-row">
-                            <div className="col-12">
-                              <div className="cardNew w-100 p-2 p-md-3">
-                                {/* KPIs ... */}
-                              </div>
-                            </div>
-                          </div>
                         </>
                       );
                     default:
@@ -1025,7 +1254,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Heatmap Dialog */}
       <Dialog
         header={`${checked ? "Routes" : "Employees"} Density`}
         visible={dialogVisible}
@@ -1037,7 +1265,7 @@ const Dashboard = () => {
         breakpoints={{ "960px": "95vw", "640px": "100vw" }}
       >
         <div style={{ height: window.innerWidth < 768 ? "70vh" : "80vh" }}>
-          <LeafletHeatMap filter={filter} height="100%" />
+          <LeafletHeatMap filter={filter} type={type} height="100%" />
         </div>
       </Dialog>
     </ErrorBoundary>

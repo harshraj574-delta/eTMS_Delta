@@ -3,6 +3,7 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import './TableToolbar.css';
+import btnsSet from '../../assets/btns-set.png';
 
 const TableToolbar = ({
   search,
@@ -100,7 +101,6 @@ const TableToolbar = ({
           <div className="d-flex align-items-center">
             {showRefresh && (
               <Button
-                icon="pi pi-refresh"
                 rounded
                 text
                 severity="secondary"
@@ -110,7 +110,9 @@ const TableToolbar = ({
                 tooltipOptions={{ position: "top" }}
                 className="p-0 mr-1"
                 style={{ width: "2rem", height: "2rem" }}
-              />
+              >
+                <img src={btnsSet} alt="Refresh" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </Button>
             )}
             {showExport && (
               <Button

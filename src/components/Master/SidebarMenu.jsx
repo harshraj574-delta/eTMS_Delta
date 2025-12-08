@@ -29,13 +29,15 @@ const SidebarMenu = () => {
     }));
   };
 
-  const menuItems = useMemo(() => organizeMenuItems(menuItemsRaw), [menuItemsRaw]);
+  const menuItems = useMemo(
+    () => organizeMenuItems(menuItemsRaw),
+    [menuItemsRaw]
+  );
 
   useEffect(() => {
     const matchedParent = menuItems.find((parent) =>
       parent.subItems?.some(
-        (sub) =>
-          `/${sub.MenuURL?.replace(/^\/+/, '')}` === location.pathname
+        (sub) => `/${sub.MenuURL?.replace(/^\/+/, '')}` === location.pathname
       )
     );
     if (matchedParent) {
@@ -72,9 +74,7 @@ const SidebarMenu = () => {
             href="#!"
             className={`accordion-button ${
               item.subItems?.length ? '' : 'no-submenu'
-            } overline_textB ${
-              openSubmenu === item.MenuId ? '' : 'collapsed'
-            }`}
+            } overline_textB ${openSubmenu === item.MenuId ? '' : 'collapsed'}`}
             onClick={() => {
               if (item.subItems?.length) {
                 setOpenSubmenu(
@@ -107,20 +107,26 @@ const SidebarMenu = () => {
 
   return (
     <div className="sidebar">
-      <div className="accordion mb-5" id="accordionExample">
-        {renderMenuItems(menuItems)}
+      {/* Scrollable menu area */}
+      <div className="sidebar-menu-wrapper">
+        <div className="accordion" id="accordionExample">
+          {renderMenuItems(menuItems)}
+        </div>
       </div>
 
-      <div className="cardx help p-3">
-        <span className="material-icons mb-3">help</span>
-        <p className="overline_text_sm">Need help?</p>
-        <p className="small mt-2 mb-3">
-          Please connect with our support team.
-        </p>
-        <div className="d-grid">
-          <button className="btn btn-sm btn-outline-secondary fw-bold">
-            <small>GET IN TOUCH</small>
-          </button>
+      {/* Fixed help section at bottom */}
+      <div className="sidebar-help-section">
+        <div className="cardx help p-3">
+          <span className="material-icons mb-3">help</span>
+          <p className="overline_text_sm">Need help?</p>
+          <p className="small mt-2 mb-3">
+            Please connect with our support team.
+          </p>
+          <div className="d-grid">
+            <button className="btn btn-sm btn-outline-secondary fw-bold">
+              <small>GET IN TOUCH</small>
+            </button>
+          </div>
         </div>
       </div>
     </div>

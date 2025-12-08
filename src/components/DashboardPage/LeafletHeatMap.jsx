@@ -30,7 +30,9 @@ const EmployeeMarkers = ({ points, type, currentZoom }) => {
         >
           <Popup>
             <div>
-              <strong>{type === 2 ? "Route" : "Employee"} #{idx + 1}</strong>
+              <strong>
+                {type === 2 ? "Route" : "Employee"} #{idx + 1}
+              </strong>
               <br />
               Lat: {point.geoY?.toFixed(6)}
               <br />
@@ -55,10 +57,10 @@ const StrongIntensityHeatmapLayer = ({ points, onDensityStats }) => {
       zoomLevel < 11
         ? 0.01
         : zoomLevel < 13
-        ? 0.005
-        : zoomLevel < 15
-        ? 0.003
-        : 0.002;
+          ? 0.005
+          : zoomLevel < 15
+            ? 0.003
+            : 0.002;
 
     const grid = {};
     points.forEach((pt) => {
@@ -162,8 +164,7 @@ const StrongIntensityHeatmapLayer = ({ points, onDensityStats }) => {
   return null;
 };
 
-const LeafletHeatMap = ({ filter }) => {
-  const type = filter?.type || 2;
+const LeafletHeatMap = ({ filter, type = 1 }) => {
   const fetchBody = {
     facilityid: filter?.facilityid,
     sDate: filter?.sDate,
@@ -190,17 +191,14 @@ const LeafletHeatMap = ({ filter }) => {
       setError(null);
 
       try {
-        const response = await fetch(
-          "/api/api/v1/sp_getRoutedEmpGeocode",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify(fetchBody),
-          }
-        );
+        const response = await fetch("/api/api/v1/sp_getRoutedEmpGeocode", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(fetchBody),
+        });
 
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
         let data = await response.json();
@@ -241,10 +239,10 @@ const LeafletHeatMap = ({ filter }) => {
     fetchEmpData();
     // eslint-disable-next-line
   }, [
-    fetchBody.facilityid,
-    fetchBody.sDate,
-    fetchBody.triptype,
-    fetchBody.type,
+    filter?.facilityid,
+    filter?.sDate,
+    filter?.eDate,
+    filter?.triptype,
     type,
     retryCount,
   ]);
@@ -276,9 +274,7 @@ const LeafletHeatMap = ({ filter }) => {
           flexDirection: "column",
         }}
       >
-        <p style={{ color: "#856404", marginBottom: "1rem" }}>
-          ⚠️ {error}
-        </p>
+        <p style={{ color: "#856404", marginBottom: "1rem" }}>⚠️ {error}</p>
         <button
           onClick={() => setRetryCount(0)}
           style={{
