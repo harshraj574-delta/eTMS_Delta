@@ -301,11 +301,12 @@ const RepScheduleSummery = () => {
             background-color: #f9f9fb !important;
           }
           .nested-vendor-table thead th {
-            background-color: #f8f9fa !important;
-            font-weight: 600;
+            background-color: #f9f9fb !important;
+            font-weight: 800;
+            color: var(--grey-4);
             border: 1px solid #dee2e6;
-            padding: 0.5rem;
-            font-size: 0.8125rem;
+            padding: 16px 10px;
+            font-size: 13px;
             text-align: center;
           }
           .nested-vendor-table tbody td {
