@@ -14,6 +14,7 @@ import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
 import * as XLSX from "xlsx";
 import TableToolbar from "./common/TableToolbar";
+import { MultiSelect } from "primereact/multiselect";
 import calendarIcon from "../assets/calendar.png";
 import noReportImage from "../assets/no_report.png";
 import { ToastContainer } from "react-toastify";
@@ -33,6 +34,10 @@ const RepPlanAct = () => {
   const [reportGenerated, setReportGenerated] = useState(false);
   const [currentReportType, setCurrentReportType] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [filters, setFilters] = useState({
+    PlanVendor: null,
+    ActVendor: null
+  });
 
   const op = useRef(null);
   const filterButtonRef = useRef(null);
@@ -272,6 +277,7 @@ const RepPlanAct = () => {
       setShiftData({});
       setDetailedShiftData({});
       setInnerExpandedRows({});
+      setFilters({ PlanVendor: null, ActVendor: null });
 
       const params = {
         sDate: formatDate(fromDate),
@@ -411,6 +417,27 @@ const RepPlanAct = () => {
     }));
   };
 
+  const getUniqueValues = (field) => {
+    // Accumulate values from all loaded detailed data
+    const allDetails = Object.values(detailedShiftData)
+      .flatMap(item => item.data || []);
+    
+    // Also include vendorName if we are looking for ActVendor (mapped to vendorName in export)
+    // Field 'PlanVendor' maps to 'PlanVendor'
+    // Field 'ActVendor' maps to 'vendorName' in detailRow based on export logic
+    let targetField = field;
+    if (field === 'ActVendor') targetField = 'vendorName';
+
+    const values = allDetails.map((item) => item[targetField]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
+  const clearAdvancedFilters = () => {
+    setFilters({ PlanVendor: null, ActVendor: null });
+    if (op.current) op.current.hide();
+    toastService.info("Filters cleared");
+  };
+
   const filteredData = useMemo(() => {
     if (!globalFilter || globalFilter.trim() === "") {
       return data;
@@ -467,13 +494,14 @@ const RepPlanAct = () => {
             transition: background-color 0.2s;
           }
           .plan-act-table thead th {
-            background-color: #f8f9fa !important;
-            font-weight: 600;
+            background-color: #f9f9fb !important;
+            font-weight: 800;
             border: 1px solid #dee2e6;
-            padding: 0.5rem;
-            font-size: 0.875rem;
+            padding: 12px 5px;
+            font-size: 13px;
             text-align: center;
             vertical-align: middle;
+            color: #545557;
           }
           .plan-act-table tbody td {
             padding: 0.5rem;
@@ -483,15 +511,16 @@ const RepPlanAct = () => {
             vertical-align: middle;
           }
           .plan-act-table .table-light th {
-            background-color: #f8f9fa !important;
+            background-color: #f9f9fb !important;
           }
           .nested-table thead th {
-            background-color: #f8f9fa !important;
-            font-weight: 600;
+            background-color: #f9f9fb !important;
+            font-weight: 800;
             border: 1px solid #dee2e6;
-            padding: 0.5rem;
-            font-size: 0.8125rem;
+            padding: 12px 5px;
+            font-size: 13px;
             text-align: center;
+            color: #545557;
           }
           .nested-table tbody td {
             padding: 0.5rem;
@@ -500,12 +529,13 @@ const RepPlanAct = () => {
             text-align: center;
           }
           .detail-table thead th {
-            background-color: #f8f9fa !important;
-            font-weight: 600;
+            background-color: #f9f9fb !important;
+            font-weight: 800;
             border: 1px solid #dee2e6;
-            padding: 0.4rem;
-            font-size: 0.75rem;
+            padding: 12px 5px;
+            font-size: 13px;
             text-align: center;
+            color: #545557;
           }
           .detail-table tbody td {
             padding: 0.4rem;
@@ -656,18 +686,52 @@ const RepPlanAct = () => {
                     showFilter={true}
                     overlayRef={op}
                     filterButtonRef={filterButtonRef}
+                    filters={filters}
+                    setFilters={setFilters}
+                    activeFilterCount={
+                      Object.values(filters).filter(
+                        (f) => Array.isArray(f) && f.length > 0
+                      ).length
+                    }
                   >
-                    <div className="p-4 text-center">
-                      <i
-                        className="pi pi-info-circle text-muted mb-3 d-block"
-                        style={{ fontSize: "2rem" }}
-                      />
-                      <p
-                        className="m-0 text-muted"
-                        style={{ fontSize: "0.875rem" }}
-                      >
-                        No advanced filters available.
-                      </p>
+                    <div className="p-3">
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Plan Vendor</label>
+                          <MultiSelect
+                            value={filters.PlanVendor}
+                            options={getUniqueValues("PlanVendor")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, PlanVendor: e.value })
+                            }
+                            placeholder="Select Plan Vendor"
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Actual Vendor</label>
+                          <MultiSelect
+                            value={filters.ActVendor}
+                            options={getUniqueValues("ActVendor")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, ActVendor: e.value })
+                            }
+                            placeholder="Select Actual Vendor"
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12 d-flex justify-content-end mt-3">
+                          <Button
+                            label="Clear all filters"
+                            icon="pi pi-filter-slash"
+                            className="p-button-outlined p-button-secondary w-100"
+                            onClick={clearAdvancedFilters}
+                            size="small"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </TableToolbar>
 
@@ -911,8 +975,17 @@ const RepPlanAct = () => {
                                                                     ]?.data ||
                                                                     [];
 
+                                                                  // Apply filters
+                                                                  let filteredDetail = detail;
+                                                                  if (filters.PlanVendor && filters.PlanVendor.length > 0) {
+                                                                    filteredDetail = filteredDetail.filter(d => filters.PlanVendor.includes(d.PlanVendor));
+                                                                  }
+                                                                  if (filters.ActVendor && filters.ActVendor.length > 0) {
+                                                                    filteredDetail = filteredDetail.filter(d => filters.ActVendor.includes(d.vendorName));
+                                                                  } 
+
                                                                   if (
-                                                                    detail.length ===
+                                                                    filteredDetail.length ===
                                                                     0
                                                                   ) {
                                                                     return (
@@ -931,7 +1004,7 @@ const RepPlanAct = () => {
                                                                     );
                                                                   }
 
-                                                                  return detail.map(
+                                                                  return filteredDetail.map(
                                                                     (
                                                                       detailRow,
                                                                       dIdx

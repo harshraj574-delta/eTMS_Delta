@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Sidebar from "./Master/SidebarMenu";
 import Header from "./Master/Header";
 import Notifications from "./Master/Notifications";
@@ -10,7 +10,14 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import { Offcanvas } from "bootstrap";
 import { ToastContainer } from "react-toastify";
-
+// PrimeReact paginator
+import { Paginator } from "primereact/paginator";
+import "primereact/resources/themes/saga-blue/theme.css";
+import "primereact/resources/primereact.min.css";
+import "primeicons/primeicons.css";
+import { set } from "lodash";
+import TableToolbar from "./common/TableToolbar.jsx";
+import Loader from "./common/Loader.jsx";
 const formatDateTime = (dateStr, timeStr) => {
   if (!dateStr || !timeStr || timeStr === 'null' || timeStr.trim().toUpperCase() === 'N/A') {
     console.warn(`Skipping time parsing for 'N/A' or null`);
@@ -183,10 +190,69 @@ const MySchedule = () => {
   //   addDay(lockDetails?.lockSDate, lockDetails?.lockDiffDays - 2) || ""
   // );
   const [toDate, setToDate] = useState(addMonth(todayStr, 1));
-  // useEffect(() => {
+  // PrimeReact pagination state for manager associates table
+  const [mgrFirst, setMgrFirst] = useState(0);
+  const [mgrRows, setMgrRows] = useState(50);
 
-  // }, []);
+  const onMgrPageChange = (e) => {
+    setMgrFirst(e.first);
+    setMgrRows(e.rows);
+  };
 
+  // PrimeReact pagination state for schedule table
+  const [schedFirst, setSchedFirst] = useState(0);
+  const [schedRows, setSchedRows] = useState(50);
+  // Search/filter for schedule table (connected to top TableToolbar)
+  const [scheduleFilter, setScheduleFilter] = useState("");
+  // Filtered schedule computed from mgrscheduledata + search text
+  const filteredSchedule = useMemo(() => {
+    if (!scheduleFilter || scheduleFilter.trim() === "")
+      return mgrscheduledata;
+    const q = scheduleFilter.toLowerCase();
+    return mgrscheduledata.filter((row) => {
+      // match on employee name, empCode or any SETime fields
+      if ((row.EmpName || "").toString().toLowerCase().includes(q)) return true;
+      if ((row.EmployeeID || "").toString().toLowerCase().includes(q)) return true;
+      for (let i = 0; i < 7; i++) {
+        const val = row[`SETime${i}`];
+        if (val && val.toString().toLowerCase().includes(q)) return true;
+      }
+      return false;
+    });
+  }, [mgrscheduledata, scheduleFilter]);
+
+  const schedTotal = filteredSchedule.length;
+  const displayedSchedule = filteredSchedule.slice(schedFirst, schedFirst + schedRows);
+  const onSchedPageChange = (e) => {
+    setSchedFirst(e.first);
+    setSchedRows(e.rows);
+  };
+  const [globalFilter, setGlobalFilter] = useState("");
+  //const op = useRef(null);
+  //const filterButtonRef = useRef(null);
+  const filteredData = useMemo(() => {
+    if (!globalFilter || globalFilter.trim() === "") {
+      return mgrassociate;
+    }
+    const searchLower = globalFilter.toLowerCase();
+    return mgrassociate.filter((item) =>
+      Object.values(item).some((val) =>
+        String(val).toLowerCase().includes(searchLower)
+      )
+    );
+  }, [mgrassociate, globalFilter]);
+  const mgrTotal = filteredData.length;
+  const displayedMgrAssociate = filteredData.slice(mgrFirst, mgrFirst + mgrRows);
+  // RESET PAGINATION WHEN SEARCH CHANGES
+  useEffect(() => {
+    setMgrFirst(0);
+  }, [globalFilter]);
+
+
+  // Reset schedule paginator when search changes
+  useEffect(() => {
+    setSchedFirst(0);
+  }, [scheduleFilter]);
   // Fetch data on component mount
   useEffect(() => {
     fetchMgrSchedule();
@@ -242,6 +308,7 @@ const MySchedule = () => {
   };
 
   const fetchMgrAssociate = async () => {
+    setLoading(true);
     try {
       const response = await apiService.GetMgrAssociate({
         mgrId: empid,
@@ -255,6 +322,20 @@ const MySchedule = () => {
       setLoading(false);
     }
   };
+  const handleRefresh = async () => {
+    setLoading(true);
+    //setIsSubmitting(true);
+    try {
+      await fetchMgrAssociate();
+      toastService.success("Table refreshed successfully");
+    } catch (error) {
+      toastService.error("Failed to refresh table");
+      console.error("Error fetching manager associates:", error);
+    } finally {
+      setLoading(false);
+      // setIsSubmitting(false);
+    }
+  }
 
   const fetchLockDetails = async () => {
     try {
@@ -328,6 +409,7 @@ const MySchedule = () => {
 
   const fetchMgrSchedule = async () => {
     try {
+      //setIsSubmitting(true);
       setLoading(true);
       let mgrid = empid;
       if (document.getElementById("ddlManager").value !== "") {
@@ -342,9 +424,22 @@ const MySchedule = () => {
       console.error("Error fetching manager schedule:", error);
     } finally {
       setLoading(false);
+      //setIsSubmitting(false);
     }
   };
-
+  const handleRefreshSchedule = async () => {
+    setLoading(true);
+    try {
+      await fetchMgrSchedule();
+      toastService.success("Schedule table refreshed successfully");
+    } catch (error) {
+      toastService.error("Failed to refresh table");
+      console.error("Refresh Error:", error);
+    }
+    finally {
+      setLoading(false);
+    }
+  }
   const fetchScheduleDetails = async () => {
     try {
       setLoading(true);
@@ -470,31 +565,31 @@ const MySchedule = () => {
     // console.log("To date changed:", e.target.value);
   };
 
-  
-const handleLoginFacilityChange = (e) => {
-  const facilityId = e.target.value;
-  const processId = selectedProcess;
-  setSelectedloginfacility(facilityId);
-  fetchAllShiftData(processId, facilityId);
-};
+
+  const handleLoginFacilityChange = (e) => {
+    const facilityId = e.target.value;
+    const processId = selectedProcess;
+    setSelectedloginfacility(facilityId);
+    fetchAllShiftData(processId, facilityId);
+  };
 
 
-  
-const handleLogoutFacilityChange = (e) => {
-  const facilityId = e.target.value;
-  const processId = selectedProcess;
-  setSelectedlogoutfacility(facilityId);
-  fetchAllShiftData(processId, facilityId);
-};
+
+  const handleLogoutFacilityChange = (e) => {
+    const facilityId = e.target.value;
+    const processId = selectedProcess;
+    setSelectedlogoutfacility(facilityId);
+    fetchAllShiftData(processId, facilityId);
+  };
 
   const handleUpdateEmpSchedule = async () => {
-    setIsSubmitting(true); // Loader ON
+    setLoading(true); // Loader ON
     try {
       // Employee schedule se values le lo
       const empSchedule = employeeSchedule && employeeSchedule[0];
       if (!empSchedule) {
         toastService.error("No employee schedule found!");
-        setIsSubmitting(false); // Loader OFF
+        setLoading(false); // Loader OFF
         return;
       }
 
@@ -535,7 +630,7 @@ const handleLogoutFacilityChange = (e) => {
           response = JSON.parse(response);
         } catch (e) {
           toastService.error("Invalid response from server.");
-          setIsSubmitting(false); // Loader OFF
+          setLoading(false); // Loader OFF
           return;
         }
       }
@@ -565,262 +660,262 @@ const handleLogoutFacilityChange = (e) => {
     } catch (error) {
       toastService.error("Error updating schedule: " + error);
     } finally {
-      setIsSubmitting(false); // Loader OFF
+      setLoading(false); // Loader OFF
     }
   };
-    const handleEmployeeShiftClick = async (employee, day) => {
-      try {
-        // 1. Get sel
-        setSelectedEmployeeId(employee.empCode);
-        const selectedDate = weekDays[day]?.fullDate;
-        setSelectedShiftDate(selectedDate); // <-- Add this
-        const fromDateInput = document.getElementById("fromDate");
-        if (fromDateInput && selectedDate) {
-          fromDateInput.value = selectedDate;
-        }
+  const handleEmployeeShiftClick = async (employee, day) => {
+    try {
+      // 1. Get sel
+      setSelectedEmployeeId(employee.empCode);
+      const selectedDate = weekDays[day]?.fullDate;
+      setSelectedShiftDate(selectedDate); // <-- Add this
+      const fromDateInput = document.getElementById("fromDate");
+      if (fromDateInput && selectedDate) {
+        fromDateInput.value = selectedDate;
+      }
 
-        // 2. Get shift times
-        const seTimeData = employee[`SETime${day}`];
-        const [timeInfo] = seTimeData.split("!");
-        const [loginTime, logoutTime] = timeInfo.split("<BR>").map((time) => {
-          const match = time.match(/\d{4}$/);
-          return match ? match[0] : time.trim();
-        });
-        // console.log("Clicked Employee:", employee.EmployeeID);
-        // console.log("Day Index:", day);
-        // console.log("Raw SETime Data:", seTimeData);
-        // console.log("Extracted Login Time:", loginTime);
-        // console.log("Extracted Logout Time:", logoutTime);
-        // 3. Get schedule and lock details
-        let scheduleData = await fetchEmployeeSchedule(employee.EmployeeID);
-        let schedule = (scheduleData && scheduleData[0]) || {};
-        const lockPickTime = new Date(lockDetails.pickLockDateTime);
-        const lockDropTime = new Date(lockDetails.dropLockDateTime);
+      // 2. Get shift times
+      const seTimeData = employee[`SETime${day}`];
+      const [timeInfo] = seTimeData.split("!");
+      const [loginTime, logoutTime] = timeInfo.split("<BR>").map((time) => {
+        const match = time.match(/\d{4}$/);
+        return match ? match[0] : time.trim();
+      });
+      // console.log("Clicked Employee:", employee.EmployeeID);
+      // console.log("Day Index:", day);
+      // console.log("Raw SETime Data:", seTimeData);
+      // console.log("Extracted Login Time:", loginTime);
+      // console.log("Extracted Logout Time:", logoutTime);
+      // 3. Get schedule and lock details
+      let scheduleData = await fetchEmployeeSchedule(employee.EmployeeID);
+      let schedule = (scheduleData && scheduleData[0]) || {};
+      const lockPickTime = new Date(lockDetails.pickLockDateTime);
+      const lockDropTime = new Date(lockDetails.dropLockDateTime);
 
-        // 4. Compose DateTime for comparison
+      // 4. Compose DateTime for comparison
 
-        const sanitizeTime = (time) => {
-          const match = time?.match(/\d{4}/);
-          return match ? match[0] : null;
-        };
+      const sanitizeTime = (time) => {
+        const match = time?.match(/\d{4}/);
+        return match ? match[0] : null;
+      };
 
-        const loginTimeSanitized = sanitizeTime(loginTime);
-        const logoutTimeSanitized = sanitizeTime(logoutTime);
+      const loginTimeSanitized = sanitizeTime(loginTime);
+      const logoutTimeSanitized = sanitizeTime(logoutTime);
 
-        const loginDateTime = formatDateTime(schedule.startDate, loginTimeSanitized);
-        const logoutDateTime = formatDateTime(schedule.endDate, logoutTimeSanitized);
-
-
-        // ✅ Now safe to get day names
-        const isWeekend = (dayName) => ["Saturday", "Sunday"].includes(dayName);
+      const loginDateTime = formatDateTime(schedule.startDate, loginTimeSanitized);
+      const logoutDateTime = formatDateTime(schedule.endDate, logoutTimeSanitized);
 
 
-        const loginDayName = loginDateTime ? loginDateTime.toLocaleString("en-US", { weekday: "long" }) : "N/A";
-        const logoutDayName = logoutDateTime ? logoutDateTime.toLocaleString("en-US", { weekday: "long" }) : "N/A";
+      // ✅ Now safe to get day names
+      const isWeekend = (dayName) => ["Saturday", "Sunday"].includes(dayName);
+
+
+      const loginDayName = loginDateTime ? loginDateTime.toLocaleString("en-US", { weekday: "long" }) : "N/A";
+      const logoutDayName = logoutDateTime ? logoutDateTime.toLocaleString("en-US", { weekday: "long" }) : "N/A";
 
 
 
-        // ✅ Safe to adjust lock time if weekend
-        if (isWeekend(loginDayName) && lockDetails.lockweekendpick) {
-          lockPickTime.setMinutes(lockPickTime.getMinutes() + Number(lockDetails.lockweekendpick));
-        }
-        if (isWeekend(logoutDayName) && lockDetails.lockweekenddrop) {
-          lockDropTime.setMinutes(lockDropTime.getMinutes() + Number(lockDetails.lockweekenddrop));
-        }
-        // // 5. Lock logic (C# mapping)
-        let loginFacilityDisabled = true;
-        let logoutFacilityDisabled = true;
-        let loginTimeVisible = true;
-        let loginTimeLabel = "";
-        let loginTimeDisabled = false;
-        let logoutTimeVisible = true;
-        let logoutTimeLabel = "";
-        let logoutTimeDisabled = false;
-        let saveButtonVisible = true;
-        let tptForMessage = "";
-        let tptForType = 0;
+      // ✅ Safe to adjust lock time if weekend
+      if (isWeekend(loginDayName) && lockDetails.lockweekendpick) {
+        lockPickTime.setMinutes(lockPickTime.getMinutes() + Number(lockDetails.lockweekendpick));
+      }
+      if (isWeekend(logoutDayName) && lockDetails.lockweekenddrop) {
+        lockDropTime.setMinutes(lockDropTime.getMinutes() + Number(lockDetails.lockweekenddrop));
+      }
+      // // 5. Lock logic (C# mapping)
+      let loginFacilityDisabled = true;
+      let logoutFacilityDisabled = true;
+      let loginTimeVisible = true;
+      let loginTimeLabel = "";
+      let loginTimeDisabled = false;
+      let logoutTimeVisible = true;
+      let logoutTimeLabel = "";
+      let logoutTimeDisabled = false;
+      let saveButtonVisible = true;
+      let tptForMessage = "";
+      let tptForType = 0;
 
-        // console.log("loginDateTime: ", loginDateTime);
-        // // console.log("lockPickTime: ", lockPickTime);
-        // console.log("loginTime: ", loginTime);
-        // // console.log(typeof loginTime);
-        // console.log("logoutDateTime: ", logoutDateTime);
-        // // console.log("lockDropTime: ", lockDropTime);
-        // console.log("logoutTime: ", logoutTime);
-        // console.log(typeof logoutTime);
-        // if (loginDateTime <= lockPickTime && loginTime) {
-        //   loginTimeVisible = false;
-        //   loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
-        //   loginTimeDisabled = true;
-        // }
-        // else {
-        //   loginTimeVisible = true;
-        //   loginTimeDisabled = false;
-        // }
+      // console.log("loginDateTime: ", loginDateTime);
+      // // console.log("lockPickTime: ", lockPickTime);
+      // console.log("loginTime: ", loginTime);
+      // // console.log(typeof loginTime);
+      // console.log("logoutDateTime: ", logoutDateTime);
+      // // console.log("lockDropTime: ", lockDropTime);
+      // console.log("logoutTime: ", logoutTime);
+      // console.log(typeof logoutTime);
+      // if (loginDateTime <= lockPickTime && loginTime) {
+      //   loginTimeVisible = false;
+      //   loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
+      //   loginTimeDisabled = true;
+      // }
+      // else {
+      //   loginTimeVisible = true;
+      //   loginTimeDisabled = false;
+      // }
 
-        // if (logoutDateTime <= lockDropTime && logoutTime) {
-        //   logoutTimeVisible = false;
-        //   logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
-        //   logoutTimeDisabled = true;
-        //   saveButtonVisible = false;
-        // }
-        // else {
-        //   logoutTimeVisible = true;
-        //   logoutTimeDisabled = false;
-        //   saveButtonVisible = true;
-        // }
-        // Shift logic (with time check)
-        const todayStr = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+      // if (logoutDateTime <= lockDropTime && logoutTime) {
+      //   logoutTimeVisible = false;
+      //   logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
+      //   logoutTimeDisabled = true;
+      //   saveButtonVisible = false;
+      // }
+      // else {
+      //   logoutTimeVisible = true;
+      //   logoutTimeDisabled = false;
+      //   saveButtonVisible = true;
+      // }
+      // Shift logic (with time check)
+      const todayStr = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
 
-        if (selectedDate < todayStr) {
-          // ✅ Backdated: force locked
+      if (selectedDate < todayStr) {
+        // ✅ Backdated: force locked
+        loginTimeVisible = false;
+        loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
+        loginTimeDisabled = true;
+
+        logoutTimeVisible = false;
+        logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
+        logoutTimeDisabled = true;
+
+        saveButtonVisible = false;
+      } else {
+        // ✅ Today or future: apply C#-style lock logic
+
+        if (loginTime && loginDateTime && loginDateTime <= lockPickTime) {
           loginTimeVisible = false;
           loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
           loginTimeDisabled = true;
+        } else {
+          loginTimeVisible = true;
+          loginTimeLabel = "";
+          loginTimeDisabled = false;
+        }
 
+        if (logoutTime && logoutDateTime && logoutDateTime <= lockDropTime) {
           logoutTimeVisible = false;
           logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
           logoutTimeDisabled = true;
-
           saveButtonVisible = false;
         } else {
-          // ✅ Today or future: apply C#-style lock logic
-
-          if (loginTime && loginDateTime && loginDateTime <= lockPickTime) {
-            loginTimeVisible = false;
-            loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
-            loginTimeDisabled = true;
-          } else {
-            loginTimeVisible = true;
-            loginTimeLabel = "";
-            loginTimeDisabled = false;
-          }
-
-          if (logoutTime && logoutDateTime && logoutDateTime <= lockDropTime) {
-            logoutTimeVisible = false;
-            logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
-            logoutTimeDisabled = true;
-            saveButtonVisible = false;
-          } else {
-            logoutTimeVisible = true;
-            logoutTimeLabel = "";
-            logoutTimeDisabled = false;
-            saveButtonVisible = true;
-          }
-        }
-        if (schedule.TPTFor === 1) {
-          tptForType = 1;
-          tptForMessage = "You are not allowed to update drop shift.";
-          logoutTimeVisible = false;
-          logoutTimeDisabled = true;
-          loginFacilityDisabled = false;
-          loginTimeDisabled = false;
-        } else if (schedule.TPTFor === 2) {
-          tptForType = 2;
-          tptForMessage = "You are not allowed to update pickup shift.";
-          loginTimeVisible = false;
-          loginTimeDisabled = true;
-          logoutFacilityDisabled = false;
+          logoutTimeVisible = true;
+          logoutTimeLabel = "";
           logoutTimeDisabled = false;
-        } else {
-          tptForType = 0;
-          tptForMessage = "";
-          loginFacilityDisabled = false;
-          loginTimeDisabled = false;
-          logoutFacilityDisabled = false;
-          logoutTimeDisabled = false;
+          saveButtonVisible = true;
         }
-
-        setShiftLockStatus({
-          loginFacilityDisabled,
-          loginTimeVisible,
-          loginTimeLabel,
-          loginTimeDisabled,
-          logoutFacilityDisabled,
-          logoutTimeVisible,
-          logoutTimeLabel,
-          logoutTimeDisabled,
-          saveButtonVisible,
-          tptForMessage,
-          tptForType,
-        });
-
-        // 8. Set facility dropdowns (matches: ddlInFacility.SelectedIndex, ddlOutFacility.SelectedIndex)
-        let loginFacilityId =
-          schedule.pickFacilityID || employee.pickFacilityID || "";
-        let logoutFacilityId =
-          schedule.dropFacilityID || employee.dropFacilityID || "";
-
-        // If not found, try to extract from SETime data
-        if ((!loginFacilityId || !logoutFacilityId) && seTimeData.includes("!")) {
-          const facilityInfo = seTimeData.split("!")[1];
-          if (facilityInfo) {
-            const facilityParts = facilityInfo.split("|");
-            if (facilityParts.length >= 2) {
-              loginFacilityId = facilityParts[0] || loginFacilityId;
-              logoutFacilityId = facilityParts[1] || logoutFacilityId;
-            }
-          }
-        }
-
-        setSelectedloginfacility(loginFacilityId);
-        setSelectedlogoutfacility(logoutFacilityId);
-
-        // 9. Open the offcanvas/modal
-        setIsEmployeeShiftOpen(true);
-
-        // 10. Set the login/logout time values
-        setSelectedShiftTime(loginTime);
-        setSelectedLogoutShiftTime(logoutTime);
-
-        // 11. Fetch available shift times for dropdowns
-        if (loginFacilityId) {
-          await fetchPickShiftTimes(employee.EmployeeID, loginFacilityId);
-        }
-        if (logoutFacilityId) {
-          await fetchDropShiftTimes(employee.EmployeeID, logoutFacilityId);
-        }
-
-        // 12. Set dropdown values after a short delay (to ensure options are loaded)
-        setTimeout(() => {
-          const loginDropdown = document.getElementById("loginShiftDropdown");
-          if (loginDropdown) {
-            const existingOptions = Array.from(loginDropdown.options);
-            const matchingOption = existingOptions.find((opt) =>
-              opt.text.includes(loginTime)
-            );
-            if (matchingOption) {
-              loginDropdown.value = matchingOption.value;
-            } else {
-              setSelectedShiftTime(loginTime);
-            }
-          }
-          const logoutDropdown = document.getElementById("logoutShiftDropdown");
-          if (logoutDropdown) {
-            const existingOptions = Array.from(logoutDropdown.options);
-            const matchingOption = existingOptions.find((opt) =>
-              opt.text.includes(logoutTime)
-            );
-            if (matchingOption) {
-              logoutDropdown.value = matchingOption.value;
-            } else {
-              setSelectedLogoutShiftTime(logoutTime);
-            }
-          }
-        }, 300);
-
-        // 13. Show the offcanvas if not already visible
-        const offcanvasElement = document.getElementById("Employee_Shift");
-        if (offcanvasElement && !offcanvasElement.classList.contains("show")) {
-          const offcanvasInstance = new window.bootstrap.Offcanvas(
-            offcanvasElement
-          );
-          offcanvasInstance.show();
-        }
-      } catch (error) {
-        console.error("Error handling employee shift click:", error);
       }
-    };
+      if (schedule.TPTFor === 1) {
+        tptForType = 1;
+        tptForMessage = "You are not allowed to update drop shift.";
+        logoutTimeVisible = false;
+        logoutTimeDisabled = true;
+        loginFacilityDisabled = false;
+        loginTimeDisabled = false;
+      } else if (schedule.TPTFor === 2) {
+        tptForType = 2;
+        tptForMessage = "You are not allowed to update pickup shift.";
+        loginTimeVisible = false;
+        loginTimeDisabled = true;
+        logoutFacilityDisabled = false;
+        logoutTimeDisabled = false;
+      } else {
+        tptForType = 0;
+        tptForMessage = "";
+        loginFacilityDisabled = false;
+        loginTimeDisabled = false;
+        logoutFacilityDisabled = false;
+        logoutTimeDisabled = false;
+      }
+
+      setShiftLockStatus({
+        loginFacilityDisabled,
+        loginTimeVisible,
+        loginTimeLabel,
+        loginTimeDisabled,
+        logoutFacilityDisabled,
+        logoutTimeVisible,
+        logoutTimeLabel,
+        logoutTimeDisabled,
+        saveButtonVisible,
+        tptForMessage,
+        tptForType,
+      });
+
+      // 8. Set facility dropdowns (matches: ddlInFacility.SelectedIndex, ddlOutFacility.SelectedIndex)
+      let loginFacilityId =
+        schedule.pickFacilityID || employee.pickFacilityID || "";
+      let logoutFacilityId =
+        schedule.dropFacilityID || employee.dropFacilityID || "";
+
+      // If not found, try to extract from SETime data
+      if ((!loginFacilityId || !logoutFacilityId) && seTimeData.includes("!")) {
+        const facilityInfo = seTimeData.split("!")[1];
+        if (facilityInfo) {
+          const facilityParts = facilityInfo.split("|");
+          if (facilityParts.length >= 2) {
+            loginFacilityId = facilityParts[0] || loginFacilityId;
+            logoutFacilityId = facilityParts[1] || logoutFacilityId;
+          }
+        }
+      }
+
+      setSelectedloginfacility(loginFacilityId);
+      setSelectedlogoutfacility(logoutFacilityId);
+
+      // 9. Open the offcanvas/modal
+      setIsEmployeeShiftOpen(true);
+
+      // 10. Set the login/logout time values
+      setSelectedShiftTime(loginTime);
+      setSelectedLogoutShiftTime(logoutTime);
+
+      // 11. Fetch available shift times for dropdowns
+      if (loginFacilityId) {
+        await fetchPickShiftTimes(employee.EmployeeID, loginFacilityId);
+      }
+      if (logoutFacilityId) {
+        await fetchDropShiftTimes(employee.EmployeeID, logoutFacilityId);
+      }
+
+      // 12. Set dropdown values after a short delay (to ensure options are loaded)
+      setTimeout(() => {
+        const loginDropdown = document.getElementById("loginShiftDropdown");
+        if (loginDropdown) {
+          const existingOptions = Array.from(loginDropdown.options);
+          const matchingOption = existingOptions.find((opt) =>
+            opt.text.includes(loginTime)
+          );
+          if (matchingOption) {
+            loginDropdown.value = matchingOption.value;
+          } else {
+            setSelectedShiftTime(loginTime);
+          }
+        }
+        const logoutDropdown = document.getElementById("logoutShiftDropdown");
+        if (logoutDropdown) {
+          const existingOptions = Array.from(logoutDropdown.options);
+          const matchingOption = existingOptions.find((opt) =>
+            opt.text.includes(logoutTime)
+          );
+          if (matchingOption) {
+            logoutDropdown.value = matchingOption.value;
+          } else {
+            setSelectedLogoutShiftTime(logoutTime);
+          }
+        }
+      }, 300);
+
+      // 13. Show the offcanvas if not already visible
+      const offcanvasElement = document.getElementById("Employee_Shift");
+      if (offcanvasElement && !offcanvasElement.classList.contains("show")) {
+        const offcanvasInstance = new window.bootstrap.Offcanvas(
+          offcanvasElement
+        );
+        offcanvasInstance.show();
+      }
+    } catch (error) {
+      console.error("Error handling employee shift click:", error);
+    }
+  };
   // const handleEmployeeShiftClick = async (employee, day) => {
   //   try {
   //     // Get the selected date from weekDays array using the day index
@@ -1509,7 +1604,7 @@ const handleLogoutFacilityChange = (e) => {
 
   const handleSubmit = async () => {
 
-    setIsSubmitting(true); // Loader ON
+    setLoading(true); // Loader ON
     // Get selected dates from state (or directly from input if you want)
     const fromDateValue = document.getElementById("txtNewfromDate")?.value;
     const toDateValue = document.getElementById("txtNewtoDate")?.value;
@@ -1521,7 +1616,7 @@ const handleLogoutFacilityChange = (e) => {
       toastService.error(
         "Please select at least one employee and complete all required fields before saving."
       );
-      setIsSubmitting(false); // Loader OFF
+      setLoading(false); // Loader OFF
       return; // Exit the function if no employees are selected
     }
 
@@ -1593,7 +1688,7 @@ const handleLogoutFacilityChange = (e) => {
         "Failed to save the schedule. Please try again later."
       ); // Show error toast
     } finally {
-      setIsSubmitting(false); // Loader OFF
+      setLoading(false); // Loader OFF
     }
   };
   const handleReplicateClick = () => {
@@ -1638,6 +1733,7 @@ const handleLogoutFacilityChange = (e) => {
           </div>
         </div>
       )}
+      <Loader isVisible={loading} fullScreen={true} />
       <Header pageTitle="My Schedule" showNewButton={true} onNewButtonClick={handleNewButtonClick} />
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
@@ -1646,23 +1742,23 @@ const handleLogoutFacilityChange = (e) => {
       <div className="middle">
         <div className="row mt-3">
           <div className="col-12">
-                <button
-                  type="button"
-                  className="btn btn-dark"
-                  onClick={handleReplicateClick}
-                >
-                  Replicate Schedule
-                </button>
-                {/* <button type="button" className="btn btn-light">
+            <button
+              type="button"
+              className="btn btn-dark"
+              onClick={handleReplicateClick}
+            >
+              Replicate Schedule
+            </button>
+            {/* <button type="button" className="btn btn-light">
                   Roster Bulk Upload
                 </button> */}
-              </div>
+          </div>
         </div>
         {/* Schedule Table */}
         <div className="row">
           <div className="col-12">
             <div className="card_tb p-3">
-              <div className="row mb-3">
+              <div className="row mb-3 align-items-end">
                 <div className="col-2">
                   {/* <div className="col-1"> */}
                   <label className="form-label">Manager</label>
@@ -1693,6 +1789,28 @@ const handleLogoutFacilityChange = (e) => {
                     onChange={onchangedFromDate}
                   />
                 </div>
+                {/* --- RIGHT SIDE TOOLBAR --- */}
+                <div className="col-8 d-flex justify-content-end">
+                  <TableToolbar
+                    search={scheduleFilter}
+                    onSearch={(e) => setScheduleFilter(e.target.value)}
+                    showExport={false}
+                    //overlayRef={op}
+                    showFilter={false}
+                    //filterButtonRef={false}
+                    onRefresh={() => handleRefreshSchedule()}
+                  >
+                    <div className="p-4 text-center">
+                      <i
+                        className="pi pi-info-circle text-muted mb-3 d-block"
+                        style={{ fontSize: "2rem" }}
+                      />
+                      <p className="m-0 text-muted" style={{ fontSize: "0.875rem" }}>
+                        No advanced filters available.
+                      </p>
+                    </div>
+                  </TableToolbar>
+                </div>
               </div>
               {/* </div> */}
               <div className="table-responsive">
@@ -1720,11 +1838,10 @@ const handleLogoutFacilityChange = (e) => {
                         </td>
                       </tr>
                     ) : (
-                      currentItems.map((employee, index) => (
+                      displayedSchedule.map((employee, index) => (
                         <tr
-                          key={index}
-                          className={`${index > 0 ? "column" : ""} ${employee.geoCode !== "Y" || employee.tptReq !== "Y"
-                            ? "disabled-row"
+                          key={employee.EmployeeID || index}
+                          className={`${index > 0 ? "column" : ""} ${employee.geoCode !== "Y" || employee.tptReq !== "Y" ? "disabled-row"
                             : ""
                             }`}
                         >
@@ -1880,60 +1997,22 @@ const handleLogoutFacilityChange = (e) => {
                   </tbody>
                 </table>
                 {/* Pagination controls */}
+                {/* PrimeReact paginator for schedule table */}
                 <div className="d-flex justify-content-between align-items-center mt-3">
                   <div className="text-muted">
-                    Showing {indexOfFirstItem + 1} to{" "}
-                    {Math.min(indexOfLastItem, mgrscheduledata.length)} of{" "}
-                    {mgrscheduledata.length} entries
+                    Showing {schedTotal === 0 ? 0 : schedFirst + 1} to{" "}
+                    {Math.min(schedFirst + schedRows, schedTotal)} of {schedTotal} entries
                   </div>
-
-                  <nav aria-label="Schedule pagination">
-                    <ul className="pagination mb-0">
-                      {/* Previous button */}
-                      <li
-                        className={`page-item ${currentPage === 1 ? "disabled" : ""
-                          }`}
-                      >
-                        <button
-                          className="page-link"
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                        >
-                          Previous
-                        </button>
-                      </li>
-
-                      {/* Page numbers */}
-                      {[...Array(totalPages)].map((_, index) => (
-                        <li
-                          key={index}
-                          className={`page-item ${currentPage === index + 1 ? "active" : ""
-                            }`}
-                        >
-                          <button
-                            className="page-link"
-                            onClick={() => handlePageChange(index + 1)}
-                          >
-                            {index + 1}
-                          </button>
-                        </li>
-                      ))}
-
-                      {/* Next button */}
-                      <li
-                        className={`page-item ${currentPage === totalPages ? "disabled" : ""
-                          }`}
-                      >
-                        <button
-                          className="page-link"
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                        >
-                          Next
-                        </button>
-                      </li>
-                    </ul>
-                  </nav>
+                  <div>
+                    <Paginator
+                      first={schedFirst}
+                      rows={schedRows}
+                      totalRecords={schedTotal}
+                      template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+                      rowsPerPageOptions={[50, 100, 200, 300, 400]}
+                      onPageChange={onSchedPageChange}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1985,10 +2064,10 @@ const handleLogoutFacilityChange = (e) => {
         tabindex="-1"
         id="Employee_Shift"
         aria-labelledby="offcanvasRightLabel"
-        data-bs-backdrop="false"
+        data-bs-backdrop="static"
       >
-        <div class="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 class="subtitle fw-normal">
+        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
+          <h5 className="subtitle fw-normal">
             Employee Shift Details -{" "}
             {employeeSchedule && employeeSchedule.length > 0
               ? `${employeeSchedule[0].empCode} ${employeeSchedule[0].empName} `
@@ -2756,77 +2835,112 @@ const handleLogoutFacilityChange = (e) => {
           {selectedProcess &&
             selectedProcess !== "0" &&
             mgrassociate.length > 0 && (
-              <table
-                className="tb_raiseAdhoc table table-borderless table-hover"
-                id="tblMgrAssociate"
-              >
-                <thead>
-                  <tr>
-                    <th width="4%">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="flexCheckDefault"
-                        onChange={(e) => {
-                          const isChecked = e.target.checked;
-                          setMgrassociate((prev) =>
-                            prev.map((item) => ({
-                              ...item,
-                              isChecked: isChecked, // Add isChecked property to each item
-                            }))
-                          );
-                        }}
-                      />
-                    </th>
-                    <th>Employee</th>
-                    <th>Gender</th>
-                    <th>Process</th>
-                    <th>Manager</th>
-                    <th>Facility</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mgrassociate.map((mgrassociate) => (
-                    <tr key={mgrassociate.EmployeeID}>
-                      <td>
+              <>
+                <TableToolbar
+                  search={globalFilter}
+                  onSearch={(e) => setGlobalFilter(e.target.value)}
+                  showExport={false}
+                  // overlayRef={op}
+                  onRefresh={() => handleRefresh()}
+                  showFilter={false}
+                //filterButtonRef={filterButtonRef}
+                >
+                  <div className="p-4 text-center">
+                    <i
+                      className="pi pi-info-circle text-muted mb-3 d-block"
+                      style={{ fontSize: "2rem" }}
+                    />
+                    <p
+                      className="m-0 text-muted"
+                      style={{ fontSize: "0.875rem" }}
+                    >
+                      No advanced filters available.
+                    </p>
+                  </div>
+                </TableToolbar>
+                <table
+                  className="tb_raiseAdhoc table table-borderless table-hover"
+                  id="tblMgrAssociate"
+                >
+                  <thead>
+                    <tr>
+                      <th width="4%">
                         <input
                           className="form-check-input"
                           type="checkbox"
-                          checked={mgrassociate.isChecked || false} // Use isChecked property
-                          onChange={() => {
+                          id="flexCheckDefault"
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
                             setMgrassociate((prev) =>
-                              prev.map((item) =>
-                                item.EmployeeID === mgrassociate.EmployeeID
-                                  ? { ...item, isChecked: !item.isChecked }
-                                  : item
-                              )
+                              prev.map((item) => ({
+                                ...item,
+                                isChecked: isChecked, // Add isChecked property to each item
+                              }))
                             );
                           }}
                         />
-                      </td>
-                      <td>
-                        {mgrassociate.EmpName}
-                        {mgrassociate.geoCode !== "Y" && (
-                          <span className="material-icons md-18 text-danger mx-2">
-                            location_off
-                          </span>
-                        )}
-                        {mgrassociate.tptReq !== "Y" && (
-                          <span className="material-icons md-18 text-danger">
-                            no_transfer
-                          </span>
-                        )}
-                      </td>
-                      <td>{mgrassociate.Gender}</td>
-                      <td>{mgrassociate.processName}</td>
-                      <td>{mgrassociate.Manager}</td>
-                      <td>{mgrassociate.facility}</td>
+                      </th>
+                      <th>Employee</th>
+                      <th>Gender</th>
+                      <th>Process</th>
+                      <th>Manager</th>
+                      <th>Facility</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {displayedMgrAssociate.map((assoc) => (
+                      <tr key={assoc.EmployeeID}>
+                        <td>
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={assoc.isChecked || false} // Use isChecked property
+                            onChange={() => {
+                              setMgrassociate((prev) =>
+                                prev.map((item) =>
+                                  item.EmployeeID === assoc.EmployeeID
+                                    ? { ...item, isChecked: !item.isChecked }
+                                    : item
+                                )
+                              );
+                            }}
+                          />
+                        </td>
+                        <td>
+                          {assoc.EmpName}
+                          {assoc.geoCode !== "Y" && (
+                            <span className="material-icons md-18 text-danger mx-2">
+                              location_off
+                            </span>
+                          )}
+                          {assoc.tptReq !== "Y" && (
+                            <span className="material-icons md-18 text-danger">
+                              no_transfer
+                            </span>
+                          )}
+                        </td>
+                        <td>{assoc.Gender}</td>
+                        <td>{assoc.processName}</td>
+                        <td>{assoc.Manager}</td>
+                        <td>{assoc.facility}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="d-flex justify-content-end mt-2">
+                  <Paginator
+                    first={mgrFirst}
+                    rows={mgrRows}
+                    totalRecords={mgrTotal}
+                    //template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+                    rowsPerPageOptions={[50, 150, 250, 350, 450]}
+                    onPageChange={onMgrPageChange}
+                  />
+                </div>
+              </>
             )}
         </div>
+
 
         {/* Add more form fields */}
         <div className="offcanvas-footer">

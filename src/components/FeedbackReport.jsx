@@ -9,6 +9,7 @@ import RepFeedbackReportService from "../services/compliance/RepFeedbackReportSe
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
+import { MultiSelect } from "primereact/multiselect";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 
@@ -33,6 +34,10 @@ const FeedbackReport = () => {
   const filterButtonRef = useRef(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+  const [filters, setFilters] = useState({
+    facilityname: null,
+    empName: null
+  });
 
   const statusOptions = [
     { label: "Both", value: "2" },
@@ -420,9 +425,36 @@ const FeedbackReport = () => {
         </div>
       </div>
     );
+
+  };
+
+  const clearAdvancedFilters = () => {
+    setFilters({
+      facilityname: null,
+      empName: null
+    });
+    if (op.current) op.current.hide();
+    toastService.info("Filters cleared");
+  };
+
+  const getUniqueValues = (field) => {
+    const values = reportData.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
   };
 
   const filteredData = reportData.filter((item) => {
+    // Apply advanced filters
+    const matchesFilters = Object.keys(filters).every((key) => {
+      const val = filters[key];
+      if (Array.isArray(val) && val.length > 0) {
+        return val.includes(item[key]);
+      }
+      return true;
+    });
+
+    if (!matchesFilters) return false;
+
+    // Apply global search
     if (!globalFilter) return true;
     const searchTerm = globalFilter.toLowerCase();
     return Object.values(item).some(
@@ -586,18 +618,52 @@ const FeedbackReport = () => {
                     showFilter={true}
                     overlayRef={op}
                     filterButtonRef={filterButtonRef}
+                    filters={filters}
+                    setFilters={setFilters}
+                    activeFilterCount={
+                      Object.values(filters).filter(
+                        (f) => Array.isArray(f) && f.length > 0
+                      ).length
+                    }
                   >
-                    <div className="p-4 text-center">
-                      <i
-                        className="pi pi-info-circle text-muted mb-3 d-block"
-                        style={{ fontSize: "2rem" }}
-                      />
-                      <p
-                        className="m-0 text-muted"
-                        style={{ fontSize: "0.875rem" }}
-                      >
-                        No advanced filters available.
-                      </p>
+                    <div className="p-3">
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Facility Name</label>
+                          <MultiSelect
+                            value={filters.facilityname}
+                            options={getUniqueValues("facilityname")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, facilityname: e.value })
+                            }
+                            placeholder="Select Facility"
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Employee Name</label>
+                          <MultiSelect
+                            value={filters.empName}
+                            options={getUniqueValues("empName")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, empName: e.value })
+                            }
+                            placeholder="Select Employee"
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12 d-flex justify-content-end mt-3">
+                          <Button
+                            label="Clear all filters"
+                            icon="pi pi-filter-slash"
+                            className="p-button-outlined p-button-secondary w-100"
+                            onClick={clearAdvancedFilters}
+                            size="small"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </TableToolbar>
 

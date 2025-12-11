@@ -484,11 +484,11 @@ const FeedbackMaster = () => {
           }
         }
 
-        .card_tb {
-          border: none !important;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-          margin-bottom: 1rem;
-        }
+        // .card_tb {
+        //   border: none !important;
+        //   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        //   margin-bottom: 1rem;
+        // }
 
         .card-header {
           border-bottom: 1px solid #e5e7eb !important;

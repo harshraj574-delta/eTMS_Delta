@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import Loader from "./common/Loader";
@@ -6,6 +6,9 @@ import ProcessMasterService from '../services/compliance/ProcessMasterService';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import sessionManager from '../utils/SessionManager';
+import TableToolbar from "./common/TableToolbar";
+import { MultiSelect } from "primereact/multiselect";
+import { OverlayPanel } from "primereact/overlaypanel";
 
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -17,6 +20,7 @@ import MasterSidebar from "./Master/MasterSidebar";
 
 const ProcessMaster = () => {
   const [processes, setProcesses] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [subProcesses, setSubProcesses] = useState([]);
   const [selectedProcess, setSelectedProcess] = useState(null);
   const [newProcessName, setNewProcessName] = useState('');
@@ -24,6 +28,14 @@ const ProcessMaster = () => {
   const [editingProcess, setEditingProcess] = useState(null);
   const [editingSubProcess, setEditingSubProcess] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Toolbar State
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [filters, setFilters] = useState({
+    processName: null
+  });
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
 
   const [showAddProcessSidebar, setShowAddProcessSidebar] = useState(false);
   const [showEditProcessSidebar, setShowEditProcessSidebar] = useState(false);
@@ -37,17 +49,142 @@ const ProcessMaster = () => {
     fetchProcesses();
   }, []);
 
+  // Filter effect
+  useEffect(() => {
+    let result = [...processes];
+
+    // Apply advanced filters
+    if (filters.processName && filters.processName.length > 0) {
+      result = result.filter(item => filters.processName.includes(item.processName));
+    }
+
+    // Apply global search
+    if (globalFilter && globalFilter.trim() !== "") {
+      const lowerFilter = globalFilter.toLowerCase();
+      result = result.filter(item => 
+        Object.values(item).some(val => 
+          String(val).toLowerCase().includes(lowerFilter)
+        )
+      );
+    }
+    setFilteredData(result);
+  }, [processes, globalFilter, filters]);
+
+  const clearAdvancedFilters = () => {
+    setFilters({ processName: null });
+    if (op.current) op.current.hide();
+    toast.info("Filters cleared");
+  };
+
+  const getUniqueValues = (field) => {
+    const values = processes.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
   const fetchProcesses = async () => {
     try {
       setLoading(true);
       const data = await ProcessMasterService.getProcess(facilityId);
-      setProcesses(Array.isArray(data) ? data : []);
+      const procesData = Array.isArray(data) ? data : [];
+      setProcesses(procesData);
+      setFilteredData(procesData);
     } catch (error) {
       toast.error('Error fetching processes');
       console.error(error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const exportExcel = () => {
+    if (filteredData.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+    const fileName = `process_master_${new Date().toISOString().slice(0, 10)}`;
+    exportToCSV(filteredData, fileName);
+  };
+
+  const exportToCSV = (data, filename) => {
+    if (!data || data.length === 0) return;
+
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(","),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            if (value === null || value === undefined) return "";
+            const stringValue = String(value);
+            if (
+              stringValue.includes(",") ||
+              stringValue.includes('"') ||
+              stringValue.includes("\n")
+            ) {
+              return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filename}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderToolbar = () => {
+    return (
+      <TableToolbar
+        search={globalFilter}
+        onSearch={(e) => setGlobalFilter(e.target.value)}
+        onRefresh={() => fetchProcesses()}
+        onExport={exportExcel}
+        showFilter={true}
+        activeFilterCount={
+          filters.processName && filters.processName.length > 0 ? 1 : 0
+        }
+        overlayRef={op}
+        filterButtonRef={filterButtonRef}
+        filters={filters}
+        setFilters={setFilters}
+      >
+        <div className="p-3">
+          <div className="row g-3">
+            <div className="col-12">
+              <label className="fw-bold mb-1">Process Name</label>
+              <MultiSelect
+                value={filters.processName}
+                options={getUniqueValues("processName")}
+                onChange={(e) =>
+                  setFilters({ ...filters, processName: e.value })
+                }
+                placeholder="Select Process"
+                className="w-100"
+                display="chip"
+              />
+            </div>
+            <div className="col-12 d-flex justify-content-end mt-3">
+              <Button
+                label="Clear all filters"
+                icon="pi pi-filter-slash"
+                className="p-button-outlined p-button-secondary w-100"
+                onClick={clearAdvancedFilters}
+                size="small"
+              />
+            </div>
+          </div>
+        </div>
+      </TableToolbar>
+    );
   };
 
   const fetchSubProcesses = async (processId, processName) => {
@@ -159,15 +296,29 @@ const ProcessMaster = () => {
     }
   };
 
+  const processNameBodyTemplate = (rowData) => {
+    return (
+      <a
+        href="#!"
+        onClick={(e) => {
+          e.preventDefault();
+          fetchSubProcesses(rowData.Id, rowData.processName);
+        }}
+        style={{
+          textDecoration: 'none',
+          color: '#3377FF',
+          fontWeight: 500,
+          cursor: 'pointer'
+        }}
+        className="text-primary hover-text-primary"
+      >
+        {rowData.processName}
+      </a>
+    );
+  };
+
   const processActionBodyTemplate = (rowData) => (
     <div className="process-action-buttons d-flex gap-1 justify-content-start flex-wrap">
-      <Button
-        icon="pi pi-eye"
-        className="p-button-rounded p-button-info p-button-sm action-btn"
-        onClick={() => fetchSubProcesses(rowData.Id, rowData.processName)}
-        tooltip="View Sub-Processes"
-        tooltipPosition="top"
-      />
       <IconButton
         sx={{ color: '#1976d2' }}
         size="small"
@@ -225,6 +376,21 @@ const ProcessMaster = () => {
     <div>
       <Loader isVisible={loading} fullScreen={true} />
 
+      <style>{`
+        .process-datatable .p-datatable-thead > tr > th {
+          border-top: 1px solid #f0f0f0 !important;
+          background-color: #f9f9fb !important;
+          font-weight: 800 !important;
+          color: #545557 !important;
+          font-size: 13px !important;
+        }
+        .process-datatable .p-datatable-thead > tr > th:first-child {
+          border-top-left-radius: 0 !important;
+        }
+        .process-datatable .p-datatable-thead > tr > th:last-child {
+          border-top-right-radius: 0 !important;
+        }
+      `}</style>
       <Header
         pageTitle="Process Master"
         showNewButton={true}
@@ -234,12 +400,18 @@ const ProcessMaster = () => {
       <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
-        <div className="row g-2 g-sm-3">
+        <div className="row">
+          <div className="col-12">
+            <h6 className="pageTitle">Process Master</h6>
+          </div>
           <div className="col-12">
             <div className="card_tb">
-              <div className="card-body p-2 p-sm-3">
+              <div className="p-3 pb-0">
+                {renderToolbar()}
+              </div>
+              <div className="table-responsive">
                 <DataTable
-                  value={processes}
+                  value={filteredData}
                   loading={loading}
                   paginator
                   rows={10}
@@ -254,6 +426,7 @@ const ProcessMaster = () => {
                   <Column
                     field="processName"
                     header="Process Name"
+                    body={processNameBodyTemplate}
                     sortable
                     filter
                     className="col-process-name"
@@ -564,11 +737,11 @@ const ProcessMaster = () => {
         }
 
         /* Card Styling */
-        .card_tb {
-          border: none !important;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-          margin-bottom: 1rem;
-        }
+        // .card_tb {
+        //   border: none !important;
+        //   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        //   margin-bottom: 1rem;
+        // }
 
         .card-header {
           border-bottom: 1px solid #e5e7eb !important;

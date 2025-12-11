@@ -21,6 +21,24 @@ class ProcessMasterService {
     }
   }
 
+  async GetProcessNew(locationid){
+    try{
+      const response = await api.post('/GetProcessNew', {
+        locationid: locationid
+      });
+      
+      let data = response.data;
+      if (typeof data === 'string') {
+        data = JSON.parse(data);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching process data:', error);
+      throw error;
+    }
+  }
+
   async addProcess(processName, facilityId) {
     try {
       const response = await api.post('/AddProcess', {

@@ -422,7 +422,7 @@ const VendorAllocation = () => {
                         ))
                     ) : null}
                   </ul>
-                  <button className="btn btn-primary" onClick={handleSaveAll} >
+                  <button className="btn btn-primary" onClick={handleSaveAll} disabled={isBackDate} >
                     <span className="material-icons me-2">save</span> Save All
                   </button>
                 </div>

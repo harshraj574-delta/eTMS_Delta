@@ -9,6 +9,7 @@ import RepVehUsgVenService from "../services/compliance/RepVehUsgVenService";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
+import { MultiSelect } from "primereact/multiselect";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 
@@ -24,13 +25,55 @@ const VehicleUtilizationReport = () => {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedDates, setExpandedDates] = useState([]);
-  const [expandedVendors, setExpandedVendors] = useState({});
+  const [expandedVendorRows, setExpandedVendorRows] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
+  const [filters, setFilters] = useState({
+    Vendor: null
+  });
   const [hasSearched, setHasSearched] = useState(false);
 
   const UserID = sessionStorage.getItem("ID");
   const op = useRef(null);
   const filterButtonRef = useRef(null);
+
+  // Re-run grouping and filtering whenever rawData, filters, or globalFilter changes
+  useEffect(() => {
+    if (rawData.length === 0) {
+      setReportData([]);
+      return;
+    }
+
+    let filtered = [...rawData];
+
+    // Apply Advanced Filters
+    if (filters.Vendor && filters.Vendor.length > 0) {
+        filtered = filtered.filter(item => filters.Vendor.includes(item.Vendor));
+    }
+
+    // Apply Global Search
+    if (globalFilter && globalFilter.trim() !== "") {
+        const searchLower = globalFilter.toLowerCase();
+        filtered = filtered.filter(item => 
+            Object.values(item).some(val => 
+                val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
+            )
+        );
+    }
+
+    const grouped = groupDataByDateVendorVehicle(filtered);
+    setReportData(grouped);
+  }, [rawData, filters, globalFilter]);
+
+  const getUniqueValues = (field) => {
+    const values = rawData.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
+  const clearAdvancedFilters = () => {
+    setFilters({ Vendor: null });
+    if (op.current) op.current.hide();
+    toastService.info("Filters cleared");
+  };
 
   const tripTypes = [
     { label: "Pick", value: "P" },
@@ -194,8 +237,7 @@ const VehicleUtilizationReport = () => {
         : [parsedData];
 
       setRawData(validatedData);
-      const groupedData = groupDataByDateVendorVehicle(validatedData);
-      setReportData(groupedData);
+      // reportData will be updated by useEffect
 
       setLoading(false);
       setIsSubmitting(false);
@@ -278,9 +320,9 @@ const VehicleUtilizationReport = () => {
     if (dateIndex > -1) {
       newExpandedDates.splice(dateIndex, 1);
       // Clear vendor expansions for this date
-      const newExpandedVendors = { ...expandedVendors };
+      const newExpandedVendors = { ...expandedVendorRows };
       delete newExpandedVendors[index];
-      setExpandedVendors(newExpandedVendors);
+      setExpandedVendorRows(newExpandedVendors);
     } else {
       newExpandedDates.push(index);
     }
@@ -289,7 +331,7 @@ const VehicleUtilizationReport = () => {
 
   const toggleVendorExpansion = (dateIndex, vendorIndex) => {
     const key = `${dateIndex}-${vendorIndex}`;
-    const newExpandedVendors = { ...expandedVendors };
+    const newExpandedVendors = { ...expandedVendorRows };
 
     if (!newExpandedVendors[dateIndex]) {
       newExpandedVendors[dateIndex] = [];
@@ -302,7 +344,7 @@ const VehicleUtilizationReport = () => {
       newExpandedVendors[dateIndex].push(vendorIndex);
     }
 
-    setExpandedVendors(newExpandedVendors);
+    setExpandedVendorRows(newExpandedVendors);
   };
 
 
@@ -466,18 +508,39 @@ const VehicleUtilizationReport = () => {
                     showFilter={true}
                     overlayRef={op}
                     filterButtonRef={filterButtonRef}
+                    filters={filters}
+                    setFilters={setFilters}
+                    activeFilterCount={
+                      Object.values(filters).filter(
+                        (f) => Array.isArray(f) && f.length > 0
+                      ).length
+                    }
                   >
-                    <div className="p-4 text-center">
-                      <i
-                        className="pi pi-info-circle text-muted mb-3 d-block"
-                        style={{ fontSize: "2rem" }}
-                      />
-                      <p
-                        className="m-0 text-muted"
-                        style={{ fontSize: "0.875rem" }}
-                      >
-                        No advanced filters available.
-                      </p>
+                     <div className="p-3">
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Vendor</label>
+                          <MultiSelect
+                            value={filters.Vendor}
+                            options={getUniqueValues("Vendor")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, Vendor: e.value })
+                            }
+                            placeholder="Select Vendor"
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12 d-flex justify-content-end mt-3">
+                          <Button
+                            label="Clear all filters"
+                            icon="pi pi-filter-slash"
+                            className="p-button-outlined p-button-secondary w-100"
+                            onClick={clearAdvancedFilters}
+                            size="small"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </TableToolbar>
 
@@ -610,7 +673,7 @@ const VehicleUtilizationReport = () => {
                                                           );
                                                         }}
                                                       >
-                                                        {expandedVendors[
+                                                        {expandedVendorRows[
                                                           dateIndex
                                                         ]?.includes(
                                                           vendorIndex
@@ -663,7 +726,7 @@ const VehicleUtilizationReport = () => {
                                                   </tr>
 
                                                   {/* Vehicle Type Level Rows - Expanded Section */}
-                                                  {expandedVendors[
+                                                  {expandedVendorRows[
                                                     dateIndex
                                                   ]?.includes(vendorIndex) && (
                                                     <tr>

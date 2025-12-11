@@ -12,6 +12,8 @@ import CostMasterService from "../services/compliance/CostMasterService";
 import SystemSettingService from "../services/compliance/SystemSettingService";
 import { toastService } from "../services/toastService";
 import sessionManager from "../utils/SessionManager.js";
+import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
 
 const SystemSetting = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -48,16 +50,23 @@ const SystemSetting = () => {
     }
   }, [selectedFacility]);
 
+
+
   const actionBodyTemplate = (rowData) => (
-    <Button
-      className="btn btn-sm btn-outline-success"
-      onClick={() => {
-        setEditRow(rowData);
-        setSidebarVisible(true);
-      }}
-    >
-      Edit
-    </Button>
+    <div className="d-flex gap-1 justify-content-start">
+      <IconButton
+        sx={{ color: '#1976d2' }}
+        size="small"
+        className="action-btn"
+        onClick={() => {
+          setEditRow(rowData);
+          setSidebarVisible(true);
+        }}
+        title="Edit"
+      >
+        <EditIcon fontSize="small" />
+      </IconButton>
+    </div>
   );
 
   // Fetch Facilities

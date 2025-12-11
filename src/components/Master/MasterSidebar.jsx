@@ -83,6 +83,7 @@ const MasterSidebar = ({
             data-bs-theme={headerTextColor.includes("white") ? "dark" : "light"}
             onClick={onClose}
             aria-label="Close"
+            style={{ opacity: 1 }}
           ></button>
         </div>
 

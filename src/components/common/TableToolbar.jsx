@@ -4,6 +4,7 @@ import { InputText } from 'primereact/inputtext';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import './TableToolbar.css';
 import btnsSet from '../../assets/btns-set.png';
+import crossIcon from '../../assets/cross.png';
 
 const TableToolbar = ({
   search,
@@ -11,6 +12,9 @@ const TableToolbar = ({
   onRefresh,
   onExport,
   activeFilterCount = 0,
+  activeFilters = [],
+  filters = null,
+  setFilters = null,
   children,
   overlayRef,
   filterButtonRef,
@@ -20,6 +24,30 @@ const TableToolbar = ({
   showExport = true,
   className = ""
 }) => {
+
+  const effectiveActiveFilters = React.useMemo(() => {
+    if (activeFilters && activeFilters.length > 0) return activeFilters;
+    if (!filters || !setFilters) return [];
+
+    const computed = [];
+    Object.entries(filters).forEach(([key, value]) => {
+      if (Array.isArray(value) && value.length > 0) {
+        value.forEach((val) => {
+          computed.push({
+            label: val,
+            onRemove: () => {
+              const newVal = value.filter((v) => v !== val);
+              setFilters((prev) => ({
+                ...prev,
+                [key]: newVal.length > 0 ? newVal : null,
+              }));
+            },
+          });
+        });
+      }
+    });
+    return computed;
+  }, [activeFilters, filters, setFilters]);
 
   // Make sure overlay is fully visible (not under header / off-screen)
   const handleOverlayShow = () => {
@@ -52,24 +80,57 @@ const TableToolbar = ({
   return (
     <>
       <div className={`d-flex flex-column flex-md-row justify-content-between align-items-center mb-3 gap-2 ${className}`}>
-        <div className="d-flex align-items-center gap-2">
-          {showFilter && (
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+{showFilter && (
             <>
-              <Button
-                type="button"
-                icon="pi pi-filter"
-                label="Filter"
-                ref={filterButtonRef}
-                onClick={(e) => overlayRef.current && overlayRef.current.toggle(e)}
-                className="ota-filter-trigger"
-              />
-              {activeFilterCount > 0 && (
-                <span
-                  className="badge bg-primary"
-                  style={{ fontSize: "0.7rem", borderRadius: "999px" }}
-                >
-                  {activeFilterCount} active
-                </span>
+              {/* Show chips if effectiveActiveFilters has items */}
+              {effectiveActiveFilters.length > 0 ? (
+                <>
+                  {effectiveActiveFilters.map((filter, idx) => (
+                    <div key={idx} className="ota-filter-chip">
+                      {/* <i className="pi pi-filter ota-filter-chip-icon" /> */}
+                      <span>{filter.label}</span>
+                      <img 
+                        src={crossIcon}
+                        alt="Remove"
+                        className="ota-filter-chip-remove" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          filter.onRemove && filter.onRemove(filter);
+                        }} 
+                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    icon="pi pi-plus"
+                    label="Filter"
+                    ref={filterButtonRef}
+                    onClick={(e) => overlayRef.current && overlayRef.current.toggle(e)}
+                    className="ota-filter-trigger"
+                  />
+                </>
+              ) : (
+                <>
+                  {/* Default/Legacy view */}
+                  <Button
+                    type="button"
+                    icon="pi pi-filter"
+                    label="Filter"
+                    ref={filterButtonRef}
+                    onClick={(e) => overlayRef.current && overlayRef.current.toggle(e)}
+                    className="ota-filter-trigger"
+                  />
+                  {activeFilterCount > 0 && (
+                    <span
+                      className="badge "
+                      style={{ fontSize: "0.7rem", borderRadius: "999px" , backgroundColor: "#E9E8FC"}}
+                    >
+                      {activeFilterCount} active
+                    </span>
+                  )}
+                </>
               )}
             </>
           )}

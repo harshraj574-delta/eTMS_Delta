@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from "react";
+import TableToolbar from "../common/TableToolbar";
+import { OverlayPanel } from "primereact/overlaypanel";
+import React, { useEffect, useState, useRef } from "react";
 import Sidebar from "../Master/SidebarMenu";
 import MasterSidebar from "../Master/MasterSidebar";
 import Header from "../Master/Header";
@@ -7,15 +9,19 @@ import { apiService } from "../../services/api";
 import sessionManager from "../../utils/SessionManager.js";
 import { toastService } from "../../services/toastService";
 import { DataTable } from "primereact/datatable";
+import { MultiSelect } from "primereact/multiselect";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
 import "./facilityMaster.css";
 import PlaceIcon from '@mui/icons-material/Place';
 import { Button } from "primereact/button";
+import { ToastContainer } from 'react-toastify';
+
 
 const FacilityMaster = () => {
   // Data
   const [facilityData, setFacilityData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]); // Filtered data for display
   const [location, setLocationData] = useState([]);
   const [facilityContactData, setFacilityContactData] = useState([]);
   const [facContactLocation, setfacContactLocation] = useState([]);
@@ -23,6 +29,16 @@ const FacilityMaster = () => {
 
   // Table
   const [expandedRows, setExpandedRows] = useState([]);
+  
+  // Toolbar State
+  const [globalFilter, setGlobalFilter] = useState("");
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
+
+  const [filters, setFilters] = useState({
+    facilityName: null,
+    locationName: null,
+  });
 
   // Offcanvas flags (controlled via React state)
   const [showAdd, setShowAdd] = useState(false);
@@ -55,6 +71,44 @@ const FacilityMaster = () => {
     bindLocationList();
     bindFacilityContactLevelList();
   }, []);
+
+  // Filter effect
+  useEffect(() => {
+    let result = [...facilityData];
+
+    // Apply advanced filters
+    Object.keys(filters).forEach((key) => {
+      const val = filters[key];
+      if (Array.isArray(val) && val.length > 0) {
+        result = result.filter((item) => val.includes(item[key]));
+      }
+    });
+
+    // Apply global search
+    if (globalFilter && globalFilter.trim() !== "") {
+      const lowerFilter = globalFilter.toLowerCase();
+      result = result.filter(item => 
+        Object.values(item).some(val => 
+          String(val).toLowerCase().includes(lowerFilter)
+        )
+      );
+    }
+    setFilteredData(result);
+  }, [facilityData, globalFilter, filters]);
+
+  const getUniqueValues = (field) => {
+    const values = facilityData.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
+  const clearAdvancedFilters = () => {
+    setFilters({
+      facilityName: null,
+      locationName: null,
+    });
+    if (op.current) op.current.hide();
+    toastService.info("Filters cleared");
+  };
 
   const bindFacilityContactLevelList = async () => {
     try {
@@ -89,19 +143,157 @@ const FacilityMaster = () => {
       if (sessionManager.getUserSession().ISadmin === "Y") {
         const response = await apiService.SelectAllFacility({});
         setFacilityData(response);
+        setFilteredData(response); // Initialize filtered data
       } else {
         const response = await apiService.SelectFacility({
           Userid: sessionManager.getUserSession().Userid,
         });
         setFacilityData(response);
+        setFilteredData(response); // Initialize filtered data
       }
     } catch (error) {
       console.error("Error fetching facilities:", error);
       setFacilityData([]);
+      setFilteredData([]);
       toastService.error("Error fetching facilities");
     } finally {
       setLoading(false);
     }
+  };
+
+  const exportExcel = () => {
+    if (filteredData.length === 0) {
+      toastService.error("No data to export");
+      return;
+    }
+    const fileName = `facility_master_${new Date().toISOString().slice(0, 10)}`;
+    exportToCSV(filteredData, fileName);
+  };
+
+  const exportToCSV = (data, filename) => {
+    if (!data || data.length === 0) return;
+
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(","),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            if (value === null || value === undefined) return "";
+            const stringValue = String(value);
+            if (
+              stringValue.includes(",") ||
+              stringValue.includes('"') ||
+              stringValue.includes("\n")
+            ) {
+              return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filename}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderToolbar = () => {
+    const activeFilterCount = Object.values(filters).filter(
+      (f) => Array.isArray(f) && f.length > 0
+    ).length;
+
+    return (
+      <TableToolbar
+        search={globalFilter}
+        onSearch={(e) => setGlobalFilter(e.target.value)}
+        onRefresh={() => fetchFacilityData()}
+        onExport={exportExcel}
+        showFilter={true}
+        filters={filters}
+        setFilters={setFilters}
+        overlayRef={op}
+        filterButtonRef={filterButtonRef}
+      >
+        <div className="ota-filter-header">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-2">
+              <span className="ota-filter-icon">
+                <i className="pi pi-filter" />
+              </span>
+              <div>
+                <div className="ota-filter-title">Advanced filters</div>
+                <div className="ota-filter-subtitle">
+                  Refine facility list
+                </div>
+              </div>
+            </div>
+            {activeFilterCount > 0 && (
+              <span
+                className="badge bg-primary"
+                style={{ fontSize: "0.7rem", borderRadius: "999px" }}
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="ota-filter-body">
+          <div className="ota-filter-field">
+            <label className="ota-filter-label">Facility Name</label>
+            <MultiSelect
+              value={filters.facilityName}
+              options={getUniqueValues("facilityName")}
+              onChange={(e) =>
+                setFilters({ ...filters, facilityName: e.value })
+              }
+              placeholder="Select facilities"
+              maxSelectedLabels={2}
+              className="w-100 p-inputtext-sm"
+              display="chip"
+              filter
+              showClear
+            />
+          </div>
+
+          <div className="ota-filter-field">
+            <label className="ota-filter-label">Location</label>
+            <MultiSelect
+              value={filters.locationName}
+              options={getUniqueValues("locationName")}
+              onChange={(e) =>
+                setFilters({ ...filters, locationName: e.value })
+              }
+              placeholder="Select locations"
+              maxSelectedLabels={2}
+              className="w-100 p-inputtext-sm"
+              display="chip"
+              filter
+              showClear
+            />
+          </div>
+        </div>
+
+        <div className="ota-filter-footer">
+          <Button
+            label="Clear all filters"
+            icon="pi pi-filter-slash"
+            className="p-button-outlined p-button-secondary w-100"
+            onClick={clearAdvancedFilters}
+            size="small"
+          />
+        </div>
+      </TableToolbar>
+    );
   };
 
   // Map callbacks
@@ -461,6 +653,7 @@ const FacilityMaster = () => {
         onNewButtonClick={handleNewButtonClick}
       />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">
@@ -470,12 +663,15 @@ const FacilityMaster = () => {
 
           <div className="col-12">
             <div className="card_tb">
+              <div className="p-3 pb-0">
+                {renderToolbar()}
+              </div>
               <div className="table-responsive">
                 <table className="table table-sm mb-0" id="tbFacility">
                   <thead className="table-light">
                     <tr>
                       <th style={{ width: "40px" }}></th>
-                      <th className="text-center" style={{ minWidth: "90px" }}>
+                      <th className="text-left" style={{ minWidth: "90px" }}>
                         Facility Name
                       </th>
                       <th className="text-center" style={{ minWidth: "80px" }}>
@@ -517,7 +713,7 @@ const FacilityMaster = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {facilityData.map((facility, index) => (
+                    {filteredData.map((facility, index) => (
                       <React.Fragment key={index}>
                         <tr>
                           <td>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import Loader from "./common/Loader";
@@ -9,10 +9,12 @@ import RepScheduleSummeryService from "../services/compliance/RepScheduleSummery
 import sessionManager from "../utils/SessionManager";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { MultiSelect } from "primereact/multiselect";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
+import TableToolbar from "./common/TableToolbar";
 
 const RepScheduleSummery = () => {
   const [error, setError] = useState(null);
@@ -41,6 +43,66 @@ const RepScheduleSummery = () => {
   const [expandedRows, setExpandedRows] = useState([]);
   // Cache child data keyed by vendorId
   const [vendorChildData, setVendorChildData] = useState({});
+
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [filteredData, setFilteredData] = useState([]);
+  const [filters, setFilters] = useState({
+    ShiftDate: null,
+    PlanVendorName: null,
+    RouteId: null,
+    RouteZone: null,
+    BillingVehicleType: null,
+  });
+  
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
+  const dt = useRef(null);
+
+  useEffect(() => {
+    applyFiltersAndSearch();
+  }, [data, globalFilter, filters]);
+
+  const applyFiltersAndSearch = () => {
+    let filtered = [...data];
+
+    // Apply advanced filters
+    if (appliedReportType === "DETAILED") {
+      Object.keys(filters).forEach((key) => {
+        const val = filters[key];
+        if (Array.isArray(val) && val.length > 0) {
+          filtered = filtered.filter((item) => val.includes(item[key]));
+        }
+      });
+    }
+
+    // Apply global search
+    if (globalFilter && globalFilter.trim() !== "") {
+      const searchLower = globalFilter.toLowerCase();
+      filtered = filtered.filter((item) => {
+         return Object.values(item).some((val) =>
+             val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
+         );
+      });
+    }
+    setFilteredData(filtered);
+  };
+
+  const getUniqueValues = (field) => {
+    const values = data.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
+  const clearAdvancedFilters = () => {
+    setFilters({
+      ShiftDate: null,
+      PlanVendorName: null,
+      RouteId: null,
+      RouteZone: null,
+      BillingVehicleType: null,
+    });
+    if (op.current) op.current.hide();
+    toastService.info("Filters cleared");
+  };
 
   useEffect(() => {
     fetchFacilities();
@@ -135,8 +197,218 @@ const RepScheduleSummery = () => {
       return keys.map((k) => <Column key={k} field={k} header={k} />);
     }
     return detailedColumns.map((c) => (
-      <Column key={c.field} field={c.field} header={c.header} />
+      <Column key={c.field} field={c.field} header={c.header} sortable />
     ));
+  };
+
+  const exportToCSV = (data, filename) => {
+    if (!data || data.length === 0) return;
+
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(","),
+      ...data.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            if (value === null || value === undefined) return "";
+            const stringValue = String(value);
+            if (
+              stringValue.includes(",") ||
+              stringValue.includes('"') ||
+              stringValue.includes("\n")
+            ) {
+              return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filename}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportExcel = () => {
+    const fileName = `schedule_summery_${appliedReportType}_${new Date()
+      .toISOString()
+      .slice(0, 10)}`;
+
+    if (appliedReportType === "DETAILED") {
+      if (dt.current) {
+        dt.current.exportCSV({ fileName });
+      } else if (filteredData.length > 0) {
+          exportToCSV(filteredData, fileName);
+      }
+      return;
+    }
+
+    if (appliedReportType === "VENDOR") {
+      if (filteredData.length === 0) {
+        toastService.warn("No data to export");
+        return;
+      }
+      exportToCSV(filteredData, fileName);
+      return;
+    }
+  };
+
+  const renderToolbar = () => {
+    const activeFilterCount = Object.values(filters).filter(
+      (f) => Array.isArray(f) && f.length > 0
+    ).length;
+
+    return (
+      <TableToolbar
+        search={globalFilter}
+        onSearch={(e) => setGlobalFilter(e.target.value)}
+        onRefresh={() => handleRunReport()}
+        onExport={exportExcel}
+        activeFilterCount={activeFilterCount}
+        overlayRef={op}
+        filterButtonRef={filterButtonRef}
+        showFilter={true}
+      >
+        {appliedReportType === "DETAILED" ? (
+          <>
+            <div className="ota-filter-header">
+              <div className="d-flex align-items-center justify-content-between">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="ota-filter-icon">
+                    <i className="pi pi-filter" />
+                  </span>
+                  <div>
+                    <div className="ota-filter-title">Advanced filters</div>
+                    <div className="ota-filter-subtitle">
+                      Refine detailed report
+                    </div>
+                  </div>
+                </div>
+                {activeFilterCount > 0 && (
+                  <span
+                    className="badge bg-primary"
+                    style={{ fontSize: "0.7rem", borderRadius: "999px" }}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="ota-filter-body">
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Shift Date</label>
+                <MultiSelect
+                  value={filters.ShiftDate}
+                  options={getUniqueValues("ShiftDate")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, ShiftDate: e.value })
+                  }
+                  placeholder="Select dates"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Plan Vendor Name</label>
+                <MultiSelect
+                  value={filters.PlanVendorName}
+                  options={getUniqueValues("PlanVendorName")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, PlanVendorName: e.value })
+                  }
+                  placeholder="Select vendors"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Route Id</label>
+                <MultiSelect
+                  value={filters.RouteId}
+                  options={getUniqueValues("RouteId")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, RouteId: e.value })
+                  }
+                  placeholder="Select route IDs"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  filter
+                  showClear
+                />
+              </div>
+
+               <div className="ota-filter-field">
+                <label className="ota-filter-label">Route Zone</label>
+                <MultiSelect
+                  value={filters.RouteZone}
+                  options={getUniqueValues("RouteZone")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, RouteZone: e.value })
+                  }
+                  placeholder="Select zones"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+
+              <div className="ota-filter-field">
+                <label className="ota-filter-label">Vehicle Type</label>
+                <MultiSelect
+                  value={filters.BillingVehicleType}
+                  options={getUniqueValues("BillingVehicleType")}
+                  onChange={(e) =>
+                    setFilters({ ...filters, BillingVehicleType: e.value })
+                  }
+                  placeholder="Select vehicle types"
+                  maxSelectedLabels={2}
+                  className="w-100 p-inputtext-sm"
+                  display="chip"
+                  showClear
+                />
+              </div>
+            </div>
+
+            <div className="ota-filter-footer">
+              <Button
+                label="Clear all filters"
+                icon="pi pi-filter-slash"
+                className="p-button-outlined p-button-secondary w-100"
+                onClick={clearAdvancedFilters}
+                size="small"
+              />
+            </div>
+          </>
+        ) : (
+          <div className="p-4 text-center">
+            <i
+              className="pi pi-info-circle text-muted mb-3 d-block"
+              style={{ fontSize: "2rem" }}
+            />
+            <p className="m-0 text-muted" style={{ fontSize: "0.875rem" }}>
+              Advanced filters are only available for Detailed Billing Report.
+            </p>
+          </div>
+        )}
+      </TableToolbar>
+    );
   };
 
   const handleRunReport = async () => {
@@ -153,6 +425,14 @@ const RepScheduleSummery = () => {
     setShowTable(true);
     setExpandedRows([]);
     setVendorChildData({});
+    setGlobalFilter(""); // Reset search on new run
+    setFilters({
+      ShiftDate: null,
+      PlanVendorName: null,
+      RouteId: null,
+      RouteZone: null,
+      BillingVehicleType: null,
+    });
 
     const params = {
       sDate: formatDate(fromDate),
@@ -447,6 +727,7 @@ const RepScheduleSummery = () => {
             <div className="col-12">
               <div className="card_tb">
                 <div className="p-3">
+                  {renderToolbar()}
                   {appliedReportType === "VENDOR" ? (
                     <div className="table-responsive">
                       <table className="table table-sm mb-0 vendor-table">
@@ -454,23 +735,24 @@ const RepScheduleSummery = () => {
                           <tr>
                             <th style={{ width: "40px" }}></th>
                             <th>Vendor Name</th>
-                            <th>Sc Route</th>
-                            <th>Schedule Amount</th>
+                            <th>Trip Count</th>
+                            <th>Trip Amount</th>
                             <th>Guard Count</th>
                             <th>Guard Amount</th>
-                            <th>UnSchedule</th>
+                            {/* <th>UnSchedule</th> */}
                             <th>Toll Cost</th>
+                            <th>Grand Total</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {data.length === 0 ? (
+                          {filteredData.length === 0 ? (
                             <tr>
                               <td colSpan={8} className="text-center p-4">
                                 {error ? `Error: ${error}` : "No records found"}
                               </td>
                             </tr>
                           ) : (
-                            data.map((row, index) => {
+                            filteredData.map((row, index) => {
                               const vid = extractVendorId(row);
                               const isExpanded = expandedRows.includes(index);
                               const childData = vendorChildData[vid] || [];
@@ -505,11 +787,12 @@ const RepScheduleSummery = () => {
                                       {row.vendorName}
                                     </td>
                                     <td>{row.ScRoute}</td>
-                                    <td>{row.ScheduleAmount}</td>
+                                    <td>{row.Cost}</td>
                                     <td>{row.GuardCount}</td>
                                     <td>{row.RouteGuardCost}</td>
-                                    <td>{row.UnSchedule}</td>
+                                    {/* <td>{row.UnSchedule}</td> */}
                                     <td>{row.TollCost}</td>
+                                    <td>{row.GrandTotal}</td>
                                   </tr>
 
                                   {isExpanded && (
@@ -527,13 +810,13 @@ const RepScheduleSummery = () => {
                                                   <tr>
                                                     <th>Vendor Name</th>
                                                     <th>Vehicle Type</th>
-                                                    <th>Sc Route</th>
-                                                    <th>Schedule Rate</th>
-                                                    <th>Schedule Amount</th>
+                                                    <th>Trip Count</th>
+                                                    <th>TripRate</th>
+                                                    <th>Trip Amount</th>
                                                     <th>Guard Count</th>
                                                     <th>Guard Amount</th>
-                                                    <th>UnSchedule</th>
-                                                    <th>Unschedule Amount</th>
+                                                    {/* <th>UnSchedule</th> */}
+                                                    {/* <th>Unschedule Amount</th> */}
                                                     <th>Toll Cost</th>
                                                     <th>Grand Total</th>
                                                   </tr>
@@ -565,7 +848,7 @@ const RepScheduleSummery = () => {
                                                         <td>{childRow.Cost}</td>
                                                         <td>
                                                           {
-                                                            childRow.ScheduleAmount
+                                                            childRow.ScheduleAmt
                                                           }
                                                         </td>
                                                         <td>
@@ -576,14 +859,14 @@ const RepScheduleSummery = () => {
                                                             childRow.RouteGuardCost
                                                           }
                                                         </td>
-                                                        <td>
+                                                        {/* <td>
                                                           {childRow.UnSchedule}
                                                         </td>
                                                         <td>
                                                           {
                                                             childRow.UnscheduleAmount
                                                           }
-                                                        </td>
+                                                        </td> */}
                                                         <td>
                                                           {childRow.TollCost}
                                                         </td>
@@ -610,7 +893,8 @@ const RepScheduleSummery = () => {
                     </div>
                   ) : (
                     <DataTable
-                      value={data}
+                      value={filteredData}
+                      ref={dt}
                       paginator
                       rows={100}
                       tableStyle={{ minWidth: "50rem" }}
@@ -620,7 +904,7 @@ const RepScheduleSummery = () => {
                         error ? `Error: ${error}` : "No records found"
                       }
                       stripedRows
-                      className="p-datatable-gridlines process-datatable"
+                      className="p-datatable process-datatable"
                       rowsPerPageOptions={[50, 100, 200, 300]}
                     >
                       {renderDetailedColumns()}

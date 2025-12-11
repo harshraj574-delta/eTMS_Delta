@@ -10,6 +10,8 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from 'primereact/button';
 import MasterSidebar from "../Master/MasterSidebar";
+import { ToastContainer } from 'react-toastify';
+
 
 const Location = () => {
   const [locationData, setLocationData] = useState([]);
@@ -100,6 +102,7 @@ const Location = () => {
     <div className="container-fluid p-0">
       <Header pageTitle="Location" showNewButton={true} onNewButtonClick={() => setAddLocation(true)} />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">

@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
 import Loader from "./common/Loader";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
@@ -9,11 +9,19 @@ import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { toastService } from '../services/toastService';
 import { ToastContainer } from 'react-toastify';
+import TableToolbar from "./common/TableToolbar";
+import { MultiSelect } from "primereact/multiselect";
+import { OverlayPanel } from "primereact/overlaypanel";
 
 const ManageMenu = () => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState([]);
+    const [filteredData, setFilteredData] = useState([]);
+    const [globalFilter, setGlobalFilter] = useState("");
+    const [filters, setFilters] = useState({
+        menuText: null
+    });
     const [showNewSidebar, setShowNewSidebar] = useState(false);
     const [showEditSidebar, setShowEditSidebar] = useState(false);
     const [newText, setNewText] = useState('');
@@ -26,6 +34,10 @@ const ManageMenu = () => {
     const [editSubMenuDescription, setEditSubMenuDescription] = useState('');
     const [editSubMenuNavigateUrl, setEditSubMenuNavigateUrl] = useState('');
     
+    // Toolbar refs
+    const op = useRef(null);
+    const filterButtonRef = useRef(null);
+
     // Expansion state using index array (like OTAReport/RepScheduleSummery)
     const [expandedRows, setExpandedRows] = useState([]);
     const [subMenuData, setSubMenuData] = useState({});
@@ -36,6 +48,47 @@ const ManageMenu = () => {
     useEffect(() => {
         fetchMenuData();
     }, []);
+
+    // Filter logic
+    useEffect(() => {
+        applyFiltersAndSearch();
+    }, [data, globalFilter, filters]);
+
+    const applyFiltersAndSearch = () => {
+        if (!data) {
+            setFilteredData([]);
+            return;
+        }
+        
+        let filtered = [...data];
+
+        // Apply advanced filters
+        if (filters.menuText && filters.menuText.length > 0) {
+            filtered = filtered.filter(item => filters.menuText.includes(item.Text));
+        }
+
+        // Apply global search
+        if (globalFilter && globalFilter.trim() !== "") {
+            const lowerQuery = globalFilter.toLowerCase();
+            filtered = filtered.filter(item => {
+                const textMatch = item.Text && String(item.Text).toLowerCase().includes(lowerQuery);
+                const descMatch = item.Description && String(item.Description).toLowerCase().includes(lowerQuery);
+                return textMatch || descMatch;
+            });
+        }
+        setFilteredData(filtered);
+    };
+
+    const clearAdvancedFilters = () => {
+        setFilters({ menuText: null });
+        if (op.current) op.current.hide();
+        toastService.info("Filters cleared");
+    };
+    
+    const getUniqueValues = (field) => {
+        const values = data.map((item) => item[field]).filter(Boolean);
+        return [...new Set(values)].map((val) => ({ label: val, value: val }));
+    };
 
     const fetchMenuData = async () => {
         try {
@@ -398,6 +451,97 @@ const ManageMenu = () => {
         }
     };
 
+    const exportToCSV = (data, filename) => {
+        if (!data || data.length === 0) return;
+
+        const headers = Object.keys(data[0]);
+        const csvContent = [
+            headers.join(","),
+            ...data.map((row) =>
+                headers
+                    .map((header) => {
+                        const value = row[header];
+                        if (value === null || value === undefined) return "";
+                        const stringValue = String(value);
+                        if (
+                            stringValue.includes(",") ||
+                            stringValue.includes('"') ||
+                            stringValue.includes("\n")
+                        ) {
+                            return `"${stringValue.replace(/"/g, '""')}"`;
+                        }
+                        return stringValue;
+                    })
+                    .join(",")
+            ),
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${filename}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportExcel = () => {
+        if (filteredData.length === 0) {
+            toastService.warn("No data to export");
+            return;
+        }
+        const fileName = `manage_menu_${new Date().toISOString().slice(0, 10)}`;
+        exportToCSV(filteredData, fileName);
+    };
+
+    const renderToolbar = () => {
+        return (
+            <TableToolbar
+                search={globalFilter}
+                onSearch={(e) => setGlobalFilter(e.target.value)}
+                onRefresh={() => fetchMenuData()}
+                onExport={exportExcel}
+                showFilter={true}
+                activeFilterCount={
+                    filters.menuText && filters.menuText.length > 0 ? 1 : 0
+                }
+                overlayRef={op}
+                filterButtonRef={filterButtonRef}
+                filters={filters}
+                setFilters={setFilters}
+            >
+                <div className="p-3">
+                    <div className="row g-3">
+                        <div className="col-12">
+                            <label className="fw-bold mb-1">Menu Text</label>
+                            <MultiSelect
+                                value={filters.menuText}
+                                options={getUniqueValues("Text")}
+                                onChange={(e) =>
+                                    setFilters({ ...filters, menuText: e.value })
+                                }
+                                placeholder="Select Menu Text"
+                                className="w-100"
+                                display="chip"
+                            />
+                        </div>
+                        <div className="col-12 d-flex justify-content-end mt-3">
+                            <Button
+                                label="Clear all filters"
+                                icon="pi pi-filter-slash"
+                                className="p-button-outlined p-button-secondary w-100"
+                                onClick={clearAdvancedFilters}
+                                size="small"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </TableToolbar>
+        );
+    };
+
     return (
         <div>
             <Loader isVisible={loading} fullScreen={true} />
@@ -421,31 +565,35 @@ const ManageMenu = () => {
                         transition: background-color 0.2s;
                     }
                     .menu-table thead th {
-                        background-color: #f8f9fa !important;
-                        font-weight: 600;
-                        border: 1px solid #dee2e6;
-                        padding: 0.5rem;
-                        font-size: 0.875rem;
+                        background-color: #f9f9fb !important;
+                        font-weight: 800;
+                        border: 0;
+                        border-bottom: 1px solid #dee2e6;
+                        padding: 12px 5px;
+                        font-size: 13px;
                         text-align: center;
                         vertical-align: middle;
+                        color: #545557;
                     }
                     .menu-table tbody td {
                         padding: 0.5rem;
-                        border: 1px solid #dee2e6;
+                        border: 0;
+                        border-bottom: 1px solid #dee2e6;
                         font-size: 0.875rem;
                         text-align: center;
                         vertical-align: middle;
                     }
                     .menu-table .table-light th {
-                        background-color: #f8f9fa !important;
+                        background-color: #f9f9fb !important;
                     }
                     .nested-menu-table thead th {
-                        background-color: #f8f9fa !important;
-                        font-weight: 600;
+                        background-color: #f9f9fb !important;
+                        font-weight: 800;
                         border: 1px solid #dee2e6;
-                        padding: 0.5rem;
-                        font-size: 0.8125rem;
+                        padding: 12px 5px;
+                        font-size: 13px;
                         text-align: center;
+                        color: #545557;
                     }
                     .nested-menu-table tbody td {
                         padding: 0.5rem;
@@ -673,6 +821,7 @@ const ManageMenu = () => {
                     <div className="col-12">
                         <div className="card_tb">
                             <div className="p-3">
+                                {renderToolbar()}
                                 <div className="table-responsive">
                                     <table className="table table-sm mb-0 menu-table">
                                         <thead className="table-light">
@@ -684,14 +833,14 @@ const ManageMenu = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {data.length === 0 ? (
+                                            {filteredData.length === 0 ? (
                                                 <tr>
                                                     <td colSpan={4} className="text-center p-4">
                                                         {error ? `Error: ${error}` : "No records found"}
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                data.map((row, index) => {
+                                                filteredData.map((row, index) => {
                                                     const menuId = extractMenuId(row);
                                                     const isExpanded = expandedRows.includes(index);
                                                     const childData = subMenuData[menuId] || [];
@@ -746,7 +895,7 @@ const ManageMenu = () => {
                                                                 <tr>
                                                                     <td colSpan={4} className="leftStrip p-2">
                                                                         <div className="expanded-content">
-                                                                            <div style={{ marginBottom: 12 }}>
+                                                                            <div className="d-flex justify-content-start mb-3 mt-2 ms-3">
                                                                                 <Button
                                                                                     className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
                                                                                     onClick={() => handleAddSubMenu(menuId)}

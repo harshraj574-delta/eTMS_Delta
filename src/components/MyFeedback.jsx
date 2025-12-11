@@ -20,7 +20,9 @@ import { InputText } from "primereact/inputtext"; // Import InputText component 
 import { InputTextarea } from "primereact/inputtextarea"; // Import InputTextarea component from PrimeReact
 import { Offcanvas } from "bootstrap";
 import { api } from "../services/axios/api.js";
-
+import Loader from "./common/Loader.jsx";
+import TableToolbar from "./common/TableToolbar.jsx";
+import { set } from "lodash";
 const MyFeedback = () => {
   const [feedbackData, setFeedbackData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,7 @@ const MyFeedback = () => {
     closed: 0,
   });
   const [addRaiseFeedback, setAddRaiseFeedback] = useState(false);
-
+  const [globalFilter, setGlobalFilter] = useState(null);
   const handleReopen = (ticketNo) => {
     setSelectedTicket(ticketNo); // Set the selected ticket number
     setIsOffcanvasOpen(true); // Open the offcanvas
@@ -77,18 +79,19 @@ const MyFeedback = () => {
     // Cleanup event listeners on component unmount
     return () => {
       if (reopenOffcanvas) {
-        reopenOffcanvas.removeEventListener("hidden.bs.offcanvas", () => {});
+        reopenOffcanvas.removeEventListener("hidden.bs.offcanvas", () => { });
       }
       if (feedbackOffcanvas) {
-        feedbackOffcanvas.removeEventListener("hidden.bs.offcanvas", () => {});
+        feedbackOffcanvas.removeEventListener("hidden.bs.offcanvas", () => { });
       }
       if (ticketOffcanvas) {
-        ticketOffcanvas.removeEventListener("hidden.bs.offcanvas", () => {});
+        ticketOffcanvas.removeEventListener("hidden.bs.offcanvas", () => { });
       }
     };
   }, []);
 
   const fetchFeedbackData = async () => {
+    setLoading(true);
     try {
       setLoading(true);
       const data = await apiService.Spr_sprSelectFeedBack({});
@@ -102,8 +105,9 @@ const MyFeedback = () => {
   };
 
   const fetchTicketReplies = async (ticketNo) => {
+    setLoading(true);
     try {
-     // console.log("Fetching replies for ticket:", ticketNo); // Added log
+      // console.log("Fetching replies for ticket:", ticketNo); // Added log
       const replies = await apiService.Spr_sprSelectReply({
         ticketNo: ticketNo,
       });
@@ -113,8 +117,12 @@ const MyFeedback = () => {
     } catch (error) {
       console.error("Error fetching replies:", error);
     }
+    finally {
+      setLoading(false);
+    }
   };
   const fetchCategories = async () => {
+    setLoading(true);
     try {
       const facID = sessionStorage.getItem("FacilityID"); // assuming facID is stored in sessionStorage
       const result = await apiService.Spr_GetComplaintCategory({ facID });
@@ -127,9 +135,12 @@ const MyFeedback = () => {
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
+    } finally {
+      setLoading(false);
     }
   };
   const fetchComplaintType = async (selectedCategoryId) => {
+    setLoading(true);
     try {
       const ComplaintCategoryID = selectedCategoryId; // Use the selected category ID directly
 
@@ -147,6 +158,8 @@ const MyFeedback = () => {
       setComplaintTypeDropDown(result); // Update the complaint type dropdown
     } catch (error) {
       console.error("Error fetching complaint types:", error);
+    } finally {
+      setLoading(false);
     }
   };
   const handleCategorySelect = (categoryId) => {
@@ -164,7 +177,7 @@ const MyFeedback = () => {
   const handleSubmitFeedback = async () => {
     // Get the specific complaint type select element instead of using generic selector
     //const FeedTypeId = document.getElementById("complaintTypeSelect").value;
-
+    setLoading(true);
     // Check if required fields are filled
     const selectedCategory = document.getElementById("categorySelect").value;
     if (!selectedCategory) {
@@ -226,9 +239,12 @@ const MyFeedback = () => {
       console.error("Error submitting feedback:", error);
       // Optionally, show an error message to the user
       toastService.error("Error submitting feedback. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
   const handleReopenSave = async () => {
+    setLoading(true);
     const params = {
       ticketNo: selectedTicket, // Assuming you have the selected ticket number
       desc: reopenRemark, // Use the remark entered by the user
@@ -249,6 +265,8 @@ const MyFeedback = () => {
     } catch (error) {
       console.error("Error submitting reopen remark:", error);
       // Optionally, show an error message to the user
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -258,6 +276,7 @@ const MyFeedback = () => {
   };
   // Function to fetch feedback count
   const fetchFeedbackCount = async (credentials = {}) => {
+    setLoading(true);
     try {
       const empid = sessionManager.getUserSession()?.ID;
 
@@ -306,6 +325,9 @@ const MyFeedback = () => {
     } catch (error) {
       setFeedbackCount({ total: 0, open: 0, closed: 0 });
     }
+    finally {
+      setLoading(false);
+    }
   };
   const handleNewButtonClick = () => {
     const offcanvasElement = document.getElementById("raise_Feedback");
@@ -315,13 +337,72 @@ const MyFeedback = () => {
     }
     // optional: resetFormValues();
   };
+  // Track if data is ready for current filter
+  const [filterDataReady, setFilterDataReady] = useState(true);
+
+  const handleFilterClick = (filter) => {
+    setLoading(true);
+    setFilterDataReady(false);
+    setFeedbackFilter(filter);
+  };
+
+  // Auto-stop loading when data matches filter
+  useEffect(() => {
+    if (feedbackData.length > 0 && !filterDataReady) {
+      const timer = setTimeout(() => {
+        setLoading(false);
+        setFilterDataReady(true);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [feedbackData, feedbackFilter, filterDataReady]);
+  // search filter
+  const applyGlobalFilter = (data, search) => {
+    if (!search || !search.trim()) return data;
+
+    const searchLower = search.toLowerCase();
+
+    return data.filter((row) =>
+      Object.values(row ?? {}).some((val) =>
+        String(val ?? "")
+          .toLowerCase()
+          .includes(searchLower)
+      )
+    );
+  };
+  const filteredByStatus =
+    feedbackFilter === "total"
+      ? feedbackData
+      : feedbackFilter === "open"
+        ? feedbackData.filter(
+          (item) => item.Status && item.Status.toLowerCase() === "open"
+        )
+        : feedbackFilter === "closed"
+          ? feedbackData.filter(
+            (item) => item.Status && item.Status.toLowerCase() === "closed"
+          )
+          : feedbackData;
+
+  const finalTableData = applyGlobalFilter(filteredByStatus, globalFilter);
+  // Refresh data function
+  const handleRefresh = () => {
+    setLoading(true);
+    fetchFeedbackCount({
+      endDate: new Date().toISOString().split("T")[0],
+      startDate: new Date(new Date().setFullYear(new Date().getFullYear() - 1))
+        .toISOString()
+        .split("T")[0],
+    });
+    toastService.success("Data has been successfully refreshed.");
+  };
   return (
     <div className="container-fluid p-0">
       {/* Header */}
+      <Loader isVisible={loading} fullScreen={true} />
       <Header
         pageTitle={"My Feedback"}
         showNewButton={true}
-        //onNewClick={handleOpenRaiseFeedback} // This now has a defined function
+        //onNewClick={handleOpenRaiseFeedback} 
         onNewButtonClick={handleNewButtonClick}
       />
 
@@ -385,13 +466,12 @@ const MyFeedback = () => {
             <div className="row">
               <div className="col">
                 <div
-                  className={`cardx p-3 ${
-                    feedbackFilter === "total"
-                      ? "bg-secondary text-white"
-                      : "bg-white"
-                  }`}
+                  className={`cardx p-3 ${feedbackFilter === "total"
+                    ? "bg-secondary text-white"
+                    : "bg-white"
+                    }`}
                   style={{ cursor: "pointer" }}
-                  onClick={() => setFeedbackFilter("total")}
+                  onClick={() => handleFilterClick("total")}
                 >
                   <h3>
                     <strong
@@ -403,9 +483,8 @@ const MyFeedback = () => {
                     </strong>
                   </h3>
                   <span
-                    className={`subtitle_sm ${
-                      feedbackFilter === "total" ? "text-white" : "text-dark"
-                    }`}
+                    className={`subtitle_sm ${feedbackFilter === "total" ? "text-white" : "text-dark"
+                      }`}
                   >
                     Total Feedbacks
                   </span>
@@ -413,13 +492,12 @@ const MyFeedback = () => {
               </div>
               <div className="col">
                 <div
-                  className={`cardx p-3 ${
-                    feedbackFilter === "open"
-                      ? "bg-secondary text-white"
-                      : "bg-white"
-                  }`}
+                  className={`cardx p-3 ${feedbackFilter === "open"
+                    ? "bg-secondary text-white"
+                    : "bg-white"
+                    }`}
                   style={{ cursor: "pointer" }}
-                  onClick={() => setFeedbackFilter("open")}
+                  onClick={() => handleFilterClick("open")}
                 >
                   <h3>
                     <strong
@@ -431,9 +509,8 @@ const MyFeedback = () => {
                     </strong>
                   </h3>
                   <span
-                    className={`subtitle_sm ${
-                      feedbackFilter === "open" ? "text-white" : "text-dark"
-                    }`}
+                    className={`subtitle_sm ${feedbackFilter === "open" ? "text-white" : "text-dark"
+                      }`}
                   >
                     Open Tickets
                   </span>
@@ -441,13 +518,12 @@ const MyFeedback = () => {
               </div>
               <div className="col">
                 <div
-                  className={`cardx p-3 ${
-                    feedbackFilter === "closed"
-                      ? "bg-secondary text-white"
-                      : "bg-white"
-                  }`}
+                  className={`cardx p-3 ${feedbackFilter === "closed"
+                    ? "bg-secondary text-white"
+                    : "bg-white"
+                    }`}
                   style={{ cursor: "pointer" }}
-                  onClick={() => setFeedbackFilter("closed")}
+                  onClick={() => handleFilterClick("closed")}
                 >
                   <h3>
                     <strong
@@ -461,9 +537,8 @@ const MyFeedback = () => {
                     </strong>
                   </h3>
                   <span
-                    className={`subtitle_sm ${
-                      feedbackFilter === "closed" ? "text-white" : "text-dark"
-                    }`}
+                    className={`subtitle_sm ${feedbackFilter === "closed" ? "text-white" : "text-dark"
+                      }`}
                   >
                     Closed Tickets
                   </span>
@@ -476,22 +551,32 @@ const MyFeedback = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
+              <div className="p-2">
+                <TableToolbar
+                  showExport={false}
+                  showFilter={false}
+                  onRefresh={() => handleRefresh()}
+                  search={globalFilter}
+                  onSearch={(e) => setGlobalFilter(e.target.value)}
+                />
+              </div>
               <DataTable
-                value={
-                  feedbackFilter === "total"
-                    ? feedbackData // Total feedbacks ka data (ya sabhi)
-                    : feedbackFilter === "open"
-                    ? feedbackData.filter(
-                        (item) =>
-                          item.Status && item.Status.toLowerCase() === "open"
-                      )
-                    : feedbackFilter === "closed"
-                    ? feedbackData.filter(
-                        (item) =>
-                          item.Status && item.Status.toLowerCase() === "closed"
-                      )
-                    : feedbackData
-                }
+                // value={
+                //   feedbackFilter === "total"
+                //     ? feedbackData // Total feedbacks ka data (ya sabhi)
+                //     : feedbackFilter === "open"
+                //       ? feedbackData.filter(
+                //         (item) =>
+                //           item.Status && item.Status.toLowerCase() === "open"
+                //       )
+                //       : feedbackFilter === "closed"
+                //         ? feedbackData.filter(
+                //           (item) =>
+                //             item.Status && item.Status.toLowerCase() === "closed"
+                //         )
+                //         : feedbackData
+                // }
+                value={finalTableData}
                 paginator
                 rows={50}
                 rowsPerPageOptions={[50, 100, 150, 200]}
@@ -541,7 +626,7 @@ const MyFeedback = () => {
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
                       }}
-                      // Remove the ref and onMouseLeave handlers that use bootstrap
+                    // Remove the ref and onMouseLeave handlers that use bootstrap
                     >
                       {rowData.Desrp}
                     </div>
@@ -554,13 +639,12 @@ const MyFeedback = () => {
                   header="Status"
                   body={(rowData) => (
                     <span
-                      className={`badgee ${
-                        rowData &&
+                      className={`badgee ${rowData &&
                         rowData.Status &&
                         rowData.Status.toLowerCase() === "open"
-                          ? "badge_warning"
-                          : "badge_muted"
-                      }`}
+                        ? "badge_warning"
+                        : "badge_muted"
+                        }`}
                     >
                       {rowData && rowData.Status ? rowData.Status : "N/A"}
                     </span>
@@ -573,13 +657,12 @@ const MyFeedback = () => {
                       data-bs-toggle="offcanvas"
                       data-bs-target="#raise_Reopen"
                       aria-controls="offcanvasRightReope"
-                      className={`btn btn-sm ${
-                        rowData &&
+                      className={`btn btn-sm ${rowData &&
                         rowData.Status &&
                         rowData.Status.toLowerCase() === "closed"
-                          ? "btn-outline-success"
-                          : "btn-outline-danger"
-                      }`}
+                        ? "btn-outline-success"
+                        : "btn-outline-danger"
+                        }`}
                       onClick={() =>
                         rowData &&
                         rowData.ReOpenStatus &&
@@ -692,9 +775,8 @@ const MyFeedback = () => {
 
       {/* <!-- Raise Feedback Rightbar --> */}
       <div
-        className={`offcanvas offcanvas-end ${
-          isRaiseFeedbackOpen ? "show" : ""
-        }`}
+        className={`offcanvas offcanvas-end ${isRaiseFeedbackOpen ? "show" : ""
+          }`}
         tabIndex="-1"
         id="raise_Feedback"
         aria-labelledby="offcanvasRightLabel"
@@ -822,22 +904,37 @@ const MyFeedback = () => {
           ></button>
         </div>
         <div className="offcanvas-body">
-          {ticketReplies.map((reply, index) => (
-            <div className="ticketBx" key={index}>
-              <small>
-                {new Date(reply.UpdatedAt).toLocaleString()}
-                <span>
-                  By {reply.empCode} - {reply.empName}
-                </span>
-              </small>
-              <p>{reply.Descp}</p>
+          {ticketReplies.length > 0 ? (
+            ticketReplies.map((reply, index) => (
+              <div className="ticketBx" key={index}>
+                <small>
+                  {new Date(reply.UpdatedAt).toLocaleString()}
+                  <span>
+                    By {reply.empCode} - {reply.empName}
+                  </span>
+                </small>
+                <p>{reply.Descp}</p>
+              </div>
+            ))
+          ) : (
+            // Show empty state when no replies
+            <div className="d-flex flex-column align-items-center justify-content-center p-5 text-center">
+              <i
+                className="pi pi-comments text-muted mb-3"
+                style={{ fontSize: "3rem", opacity: 0.5 }}
+              />
+              <h6 className="text-muted mb-2">No replies were found.</h6>
+              <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
+                This ticket has not received any replies yet.
+              </p>
             </div>
-          ))}
+          )}
+
         </div>
       </div>
       {/* <!-- Ticket Number Rightbar  -->*/}
       <Notifications />
-    </div>
+    </div >
   );
 };
 

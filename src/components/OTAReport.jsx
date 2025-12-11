@@ -501,7 +501,8 @@ const OTAReport = () => {
         onSearch={(e) => setGlobalFilter(e.target.value)}
         onRefresh={() => handleSearch()}
         onExport={exportExcel}
-        activeFilterCount={activeFilterCount}
+        filters={filters}
+        setFilters={setFilters}
         overlayRef={op}
         filterButtonRef={filterButtonRef}
       >

@@ -11,6 +11,7 @@ import PerEmployeeBillingService from "../services/compliance/PerEmployeeBilling
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
+import { MultiSelect } from "primereact/multiselect";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 
@@ -32,6 +33,13 @@ const PerEmployeeBilling = () => {
   const filterButtonRef = useRef(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+  const [filteredData, setFilteredData] = useState([]);
+  const [filters, setFilters] = useState({
+    ProcessName: null,
+    VendorName: null,
+    ShiftDate: null,
+    TripType: null
+  });
 
   const reportTypes = [
     { label: "Detailed", value: "detailed" },
@@ -120,11 +128,9 @@ const PerEmployeeBilling = () => {
       setReportData(validatedData);
       setCurrentReportType(selectedReportType);
       setLoading(false);
-      setReportData(validatedData);
-      setCurrentReportType(selectedReportType);
-      setLoading(false);
       setIsSubmitting(false);
       setHasSearched(true);
+      setFilteredData(validatedData);
 
       setTimeout(() => {
         if (validatedData.length > 0) {
@@ -146,7 +152,57 @@ const PerEmployeeBilling = () => {
         toastService.error("Error fetching report data: " + error.message);
       }, 100);
     }
+
   };
+
+  const clearAdvancedFilters = () => {
+    setFilters({
+      ProcessName: null,
+      VendorName: null,
+      ShiftDate: null,
+      TripType: null
+    });
+    if (op.current) op.current.hide();
+    toastService.info("Filters cleared");
+  };
+
+  const getUniqueValues = (field) => {
+    const values = reportData.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
+  const applyFiltersAndSearch = () => {
+    let filtered = [...reportData];
+
+    // Apply advanced filters
+    Object.keys(filters).forEach((key) => {
+      const val = filters[key];
+      if (Array.isArray(val) && val.length > 0) {
+        filtered = filtered.filter((item) => val.includes(item[key]));
+      }
+    });
+
+    // Apply global search
+    if (globalFilter && globalFilter.trim() !== "") {
+      const searchLower = globalFilter.toLowerCase();
+      filtered = filtered.filter((item) => {
+        return Object.values(item).some(
+          (val) =>
+            val !== null &&
+            val !== undefined &&
+            String(val).toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    setFilteredData(filtered);
+  };
+
+  useEffect(() => {
+    if (hasSearched) {
+      applyFiltersAndSearch();
+    }
+  }, [filters, globalFilter, hasSearched, reportData]);
 
   const exportExcel = () => {
     if (dt.current) {
@@ -309,18 +365,78 @@ const PerEmployeeBilling = () => {
                     showFilter={true}
                     overlayRef={op}
                     filterButtonRef={filterButtonRef}
+                    filters={filters}
+                    setFilters={setFilters}
+                    activeFilterCount={
+                      Object.values(filters).filter(
+                        (f) => Array.isArray(f) && f.length > 0
+                      ).length
+                    }
                   >
-                    <div className="p-4 text-center">
-                      <i
-                        className="pi pi-info-circle text-muted mb-3 d-block"
-                        style={{ fontSize: "2rem" }}
-                      />
-                      <p
-                        className="m-0 text-muted"
-                        style={{ fontSize: "0.875rem" }}
-                      >
-                        No advanced filters available.
-                      </p>
+                    <div className="p-3">
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Process Name</label>
+                          <MultiSelect
+                            value={filters.ProcessName}
+                            options={getUniqueValues("ProcessName")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, ProcessName: e.value })
+                            }
+                            placeholder="Select Process"
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Vendor Name</label>
+                          <MultiSelect
+                            value={filters.VendorName}
+                            options={getUniqueValues("VendorName")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, VendorName: e.value })
+                            }
+                            placeholder="Select Vendor"
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Shift Date</label>
+                          <MultiSelect
+                            value={filters.ShiftDate}
+                            options={getUniqueValues("ShiftDate")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, ShiftDate: e.value })
+                            }
+                            placeholder="Select Date" // Changed placeholder
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12">
+                          <label className="fw-bold mb-1">Trip Type</label>
+                          <MultiSelect
+                            value={filters.TripType}
+                            options={getUniqueValues("TripType")}
+                            onChange={(e) =>
+                              setFilters({ ...filters, TripType: e.value })
+                            }
+                            placeholder="Select Type" // Changed placeholder
+                            className="w-100"
+                            display="chip"
+                          />
+                        </div>
+                        <div className="col-12 d-flex justify-content-end mt-3">
+                          <Button
+                            label="Clear all filters"
+                            icon="pi pi-filter-slash"
+                            className="p-button-outlined p-button-secondary w-100"
+                            onClick={clearAdvancedFilters}
+                            size="small"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </TableToolbar>
 
