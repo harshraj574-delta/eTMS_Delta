@@ -5,7 +5,7 @@ import Loader from "./common/Loader";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from "primereact/column";
 import RepNoShowService from "../services/compliance/RepNoShowService";
 import { toastService } from "../services/toastService";
@@ -389,7 +389,7 @@ const RepNoShow = () => {
                   </TableToolbar>
 
                   <div className="table-responsive">
-                    <DataTable
+                    <CustomDataTable
                       value={filteredData}
                       ref={dt}
                       paginator
@@ -419,7 +419,7 @@ const RepNoShow = () => {
                         header="No Show Instances"
                         sortable
                       />
-                    </DataTable>
+                    </CustomDataTable>
                   </div>
                 </div>
               )}

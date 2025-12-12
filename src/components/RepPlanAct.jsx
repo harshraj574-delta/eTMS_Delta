@@ -14,6 +14,7 @@ import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
 import * as XLSX from "xlsx";
 import TableToolbar from "./common/TableToolbar";
+import "./common/CustomDataTable.css";
 import { MultiSelect } from "primereact/multiselect";
 import calendarIcon from "../assets/calendar.png";
 import noReportImage from "../assets/no_report.png";
@@ -736,7 +737,7 @@ const RepPlanAct = () => {
                   </TableToolbar>
 
                   <div className="table-responsive">
-                    <table className="table table-sm mb-0 plan-act-table">
+                    <table className="table table-sm mb-0 plan-act-table custom-html-table">
                       <thead className="table-light">
                         <tr>
                           <th rowSpan={2} style={{ width: "40px" }}></th>

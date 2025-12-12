@@ -4,15 +4,25 @@ import Sidebar from "./Master/SidebarMenu";
 import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
 import RouteDeletionService from "../services/compliance/RouteDeletionService";
-// import Calendar from "react-calendar";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Calendar } from "primereact/calendar";
+import calendarIcon from "../assets/calendar.png";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 const RouteDeletion = () => {
   const UserId = sessionStorage.getItem("ID");
   const [facility, setFacility] = useState([]);
   const [selFacility, setSelFacility] = useState(null);
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(new Date());
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
   const TypeOptions = [
     { label: "Both", value: "B" },
     { label: "Pick", value: "P" },
@@ -59,7 +69,7 @@ const RouteDeletion = () => {
       // Agar backend ko shift ka value chahiye (ID), to value bheje:
       const shiftValues = selectedShifts;
       const params = {
-        sDate: date,
+        sDate: formatDate(date),
         FacilityID: selFacility,
         TripType: type,
         Shifttimes: shiftValues,
@@ -84,7 +94,9 @@ const RouteDeletion = () => {
   };
   const handleSearchClick = () => {
     const today = new Date().toISOString().split("T")[0];
-    if (date < today) {
+    const selectedDateStr = formatDate(date);
+
+    if (selectedDateStr < today) {
       toastService.error("Date must be greater than the current date");
       return;
     }
@@ -165,8 +177,16 @@ const RouteDeletion = () => {
           <div className="row">
             <div className="field col-2 mb-3">
               <label>Date</label>
-              <input type="date" className="form-control"
-                value={date} onChange={(e) => setDate(e.target.value)} />
+              <div className="custom-calendar-wrapper">
+                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                <Calendar
+                  id="date"
+                  className="w-100 custom-calendar-input"
+                  value={date}
+                  onChange={(e) => setDate(e.value)}
+                  dateFormat="mm/dd/yy"
+                />
+              </div>
             </div>
             <div className="field col-2 mb-3">
               <label>Facility Name</label>
@@ -201,6 +221,27 @@ const RouteDeletion = () => {
           </div>
         </div>
       </div>
+      <style>
+        {`
+          .custom-calendar-wrapper {
+            position: relative;
+            width: 100%;
+          }
+          .custom-calendar-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            z-index: 2;
+            pointer-events: none;
+          }
+          .custom-calendar-input .p-inputtext {
+            padding-left: 35px !important;
+          }
+        `}
+      </style>
     </div >
   );
 }

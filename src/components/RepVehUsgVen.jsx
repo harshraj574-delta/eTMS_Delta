@@ -9,6 +9,7 @@ import RepVehUsgVenService from "../services/compliance/RepVehUsgVenService";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
+import "./common/CustomDataTable.css";
 import { MultiSelect } from "primereact/multiselect";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
@@ -548,7 +549,7 @@ const VehicleUtilizationReport = () => {
                     <div className="p-4 text-center">Loading...</div>
                   ) : reportData.length > 0 ? (
                     <div className="table-responsive">
-                      <table className="table table-sm mb-0">
+                      <table className="table table-sm mb-0 custom-html-table">
                         <thead className="table-light">
                           <tr>
                             <th style={{ width: "40px" }}></th>

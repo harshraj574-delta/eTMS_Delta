@@ -1,18 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import Loader from "./common/Loader";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from "primereact/column";
 import ShiftTimeMasterService from "../services/compliance/ShiftTimeMaster";
 import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
-import { Sidebar as PrimeSidebar } from "primereact/sidebar";
+// import { Sidebar as PrimeSidebar } from "primereact/sidebar"; // Removed
+import MasterSidebar from "./Master/MasterSidebar";
 import { Checkbox } from "primereact/checkbox";
 import { MultiSelect } from "primereact/multiselect";
 import { Dialog } from "primereact/dialog";
+import TableToolbar from "./common/TableToolbar";
 
 const userID = sessionManager.getUserSession().ID;
 
@@ -50,6 +52,71 @@ const ShiftTimeMaster = () => {
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedShift, setSelectedShift] = useState(null);
+  const [globalFilter, setGlobalFilter] = useState("");
+
+  // Responsive Sidebar Width
+  const getOffcanvasWidth = () => {
+    if (typeof window !== "undefined") {
+      if (window.innerWidth < 576) return "95%";
+      if (window.innerWidth < 768) return "85%";
+      if (window.innerWidth < 1024) return "60%";
+      return "50%";
+    }
+    return "50%";
+  };
+
+  const [offcanvasWidth, setOffcanvasWidth] = useState(getOffcanvasWidth());
+
+  useEffect(() => {
+    const handleResize = () => {
+      setOffcanvasWidth(getOffcanvasWidth());
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  
+  // Advanced Filters
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
+  const [filters, setFilters] = useState({
+    Day: null,
+    // Status (Active) is boolean/bit, we might need to map it for friendly filtering or just use Day for now.
+    // Let's add 'Active' mapped to 'Status' if we want.
+    // For now, let's just do 'Day'.
+  });
+
+  const getUniqueValues = (field) => {
+    const values = shiftData.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
+  const filteredShiftData = useMemo(() => {
+    let result = [...shiftData];
+
+    // Apply advanced filters
+    Object.keys(filters).forEach((key) => {
+      const val = filters[key];
+      if (Array.isArray(val) && val.length > 0) {
+        result = result.filter((item) => val.includes(item[key]));
+      }
+    });
+
+    if (!globalFilter) return result;
+    
+    return result.filter(item =>
+      Object.values(item).some(val =>
+        String(val).toLowerCase().includes(globalFilter.toLowerCase())
+      )
+    );
+  }, [shiftData, globalFilter, filters]);
+
+  const clearAdvancedFilters = () => {
+    setFilters({
+      Day: null,
+    });
+    if (op.current) op.current.hide();
+    toastService.info("Filters cleared");
+  };
 
   const timesDrop = [];
   for (let hour = 0; hour < 24; hour++) {
@@ -362,6 +429,79 @@ const ShiftTimeMaster = () => {
     }
   };
 
+  const renderToolbar = () => {
+    const activeFilterCount = Object.values(filters).filter(
+      (f) => Array.isArray(f) && f.length > 0
+    ).length;
+
+    return (
+      <TableToolbar
+        search={globalFilter}
+        onSearch={(e) => setGlobalFilter(e.target.value)}
+        onRefresh={fetchShiftData}
+        showExport={false}
+        showFilter={true}
+        filters={filters}
+        setFilters={setFilters}
+        overlayRef={op}
+        filterButtonRef={filterButtonRef}
+      >
+        <div className="ota-filter-header">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-2">
+              <span className="ota-filter-icon">
+                <i className="pi pi-filter" />
+              </span>
+              <div>
+                <div className="ota-filter-title">Advanced filters</div>
+                <div className="ota-filter-subtitle">
+                  Refine shift list
+                </div>
+              </div>
+            </div>
+            {activeFilterCount > 0 && (
+              <span
+                className="badge bg-primary"
+                style={{ fontSize: "0.7rem", borderRadius: "999px" }}
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="ota-filter-body">
+          <div className="ota-filter-field">
+            <label className="ota-filter-label">Day Type</label>
+            <MultiSelect
+              value={filters.Day}
+              options={getUniqueValues("Day")}
+              onChange={(e) =>
+                setFilters({ ...filters, Day: e.value })
+              }
+              placeholder="Select Day Type"
+              maxSelectedLabels={2}
+              className="w-100 p-inputtext-sm"
+              display="chip"
+              filter
+              showClear
+            />
+          </div>
+        </div>
+
+        <div className="ota-filter-footer">
+          <Button
+            label="Clear all filters"
+            icon="pi pi-filter-slash"
+            className="p-button-outlined p-button-secondary w-100"
+            onClick={clearAdvancedFilters}
+            size="small"
+          />
+        </div>
+      </TableToolbar>
+    );
+  };
+
   return (
     <div>
       <Loader isVisible={isSubmitting} fullScreen={true} />
@@ -428,10 +568,13 @@ const ShiftTimeMaster = () => {
         <div className="row">
           <div className="col-12 p-3">
             <div className="card_tb">
-              <DataTable
+              <div className="p-3 pb-0">
+                {renderToolbar()}
+              </div>
+              <CustomDataTable
                 rows={50}
                 rowsPerPageOptions={[50, 100, 150, 200]}
-                value={shiftData}
+                value={filteredShiftData}
                 paginator
                 responsiveLayout="scroll"
                 selection={selectedRows}
@@ -446,151 +589,142 @@ const ShiftTimeMaster = () => {
                   header="Status"
                   body={statusBodyTemplate}
                 />
-              </DataTable>
+              </CustomDataTable>
             </div>
           </div>
         </div>
-        <PrimeSidebar
-          visible={sidebarVisible}
-          onHide={() => setSidebarVisible(false)}
-          position="right"
-          style={{ width: "50%", backdropFilter: "blur(8px)" }}
-          showCloseIcon={false}
-          dismissable={false}
-          id="raise_Feedback"
-        >
-          <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-            <h6 className="sidebarTitle">Add New Shift Time</h6>
-            <span
-              className="material-icons me-3"
-              style={{ cursor: "pointer" }}
-              onClick={() => setSidebarVisible(false)}
-            >
-              close
-            </span>
-          </div>
-          <div className="sidebarBody p-3">
-            <div className="row">
-              <div className="col-3 mb-3">
-                <label>Process</label>
-                <MultiSelect
-                  value={selectedProcessNew}
-                  onChange={(e) => setSelectedProcessNew(e.value)}
-                  options={processNew}
-                  optionLabel="label"
-                  placeholder="Select Process"
-                  maxSelectedLabels={3}
-                  className="w-100"
-                />
-              </div>
-              <div className="col-3 mb-3">
-                <label>Type</label>
-                <Dropdown
-                  options={selectedTypeOptions}
-                  value={selectedNewType}
-                  onChange={(e) => setSelectedNewType(e.value)}
-                  placeholder="Select Shift Time"
-                  className="w-100"
-                />
-              </div>
-              <div className="col-6"></div>
-              <div className="col-6">
-                <table className="table table-striped table-hover">
-                  <thead>
-                    <tr className="table-dark">
-                      <th colSpan={3}>
-                        <Checkbox
-                          onChange={(e) => {
-                            setChecked(e.checked);
-                            const newCheckedItems = {};
-                            times.forEach((time) => {
-                              newCheckedItems[time] = e.checked;
-                            });
-                            setCheckedItems(newCheckedItems);
-                          }}
-                          checked={checked}
-                          className="me-2"
-                        />
-                        Shift Time Pick
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={index}>
-                        {row.map((time) => (
-                          <td key={time}>
-                            <Checkbox
-                              onChange={() => toggleCheckbox(time)}
-                              checked={!!checkedItems[time]}
-                              className="me-2"
-                            />
-                            {time}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="col-6">
-                <table className="table table-striped table-hover">
-                  <thead>
-                    <tr className="table-dark">
-                      <th colSpan={3}>
-                        <Checkbox
-                          onChange={(e) => {
-                            setCheckedDrop(e.checked);
-                            const newCheckedItems = {};
-                            timesDrop.forEach((time) => {
-                              newCheckedItems[time] = e.checked;
-                            });
-                            setCheckedItemsDrop(newCheckedItems);
-                          }}
-                          checked={checkedDrop}
-                          className="me-2"
-                        />
-                        Shift Time Drop
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={index}>
-                        {row.map((time) => (
-                          <td key={time}>
-                            <Checkbox
-                              onChange={() => toggleCheckboxDrop(time)}
-                              checked={!!checkedItemsDrop[time]}
-                              className="me-2"
-                            />
-                            {time}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <div className="sidebar-fixed-bottom position-absolute pe-3">
-            <div className="d-flex gap-3 justify-content-end">
-              <Button
-                label="Cancel"
+import MasterSidebar from "./Master/MasterSidebar";
+
+// ... (keep existing imports, remove PrimeSidebar if unused, but replace_file_content works on blocks. I will just replace the import line)
+
+// ...
+
+        <MasterSidebar
+          show={sidebarVisible}
+          onClose={() => setSidebarVisible(false)}
+          title="Add New Shift Time"
+          width={offcanvasWidth}
+          footer={
+            <div className="offcanvas-footer">
+              <button
                 className="btn btn-outline-secondary"
-                onClick={() => {
-                  setSidebarVisible(false);
-                }}
-              />
-              <Button
-                label="Save"
-                className="btn btn-success"
+                onClick={() => setSidebarVisible(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-success mx-3"
                 onClick={insertShiftTime}
+              >
+                Save
+              </button>
+            </div>
+          }
+        >
+          <div className="row">
+            <div className="col-3 mb-3">
+              <label>Process</label>
+              <MultiSelect
+                value={selectedProcessNew}
+                onChange={(e) => setSelectedProcessNew(e.value)}
+                options={processNew}
+                optionLabel="label"
+                placeholder="Select Process"
+                maxSelectedLabels={3}
+                className="w-100"
               />
             </div>
+            <div className="col-3 mb-3">
+              <label>Type</label>
+              <Dropdown
+                options={selectedTypeOptions}
+                value={selectedNewType}
+                onChange={(e) => setSelectedNewType(e.value)}
+                placeholder="Select Shift Time"
+                className="w-100"
+              />
+            </div>
+            <div className="col-6"></div>
+            <div className="col-6">
+              <table className="table table-striped table-hover">
+                <thead>
+                  <tr className="table-dark">
+                    <th colSpan={3}>
+                      <Checkbox
+                        onChange={(e) => {
+                          setChecked(e.checked);
+                          const newCheckedItems = {};
+                          times.forEach((time) => {
+                            newCheckedItems[time] = e.checked;
+                          });
+                          setCheckedItems(newCheckedItems);
+                        }}
+                        checked={checked}
+                        className="me-2"
+                      />
+                      Shift Time Pick
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr key={index}>
+                      {row.map((time) => (
+                        <td key={time}>
+                          <Checkbox
+                            onChange={() => toggleCheckbox(time)}
+                            checked={!!checkedItems[time]}
+                            className="me-2"
+                          />
+                          {time}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="col-6">
+              <table className="table table-striped table-hover">
+                <thead>
+                  <tr className="table-dark">
+                    <th colSpan={3}>
+                      <Checkbox
+                        onChange={(e) => {
+                          setCheckedDrop(e.checked);
+                          const newCheckedItems = {};
+                          timesDrop.forEach((time) => {
+                            newCheckedItems[time] = e.checked;
+                          });
+                          setCheckedItemsDrop(newCheckedItems);
+                        }}
+                        checked={checkedDrop}
+                        className="me-2"
+                      />
+                      Shift Time Drop
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr key={index}>
+                      {row.map((time) => (
+                        <td key={time}>
+                          <Checkbox
+                            onChange={() => toggleCheckboxDrop(time)}
+                            checked={!!checkedItemsDrop[time]}
+                            className="me-2"
+                          />
+                          {time}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </PrimeSidebar>
+        </MasterSidebar>
         <Dialog
           visible={showStatusDialog}
           onHide={closeStatusDialog}

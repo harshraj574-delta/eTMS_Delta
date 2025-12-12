@@ -5,7 +5,7 @@ import Loader from "./common/Loader";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from "primereact/column";
 import RepCabComplianceService from "../services/compliance/RepCabComplianceService";
 import { toastService } from "../services/toastService";
@@ -541,7 +541,7 @@ const RepCabCompliance = () => {
                   </TableToolbar>
 
                   <div className="table-responsive">
-                    <DataTable
+                    <CustomDataTable
                       value={filteredData}
                       ref={dt}
                       paginator
@@ -565,7 +565,7 @@ const RepCabCompliance = () => {
                           style={{ minWidth: "150px" }}
                         />
                       ))}
-                    </DataTable>
+                    </CustomDataTable>
                   </div>
                 </div>
               )}

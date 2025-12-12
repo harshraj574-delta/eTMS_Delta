@@ -4,7 +4,7 @@ import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import ManageMenuService from '../services/compliance/ManageMenuService';
 import sessionManager from "../utils/SessionManager";
-import { Sidebar as PrimeSidebar } from 'primereact/sidebar';
+import MasterSidebar from "./Master/MasterSidebar";
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { toastService } from '../services/toastService';
@@ -12,6 +12,8 @@ import { ToastContainer } from 'react-toastify';
 import TableToolbar from "./common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
+import "./common/CustomDataTable.css";
+import trashIcon from "../assets/trash-can-outline.png";
 
 const ManageMenu = () => {
     const [error, setError] = useState(null);
@@ -44,6 +46,27 @@ const ManageMenu = () => {
     const [showEditSubMenuSidebar, setShowEditSubMenuSidebar] = useState(false);
     const [parentMenuList, setParentMenuList] = useState([]);
     const [selectedParent, setSelectedParent] = useState(null);
+
+    // Responsive Sidebar Width
+    const getOffcanvasWidth = () => {
+        if (typeof window !== "undefined") {
+            if (window.innerWidth < 576) return "95%";
+            if (window.innerWidth < 768) return "85%";
+            if (window.innerWidth < 1024) return "60%";
+            return "35%";
+        }
+        return "35%";
+    };
+
+    const [offcanvasWidth, setOffcanvasWidth] = useState(getOffcanvasWidth());
+
+    useEffect(() => {
+        const handleResize = () => {
+            setOffcanvasWidth(getOffcanvasWidth());
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     useEffect(() => {
         fetchMenuData();
@@ -631,43 +654,13 @@ const ManageMenu = () => {
             </style>
 
             {/* Add Menu Sidebar */}
-            <PrimeSidebar
-                visible={showNewSidebar}
-                showCloseIcon={false}
-                dismissable={false}
-                position="right"
-                style={{ width: "360px" }}
-            >
-                <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-                    <h6 className="sidebarTitle">Add Menu</h6>
-                    <Button
-                        icon="pi pi-times"
-                        className="p-button-rounded p-button-text"
-                        onClick={() => setShowNewSidebar(false)}
-                    />
-                </div>
-                <div className="sidebarBody">
-                    <div className="offcanvas-body px-4">
-                        <div className="col-11 mb-3">
-                            <label className="form-label">Menu Text:</label>
-                            <InputText
-                                value={newText}
-                                className="form-control"
-                                onChange={(e) => setNewText(e.target.value)}
-                            />
-                        </div>
-                        <div className="col-11 mb-3">
-                            <label className="form-label">Description:</label>
-                            <InputText
-                                value={newDescription}
-                                className="form-control"
-                                onChange={(e) => setNewDescription(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                </div>
-                <div className="sidebar-fixed-bottom position-absolute pe-3">
-                    <div className="d-flex gap-3 justify-content-end">
+            <MasterSidebar
+                show={showNewSidebar}
+                onClose={() => setShowNewSidebar(false)}
+                title="Add Menu"
+                width={offcanvasWidth}
+                footer={
+                    <div className="offcanvas-footer">
                         <Button
                             label="Cancel"
                             className="btn btn-outline-secondary"
@@ -675,54 +668,40 @@ const ManageMenu = () => {
                         />
                         <Button
                             label="Save"
-                            className="btn btn-success"
+                            className="btn btn-success ms-3"
                             onClick={handleSave}
                         />
                     </div>
-                </div>
-            </PrimeSidebar>
-
-            {/* Edit Menu Sidebar */}
-            <PrimeSidebar
-                visible={showEditSidebar}
-                showCloseIcon={false}
-                dismissable={false}
-                position="right"
-                onHide={() => setShowEditSidebar(false)}
-                style={{ width: "360px" }}
+                }
             >
-                <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-                    <h6 className="sidebarTitle">Edit Menu</h6>
-                    <Button
-                        icon="pi pi-times"
-                        className="p-button-rounded p-button-text"
-                        onClick={() => setShowEditSidebar(false)}
-                    />
-                </div>
-                <div className="sidebarBody">
-                    <div className="offcanvas-body px-4">
-                        <div className="col-11 mb-3">
-                            <label className="form-label">Menu Text:</label>
-                            <InputText
-                                value={editText}
-                                className="form-control"
-                                onChange={(e) => setEditText(e.target.value)}
-                                placeholder="Enter menu text"
-                            />
-                        </div>
-                        <div className="col-11 mb-3">
-                            <label className="form-label">Description:</label>
-                            <InputText
-                                value={editDescription}
-                                className="form-control"
-                                onChange={(e) => setEditDescription(e.target.value)}
-                                placeholder="Enter description"
-                            />
-                        </div>
+                <div className="p-3">
+                    <div className="mb-3">
+                        <label className="form-label">Menu Text:</label>
+                        <InputText
+                            value={newText}
+                            className="form-control"
+                            onChange={(e) => setNewText(e.target.value)}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Description:</label>
+                        <InputText
+                            value={newDescription}
+                            className="form-control"
+                            onChange={(e) => setNewDescription(e.target.value)}
+                        />
                     </div>
                 </div>
-                <div className="sidebar-fixed-bottom position-absolute pe-3" style={{ bottom: 16, right: 16 }}>
-                    <div className="d-flex gap-3 justify-content-end">
+            </MasterSidebar>
+
+            {/* Edit Menu Sidebar */}
+            <MasterSidebar
+                show={showEditSidebar}
+                onClose={() => setShowEditSidebar(false)}
+                title="Edit Menu"
+                width={offcanvasWidth}
+                footer={
+                    <div className="offcanvas-footer">
                         <Button
                             label="Cancel"
                             className="btn btn-outline-secondary"
@@ -730,78 +709,42 @@ const ManageMenu = () => {
                         />
                         <Button
                             label="Update"
-                            className="btn btn-success"
+                            className="btn btn-success ms-3"
                             onClick={handleUpdateSave}
                         />
                     </div>
-                </div>
-            </PrimeSidebar>
-
-            {/* Edit SubMenu Sidebar */}
-            <PrimeSidebar
-                visible={showEditSubMenuSidebar}
-                showCloseIcon={false}
-                dismissable={false}
-                position="right"
-                onHide={() => setShowEditSubMenuSidebar(false)}
-                style={{ width: "360px" }}
+                }
             >
-                <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-                    <h6 className="sidebarTitle">{editingSubMenu ? 'Edit' : 'Add'} SubMenu</h6>
-                    <Button
-                        icon="pi pi-times"
-                        className="p-button-rounded p-button-text"
-                        onClick={() => setShowEditSubMenuSidebar(false)}
-                    />
-                </div>
-                <div className="sidebarBody">
-                    <div className="offcanvas-body px-4">
-                        <div className="col-11 mb-3">
-                            <label className="form-label">SubMenu Text:</label>
-                            <InputText
-                                value={editSubMenuText}
-                                className="form-control"
-                                onChange={(e) => setEditSubMenuText(e.target.value)}
-                                placeholder="Enter submenu text"
-                            />
-                        </div>
-                        <div className="col-11 mb-3">
-                            <label className="form-label">Description:</label>
-                            <InputText
-                                value={editSubMenuDescription}
-                                className="form-control"
-                                onChange={(e) => setEditSubMenuDescription(e.target.value)}
-                                placeholder="Enter description"
-                            />
-                        </div>
-                        <div className="col-11 mb-3">
-                            <label className="form-label">Parent Menu:</label>
-                            <select
-                                className="form-select"
-                                value={selectedParent || ""}
-                                onChange={(e) => setSelectedParent(e.target.value)}
-                            >
-                                <option value="">Select Parent Menu</option>
-                                {parentMenuList.map((item) => (
-                                    <option key={item.MenuID} value={item.MenuID}>
-                                        {item.Text}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="col-11 mb-3">
-                            <label className="form-label">Navigate URL:</label>
-                            <InputText
-                                value={editSubMenuNavigateUrl}
-                                className="form-control"
-                                onChange={(e) => setEditSubMenuNavigateUrl(e.target.value)}
-                                placeholder="Enter navigate URL"
-                            />
-                        </div>
+                <div className="p-3">
+                    <div className="mb-3">
+                        <label className="form-label">Menu Text:</label>
+                        <InputText
+                            value={editText}
+                            className="form-control"
+                            onChange={(e) => setEditText(e.target.value)}
+                            placeholder="Enter menu text"
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Description:</label>
+                        <InputText
+                            value={editDescription}
+                            className="form-control"
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            placeholder="Enter description"
+                        />
                     </div>
                 </div>
-                <div className="sidebar-fixed-bottom position-absolute pe-3" style={{ bottom: 16, right: 16 }}>
-                    <div className="d-flex gap-3 justify-content-end">
+            </MasterSidebar>
+
+            {/* Edit SubMenu Sidebar */}
+            <MasterSidebar
+                show={showEditSubMenuSidebar}
+                onClose={() => setShowEditSubMenuSidebar(false)}
+                title={`${editingSubMenu ? 'Edit' : 'Add'} SubMenu`}
+                width={offcanvasWidth}
+                footer={
+                    <div className="offcanvas-footer">
                         <Button
                             label="Cancel"
                             className="btn btn-outline-secondary"
@@ -809,12 +752,80 @@ const ManageMenu = () => {
                         />
                         <Button
                             label={editingSubMenu ? "Update" : "Save"}
-                            className="btn btn-success"
+                            className="btn btn-success ms-3"
                             onClick={handleUpdateSubMenuSave}
                         />
                     </div>
+                }
+            >
+                <div className="p-3">
+                    <div className="mb-3">
+                        <label className="form-label">SubMenu Text:</label>
+                        <InputText
+                            value={editSubMenuText}
+                            className="form-control"
+                            onChange={(e) => setEditSubMenuText(e.target.value)}
+                            placeholder="Enter submenu text"
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Description:</label>
+                        <InputText
+                            value={editSubMenuDescription}
+                            className="form-control"
+                            onChange={(e) => setEditSubMenuDescription(e.target.value)}
+                            placeholder="Enter description"
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Parent Menu:</label>
+                        <select
+                            className="form-select"
+                            value={selectedParent || ""}
+                            onChange={(e) => setSelectedParent(e.target.value)}
+                        >
+                            <option value="">Select Parent Menu</option>
+                            {parentMenuList.map((item) => (
+                                <option key={item.MenuID} value={item.MenuID}>
+                                    {item.Text}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Navigate URL:</label>
+                        <InputText
+                            value={editSubMenuNavigateUrl}
+                            className="form-control"
+                            onChange={(e) => setEditSubMenuNavigateUrl(e.target.value)}
+                            placeholder="Enter navigate URL"
+                        />
+                    </div>
                 </div>
-            </PrimeSidebar>
+            </MasterSidebar>
+
+            <style>{`
+                .offcanvas-footer {
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    padding: 1rem;
+                    background-color: #f9fafb;
+                    border-top: 1px solid #e5e7eb;
+                    display: flex;
+                    justify-content: flex-end;
+                    align-items: center;
+                    height: auto;
+                }
+                .offcanvas-body {
+                    padding-bottom: 5.5rem !important;
+                }
+                .form-label {
+                    font-weight: 500;
+                    margin-bottom: 0.5rem;
+                }
+            `}</style>
 
             <div className="middle">
                 <div className="row">
@@ -823,7 +834,7 @@ const ManageMenu = () => {
                             <div className="p-3">
                                 {renderToolbar()}
                                 <div className="table-responsive">
-                                    <table className="table table-sm mb-0 menu-table">
+                                    <table className="table table-sm mb-0 menu-table custom-html-table">
                                         <thead className="table-light">
                                             <tr>
                                                 <th style={{ width: "40px" }}></th>
@@ -912,7 +923,7 @@ const ManageMenu = () => {
                                                                                 </p>
                                                                             ) : (
                                                                                 <div className="table-responsive">
-                                                                                    <table className="table table-sm table-bordered mb-0 nested-menu-table">
+                                                                                    <table className="table table-sm table-bordered mb-0 nested-menu-table custom-html-table">
                                                                                         <thead>
                                                                                             <tr>
                                                                                                 <th style={{ textAlign: "left" }}>SubMenu Text</th>
@@ -953,13 +964,14 @@ const ManageMenu = () => {
                                                                                                         >
                                                                                                             edit
                                                                                                         </span>
-                                                                                                        <span
-                                                                                                            className="material-icons action-icon delete"
+                                                                                                        <img
+                                                                                                            src={trashIcon}
+                                                                                                            alt="Delete"
+                                                                                                            className="action-icon delete"
                                                                                                             title="Delete"
+                                                                                                            style={{ width: '22px', height: '22px' }}
                                                                                                             onClick={(e) => handleDeleteSubmenu(e, childRow, menuId)}
-                                                                                                        >
-                                                                                                            delete
-                                                                                                        </span>
+                                                                                                        />
                                                                                                     </td>
                                                                                                 </tr>
                                                                                             ))}

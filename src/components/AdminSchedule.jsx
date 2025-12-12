@@ -16,6 +16,7 @@ import ShiftTimeMasterService from "../services/compliance/ShiftTimeMaster";
 import AdminScheduleService from "../services/compliance/AdminScheduleService";
 import { toastService } from "../services/toastService";
 import { apiService } from "../services/api";
+import calendarIcon from "../assets/calendar.png";
 
 // Helper to get 7 days from selectedDate
 // const month = date.toLocaleString("default", { month: "long" });
@@ -465,6 +466,23 @@ const AdminSchedule = () => {
         .first_tb tr th {
           width: 12.5%;
         }
+        .custom-calendar-wrapper {
+          position: relative;
+          width: 100%;
+        }
+        .custom-calendar-icon {
+          position: absolute;
+          left: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 22px;
+          height: 22px;
+          z-index: 2;
+          pointer-events: none;
+        }
+        .custom-calendar-input .p-inputtext {
+          padding-left: 35px !important;
+        }
       `}</style>
 
       <Header
@@ -478,19 +496,21 @@ const AdminSchedule = () => {
           <div className="row">
             <div className="field col-2 mb-3">
               <label>From Date</label>
-              <Calendar
-                className="w-100"
-                name="shiftDate"
-                placeholder="From Date"
-                dateFormat="dd-mm-yy" // UI display format
-                value={selectedDate}
-                onChange={(e) => {
-                  if (e.value) setSelectedDate(e.value);
-                }}
-                toggleMask
-                // feedback={false}
-                showIcon
-              />
+              <div className="custom-calendar-wrapper">
+                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                <Calendar
+                  className="w-100 custom-calendar-input"
+                  name="shiftDate"
+                  placeholder="From Date"
+                  dateFormat="dd-mm-yy" // UI display format
+                  value={selectedDate}
+                  onChange={(e) => {
+                    if (e.value) setSelectedDate(e.value);
+                  }}
+                  toggleMask
+                  // feedback={false}
+                />
+              </div>
             </div>
             {/* <div className="field col-2 mb-3">
               <label>Employee ID's</label>

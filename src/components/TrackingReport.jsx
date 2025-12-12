@@ -5,7 +5,7 @@ import Loader from "./common/Loader";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from "primereact/column";
 import TrackingReportService from "../services/compliance/TrackingReportService";
 import { toastService } from "../services/toastService";
@@ -421,7 +421,7 @@ const TrackingReport = () => {
                   </TableToolbar>
 
                   <div className="table-responsive">
-                    <DataTable
+                    <CustomDataTable
                       value={filteredData}
                       ref={dt}
                       paginator
@@ -460,7 +460,7 @@ const TrackingReport = () => {
                         header="Tracking_M"
                         sortable
                       />
-                    </DataTable>
+                    </CustomDataTable>
                   </div>
                 </div>
               )}

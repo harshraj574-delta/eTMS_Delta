@@ -18,6 +18,8 @@ import "primeicons/primeicons.css";
 import { set } from "lodash";
 import TableToolbar from "./common/TableToolbar.jsx";
 import Loader from "./common/Loader.jsx";
+import { Calendar } from "primereact/calendar";
+import calendarIcon from "../assets/calendar.png";
 const formatDateTime = (dateStr, timeStr) => {
   if (!dateStr || !timeStr || timeStr === 'null' || timeStr.trim().toUpperCase() === 'N/A') {
     console.warn(`Skipping time parsing for 'N/A' or null`);
@@ -202,6 +204,8 @@ const MySchedule = () => {
   // PrimeReact pagination state for schedule table
   const [schedFirst, setSchedFirst] = useState(0);
   const [schedRows, setSchedRows] = useState(50);
+
+  const [mainFromDate, setMainFromDate] = useState(todayStr); // State for main page From Date
   // Search/filter for schedule table (connected to top TableToolbar)
   const [scheduleFilter, setScheduleFilter] = useState("");
   // Filtered schedule computed from mgrscheduledata + search text
@@ -255,10 +259,10 @@ const MySchedule = () => {
   }, [scheduleFilter]);
   // Fetch data on component mount
   useEffect(() => {
-    fetchMgrSchedule();
+    fetchMgrSchedule(mainFromDate);
     fetchScheduleDetails();
-    const fromDate = document.getElementById("fromDate").value; // Replace with your fromDate
-    const days = generateWeekDays(fromDate);
+    // const fromDate = document.getElementById("fromDate").value; // Replaced by mainFromDate state
+    const days = generateWeekDays(mainFromDate);
     setWeekDays(days);
     fetchLockDetails();
     fetchFacilityDetails();
@@ -407,7 +411,7 @@ const MySchedule = () => {
     }
   };
 
-  const fetchMgrSchedule = async () => {
+  const fetchMgrSchedule = async (sdateOverride) => {
     try {
       //setIsSubmitting(true);
       setLoading(true);
@@ -417,7 +421,7 @@ const MySchedule = () => {
       }
       const mgrscheduledata = await apiService.GetMgrSchedule({
         mgrid: mgrid,
-        sdate: document.getElementById("fromDate").value,
+        sdate: sdateOverride || mainFromDate,
       });
       setMgrscheduledata(mgrscheduledata);
     } catch (error) {
@@ -550,9 +554,9 @@ const MySchedule = () => {
     // You can add validation or additional logic here if needed
   };
 
-  const onchangedFromDate = (e) => {
-    const newDate = e.target.value;
-    fetchMgrSchedule();
+  const onchangedFromDate = (newDate) => {
+    setMainFromDate(newDate);
+    fetchMgrSchedule(newDate);
     const days = generateWeekDays(newDate);
     setWeekDays(days);
   };
@@ -1159,7 +1163,7 @@ const MySchedule = () => {
   // };
   const fetchEmployeeSchedule = async (employeeId) => {
     try {
-      const fromDate = document.getElementById("fromDate").value;
+      const fromDate = mainFromDate;
 
       // Call the API service
       const response = await apiService.GetOneEmployeeSchedule({
@@ -1239,7 +1243,7 @@ const MySchedule = () => {
   // ... existing code ...
   const fetchPickShiftTimes = async (employeeId) => {
     try {
-      const fromDate = document.getElementById("fromDate").value;
+      const fromDate = mainFromDate;
       // Get the pickFacilityID from the employee schedule if available
       const pickFacilityID =
         employeeSchedule && employeeSchedule.length > 0
@@ -1282,7 +1286,7 @@ const MySchedule = () => {
   // Add a new function to fetch logout shift times
   const fetchDropShiftTimes = async (employeeId, facilityId = null) => {
     try {
-      const fromDate = document.getElementById("fromDate").value;
+      const fromDate = mainFromDate;
       // Use the provided facilityId or fall back to the selected one
       const dropFacilityID =
         facilityId ||
@@ -1436,7 +1440,7 @@ const MySchedule = () => {
 
     const params = {
       empid: 0, // Static empid as per your requirement
-      sDate: document.getElementById("fromDate").value, // Current date in YYYY-MM-DD format
+      sDate: mainFromDate, // Current date in YYYY-MM-DD format
       triptype: "", // Empty string as per your requirement
       routeid: routeId, // Dynamic routeid based on user selection
     };
@@ -1758,7 +1762,7 @@ const MySchedule = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb p-3">
-              <div className="row mb-3 align-items-end">
+              <div className="row mb-3">
                 <div className="col-2">
                   {/* <div className="col-1"> */}
                   <label className="form-label">Manager</label>
@@ -1781,16 +1785,43 @@ const MySchedule = () => {
                   <label className="form-label">From Date</label>
                   {/* </div>
                   <div className="col-2"> */}
-                  <input
-                    type="date"
-                    className="form-control"
-                    defaultValue={new Date().toISOString().split("T")[0]}
-                    id="fromDate"
-                    onChange={onchangedFromDate}
-                  />
+                  <style>
+                    {`
+                      .custom-calendar-wrapper {
+                        position: relative;
+                        width: 100%;
+                      }
+                      .custom-calendar-icon {
+                        position: absolute;
+                        left: 10px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 22px;
+                        height: 22px;
+                        z-index: 2;
+                        pointer-events: none;
+                      }
+                      .custom-calendar-input .p-inputtext {
+                        padding-left: 35px !important;
+                      }
+                    `}
+                  </style>
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      id="fromDate"
+                      className="w-100 custom-calendar-input"
+                      value={mainFromDate ? new Date(mainFromDate) : null}
+                      onChange={(e) => {
+                        const val = e.value ? e.value.toISOString().split("T")[0] : "";
+                        onchangedFromDate(val);
+                      }}
+                      dateFormat="mm/dd/yy"
+                    />
+                  </div>
                 </div>
                 {/* --- RIGHT SIDE TOOLBAR --- */}
-                <div className="col-8 d-flex justify-content-end">
+                <div className="col-8 d-flex justify-content-end align-items-end">
                   <TableToolbar
                     search={scheduleFilter}
                     onSearch={(e) => setScheduleFilter(e.target.value)}
@@ -1799,6 +1830,7 @@ const MySchedule = () => {
                     showFilter={false}
                     //filterButtonRef={false}
                     onRefresh={() => handleRefreshSchedule()}
+                    className="mb-0"
                   >
                     <div className="p-4 text-center">
                       <i
@@ -1814,8 +1846,8 @@ const MySchedule = () => {
               </div>
               {/* </div> */}
               <div className="table-responsive">
-                <table className="table" id="mgrschedule">
-                  <thead>
+                <table className="table table-sm mb-0 custom-html-table" id="mgrschedule">
+                  <thead className="table-light">
                     <tr>
                       <th>Schedule</th>
                       {weekDays.map((day, index) => (
@@ -1841,7 +1873,7 @@ const MySchedule = () => {
                       displayedSchedule.map((employee, index) => (
                         <tr
                           key={employee.EmployeeID || index}
-                          className={`${index > 0 ? "column" : ""} ${employee.geoCode !== "Y" || employee.tptReq !== "Y" ? "disabled-row"
+                          className={`${index % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover ${employee.geoCode !== "Y" || employee.tptReq !== "Y" ? "disabled-row"
                             : ""
                             }`}
                         >
@@ -1870,8 +1902,8 @@ const MySchedule = () => {
                             <td key={day} id={employee.EmployeeID}>
                               {employee.geoCode !== "Y" ||
                                 employee.tptReq !== "Y" ? (
-                                // Read-only view for disabled rows
-                                <>
+                                 // Read-only view for disabled rows
+                                <div className="d-flex align-items-center gap-2">
                                   <span>
                                     {
                                       employee[`SETime${day}`]
@@ -1909,7 +1941,7 @@ const MySchedule = () => {
                                       showIcon ? (
                                       <a
                                         href="#!"
-                                        className="d-block"
+                                        className=""
                                         data-bs-toggle="offcanvas"
                                         onClick={(e) => {
                                           e.preventDefault();
@@ -1924,10 +1956,10 @@ const MySchedule = () => {
                                       </a>
                                     ) : null;
                                   })()}
-                                </>
+                                </div>
                               ) : (
                                 // Interactive view for enabled rows
-                                <>
+                                <div className="d-flex align-items-center gap-2">
                                   <a
                                     href="#!"
                                     // data-bs-toggle="offcanvas"
@@ -1972,7 +2004,7 @@ const MySchedule = () => {
                                       showIcon ? (
                                       <a
                                         href="#!"
-                                        className="d-block"
+                                        className=""
                                         data-bs-toggle="offcanvas"
                                         onClick={(e) => {
                                           e.preventDefault();
@@ -1987,7 +2019,7 @@ const MySchedule = () => {
                                       </a>
                                     ) : null;
                                   })()}
-                                </>
+                                </div>
                               )}
                             </td>
                           ))}
@@ -2576,23 +2608,35 @@ const MySchedule = () => {
             </div>
             <div className="col">
               <label className="form-label">From</label>
-              <input
-                type="date"
-                className="form-control"
-                value={fromDate}
-                onChange={handleFromDateChange}
-                id="txtNewfromDate"
-              />
+              <div className="custom-calendar-wrapper">
+                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                <Calendar
+                  id="txtNewfromDate"
+                  className="w-100 custom-calendar-input"
+                  value={fromDate ? new Date(fromDate) : null}
+                  onChange={(e) => {
+                    const val = e.value ? e.value.toISOString().split("T")[0] : "";
+                    handleFromDateChange({ target: { value: val } });
+                  }}
+                  dateFormat="mm/dd/yy"
+                />
+              </div>
             </div>
             <div className="col">
               <label className="form-label">To</label>
-              <input
-                type="date"
-                className="form-control"
-                value={toDate}
-                onChange={handleToDateChange}
-                id="txtNewtoDate"
-              />
+              <div className="custom-calendar-wrapper">
+                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                <Calendar
+                  id="txtNewtoDate"
+                  className="w-100 custom-calendar-input"
+                  value={toDate ? new Date(toDate) : null}
+                  onChange={(e) => {
+                    const val = e.value ? e.value.toISOString().split("T")[0] : "";
+                    handleToDateChange({ target: { value: val } });
+                  }}
+                  dateFormat="mm/dd/yy"
+                />
+              </div>
             </div>
             <div className="col">
               <label className="form-label">Login Facility</label>

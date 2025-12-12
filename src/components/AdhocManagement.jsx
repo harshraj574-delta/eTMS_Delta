@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { MultiSelect } from "primereact/multiselect";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 
@@ -13,7 +14,10 @@ import { SelectButton } from "primereact/selectbutton";
 import AdhocmanagementService from "../services/compliance/AdhocmanagementService";
 import { toastService } from "../services/toastService";
 import { ConfirmDialog } from "primereact/confirmdialog"; // Add this import
-
+import Loader from "./common/Loader";
+import TableToolbar from "./common/TableToolbar";
+import { ToastContainer } from "react-toastify";
+import { CustomDataTable } from "./common/CustomDataTable";
 const AdhocManagement = () => {
   const [adhocData, setAdhocData] = useState([]);
   const [managerData, setManagerData] = useState([]);
@@ -50,6 +54,45 @@ const AdhocManagement = () => {
 
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false);
   const [selectedItemToDelete, setSelectedItemToDelete] = useState(null);
+  const [globalFilter, setGlobalFilter] = useState("");
+
+  const [filters, setFilters] = useState({
+    facilityName: null,
+    AdhocDate: null,
+    ShiftTime: null,
+    TripType: null,
+    Status: null,
+    adhocreason: null,
+  });
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
+
+  const activeFilterCount = Object.values(filters).filter(
+    (val) => val && val.length > 0
+  ).length;
+
+  const getUniqueValues = (key) => {
+    if (!adhocData) return [];
+    const unique = [
+      ...new Set(
+        adhocData
+          .map((item) => item[key])
+          .filter((val) => val !== null && val !== undefined && val !== "")
+      ),
+    ];
+    return unique.sort().map((val) => ({ label: val, value: val }));
+  };
+
+  const clearAdvancedFilters = () => {
+    setFilters({
+      facilityName: null,
+      AdhocDate: null,
+      ShiftTime: null,
+      TripType: null,
+      Status: null,
+      adhocreason: null,
+    });
+  };
 
   // Update the reason dropdown component
   // const handleRequestTypeChange = (e) => {
@@ -165,7 +208,7 @@ const AdhocManagement = () => {
           facilityid: selectedFacility,
           triptype: e.value,
         });
-       // console.log("GetAdhocReason Response:", response);
+        // console.log("GetAdhocReason Response:", response);
         const data =
           typeof response === "string" ? JSON.parse(response) : response;
         setReasonData(data || []);
@@ -477,15 +520,69 @@ const AdhocManagement = () => {
       return <span>Expired</span>;
     }
   };
+  // Refresh function with toast
+  const handleRefreshAdhoc = async () => {
+    toastService.info("Refreshing data...");
+    setLoading(true);
 
+    try {
+      await fetchAdhocData();
+      // await fetchTotalAdhocCount();
+      //await fetchAdhocRequestCount();
+      toastService.success("Data refreshed successfully!");
+    } catch (error) {
+      toastService.error("Failed to refresh data");
+      console.error("Refresh error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const filteredAdhocData = useMemo(() => {
+    let filtered = adhocData;
+
+    // 1. Apply Status/Card Filters
+    if (adhocFilter !== "total") {
+      filtered = filtered.filter((item) => {
+        if (adhocFilter === "myRequests") {
+          return item.Status && item.Status.toLowerCase() === "myrequest";
+        }
+        return item.Status && item.Status.toLowerCase() === adhocFilter;
+      });
+    }
+
+    // 2. Apply Advanced Filters
+    Object.keys(filters).forEach((key) => {
+      const val = filters[key];
+      if (Array.isArray(val) && val.length > 0) {
+        filtered = filtered.filter((item) => val.includes(item[key]));
+      }
+    });
+
+    // 3. Apply Global Search
+    if (globalFilter && globalFilter.trim() !== "") {
+      const searchLower = globalFilter.toLowerCase();
+      filtered = filtered.filter((item) => {
+        return Object.values(item).some(
+          (val) =>
+            val !== null &&
+            val !== undefined &&
+            String(val).toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    return filtered;
+  }, [adhocData, globalFilter, adhocFilter, filters]);
   return (
     <>
+      <Loader isVisible={loading} fullScreen={true} />
       <Header
         pageTitle="Adhoc Management"
         showNewButton={true}
         onNewButtonClick={() => setVisibleLeft(true)}
       />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="container-fluid p-0">
         <ConfirmDialog
           visible={confirmDialogVisible}
@@ -577,8 +674,8 @@ const AdhocManagement = () => {
           <div className="col">
             <div
               className={`cardNew p-4 ${adhocFilter === "myRequests"
-                  ? "bg-secondary text-white"
-                  : "bg-white"
+                ? "bg-secondary text-white"
+                : "bg-white"
                 }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("myRequests")}
@@ -603,8 +700,8 @@ const AdhocManagement = () => {
           <div className="col">
             <div
               className={`cardNew p-4 ${adhocFilter === "pending"
-                  ? "bg-secondary text-white"
-                  : "bg-white"
+                ? "bg-secondary text-white"
+                : "bg-white"
                 }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("pending")}
@@ -627,8 +724,8 @@ const AdhocManagement = () => {
           <div className="col">
             <div
               className={`cardNew p-4 ${adhocFilter === "approved"
-                  ? "bg-secondary text-white"
-                  : "bg-white"
+                ? "bg-secondary text-white"
+                : "bg-white"
                 }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("approved")}
@@ -651,8 +748,8 @@ const AdhocManagement = () => {
           <div className="col">
             <div
               className={`cardNew p-4 ${adhocFilter === "rejected"
-                  ? "bg-secondary text-white"
-                  : "bg-white"
+                ? "bg-secondary text-white"
+                : "bg-white"
                 }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("rejected")}
@@ -675,8 +772,8 @@ const AdhocManagement = () => {
           <div className="col">
             <div
               className={`cardNew p-4 ${adhocFilter === "cancelled"
-                  ? "bg-secondary text-white"
-                  : "bg-white"
+                ? "bg-secondary text-white"
+                : "bg-white"
                 }`}
               style={{ cursor: "pointer" }}
               onClick={() => setAdhocFilter("cancelled")}
@@ -701,27 +798,167 @@ const AdhocManagement = () => {
         <div className="row">
           {/* Table Start */}
           <div className="col-12">
-            <div className="card_tb">
+            <div className="card_tb p-3 mt-3">
+              <TableToolbar
+                search={globalFilter}
+                onSearch={(e) => setGlobalFilter(e.target.value)}
+                onRefresh={() => handleRefreshAdhoc()}
+                showExport={false}
+                filters={filters}
+                setFilters={setFilters}
+                overlayRef={op}
+                filterButtonRef={filterButtonRef}
+                style={{ height: '100%' }}
+              >
+                <div className="ota-filter-header">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="ota-filter-icon">
+                        <i className="pi pi-filter" />
+                      </span>
+                      <div>
+                        <div className="ota-filter-title">Advanced filters</div>
+                        <div className="ota-filter-subtitle">
+                          Refine Adhoc requests
+                        </div>
+                      </div>
+                    </div>
+                    {activeFilterCount > 0 && (
+                      <span
+                        className="badge bg-primary"
+                        style={{ fontSize: "0.7rem", borderRadius: "999px" }}
+                      >
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="ota-filter-body">
+                  <div className="ota-filter-field">
+                    <label className="ota-filter-label">Facility</label>
+                    <MultiSelect
+                      value={filters.facilityName}
+                      options={getUniqueValues("facilityName")}
+                      onChange={(e) =>
+                        setFilters({ ...filters, facilityName: e.value })
+                      }
+                      placeholder="Select facilities"
+                      maxSelectedLabels={2}
+                      className="w-100 p-inputtext-sm"
+                      display="chip"
+                      showClear
+                      filter
+                    />
+                  </div>
+
+                  <div className="ota-filter-field">
+                    <label className="ota-filter-label">Shift Date</label>
+                    <MultiSelect
+                      value={filters.AdhocDate}
+                      options={getUniqueValues("AdhocDate")}
+                      onChange={(e) =>
+                        setFilters({ ...filters, AdhocDate: e.value })
+                      }
+                      placeholder="Select dates"
+                      maxSelectedLabels={2}
+                      className="w-100 p-inputtext-sm"
+                      display="chip"
+                      showClear
+                      filter
+                    />
+                  </div>
+
+                  <div className="ota-filter-field">
+                    <label className="ota-filter-label">Shift</label>
+                    <MultiSelect
+                      value={filters.ShiftTime}
+                      options={getUniqueValues("ShiftTime")}
+                      onChange={(e) =>
+                        setFilters({ ...filters, ShiftTime: e.value })
+                      }
+                      placeholder="Select shifts"
+                      maxSelectedLabels={2}
+                      className="w-100 p-inputtext-sm"
+                      display="chip"
+                      showClear
+                      filter
+                    />
+                  </div>
+
+                  <div className="ota-filter-field">
+                    <label className="ota-filter-label">Trip Type</label>
+                    <MultiSelect
+                      value={filters.TripType}
+                      options={getUniqueValues("TripType")}
+                      onChange={(e) =>
+                        setFilters({ ...filters, TripType: e.value })
+                      }
+                      placeholder="Select trip types"
+                      maxSelectedLabels={2}
+                      className="w-100 p-inputtext-sm"
+                      display="chip"
+                      showClear
+                      filter
+                    />
+                  </div>
+
+                  <div className="ota-filter-field">
+                    <label className="ota-filter-label">Status</label>
+                    <MultiSelect
+                      value={filters.Status}
+                      options={getUniqueValues("Status")}
+                      onChange={(e) =>
+                        setFilters({ ...filters, Status: e.value })
+                      }
+                      placeholder="Select status"
+                      maxSelectedLabels={2}
+                      className="w-100 p-inputtext-sm"
+                      display="chip"
+                      showClear
+                      filter
+                    />
+                  </div>
+
+                  <div className="ota-filter-field">
+                    <label className="ota-filter-label">Reason</label>
+                    <MultiSelect
+                      value={filters.adhocreason}
+                      options={getUniqueValues("adhocreason")}
+                      onChange={(e) =>
+                        setFilters({ ...filters, adhocreason: e.value })
+                      }
+                      placeholder="Select reason"
+                      maxSelectedLabels={2}
+                      className="w-100 p-inputtext-sm"
+                      display="chip"
+                      showClear
+                      filter
+                    />
+                  </div>
+                </div>
+
+                <div className="ota-filter-footer">
+                  <Button
+                    label="Clear all filters"
+                    icon="pi pi-filter-slash"
+                    className="p-button-outlined p-button-secondary w-100"
+                    onClick={clearAdvancedFilters}
+                    size="small"
+                  />
+                </div>
+              </TableToolbar>
               {loading ? (
                 <div>Loading...</div>
-              ) : adhocData.length > 0 ? (
-                <DataTable
-                  value={
-                    adhocFilter === "total"
-                      ? adhocData
-                      : adhocData.filter((item) =>
-                        adhocFilter === "myRequests"
-                          ? item.Status &&
-                          item.Status.toLowerCase() === "myrequest"
-                          : item.Status &&
-                          item.Status.toLowerCase() === adhocFilter
-                      )
-                  }
+              ) : filteredAdhocData.length > 0 ? (
+                <CustomDataTable
+                  value={filteredAdhocData}
                   paginator
                   rows={10}
                   rowsPerPageOptions={[5, 10, 25, 50]}
                   loading={loading}
                   emptyMessage="No Record Found"
+                  rowClassName={(data, props) => props.rowIndex % 2 !== 0 ? "ota-row-odd" : ""}
                 >
                   <Column sortable field="adhocid" header="Adhoc ID"></Column>
                   <Column field="empCode" header="EmployeeID"></Column>
@@ -735,7 +972,7 @@ const AdhocManagement = () => {
                   <Column field="adhocreason" header="Reason"></Column>
                   <Column field="AprovedBy" header="Approved"></Column>
                   <Column field="" header="Action" body={deleteBtn}></Column>
-                </DataTable>
+                </CustomDataTable>
               ) : (
                 <div>No Record Found</div>
               )}
@@ -871,8 +1108,8 @@ const AdhocManagement = () => {
                             setSelectedEmployees(e.value)
                           }
                           paginator
-                          rows={5}
-                          rowsPerPageOptions={[5, 10, 25, 50]}
+                          rows={10}
+                          rowsPerPageOptions={[10, 25, 50, 100]}
                         >
                           <Column
                             selectionMode="multiple"

@@ -5,7 +5,7 @@ import Loader from "./common/Loader";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from "primereact/column";
 import PerEmployeeBillingService from "../services/compliance/PerEmployeeBillingService";
 import { toastService } from "../services/toastService";
@@ -442,8 +442,8 @@ const PerEmployeeBilling = () => {
 
                   {currentReportType === "detailed" && (
                     <div className="table-responsive">
-                      <DataTable
-                        value={reportData}
+                      <CustomDataTable
+                        value={filteredData}
                         ref={dt}
                         paginator
                         rows={50}
@@ -558,14 +558,14 @@ const PerEmployeeBilling = () => {
                           body={(rowData) => rowData.PerEmpTotalCost?.toFixed(2)}
                         />
                         <Column field="SchPax" header="Sch Pax" sortable />
-                      </DataTable>
+                      </CustomDataTable>
                     </div>
                   )}
 
                   {currentReportType === "processwise" && (
                     <div className="table-responsive">
-                      <DataTable
-                        value={reportData}
+                      <CustomDataTable
+                        value={filteredData}
                         ref={dt}
                         paginator
                         rows={50}
@@ -648,7 +648,7 @@ const PerEmployeeBilling = () => {
                             rowData.PerEmpTotalCost?.toFixed(2)
                           }
                         />
-                      </DataTable>
+                      </CustomDataTable>
                     </div>
                   )}
                 </div>

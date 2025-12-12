@@ -7,7 +7,8 @@ import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import RepScheduleSummeryService from "../services/compliance/RepScheduleSummeryService";
 import sessionManager from "../utils/SessionManager";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
+import "./common/CustomDataTable.css";
 import { Column } from "primereact/column";
 import { MultiSelect } from "primereact/multiselect";
 import { toastService } from "../services/toastService";
@@ -273,6 +274,8 @@ const RepScheduleSummery = () => {
         onRefresh={() => handleRunReport()}
         onExport={exportExcel}
         activeFilterCount={activeFilterCount}
+        filters={filters}
+        setFilters={setFilters}
         overlayRef={op}
         filterButtonRef={filterButtonRef}
         showFilter={true}
@@ -292,14 +295,7 @@ const RepScheduleSummery = () => {
                     </div>
                   </div>
                 </div>
-                {activeFilterCount > 0 && (
-                  <span
-                    className="badge bg-primary"
-                    style={{ fontSize: "0.7rem", borderRadius: "999px" }}
-                  >
-                    {activeFilterCount}
-                  </span>
-                )}
+
               </div>
             </div>
 
@@ -730,7 +726,7 @@ const RepScheduleSummery = () => {
                   {renderToolbar()}
                   {appliedReportType === "VENDOR" ? (
                     <div className="table-responsive">
-                      <table className="table table-sm mb-0 vendor-table">
+                      <table className="table table-sm mb-0 vendor-table custom-html-table">
                         <thead className="table-light">
                           <tr>
                             <th style={{ width: "40px" }}></th>
@@ -805,7 +801,7 @@ const RepScheduleSummery = () => {
                                             </p>
                                           ) : (
                                             <div className="table-responsive">
-                                              <table className="table table-sm table-bordered mb-0 nested-vendor-table">
+                                              <table className="table table-sm table-bordered mb-0 nested-vendor-table custom-html-table">
                                                 <thead>
                                                   <tr>
                                                     <th>Vendor Name</th>
@@ -892,7 +888,7 @@ const RepScheduleSummery = () => {
                       </table>
                     </div>
                   ) : (
-                    <DataTable
+                    <CustomDataTable
                       value={filteredData}
                       ref={dt}
                       paginator
@@ -908,7 +904,7 @@ const RepScheduleSummery = () => {
                       rowsPerPageOptions={[50, 100, 200, 300]}
                     >
                       {renderDetailedColumns()}
-                    </DataTable>
+                    </CustomDataTable>
                   )}
                 </div>
               </div>

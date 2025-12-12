@@ -14,6 +14,8 @@ import { MultiSelect } from "primereact/multiselect";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Toast } from "primereact/toast";
+import { Calendar } from "primereact/calendar";
+import calendarIcon from "../assets/calendar.png";
 import ManageRouteService from "../services/compliance/ManageRouteService";
 import { toastService } from "../services/toastService";
 import OffcanvasRouteDetails from "./OffcanvasRouteDetails";
@@ -3793,14 +3795,26 @@ const ManageRoute = () => {
               <div className="card_tb p-3">
                 <div className="row">
                   <div className="col">
-                    <label htmlFor="">Shift Date</label>
-                    <InputText
-                      type="date"
-                      className="w-100"
-                      placeholder="Trips for the Day"
-                      value={shiftDate}
-                      onChange={(e) => setShiftDate(e.target.value)}
-                    />
+                    <label htmlFor="shiftDate">Shift Date</label>
+                    <div className="custom-calendar-wrapper">
+                      <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                      <Calendar
+                        id="shiftDate"
+                        className="w-100 custom-calendar-input"
+                        value={new Date(shiftDate)}
+                        onChange={(e) => {
+                          const date = e.value;
+                          if (date) {
+                            const year = date.getFullYear();
+                            const month = String(date.getMonth() + 1).padStart(2, "0");
+                            const day = String(date.getDate()).padStart(2, "0");
+                            setShiftDate(`${year}-${month}-${day}`);
+                          }
+                        }}
+                        dateFormat="mm/dd/yy"
+                        placeholder="Trips for the Day"
+                      />
+                    </div>
                   </div>
                   <div className="col">
                     <label htmlFor="">Facility Name</label>
@@ -5481,6 +5495,27 @@ const ManageRoute = () => {
           </div>
         </PrimeDialog>
       </DndContext>
+      <style>
+        {`
+          .custom-calendar-wrapper {
+            position: relative;
+            width: 100%;
+          }
+          .custom-calendar-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            z-index: 2;
+            pointer-events: none;
+          }
+          .custom-calendar-input .p-inputtext {
+            padding-left: 35px !important;
+          }
+        `}
+      </style>
     </>
   );
 };

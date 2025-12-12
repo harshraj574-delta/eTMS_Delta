@@ -6,7 +6,7 @@ import Header from "../Master/Header";
 import { apiService } from "../../services/api";
 import sessionManager from "../../utils/SessionManager.js";
 import { toastService } from '../../services/toastService';
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "../common/CustomDataTable";
 import { Column } from "primereact/column";
 import { Button } from 'primereact/button';
 import MasterSidebar from "../Master/MasterSidebar";
@@ -111,7 +111,7 @@ const Location = () => {
           </div>
           <div className="col-lg-12">
             <div className="card_tb">
-              <DataTable value={locationData} paginator rows={10} rowsPerPageOptions={[5, 10, 25]}> 
+              <CustomDataTable value={locationData} paginator rows={10} rowsPerPageOptions={[5, 10, 25]}> 
                   <Column field="Id" header="ID"></Column>
                   <Column header="Location Name" body={(location) => (
                     <a
@@ -128,7 +128,7 @@ const Location = () => {
                       <span className="ms-3">{location.locationName}</span>
                     </a>
                   )}></Column>
-                </DataTable>
+                </CustomDataTable>
             </div>
           </div>
         </div>

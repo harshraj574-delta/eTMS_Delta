@@ -12,7 +12,7 @@ import { DataTable } from "primereact/datatable";
 import { MultiSelect } from "primereact/multiselect";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
-import "./facilityMaster.css";
+import "../common/CustomDataTable.css";
 import PlaceIcon from '@mui/icons-material/Place';
 import { Button } from "primereact/button";
 import { ToastContainer } from 'react-toastify';
@@ -667,45 +667,45 @@ const FacilityMaster = () => {
                 {renderToolbar()}
               </div>
               <div className="table-responsive">
-                <table className="table table-sm mb-0" id="tbFacility">
+                <table className="table table-sm mb-0 custom-html-table" id="tbFacility">
                   <thead className="table-light">
                     <tr>
                       <th style={{ width: "40px" }}></th>
                       <th className="text-left" style={{ minWidth: "90px" }}>
                         Facility Name
                       </th>
-                      <th className="text-center" style={{ minWidth: "80px" }}>
+                      <th className="text-left" style={{ minWidth: "80px" }}>
                         Geo Code
                       </th>
-                      <th className="text-center" style={{ minWidth: "70px" }}>
+                      <th className="text-left" style={{ minWidth: "70px" }}>
                         Location
                       </th>
                       <th
-                        className="text-center d-none d-md-table-cell"
+                        className="text-left d-none d-md-table-cell"
                         style={{ minWidth: "100px" }}
                       >
                         Helpdesk Contact No
                       </th>
                       <th
-                        className="text-center d-none d-lg-table-cell"
+                        className="text-left d-none d-lg-table-cell"
                         style={{ minWidth: "120px" }}
                       >
                         Helpdesk Email
                       </th>
                       <th
-                        className="text-center d-none d-xl-table-cell"
+                        className="text-left d-none d-xl-table-cell"
                         style={{ minWidth: "120px" }}
                       >
                         Team Lead Email
                       </th>
                       <th
-                        className="text-center d-none d-xl-table-cell"
+                        className="text-left d-none d-xl-table-cell"
                         style={{ minWidth: "120px" }}
                       >
                         Manager Email
                       </th>
                       <th
-                        className="text-center d-none d-xl-table-cell"
+                        className="text-left d-none d-xl-table-cell"
                         style={{ minWidth: "120px" }}
                       >
                         Site Lead Email
@@ -745,7 +745,7 @@ const FacilityMaster = () => {
                               )}
                             </a>
                           </td>
-                          <td className="text-center">
+                          <td className="text-left">
                             <a
                               href="#!"
                               className="btn-text text-decoration-none"
@@ -768,7 +768,7 @@ const FacilityMaster = () => {
                             </a>
                           </td>
 
-                          <td className="text-center">
+                          <td className="text-left">
                             <a
                               href="#!"
                               onClick={() => {
@@ -784,22 +784,22 @@ const FacilityMaster = () => {
                             >{`${facility.geoX} : ${facility.geoY}`}</a>
                           </td>
 
-                          <td className="text-center">
+                          <td className="text-left">
                             <span>{facility.locationName}</span>
                           </td>
-                          <td className="text-center d-none d-md-table-cell">
+                          <td className="text-left d-none d-md-table-cell">
                             {facility.tptContactNo}
                           </td>
-                          <td className="text-center d-none d-lg-table-cell">
+                          <td className="text-left d-none d-lg-table-cell">
                             {facility.tptEmail}
                           </td>
-                          <td className="text-center d-none d-xl-table-cell">
+                          <td className="text-left d-none d-xl-table-cell">
                             {facility.ShiftInchargeMail}
                           </td>
-                          <td className="text-center d-none d-xl-table-cell">
+                          <td className="text-left d-none d-xl-table-cell">
                             {facility.SiteLeadMail}
                           </td>
-                          <td className="text-center d-none d-xl-table-cell">
+                          <td className="text-left d-none d-xl-table-cell">
                             {facility.LocLeadMail}
                           </td>
                         </tr>
@@ -1184,12 +1184,12 @@ const FacilityMaster = () => {
         backdropBlur="50px"
         bodyStyle={{ padding: 0 }}
         footer={
-          <div className="map-footer">
-            <div className="coord-col">
-              <label className="coord-label">Latitude</label>
+          <div className="row g-2 w-100 bg-white p-2 m-0 align-items-end">
+            <div className="col-6 col-md">
+              <label className="form-label mb-1 small fw-bold text-secondary">Latitude</label>
               <input
                 type="text"
-                className="form-control form-control-sm"
+                className="form-control"
                 placeholder="Latitude"
                 id="txtMapLatitude"
                 value={mapLatitude}
@@ -1197,11 +1197,11 @@ const FacilityMaster = () => {
               />
             </div>
 
-            <div className="coord-col">
-              <label className="coord-label">Longitude</label>
+            <div className="col-6 col-md">
+              <label className="form-label mb-1 small fw-bold text-secondary">Longitude</label>
               <input
                 type="text"
-                className="form-control form-control-sm"
+                className="form-control"
                 placeholder="Longitude"
                 id="txtMapLongitude"
                 value={mapLongitude}
@@ -1209,10 +1209,16 @@ const FacilityMaster = () => {
               />
             </div>
 
-            <button className="btn btn-primary btn-lg" onClick={saveMapCoords}>
-              <PlaceIcon />
-              Save
-            </button>
+            <div className="col-12 col-md-auto">
+              <button 
+                className="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-1" 
+                onClick={saveMapCoords} 
+                style={{ height: '38px' }}
+              >
+                <PlaceIcon fontSize="small" />
+                Save
+              </button>
+            </div>
           </div>
         }
       >
@@ -1237,12 +1243,12 @@ const FacilityMaster = () => {
         backdropBlur="50px"
         bodyStyle={{ padding: 0 }}
         footer={
-          <div className="map-footer">
-            <div className="coord-col">
-              <label className="coord-label">Latitude</label>
+          <div className="row g-2 w-100 bg-white p-2 m-0 align-items-end">
+            <div className="col-6 col-md">
+              <label className="form-label mb-1 small fw-bold text-secondary">Latitude</label>
               <input
                 type="text"
-                className="form-control form-control-sm"
+                className="form-control"
                 placeholder="Latitude"
                 id="txtViewLatitude"
                 value={mapLatitude}
@@ -1250,11 +1256,11 @@ const FacilityMaster = () => {
               />
             </div>
 
-            <div className="coord-col">
-              <label className="coord-label">Longitude</label>
+            <div className="col-6 col-md">
+              <label className="form-label mb-1 small fw-bold text-secondary">Longitude</label>
               <input
                 type="text"
-                className="form-control form-control-sm"
+                className="form-control"
                 placeholder="Longitude"
                 id="txtViewLongitude"
                 value={mapLongitude}

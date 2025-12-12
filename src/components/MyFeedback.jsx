@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "./Master/SidebarMenu";
 import Notifications from "./Master/Notifications";
 import "bootstrap/dist/css/bootstrap.min.css"; // Import Bootstrap CSS
@@ -9,6 +9,7 @@ import Header from "./Master/Header";
 import { apiService } from "../services/api";
 import sessionManager from "../utils/SessionManager.js";
 import { toastService } from "../services/toastService";
+import { MultiSelect } from "primereact/multiselect";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import "primereact/resources/themes/lara-light-blue/theme.css"; // Theme
@@ -23,6 +24,8 @@ import { api } from "../services/axios/api.js";
 import Loader from "./common/Loader.jsx";
 import TableToolbar from "./common/TableToolbar.jsx";
 import { set } from "lodash";
+import { CustomDataTable } from "./common/CustomDataTable";
+import { ToastContainer } from "react-toastify";
 const MyFeedback = () => {
   const [feedbackData, setFeedbackData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +45,31 @@ const MyFeedback = () => {
   });
   const [addRaiseFeedback, setAddRaiseFeedback] = useState(false);
   const [globalFilter, setGlobalFilter] = useState(null);
+  const [filters, setFilters] = useState({
+    TypeName: null,
+    Status: null,
+    RouteId: null,
+    TicketNo: null,
+  });
+
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
+
+  const getUniqueValues = (field) => {
+    const values = feedbackData.map((item) => item[field]).filter(Boolean);
+    return [...new Set(values)].map((val) => ({ label: val, value: val }));
+  };
+
+  const clearAdvancedFilters = () => {
+    setFilters({
+      TypeName: null,
+      Status: null,
+      RouteId: null,
+      TicketNo: null,
+    });
+    if (op.current) op.current.hide();
+    toastService.info("Filters cleared");
+  };
   const handleReopen = (ticketNo) => {
     setSelectedTicket(ticketNo); // Set the selected ticket number
     setIsOffcanvasOpen(true); // Open the offcanvas
@@ -383,9 +411,17 @@ const MyFeedback = () => {
           )
           : feedbackData;
 
-  const finalTableData = applyGlobalFilter(filteredByStatus, globalFilter);
+  // Apply Advanced Filters
+  const filteredByAdvanced = filteredByStatus.filter((item) => {
+    return Object.keys(filters).every((key) => {
+      if (!filters[key] || filters[key].length === 0) return true;
+      return filters[key].includes(item[key]);
+    });
+  });
+
+  const finalTableData = applyGlobalFilter(filteredByAdvanced, globalFilter);
   // Refresh data function
-  const handleRefresh = () => {
+    const handleRefresh = () => {
     setLoading(true);
     fetchFeedbackCount({
       endDate: new Date().toISOString().split("T")[0],
@@ -393,6 +429,8 @@ const MyFeedback = () => {
         .toISOString()
         .split("T")[0],
     });
+    fetchFeedbackData();
+    fetchTicketReplies(selectedTicket);
     toastService.success("Data has been successfully refreshed.");
   };
   return (
@@ -408,6 +446,7 @@ const MyFeedback = () => {
 
       {/* Sidebar */}
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
 
       {/* Middle Content */}
       <div className="middle">
@@ -551,132 +590,230 @@ const MyFeedback = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              <div className="p-2">
+              <div className="p-3">
                 <TableToolbar
                   showExport={false}
-                  showFilter={false}
+                  showFilter={true}
                   onRefresh={() => handleRefresh()}
                   search={globalFilter}
                   onSearch={(e) => setGlobalFilter(e.target.value)}
-                />
-              </div>
-              <DataTable
-                // value={
-                //   feedbackFilter === "total"
-                //     ? feedbackData // Total feedbacks ka data (ya sabhi)
-                //     : feedbackFilter === "open"
-                //       ? feedbackData.filter(
-                //         (item) =>
-                //           item.Status && item.Status.toLowerCase() === "open"
-                //       )
-                //       : feedbackFilter === "closed"
-                //         ? feedbackData.filter(
-                //           (item) =>
-                //             item.Status && item.Status.toLowerCase() === "closed"
-                //         )
-                //         : feedbackData
-                // }
-                value={finalTableData}
-                paginator
-                rows={50}
-                rowsPerPageOptions={[50, 100, 150, 200]}
-                loading={loading}
-                emptyMessage="No feedback data available"
-                className="p-datatable-sm"
-                rowClassName={(data) =>
-                  data && data.Status && data.Status.toLowerCase() === "closed"
-                    ? "column"
-                    : ""
-                }
-              >
-                <Column
-                  header="Ticket No."
-                  body={(rowData) => (
-                    <a
-                      href="#!"
-                      className="btn-text"
-                      data-bs-toggle="offcanvas"
-                      data-bs-target="#ticketNumber"
-                      aria-controls="offcanvasRight"
-                      onClick={() => fetchTicketReplies(rowData.TicketNo)}
-                    >
-                      <span className="ms-3">{rowData.TicketNo}</span>
-                    </a>
-                  )}
-                />
-                <Column
-                  field="RaisedDate"
-                  header="Shift Date"
-                  body={(rowData) =>
-                    new Date(rowData.RaisedDate).toLocaleDateString()
-                  }
-                />
-                <Column field="TypeName" header="Type" />
-                <Column
-                  field="Desrp"
-                  header="Description"
-                  body={(rowData) => (
-                    <div
-                      className="position-relative"
-                      title={rowData.Desrp} // Using native HTML title for tooltip
-                      style={{
-                        maxWidth: "200px",
-                        overflow: "hidden",
-                        cursor: "pointer",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    // Remove the ref and onMouseLeave handlers that use bootstrap
-                    >
-                      {rowData.Desrp}
+                  filters={filters}
+                  setFilters={setFilters}
+                  overlayRef={op}
+                  filterButtonRef={filterButtonRef}
+                >
+                  <div className="ota-filter-header">
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="ota-filter-icon">
+                          <i className="pi pi-filter" />
+                        </span>
+                        <div>
+                          <div className="ota-filter-title">Advanced filters</div>
+                          <div className="ota-filter-subtitle">
+                            Refine feedback list
+                          </div>
+                        </div>
+                      </div>
+                      {Object.values(filters).filter(
+                        (f) => Array.isArray(f) && f.length > 0
+                      ).length > 0 && (
+                          <span
+                            className="badge bg-primary"
+                            style={{ fontSize: "0.7rem", borderRadius: "999px" }}
+                          >
+                            {Object.values(filters).filter(
+                              (f) => Array.isArray(f) && f.length > 0
+                            ).length}
+                          </span>
+                        )}
                     </div>
-                  )}
-                />
-                <Column field="RouteId" header="Route ID" />
-                <Column field="ActionBy" header="Last Action By" />
-                <Column
-                  field="Status"
-                  header="Status"
-                  body={(rowData) => (
-                    <span
-                      className={`badgee ${rowData &&
-                        rowData.Status &&
-                        rowData.Status.toLowerCase() === "open"
-                        ? "badge_warning"
-                        : "badge_muted"
-                        }`}
-                    >
-                      {rowData && rowData.Status ? rowData.Status : "N/A"}
-                    </span>
-                  )}
-                />
-                <Column
-                  header="Action"
-                  body={(rowData) => (
-                    <button
-                      data-bs-toggle="offcanvas"
-                      data-bs-target="#raise_Reopen"
-                      aria-controls="offcanvasRightReope"
-                      className={`btn btn-sm ${rowData &&
-                        rowData.Status &&
-                        rowData.Status.toLowerCase() === "closed"
-                        ? "btn-outline-success"
-                        : "btn-outline-danger"
-                        }`}
-                      onClick={() =>
-                        rowData &&
-                        rowData.ReOpenStatus &&
-                        handleReopen(rowData.TicketNo)
+                  </div>
+
+                  <div className="ota-filter-body">
+                    <div className="ota-filter-field">
+                      <label className="ota-filter-label">Ticket No</label>
+                      <MultiSelect
+                        value={filters.TicketNo}
+                        options={getUniqueValues("TicketNo")}
+                        onChange={(e) =>
+                          setFilters({ ...filters, TicketNo: e.value })
+                        }
+                        placeholder="Select Ticket No"
+                        maxSelectedLabels={2}
+                        className="w-100 p-inputtext-sm"
+                        display="chip"
+                        filter
+                        showClear
+                      />
+                    </div>
+                    <div className="ota-filter-field">
+                      <label className="ota-filter-label">Type</label>
+                      <MultiSelect
+                        value={filters.TypeName}
+                        options={getUniqueValues("TypeName")}
+                        onChange={(e) =>
+                          setFilters({ ...filters, TypeName: e.value })
+                        }
+                        placeholder="Select Type"
+                        maxSelectedLabels={2}
+                        className="w-100 p-inputtext-sm"
+                        display="chip"
+                        filter
+                        showClear
+                      />
+                    </div>
+                    <div className="ota-filter-field">
+                      <label className="ota-filter-label">Route ID</label>
+                      <MultiSelect
+                        value={filters.RouteId}
+                        options={getUniqueValues("RouteId")}
+                        onChange={(e) =>
+                          setFilters({ ...filters, RouteId: e.value })
+                        }
+                        placeholder="Select Route ID"
+                        maxSelectedLabels={2}
+                        className="w-100 p-inputtext-sm"
+                        display="chip"
+                        filter
+                        showClear
+                      />
+                    </div>
+                    <div className="ota-filter-field">
+                      <label className="ota-filter-label">Status</label>
+                      <MultiSelect
+                        value={filters.Status}
+                        options={getUniqueValues("Status")}
+                        onChange={(e) =>
+                          setFilters({ ...filters, Status: e.value })
+                        }
+                        placeholder="Select Status"
+                        maxSelectedLabels={2}
+                        className="w-100 p-inputtext-sm"
+                        display="chip"
+                        filter
+                        showClear
+                      />
+                    </div>
+                  </div>
+
+                  <div className="ota-filter-footer">
+                    <Button
+                      label="Clear all filters"
+                      icon="pi pi-filter-slash"
+                      className="p-button-outlined p-button-secondary w-100"
+                      onClick={clearAdvancedFilters}
+                      size="small"
+                    />
+                  </div>
+                </TableToolbar>
+                <div className="table-responsive">
+                  <CustomDataTable
+                    value={finalTableData}
+                    paginator
+                    rows={50}
+                    rowsPerPageOptions={[50, 100, 150, 200]}
+                    loading={loading}
+                    emptyMessage="No feedback data available"
+                    className="p-datatable-sm"
+                    rowClassName={(data, props) => {
+                      let className = props.rowIndex % 2 !== 0 ? "ota-row-odd" : "";
+                      if (data && data.Status && data.Status.toLowerCase() === "closed") {
+                        className += " column"; // Preserving existing 'column' class logic
                       }
-                      disabled={!rowData.ReOpenStatus}
-                    >
-                      <span style={{ whiteSpace: "nowrap" }}>
-                        {rowData.StatusText}
-                      </span>
-                    </button>
-                  )}
-                />
-              </DataTable>
+                      return className;
+                    }}
+                  >
+                    <Column
+                      header="Ticket No."
+                      body={(rowData) => (
+                        <a
+                          href="#!"
+                          className="btn-text"
+                          data-bs-toggle="offcanvas"
+                          data-bs-target="#ticketNumber"
+                          aria-controls="offcanvasRight"
+                          onClick={() => fetchTicketReplies(rowData.TicketNo)}
+                        >
+                          <span className="ms-3">{rowData.TicketNo}</span>
+                        </a>
+                      )}
+                    />
+                    <Column
+                      field="RaisedDate"
+                      header="Shift Date"
+                      body={(rowData) =>
+                        new Date(rowData.RaisedDate).toLocaleDateString()
+                      }
+                    />
+                    <Column field="TypeName" header="Type" />
+                    <Column
+                      field="Desrp"
+                      header="Description"
+                      body={(rowData) => (
+                        <div
+                          className="position-relative"
+                          title={rowData.Desrp} // Using native HTML title for tooltip
+                          style={{
+                            maxWidth: "200px",
+                            overflow: "hidden",
+                            cursor: "pointer",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        // Remove the ref and onMouseLeave handlers that use bootstrap
+                        >
+                          {rowData.Desrp}
+                        </div>
+                      )}
+                    />
+                    <Column field="RouteId" header="Route ID" />
+                    <Column field="ActionBy" header="Last Action By" />
+                    <Column
+                      field="Status"
+                      header="Status"
+                      body={(rowData) => (
+                        <span
+                          className={`badgee ${rowData &&
+                            rowData.Status &&
+                            rowData.Status.toLowerCase() === "open"
+                            ? "badge_warning"
+                            : "badge_muted"
+                            }`}
+                        >
+                          {rowData && rowData.Status ? rowData.Status : "N/A"}
+                        </span>
+                      )}
+                    />
+                    <Column
+                      header="Action"
+                      body={(rowData) => (
+                        <button
+                          data-bs-toggle="offcanvas"
+                          data-bs-target="#raise_Reopen"
+                          aria-controls="offcanvasRightReope"
+                          className={`btn btn-sm ${rowData &&
+                            rowData.Status &&
+                            rowData.Status.toLowerCase() === "closed"
+                            ? "btn-outline-success"
+                            : "btn-outline-danger"
+                            }`}
+                          onClick={() =>
+                            rowData &&
+                            rowData.ReOpenStatus &&
+                            handleReopen(rowData.TicketNo)
+                          }
+                          disabled={!rowData.ReOpenStatus}
+                        >
+                          <span style={{ whiteSpace: "nowrap" }}>
+                            {rowData.StatusText}
+                          </span>
+                        </button>
+                      )}
+                    />
+                  </CustomDataTable>
+                </div>
+              </div>
             </div>
           </div>
         </div>

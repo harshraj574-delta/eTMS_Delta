@@ -12,6 +12,10 @@ import sessionManager from "../utils/SessionManager";
 import CostMasterService from "../services/compliance/CostMasterService";
 import { toastService } from "../services/toastService";
 import { set } from "lodash";
+import { CustomDataTable } from "./common/CustomDataTable";
+import TableToolbar from "./common/TableToolbar";
+import { ToastContainer } from "react-toastify";
+import noReportImage from "../assets/no_report.png";
 
 const CostMaster = () => {
   // Separate states for different dropdowns
@@ -33,6 +37,13 @@ const CostMaster = () => {
   const [editFuelRate, setEditFuelRate] = useState("");
   const [editGuardRate, setEditGuardRate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [filters, setFilters] = useState({
+    // Add default filter keys here if needed
+  });
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
+  const [showTable, setShowTable] = useState(false);
 
   const validateAcCost = (value) => {
     if (!value) {
@@ -344,6 +355,7 @@ const CostMaster = () => {
         : [parsedData];
       setCostData(validatedData);
       setLoading(false);
+      setShowTable(true);
 
       if (validatedData.length > 0) {
         toastService.success("Cost data fetched successfully");
@@ -355,6 +367,7 @@ const CostMaster = () => {
       setCostData([]); // Set empty array on error
       setLoading(false);
       toastService.error("Error fetching cost data");
+      setShowTable(true); // Show empty table on error
     } finally {
       setIsSubmitting(false);
     }
@@ -402,17 +415,17 @@ const CostMaster = () => {
     }
   };
 
-  const paginatorLeft = (
-    <Button
-      type="button"
-      icon="pi pi-refresh"
-      text
-      onClick={() => handleSearch()}
-    />
-  );
-  const paginatorRight = (
-    <Button type="button" icon="pi pi-download" text onClick={exportExcel} />
-  );
+  // const paginatorLeft = (
+  //   <Button
+  //     type="button"
+  //     icon="pi pi-refresh"
+  //     text
+  //     onClick={() => handleSearch()}
+  //   />
+  // );
+  // const paginatorRight = (
+  //   <Button type="button" icon="pi pi-download" text onClick={exportExcel} />
+  // );
 
   return (
     <>
@@ -446,6 +459,7 @@ const CostMaster = () => {
         onNewButtonClick={() => setAddNewCost(true)}
       />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">
@@ -456,7 +470,7 @@ const CostMaster = () => {
           <div className="col-12">
             <div className="card_tb p-3">
               <div className="row">
-                <div className="col-2">
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-2">
                   <label htmlFor="facility">Facility</label>
                   <Dropdown
                     id="facility"
@@ -471,7 +485,7 @@ const CostMaster = () => {
                     defaultValue={1}
                   />
                 </div>
-                <div className="col-2">
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-2">
                   <label htmlFor="vendor">Vendor</label>
                   <Dropdown
                     id="vendor"
@@ -482,7 +496,7 @@ const CostMaster = () => {
                     className="w-100"
                   />
                 </div>
-                <div className="col-2">
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-2">
                   <label htmlFor="vehicleType">Vehicle Type</label>
                   <Dropdown
                     id="vehicleType"
@@ -493,7 +507,7 @@ const CostMaster = () => {
                     className="w-100"
                   />
                 </div>
-                <div className="col-2">
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-2">
                   <label htmlFor="zone">Zone</label>
                   <Dropdown
                     id="zone"
@@ -504,7 +518,7 @@ const CostMaster = () => {
                     className="w-100"
                   />
                 </div>
-                <div className="col-2">
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-2">
                   <label htmlFor="routeType">Route Type</label>
                   <Dropdown
                     id="routeType"
@@ -515,10 +529,23 @@ const CostMaster = () => {
                     className="w-100"
                   />
                 </div>
-                <div className="col-2">
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 d-flex align-items-end mb-2">
+                  <style>
+                    {`
+                      .run-report-btn {
+                        background-color: #1C1D20 !important;
+                        border-color: #1C1D20 !important;
+                        transition: background-color 0.3s, border-color 0.3s;
+                      }
+                      .run-report-btn:hover {
+                        background-color: #0d6efd !important;
+                        border-color: #0d6efd !important;
+                      }
+                    `}
+                  </style>
                   <Button
                     label="Show Data"
-                    className="btn btn-primary no-label"
+                    className="btn btn-primary w-100 run-report-btn"
                     onClick={handleSearch}
                   />
                 </div>
@@ -530,91 +557,151 @@ const CostMaster = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              <DataTable
-                value={costData}
-                ref={dt}
-                paginator
-                rows={50}
-                tableStyle={{ minWidth: "50rem" }}
-                size="small"
-                loading={loading}
-                emptyMessage={error ? `Error: ${error}` : "No records found"}
-                stripedRows
-                // currentPageReportTemplate="Showing {first} to {last} of {totalRecords} employees"
-                // paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                paginatorLeft={paginatorLeft}
-                paginatorRight={paginatorRight}
-                rowsPerPageOptions={[50, 100, 200, 300]}
-              >
-                <Column
-                  field="vendorname"
-                  header="Vendor"
-                  sortable
-                  body={(rowData) => (
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setEditRowData(rowData);
-                        setEditAcCost(rowData.Cost || "0");
-                        setEditNonAcCost(rowData.NonAcCost || "0");
-                        setEditFuelRate(rowData.fuelrate || "0");
-                        setEditGuardRate(rowData.guardcost || "0");
-                        setEditNewCost(true);
+              {!showTable && (
+                <div
+                  className="d-flex flex-column align-items-center justify-content-center p-5"
+                  style={{ minHeight: "70vh" }}
+                >
+                  <img
+                    src={noReportImage}
+                    alt="No Report Selected"
+                    style={{
+                      maxWidth: "100px",
+                      opacity: 0.5,
+                      marginBottom: "1rem",
+                    }}
+                  />
+                  <p
+                    className="text-muted mb-0"
+                    style={{ fontSize: "0.9rem" }}
+                  >
+                    Please select above parameters to show data
+                  </p>
+                </div>
+              )}
+
+              {showTable && (
+                <div className="p-3">
+                  <TableToolbar
+                    onSearch={(e) => setGlobalFilter(e.target.value)}
+                    search={globalFilter}
+                    onRefresh={handleSearch}
+                    onExport={exportExcel}
+                    showFilter={true}
+                    filters={filters}
+                    setFilters={setFilters}
+                    overlayRef={op}
+                    filterButtonRef={filterButtonRef}
+                  >
+                    <div className="ota-filter-header">
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="ota-filter-icon">
+                            <i className="pi pi-filter" />
+                          </span>
+                          <div>
+                            <div className="ota-filter-title">Advanced filters</div>
+                            <div className="ota-filter-subtitle">
+                              No additional filters
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="ota-filter-body">
+                      {/* Placeholder for future advanced filters */}
+                    </div>
+                  </TableToolbar>
+                  <CustomDataTable
+                    value={costData}
+                    ref={dt}
+                    paginator
+                    rows={50}
+                    tableStyle={{ minWidth: "50rem" }}
+                    size="small"
+                    loading={loading}
+                    emptyMessage={error ? `Error: ${error}` : "No records found"}
+                    stripedRows
+                    // currentPageReportTemplate="Showing {first} to {last} of {totalRecords} employees"
+                    // paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                    // paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                    // paginatorLeft={paginatorLeft}
+                    // paginatorRight={paginatorRight}
+                    globalFilter={globalFilter}
+                    header={null}
+                    rowsPerPageOptions={[50, 100, 200, 300]}
+                  >
+                    <Column
+                      field="vendorname"
+                      header="Vendor"
+                      sortable
+                      body={(rowData) => (
+                        <a
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setEditRowData(rowData);
+                            setEditAcCost(rowData.Cost || "0");
+                            setEditNonAcCost(rowData.NonAcCost || "0");
+                            setEditFuelRate(rowData.fuelrate || "0");
+                            setEditGuardRate(rowData.guardcost || "0");
+                            setEditNewCost(true);
+                          }}
+                        >
+                          {rowData.vendorname}
+                        </a>
+                      )}
+                    />
+                    <Column field="VehicleType" header="Vehicle Type" sortable />
+                    <Column field="routetype" header="Route Type" sortable />
+                    <Column field="ZoneName" header="Zone Name" sortable />
+                    <Column field="Cost" header="AC Cost" sortable />
+                    <Column field="NonAcCost" header="Non-AC Cost" sortable />
+                    <Column field="fuelrate" header="Fuel Rate" sortable />
+                    <Column field="guardcost" header="Guard Cost" sortable />
+                    <Column
+                      field="DATE"
+                      header="From Date"
+                      sortable
+                      body={(rowData) => {
+                        const value = rowData.DATE;
+                        if (!value) return value ?? ""; // null, undefined, empty string
+                        const dateObj = new Date(value);
+                        if (!isNaN(dateObj.getTime())) {
+                          return dateObj.toLocaleDateString("en-US", {
+                            month: "2-digit",
+                            day: "2-digit",
+                            year: "numeric",
+                          });
+                        }
+                        // If not a valid date, show as is
+                        return value;
                       }}
-                    >
-                      {rowData.vendorname}
-                    </a>
-                  )}
-                />
-                <Column field="VehicleType" header="Vehicle Type" sortable />
-                <Column field="routetype" header="Route Type" sortable />
-                <Column field="ZoneName" header="Zone Name" sortable />
-                <Column field="Cost" header="AC Cost" sortable />
-                <Column field="NonAcCost" header="Non-AC Cost" sortable />
-                <Column field="fuelrate" header="Fuel Rate" sortable />
-                <Column field="guardcost" header="Guard Cost" sortable />
-                <Column
-                  field="DATE"
-                  header="From Date"
-                  sortable
-                  body={(rowData) => {
-                    const value = rowData.DATE;
-                    if (!value) return value ?? ""; // null, undefined, empty string
-                    const dateObj = new Date(value);
-                    if (!isNaN(dateObj.getTime())) {
-                      return dateObj.toLocaleDateString("en-US", {
-                        month: "2-digit",
-                        day: "2-digit",
-                        year: "numeric",
-                      });
-                    }
-                    // If not a valid date, show as is
-                    return value;
-                  }}
-                />
-                <Column
-                  field="Enddate"
-                  header="To Date"
-                  sortable
-                  body={(rowData) => {
-                    // Try to parse date, if invalid, show as is
-                    const value = rowData.Enddate;
-                    if (!value) return value ?? ""; // null, undefined, empty string
-                    const dateObj = new Date(value);
-                    // Check if date is valid
-                    if (!isNaN(dateObj.getTime())) {
-                      return dateObj.toLocaleDateString("en-US", {
-                        month: "2-digit",
-                        day: "2-digit",
-                        year: "numeric",
-                      });
-                    }
-                    // If not a valid date, show as is
-                    return value;
-                  }}
-                />
-              </DataTable>
+                    />
+                    <Column
+                      field="Enddate"
+                      header="To Date"
+                      sortable
+                      body={(rowData) => {
+                        // Try to parse date, if invalid, show as is
+                        const value = rowData.Enddate;
+                        if (!value) return value ?? ""; // null, undefined, empty string
+                        const dateObj = new Date(value);
+                        // Check if date is valid
+                        if (!isNaN(dateObj.getTime())) {
+                          return dateObj.toLocaleDateString("en-US", {
+                            month: "2-digit",
+                            day: "2-digit",
+                            year: "numeric",
+                          });
+                        }
+                        // If not a valid date, show as is
+                        return value;
+                      }}
+                    />
+                  </CustomDataTable>
+                </div>
+              )}
             </div>
           </div>
         </div>

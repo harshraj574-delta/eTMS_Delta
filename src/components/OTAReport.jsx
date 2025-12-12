@@ -5,7 +5,7 @@ import Loader from "./common/Loader";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
 import { MultiSelect } from "primereact/multiselect";
@@ -840,7 +840,7 @@ const OTAReport = () => {
 
                   {currentReportType === "detailed" && (
                     <div className="table-responsive">
-                      <DataTable
+                      <CustomDataTable
                         value={filteredData}
                         ref={dt}
                         paginator
@@ -896,13 +896,13 @@ const OTAReport = () => {
                           header="OTA/OTD Category"
                           sortable
                         />
-                      </DataTable>
+                      </CustomDataTable>
                     </div>
                   )}
 
                   {currentReportType === "shiftwise" && (
                     <div className="table-responsive">
-                      <table className="table table-sm mb-0">
+                      <table className="table table-sm mb-0 custom-html-table">
                         <thead className="table-light">
                           <tr>
                             <th style={{ width: "40px" }} />
@@ -1023,7 +1023,7 @@ const OTAReport = () => {
 
                   {currentReportType === "vendorwise" && (
                     <div className="table-responsive">
-                      <table className="table table-sm mb-0">
+                      <table className="table table-sm mb-0 custom-html-table">
                         <thead className="table-light">
                           <tr>
                             <th style={{ width: "40px" }} />

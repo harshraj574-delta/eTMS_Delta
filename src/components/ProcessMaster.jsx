@@ -10,7 +10,7 @@ import TableToolbar from "./common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
 
-import { DataTable } from 'primereact/datatable';
+import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -84,7 +84,7 @@ const ProcessMaster = () => {
   const fetchProcesses = async () => {
     try {
       setLoading(true);
-      const data = await ProcessMasterService.getProcess(facilityId);
+      const data = await ProcessMasterService.GetProcessNew(facilityId);
       const procesData = Array.isArray(data) ? data : [];
       setProcesses(procesData);
       setFilteredData(procesData);
@@ -376,21 +376,7 @@ const ProcessMaster = () => {
     <div>
       <Loader isVisible={loading} fullScreen={true} />
 
-      <style>{`
-        .process-datatable .p-datatable-thead > tr > th {
-          border-top: 1px solid #f0f0f0 !important;
-          background-color: #f9f9fb !important;
-          font-weight: 800 !important;
-          color: #545557 !important;
-          font-size: 13px !important;
-        }
-        .process-datatable .p-datatable-thead > tr > th:first-child {
-          border-top-left-radius: 0 !important;
-        }
-        .process-datatable .p-datatable-thead > tr > th:last-child {
-          border-top-right-radius: 0 !important;
-        }
-      `}</style>
+
       <Header
         pageTitle="Process Master"
         showNewButton={true}
@@ -410,16 +396,15 @@ const ProcessMaster = () => {
                 {renderToolbar()}
               </div>
               <div className="table-responsive">
-                <DataTable
+                <CustomDataTable
                   value={filteredData}
                   loading={loading}
                   paginator
                   rows={10}
                   rowsPerPageOptions={[5, 10, 20]}
                   dataKey="Id"
-                  className="p-datatable-gridlines process-datatable"
+                  className="p-datatable-sm"
                   emptyMessage="No processes found"
-                  rowClassName={() => 'process-row'}
                   responsiveLayout="scroll"
                   globalFilterFields={['processName']}
                 >
@@ -428,15 +413,59 @@ const ProcessMaster = () => {
                     header="Process Name"
                     body={processNameBodyTemplate}
                     sortable
-                    filter
                     className="col-process-name"
+                  />
+                  <Column
+                    header="Total Emp."
+                    body={(rowData) => (
+                      <div className="d-flex flex-column align-items-start">
+                        <span>{rowData.totalemployee}</span>
+                        <div className="d-flex gap-1 mt-1">
+                          <span
+                            className="badge text-dark d-flex align-items-center justify-content-center"
+                            style={{
+                              backgroundColor: "#EBE7FF",
+                              borderRadius: "7px",
+                              fontWeight: "normal",
+                              minWidth: "28px",
+                              height: "15.18px",
+                              fontSize: "10px",
+                              padding: "0 2px"
+                            }}
+                          >
+                            {rowData.malecount}M
+                          </span>
+                          <span
+                            className="badge text-dark d-flex align-items-center justify-content-center"
+                            style={{
+                              backgroundColor: "#FAE3E3",
+                              borderRadius: "7px",
+                              fontWeight: "normal",
+                              minWidth: "28px",
+                              height: "15.18px",
+                              fontSize: "10px",
+                              padding: "0 2px"
+                            }}
+                          >
+                            {rowData.femalecount}F
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    className="col-total-emp"
+                  />
+                  <Column
+                    field="transportEmpcount"
+                    header="Transport Opted Emp."
+                    sortable
+                    className="col-transport-opted"
                   />
                   <Column
                     header="Action"
                     body={processActionBodyTemplate}
                     className="col-action"
                   />
-                </DataTable>
+                </CustomDataTable>
               </div>
             </div>
           </div>
@@ -549,7 +578,7 @@ const ProcessMaster = () => {
             <span>Add New Sub-Process</span>
           </button>
           <div className="table-responsive">
-            <DataTable
+            <CustomDataTable
               value={subProcesses}
               loading={loading}
               paginator
@@ -574,7 +603,7 @@ const ProcessMaster = () => {
                 body={subProcessActionBodyTemplate}
                 className="col-action"
               />
-            </DataTable>
+            </CustomDataTable>
           </div>
       </MasterSidebar>
 
@@ -760,90 +789,9 @@ const ProcessMaster = () => {
           }
         }
 
-        /* DataTable Border Cleanup */
-        .process-datatable {
-          border: none !important;
-          font-size: 0.925rem;
-        }
-
-        .process-datatable .p-datatable {
-          border: none !important;
-        }
-
-        .process-datatable .p-datatable-wrapper {
-          border: none !important;
-        }
-
-        /* Grid Lines Only */
-        .p-datatable-gridlines .p-datatable-tbody > tr > td {
-          border-right: 1px solid #f3f4f6 !important;
-          border-bottom: 1px solid #f3f4f6 !important;
-        }
-
-        .p-datatable-gridlines .p-datatable-thead > tr > th {
-          border-right: 1px solid #f3f4f6 !important;
-          border-bottom: 1px solid #e5e7eb !important;
-        }
-
-        /* Last Column No Right Border */
-        .p-datatable-tbody > tr > td:last-child,
-        .p-datatable-thead > tr > th:last-child {
-          border-right: none !important;
-        }
-
         /* Process Row Styling - MEDIUM COMPACT */
-        .process-row {
-          height: 2.5rem !important;
-        }
-
-        .process-row .p-datatable-cell {
-          padding: 0.4rem 0.6rem !important;
-          font-size: 0.85rem;
-          line-height: 1.3;
-        }
-
-        .process-row .p-datatable-cell:first-child {
-          padding-left: 0.85rem !important;
-        }
-
-        @media (max-width: 768px) {
-          .process-row {
-            height: 2.25rem !important;
-          }
-
-          .process-row .p-datatable-cell {
-            padding: 0.35rem 0.5rem !important;
-            font-size: 0.8rem;
-          }
-        }
-
-        @media (max-width: 576px) {
-          .process-row {
-            height: 2rem !important;
-          }
-
-          .process-row .p-datatable-cell {
-            padding: 0.3rem 0.4rem !important;
-            font-size: 0.75rem;
-          }
-        }
-
-        /* Action Buttons - MEDIUM SIZE */
-        .process-action-buttons {
-          gap: 0.2rem !important;
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-        }
-
-        .action-btn {
-          padding: 0.3rem !important;
-          min-width: auto !important;
-          width: 32px !important;
-          height: 32px !important;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        /* Process Row Styling - MEDIUM COMPACT */
+        /* Removed to match FacilityMaster styling */
         }
 
         .action-btn .pi {

@@ -548,12 +548,25 @@ const EmpAccessRights = () => {
                     />
                   </div>
                   <div className="col-md-3">
+                    <style>
+                      {`
+                        .search-btn {
+                          background-color: #1C1D20 !important;
+                          border-color: #1C1D20 !important;
+                          transition: background-color 0.3s, border-color 0.3s;
+                        }
+                        .search-btn:hover {
+                          background-color: #0d6efd !important;
+                          border-color: #0d6efd !important;
+                        }
+                      `}
+                    </style>
                     <Button
                       label="Search"
                       icon="pi pi-search"
                       onClick={handleSearch}
                       loading={loading}
-                      className="w-100"
+                      className="w-100 btn btn-primary search-btn"
                     />
                   </div>
                 </div>
