@@ -598,8 +598,7 @@ const FeedbackMaster = () => {
         }
 
         .p-dropdown-panel {
-          z-index: 1100 !important;
-          position: fixed !important;
+          z-index: 99999 !important;
         }
 
         .sidebar-responsive {
@@ -781,8 +780,7 @@ const FeedbackMaster = () => {
 
         .p-dialog .p-dropdown-panel,
         .offcanvas .p-dropdown-panel {
-          z-index: 11000 !important;
-          position: fixed !important;
+          z-index: 99999 !important;
         }
 
         .offcanvas-body .p-dropdown,
