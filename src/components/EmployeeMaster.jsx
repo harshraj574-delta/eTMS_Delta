@@ -116,7 +116,7 @@ const EmployeeMaster = () => {
             <Sidebar />
             <div className="middle">
                 <div className="row">
-                    <div className="col-12 col-lg-8">
+                    <div className="col-12 col-lg-12">
                         <div className="card_tb p-3 mb-3">
                             <div className="row g-2">
                                 <div className="col-12 col-sm-6 col-md-3 col-lg-5">

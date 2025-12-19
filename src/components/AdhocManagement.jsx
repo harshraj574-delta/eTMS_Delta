@@ -23,6 +23,7 @@ import TripTypeBadge from "./common/TripTypeBadge";
 import StatusBadge from "./common/StatusBadge";
 import TabSwitcher from "./common/TabSwitcher";
 import trashIcon from "../assets/trash-can-outline.png";
+import AnimatedCounter from "./common/AnimatedCounter";
 const AdhocManagement = () => {
   const [adhocData, setAdhocData] = useState([]);
   const [managerData, setManagerData] = useState([]);
@@ -676,37 +677,37 @@ const AdhocManagement = () => {
         <div className="row mt-3">
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark">{totalAdhocs}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark"><AnimatedCounter value={totalAdhocs} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Total Adhocs</span>
             </div>
           </div>
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark">{myRequests}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark"><AnimatedCounter value={myRequests} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>My Requests</span>
             </div>
           </div>
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-warning">{pending}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-warning"><AnimatedCounter value={pending} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Pendings</span>
             </div>
           </div>
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-success">{approved}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-success"><AnimatedCounter value={approved} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Approved</span>
             </div>
           </div>
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-danger">{rejected}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-danger"><AnimatedCounter value={rejected} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Rejected</span>
             </div>
           </div>
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-danger">{cancelled}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-danger"><AnimatedCounter value={cancelled} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Cancelled</span>
             </div>
           </div>
@@ -897,6 +898,7 @@ const AdhocManagement = () => {
                     <Column field="RaisedBy" header="Raised By"></Column>
                     <Column field="adhocreason" header="Reason"></Column>
                     <Column field="AprovedBy" header="Approved"></Column>
+                    <Column field="" header="Action" body={deleteBtn}></Column>
 
                   </CustomDataTable>
                   <CustomPaginator

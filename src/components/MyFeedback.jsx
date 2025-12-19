@@ -29,6 +29,7 @@ import { ToastContainer } from "react-toastify";
 import CustomPaginator from "./common/CustomPaginator";
 import ChatIcon from "./common/ChatIcon";
 import TabSwitcher from "./common/TabSwitcher";
+import AnimatedCounter from "./common/AnimatedCounter";
 const MyFeedback = () => {
   const [feedbackData, setFeedbackData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -502,19 +503,19 @@ const MyFeedback = () => {
         <div className="row mt-3">
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark">{feedbackCount.total}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark"><AnimatedCounter value={feedbackCount.total} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Total Feedbacks</span>
             </div>
           </div>
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-warning">{feedbackCount.open}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-warning"><AnimatedCounter value={feedbackCount.open} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Open Tickets</span>
             </div>
           </div>
           <div className="col">
             <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark text-opacity-50">{feedbackCount.closed}</h3>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark text-opacity-50"><AnimatedCounter value={feedbackCount.closed} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Closed Tickets</span>
             </div>
           </div>
