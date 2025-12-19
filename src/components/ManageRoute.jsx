@@ -16,6 +16,7 @@ import { Column } from "primereact/column";
 import { Toast } from "primereact/toast";
 import { Calendar } from "primereact/calendar";
 import calendarIcon from "../assets/calendar.png";
+import noReportImage from "../assets/no_report.png";
 import ManageRouteService from "../services/compliance/ManageRouteService";
 import { toastService } from "../services/toastService";
 import OffcanvasRouteDetails from "./OffcanvasRouteDetails";
@@ -49,6 +50,7 @@ import {
 } from "@dnd-kit/core";
 import SwipeToDeleteBackground from "./SwipeToDeleteBackground";
 import Draggable from 'react-draggable';
+import ReportButton from "./common/ReportButton";
 
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 const getOrdinalSuffix = (num) => {
@@ -138,30 +140,32 @@ const PanelContent = React.memo(function PanelContent({
         }}
       >
         <div style={{ display: "flex", gap: "8px" }}>
-          <Button
-            label="Move Employees"
-            icon={isHeld ? "pi pi-lock" : "pi pi-arrows-alt"}
-            className={`p-button-sm ${isHeld ? "p-button-primary" : "p-button-outlined"
-              }`}
+          <button
+            className={`btn btn-sm ${isHeld ? "btn-primary" : "btn-outline-primary"} d-flex align-items-center gap-2`}
             onClick={onToggleHold}
             disabled={selectedEmployees.size === 0}
-          />
-          <Button
-            label="Split Route"
-            icon="pi pi-sitemap"
-            className="p-button-sm p-button-info"
+          >
+            <i className={isHeld ? "pi pi-lock" : "pi pi-arrows-alt"}></i>
+            Move Employees
+          </button>
+          <button
+            className="btn btn-sm btn-primary d-flex align-items-center gap-2"
             onClick={onSplitRoute}
             disabled={!allFromSameRoute || selectedEmployees.size === 0}
-          />
+          >
+            <i className="pi pi-sitemap"></i>
+            Split Route
+          </button>
         </div>
 
-        <Button
-          icon="pi pi-times"
-          className="p-button-rounded p-button-danger p-button-sm"
+        <button
+          className="btn btn-danger btn-sm rounded-circle d-flex align-items-center justify-content-center p-0"
           onClick={onClearSelection}
-          tooltip="Close"
-          tooltipOptions={{ position: "left" }}
-        />
+          title="Close"
+          style={{ width: '30px', height: '30px' }}
+        >
+          <i className="pi pi-times"></i>
+        </button>
       </div>
 
       {/* Scrollable Content */}
@@ -462,22 +466,24 @@ const FloatingRouteSelectionPanel = React.memo(
           }}
         >
           <div style={{ display: "flex", gap: "8px" }}>
-            <Button
-              label="Merge Routes"
-              icon="pi pi-sitemap"
-              className="p-button-sm p-button-success"
+            <button
+              className="btn btn-sm btn-success d-flex align-items-center gap-2"
               onClick={onMergeRoutes}
               disabled={selectedRoutes.size < 2}
-            />
+            >
+              <i className="pi pi-sitemap"></i>
+              Merge Routes
+            </button>
           </div>
 
-          <Button
-            icon="pi pi-times"
-            className="p-button-rounded p-button-danger p-button-sm"
+          <button
+            className="btn btn-danger btn-sm rounded-circle d-flex align-items-center justify-content-center p-0"
             onClick={onClearSelection}
-            tooltip="Close"
-            tooltipOptions={{ position: "left" }}
-          />
+            title="Close"
+            style={{ width: '30px', height: '30px' }}
+          >
+            <i className="pi pi-times"></i>
+          </button>
         </div>
 
         {/* Scrollable Content - Same styling as FloatingSelectionPanel */}
@@ -985,6 +991,10 @@ const ManageRoute = () => {
   const [routesToUnlock, setRoutesToUnlock] = useState(new Set());
   const [showUnlockConfirmDialog, setShowUnlockConfirmDialog] = useState(false);
   const [pendingUnlock, setPendingUnlock] = useState(null);
+
+  // New state for initial no data report
+  const [hasSearched, setHasSearched] = useState(false);
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1539,6 +1549,7 @@ const ManageRoute = () => {
       setTableData([]);
       setStatsDetails([]);
       setRouteDetails({});
+      setHasSearched(true); // Set hasSearched to true when search/submit is clicked
       setIsShiftLocked(false);
       setIsUnlockMode(false);
       setRoutesToUnlock(new Set());
@@ -1703,6 +1714,8 @@ const ManageRoute = () => {
   const handleRouteIdClick = useCallback(
     async (clickedRouteId) => {
       setIsSubmitting(true);
+      setHasSearched(true); // Ensure image is hidden when clicking a route ID
+
 
       try {
         const inputJsonResponse =
@@ -3329,6 +3342,7 @@ const ManageRoute = () => {
       const parsedResponse =
         typeof response === "string" ? JSON.parse(response) : response;
       setTableData(parsedResponse || []);
+      setHasSearched(true);
 
       const params = {
         sdate: shiftDate,
@@ -3856,13 +3870,11 @@ const ManageRoute = () => {
                     />
                   </div>
                   <div className="col no-label">
-                    <button
-                      className="btn btn-dark p-button p-component"
+                    <ReportButton
+                      label="Search"
                       onClick={handleSubmit}
                       disabled={isLoading}
-                    >
-                      Search
-                    </button>
+                    />
                   </div>
                 </div>
               </div>
@@ -4060,6 +4072,30 @@ const ManageRoute = () => {
           <div className="row">
             <div className="col-12">
               <div className="card_tb">
+                {!hasSearched ? (
+                  <div
+                    className="d-flex flex-column align-items-center justify-content-center p-5"
+                    style={{ minHeight: "70vh" }}
+                  >
+                    <img
+                      src={noReportImage}
+                      alt="No Report Selected"
+                      style={{
+                        maxWidth: "100px",
+                        opacity: 0.5,
+                        marginBottom: "1rem",
+                      }}
+                    />
+                    <p
+                      className="text-muted mb-0"
+                      style={{ fontSize: "0.9rem" }}
+                    >
+                      Please select above parameters to Generate Routes
+                    </p>
+                  </div>
+                ) : (
+                  <>
+
                 <div className="row">
                   <div className="col-12 text-end d-flex justify-content-end">
                     <a
@@ -4318,6 +4354,8 @@ const ManageRoute = () => {
                   />
                 </DataTable>
                 <Tooltip target="[data-pr-tooltip]" />
+                </>
+                )}
               </div>
             </div>
           </div>
@@ -4399,14 +4437,12 @@ const ManageRoute = () => {
               <Button
                 label="No"
                 onClick={() => setShowGenerateRouteDialog(false)}
-                severity="secondary"
-                raised
+                className="btn btn-outline-dark"
               />
               <Button
                 label="Yes"
                 onClick={handleGenerateRoute}
-                severity="primary"
-                raised
+                className="btn btn-primary"
               />
             </div>
           }
@@ -4454,21 +4490,21 @@ const ManageRoute = () => {
           modal
           footer={
             <>
-              <Button
-                label="Cancel"
-                onClick={cancelDragDropOperation}
+              <button
                 className="btn btn-outline-dark"
-              />
-              <Button
-                label={
-                  pendingDragOperation?.isSameRouteReorder
-                    ? "Confirm Reorder"
-                    : "Confirm Move"
-                }
+                onClick={cancelDragDropOperation}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-dark ms-3"
                 onClick={confirmDragDropOperation}
                 disabled={isLoading}
-                className="btn btn-dark ms-3"
-              />
+              >
+                {pendingDragOperation?.isSameRouteReorder
+                  ? "Confirm Reorder"
+                  : "Confirm Move"}
+              </button>
             </>
           }
         >

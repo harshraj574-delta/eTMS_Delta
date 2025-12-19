@@ -14,6 +14,7 @@ import sessionManager from "../utils/SessionManager.js";
 import { vendorAllocationService } from "../services/compliance/VendorAllocationService.js";
 import { toastService } from "../services/toastService.js";
 import { ToastContainer } from "react-toastify";
+import ReportButton from "./common/ReportButton";
 
 
 const VendorAllocation = () => {
@@ -391,10 +392,10 @@ const VendorAllocation = () => {
               />
             </div>
             <div className="field col-2 mb-3 no-label">
-              <Button
+              <ReportButton
                 label="Show"
-                className="btn btn-dark p-button p-component"
                 onClick={() => handleShowData()}
+                disabled={isSubmitting}
               />
             </div>
           </div>

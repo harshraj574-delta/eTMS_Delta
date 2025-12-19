@@ -13,6 +13,7 @@ import "./common/CustomDataTable.css";
 import { MultiSelect } from "primereact/multiselect";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
+import ReportButton from "./common/ReportButton";
 
 const VehicleUtilizationReport = () => {
   const [facilities, setFacilities] = useState([]);
@@ -48,17 +49,17 @@ const VehicleUtilizationReport = () => {
 
     // Apply Advanced Filters
     if (filters.Vendor && filters.Vendor.length > 0) {
-        filtered = filtered.filter(item => filters.Vendor.includes(item.Vendor));
+      filtered = filtered.filter(item => filters.Vendor.includes(item.Vendor));
     }
 
     // Apply Global Search
     if (globalFilter && globalFilter.trim() !== "") {
-        const searchLower = globalFilter.toLowerCase();
-        filtered = filtered.filter(item => 
-            Object.values(item).some(val => 
-                val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
-            )
-        );
+      const searchLower = globalFilter.toLowerCase();
+      filtered = filtered.filter(item =>
+        Object.values(item).some(val =>
+          val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
+        )
+      );
     }
 
     const grouped = groupDataByDateVendorVehicle(filtered);
@@ -94,9 +95,9 @@ const VehicleUtilizationReport = () => {
         typeof response === "string" ? JSON.parse(response) : response;
       const formattedData = Array.isArray(parsedResponse)
         ? parsedResponse.map((item) => ({
-            label: item.facility || item.facilityName,
-            value: item.Id,
-          }))
+          label: item.facility || item.facilityName,
+          value: item.Id,
+        }))
         : [];
       setFacilities(formattedData);
     } catch (error) {
@@ -165,24 +166,24 @@ const VehicleUtilizationReport = () => {
       const actOccPer =
         dateGroup.TotalCapacity > 0
           ? ((dateGroup.ActTotalEmps / dateGroup.TotalCapacity) * 100).toFixed(
-              2
-            )
+            2
+          )
           : 0;
 
       const vendors = Object.values(dateGroup.vendors).map((vendorGroup) => {
         const vPlanUtilPer =
           vendorGroup.TotalCapacity > 0
             ? (
-                (vendorGroup.TotalEmps / vendorGroup.TotalCapacity) *
-                100
-              ).toFixed(2)
+              (vendorGroup.TotalEmps / vendorGroup.TotalCapacity) *
+              100
+            ).toFixed(2)
             : 0;
         const vActOccPer =
           vendorGroup.TotalCapacity > 0
             ? (
-                (vendorGroup.ActTotalEmps / vendorGroup.TotalCapacity) *
-                100
-              ).toFixed(2)
+              (vendorGroup.ActTotalEmps / vendorGroup.TotalCapacity) *
+              100
+            ).toFixed(2)
             : 0;
 
         return {
@@ -425,15 +426,6 @@ const VehicleUtilizationReport = () => {
                 <div className="col-12 col-sm-6 col-md-3 col-lg-2 d-flex align-items-end">
                   <style>
                     {`
-                      .run-report-btn {
-                        background-color: #1C1D20 !important;
-                        border-color: #1C1D20 !important;
-                        transition: background-color 0.3s, border-color 0.3s;
-                      }
-                      .run-report-btn:hover {
-                        background-color: #0d6efd !important;
-                        border-color: #0d6efd !important;
-                      }
                       .custom-calendar-wrapper {
                         position: relative;
                         width: 100%;
@@ -461,9 +453,8 @@ const VehicleUtilizationReport = () => {
                       }
                     `}
                   </style>
-                  <Button
+                  <ReportButton
                     label="Run Report"
-                    className="btn btn-primary w-100 run-report-btn"
                     onClick={handleSearch}
                     disabled={isSubmitting}
                   />
@@ -517,7 +508,7 @@ const VehicleUtilizationReport = () => {
                       ).length
                     }
                   >
-                     <div className="p-3">
+                    <div className="p-3">
                       <div className="row g-3">
                         <div className="col-12">
                           <label className="fw-bold mb-1">Vendor</label>
@@ -553,25 +544,25 @@ const VehicleUtilizationReport = () => {
                         <thead className="table-light">
                           <tr>
                             <th style={{ width: "40px" }}></th>
-                            <th className="text-center">Shift Date</th>
-                            <th className="text-center">Vendor</th>
-                            <th className="text-center d-none d-md-table-cell">
+                            <th className="text-center"> Date</th>
+                            {/* <th className="text-center">Vendor</th> */}
+                            {/* <th className="text-center d-none d-md-table-cell">
                               Vehicle Type
-                            </th>
+                            </th> */}
                             <th className="text-center">Total Trips</th>
                             <th className="text-center d-none d-lg-table-cell">
                               Total Capacity
                             </th>
                             <th className="text-center d-none d-md-table-cell">
-                              Employee Scheduled
-                            </th>
-                            <th className="text-center d-none d-xl-table-cell">
-                              Planned Utilization%
+                              Employees Scheduled
                             </th>
                             <th className="text-center d-none d-lg-table-cell">
                               Actual Employees Boarded
                             </th>
-                            <th className="text-center">Actual Occupancy %</th>
+                            <th className="text-center d-none d-xl-table-cell">
+                              Utilization%
+                            </th>
+                            <th className="text-center"> Occupancy %</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -607,8 +598,8 @@ const VehicleUtilizationReport = () => {
                                 <td className="text-center fw-bold">
                                   {dateRow.shiftDate}
                                 </td>
-                                <td className="text-center"></td>
-                                <td className="text-center d-none d-md-table-cell"></td>
+                                {/* <td className="text-center"></td>
+                                <td className="text-center d-none d-md-table-cell"></td> */}
                                 <td className="text-center fw-bold">
                                   {dateRow.TotalRoutes}
                                 </td>
@@ -618,12 +609,13 @@ const VehicleUtilizationReport = () => {
                                 <td className="text-center fw-bold d-none d-md-table-cell">
                                   {dateRow.TotalEmps}
                                 </td>
-                                <td className="text-center fw-bold d-none d-xl-table-cell">
-                                  {dateRow.PlanOccPer}
-                                </td>
                                 <td className="text-center fw-bold d-none d-lg-table-cell">
                                   {dateRow.ActTotalEmps}
                                 </td>
+                                <td className="text-center fw-bold d-none d-xl-table-cell">
+                                  {dateRow.PlanOccPer}
+                                </td>
+
                                 <td className="text-center fw-bold">
                                   {dateRow.ActOccPer}
                                 </td>
@@ -645,15 +637,16 @@ const VehicleUtilizationReport = () => {
                                                 Total Capacity
                                               </th>
                                               <th className="d-none d-md-table-cell">
-                                                Employee Scheduled
-                                              </th>
-                                              <th className="d-none d-xl-table-cell">
-                                                Planned Utilization%
+                                                Employees Scheduled
                                               </th>
                                               <th className="d-none d-lg-table-cell">
                                                 Actual Employees Boarded
                                               </th>
-                                              <th>Actual Occupancy %</th>
+                                              <th className="d-none d-xl-table-cell">
+                                                Utilization%
+                                              </th>
+
+                                              <th> Occupancy %</th>
                                             </tr>
                                           </thead>
                                           <tbody>
@@ -713,14 +706,15 @@ const VehicleUtilizationReport = () => {
                                                     <td className="fw-bold d-none d-md-table-cell">
                                                       {vendorRow.TotalEmps}
                                                     </td>
-                                                    <td className="fw-bold d-none d-xl-table-cell">
-                                                      {vendorRow.PlanOccPer}
-                                                    </td>
                                                     <td className="fw-bold d-none d-lg-table-cell">
                                                       {
                                                         vendorRow.ActTotalEmps
                                                       }
                                                     </td>
+                                                    <td className="fw-bold d-none d-xl-table-cell">
+                                                      {vendorRow.PlanOccPer}
+                                                    </td>
+
                                                     <td className="fw-bold">
                                                       {vendorRow.ActOccPer}
                                                     </td>
@@ -730,105 +724,103 @@ const VehicleUtilizationReport = () => {
                                                   {expandedVendorRows[
                                                     dateIndex
                                                   ]?.includes(vendorIndex) && (
-                                                    <tr>
-                                                      <td
-                                                        colSpan="8"
-                                                        className="leftStrip p-2"
-                                                      >
-                                                        <div className="expanded-content">
-                                                          <div className="table-responsive">
-                                                            <table className="table table-sm table-bordered mb-0">
-                                                              <thead>
-                                                                <tr>
-                                                                  <th>
-                                                                    Vehicle
-                                                                    Type
-                                                                  </th>
-                                                                  <th>
-                                                                    Total
-                                                                    Trips
-                                                                  </th>
-                                                                  <th className="d-none d-lg-table-cell">
-                                                                    Total
-                                                                    Capacity
-                                                                  </th>
-                                                                  <th className="d-none d-md-table-cell">
-                                                                    Employee
-                                                                    Scheduled
-                                                                  </th>
-                                                                  <th className="d-none d-xl-table-cell">
-                                                                    Planned
-                                                                    Utilization%
-                                                                  </th>
-                                                                  <th className="d-none d-lg-table-cell">
-                                                                    Actual
-                                                                    Employees
-                                                                    Boarded
-                                                                  </th>
-                                                                  <th>
-                                                                    Actual
-                                                                    Occupancy
-                                                                    %
-                                                                  </th>
-                                                                </tr>
-                                                              </thead>
-                                                              <tbody>
-                                                                {vendorRow.vehicles.map(
-                                                                  (
-                                                                    vehicleRow,
-                                                                    vehicleIndex
-                                                                  ) => (
-                                                                    <tr
-                                                                      key={
-                                                                        vehicleIndex
-                                                                      }
-                                                                      className={`${vehicleIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}
-                                                                    >
-                                                                      <td>
-                                                                        {
-                                                                          vehicleRow.vehicleType
+                                                      <tr>
+                                                        <td
+                                                          colSpan="8"
+                                                          className="leftStrip p-2"
+                                                        >
+                                                          <div className="expanded-content">
+                                                            <div className="table-responsive">
+                                                              <table className="table table-sm table-bordered mb-0">
+                                                                <thead>
+                                                                  <tr>
+                                                                    <th>
+                                                                      Vehicle
+                                                                      Type
+                                                                    </th>
+                                                                    <th>
+                                                                      Total
+                                                                      Trips
+                                                                    </th>
+                                                                    <th className="d-none d-lg-table-cell">
+                                                                      Total
+                                                                      Capacity
+                                                                    </th>
+                                                                    <th className="d-none d-md-table-cell">
+                                                                      Employee
+                                                                      Scheduled
+                                                                    </th>
+                                                                    <th className="d-none d-lg-table-cell">
+                                                                      Actual
+                                                                      Employees
+                                                                      Boarded
+                                                                    </th>
+                                                                    <th className="d-none d-xl-table-cell">
+                                                                      Utilization%
+                                                                    </th>
+                                                                    <th>
+                                                                      Occupancy
+                                                                      %
+                                                                    </th>
+                                                                  </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                  {vendorRow.vehicles.map(
+                                                                    (
+                                                                      vehicleRow,
+                                                                      vehicleIndex
+                                                                    ) => (
+                                                                      <tr
+                                                                        key={
+                                                                          vehicleIndex
                                                                         }
-                                                                      </td>
-                                                                      <td>
-                                                                        {
-                                                                          vehicleRow.TotalRoutes
-                                                                        }
-                                                                      </td>
-                                                                      <td className="d-none d-lg-table-cell">
-                                                                        {
-                                                                          vehicleRow.TotalCapacity
-                                                                        }
-                                                                      </td>
-                                                                      <td className="d-none d-md-table-cell">
-                                                                        {
-                                                                          vehicleRow.TotalEmps
-                                                                        }
-                                                                      </td>
-                                                                      <td className="d-none d-xl-table-cell">
-                                                                        {vehicleRow.PlanOccPer?.toFixed(
-                                                                          2
-                                                                        )}
-                                                                      </td>
-                                                                      <td className="d-none d-lg-table-cell">
-                                                                        {
-                                                                          vehicleRow.ActTotalEmps
-                                                                        }
-                                                                      </td>
-                                                                      <td>
-                                                                        {vehicleRow.ActOccPer?.toFixed(
-                                                                          2
-                                                                        )}
-                                                                      </td>
-                                                                    </tr>
-                                                                  )
-                                                                )}
-                                                              </tbody>
-                                                            </table>
+                                                                        className={`${vehicleIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}
+                                                                      >
+                                                                        <td>
+                                                                          {
+                                                                            vehicleRow.vehicleType
+                                                                          }
+                                                                        </td>
+                                                                        <td>
+                                                                          {
+                                                                            vehicleRow.TotalRoutes
+                                                                          }
+                                                                        </td>
+                                                                        <td className="d-none d-lg-table-cell">
+                                                                          {
+                                                                            vehicleRow.TotalCapacity
+                                                                          }
+                                                                        </td>
+                                                                        <td className="d-none d-md-table-cell">
+                                                                          {
+                                                                            vehicleRow.TotalEmps
+                                                                          }
+                                                                        </td>
+                                                                        <td className="d-none d-lg-table-cell">
+                                                                          {
+                                                                            vehicleRow.ActTotalEmps
+                                                                          }
+                                                                        </td>
+                                                                        <td className="d-none d-xl-table-cell">
+                                                                          {vehicleRow.PlanOccPer?.toFixed(
+                                                                            2
+                                                                          )}
+                                                                        </td>
+                                                                        <td>
+                                                                          {vehicleRow.ActOccPer?.toFixed(
+                                                                            2
+                                                                          )}
+                                                                        </td>
+                                                                      </tr>
+                                                                    )
+                                                                  )}
+                                                                </tbody>
+                                                              </table>
+                                                            </div>
                                                           </div>
-                                                        </div>
-                                                      </td>
-                                                    </tr>
-                                                  )}
+                                                        </td>
+                                                      </tr>
+                                                    )}
                                                 </React.Fragment>
                                               )
                                             )}

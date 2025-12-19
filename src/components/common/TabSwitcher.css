@@ -12,7 +12,7 @@
   background: #FFFFFF;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  width: 318px;
+  width: fit-content;
   height: 40px;
 }
 
@@ -23,7 +23,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 10px;
+  padding: 8px 24px;
   height: 32px;
   border: none;
   border-radius: 8px;
@@ -36,7 +36,8 @@
   background-color: transparent;
   color: #1C1D20;
   outline: none;
-  width: 152px;
+  width: auto;
+  min-width: 152px;
 }
 
 .tab-item:hover:not(.active) {
@@ -108,7 +109,7 @@
 }
 
 .tab-switcher-medium .tab-item {
-  padding: 8px 10px;
+  padding: 8px 24px;
   height: 32px;
   font-size: 0.875rem;
 }
@@ -178,6 +179,8 @@
     font-size: 0.8125rem;
     height: 30px;
     padding: 6px 8px;
+    width: 140px;
+    min-width: 140px;
   }
 
   .tab-count {
@@ -212,6 +215,8 @@
     font-size: 0.75rem;
     padding: 6px 8px;
     height: 28px;
+    width: 120px;
+    min-width: 120px;
   }
 
   .tab-count {

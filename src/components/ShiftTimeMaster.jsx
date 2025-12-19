@@ -593,11 +593,6 @@ const ShiftTimeMaster = () => {
             </div>
           </div>
         </div>
-import MasterSidebar from "./Master/MasterSidebar";
-
-// ... (keep existing imports, remove PrimeSidebar if unused, but replace_file_content works on blocks. I will just replace the import line)
-
-// ...
 
         <MasterSidebar
           show={sidebarVisible}
@@ -621,6 +616,7 @@ import MasterSidebar from "./Master/MasterSidebar";
             </div>
           }
         >
+        <div className="p-3">
           <div className="row">
             <div className="col-3 mb-3">
               <label>Process</label>
@@ -724,6 +720,7 @@ import MasterSidebar from "./Master/MasterSidebar";
               </table>
             </div>
           </div>
+        </div>
         </MasterSidebar>
         <Dialog
           visible={showStatusDialog}

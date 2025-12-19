@@ -18,6 +18,11 @@ import Loader from "./common/Loader";
 import TableToolbar from "./common/TableToolbar";
 import { ToastContainer } from "react-toastify";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
+import TripTypeBadge from "./common/TripTypeBadge";
+import StatusBadge from "./common/StatusBadge";
+import TabSwitcher from "./common/TabSwitcher";
+import trashIcon from "../assets/trash-can-outline.png";
 const AdhocManagement = () => {
   const [adhocData, setAdhocData] = useState([]);
   const [managerData, setManagerData] = useState([]);
@@ -34,7 +39,7 @@ const AdhocManagement = () => {
   const [pending, setPending] = useState(0);
   const [rejected, setRejected] = useState(0);
   const [cancelled, setCancelled] = useState(0); // Initialize cancelled to 0
-  const [adhocFilter, setAdhocFilter] = useState("total"); // NEW: filter state
+  const [adhocFilter, setAdhocFilter] = useState("pending"); // NEW: filter state
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -64,6 +69,16 @@ const AdhocManagement = () => {
     Status: null,
     adhocreason: null,
   });
+
+  // Pagination state
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+      setFirst(event.first);
+      setRows(event.rows);
+  };
+
   const op = useRef(null);
   const filterButtonRef = useRef(null);
 
@@ -93,6 +108,12 @@ const AdhocManagement = () => {
       adhocreason: null,
     });
   };
+
+  const tabs = [
+    { label: "Pending Adhoc Requests", value: "pending" },
+    { label: "Approved Adhoc Requests", value: "approved" },
+    { label: "Adhoc History", value: "total" },
+  ];
 
   // Update the reason dropdown component
   // const handleRequestTypeChange = (e) => {
@@ -508,10 +529,12 @@ const AdhocManagement = () => {
     if (isCancelEnabled(rowData)) {
       return (
         <div className="action_btn">
-          <Button
-            label="Delete"
-            icon="pi pi-trash"
-            className="p-button-danger"
+          <img
+            src={trashIcon}
+            alt="Delete"
+            className="action-icon delete"
+            title="Delete"
+            style={{ width: '22px', height: '22px', cursor: 'pointer' }}
             onClick={() => showDeleteConfirm(rowData)}
           />
         </div>
@@ -652,147 +675,51 @@ const AdhocManagement = () => {
         </div> */}
         <div className="row mt-3">
           <div className="col">
-            <div
-              className={`cardNew p-4 ${adhocFilter === "total" ? "bg-secondary text-white" : "bg-white"
-                }`}
-              style={{ cursor: "pointer" }}
-              onClick={() => setAdhocFilter("total")}
-            >
-              <h3
-                className={adhocFilter === "total" ? "text-white" : "text-dark"}
-              >
-                {totalAdhocs}
-              </h3>
-              <span
-                className={`subtitle_sm ${adhocFilter === "total" ? "text-white" : "text-dark"
-                  }`}
-              >
-                Total Adhocs
-              </span>
+            <div className="cardNew p-4 bg-white">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark">{totalAdhocs}</h3>
+              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Total Adhocs</span>
             </div>
           </div>
           <div className="col">
-            <div
-              className={`cardNew p-4 ${adhocFilter === "myRequests"
-                ? "bg-secondary text-white"
-                : "bg-white"
-                }`}
-              style={{ cursor: "pointer" }}
-              onClick={() => setAdhocFilter("myRequests")}
-            >
-              <h3>
-                <strong
-                  className={
-                    adhocFilter === "myRequests" ? "text-white" : "text-dark"
-                  }
-                >
-                  {myRequests}
-                </strong>
-              </h3>
-              <span
-                className={`subtitle_sm ${adhocFilter === "myRequests" ? "text-white" : "text-dark"
-                  }`}
-              >
-                My Requests
-              </span>
+            <div className="cardNew p-4 bg-white">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark">{myRequests}</h3>
+              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>My Requests</span>
             </div>
           </div>
           <div className="col">
-            <div
-              className={`cardNew p-4 ${adhocFilter === "pending"
-                ? "bg-secondary text-white"
-                : "bg-white"
-                }`}
-              style={{ cursor: "pointer" }}
-              onClick={() => setAdhocFilter("pending")}
-            >
-              <h3
-                className={
-                  adhocFilter === "pending" ? "text-white" : "text-warning"
-                }
-              >
-                {pending}
-              </h3>
-              <span
-                className={`subtitle_sm ${adhocFilter === "pending" ? "text-white" : "text-dark"
-                  }`}
-              >
-                Pendings
-              </span>
+            <div className="cardNew p-4 bg-white">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-warning">{pending}</h3>
+              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Pendings</span>
             </div>
           </div>
           <div className="col">
-            <div
-              className={`cardNew p-4 ${adhocFilter === "approved"
-                ? "bg-secondary text-white"
-                : "bg-white"
-                }`}
-              style={{ cursor: "pointer" }}
-              onClick={() => setAdhocFilter("approved")}
-            >
-              <h3
-                className={
-                  adhocFilter === "approved" ? "text-white" : "text-success"
-                }
-              >
-                {approved}
-              </h3>
-              <span
-                className={`subtitle_sm ${adhocFilter === "approved" ? "text-white" : "text-dark"
-                  }`}
-              >
-                Approved
-              </span>
+            <div className="cardNew p-4 bg-white">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-success">{approved}</h3>
+              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Approved</span>
             </div>
           </div>
           <div className="col">
-            <div
-              className={`cardNew p-4 ${adhocFilter === "rejected"
-                ? "bg-secondary text-white"
-                : "bg-white"
-                }`}
-              style={{ cursor: "pointer" }}
-              onClick={() => setAdhocFilter("rejected")}
-            >
-              <h3
-                className={
-                  adhocFilter === "rejected" ? "text-white" : "text-danger"
-                }
-              >
-                {rejected}
-              </h3>
-              <span
-                className={`subtitle_sm ${adhocFilter === "rejected" ? "text-white" : "text-dark"
-                  }`}
-              >
-                Rejected
-              </span>
+            <div className="cardNew p-4 bg-white">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-danger">{rejected}</h3>
+              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Rejected</span>
             </div>
           </div>
           <div className="col">
-            <div
-              className={`cardNew p-4 ${adhocFilter === "cancelled"
-                ? "bg-secondary text-white"
-                : "bg-white"
-                }`}
-              style={{ cursor: "pointer" }}
-              onClick={() => setAdhocFilter("cancelled")}
-            >
-              <h3
-                className={
-                  adhocFilter === "cancelled" ? "text-white" : "text-danger"
-                }
-              >
-                {cancelled}
-              </h3>
-              <span
-                className={`subtitle_sm ${adhocFilter === "cancelled" ? "text-white" : "text-dark"
-                  }`}
-              >
-                Cancelled
-              </span>
+            <div className="cardNew p-4 bg-white">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-danger">{cancelled}</h3>
+              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Cancelled</span>
             </div>
           </div>
+        </div>
+
+        <div className="row mt-4">
+            <div className="col-12">
+                <TabSwitcher
+                    tabs={tabs}
+                    activeTab={adhocFilter}
+                    onTabChange={setAdhocFilter}
+                />
+            </div>
         </div>
 
         <div className="row">
@@ -951,28 +878,35 @@ const AdhocManagement = () => {
               {loading ? (
                 <div>Loading...</div>
               ) : filteredAdhocData.length > 0 ? (
-                <CustomDataTable
-                  value={filteredAdhocData}
-                  paginator
-                  rows={10}
-                  rowsPerPageOptions={[5, 10, 25, 50]}
-                  loading={loading}
-                  emptyMessage="No Record Found"
-                  rowClassName={(data, props) => props.rowIndex % 2 !== 0 ? "ota-row-odd" : ""}
-                >
-                  <Column sortable field="adhocid" header="Adhoc ID"></Column>
-                  <Column field="empCode" header="EmployeeID"></Column>
-                  <Column field="empName" header="Employee Name"></Column>
-                  <Column field="AdhocDate" header="Shift Date"></Column>
-                  <Column field="ShiftTime" header="Shift"></Column>
-                  <Column field="TripType" header="Trip Type"></Column>
-                  <Column field="facilityName" header="Facility"></Column>
-                  <Column field="Status" header="Status"></Column>
-                  <Column field="RaisedBy" header="Raised By"></Column>
-                  <Column field="adhocreason" header="Reason"></Column>
-                  <Column field="AprovedBy" header="Approved"></Column>
-                  <Column field="" header="Action" body={deleteBtn}></Column>
-                </CustomDataTable>
+                <>
+                  <CustomDataTable
+                    value={filteredAdhocData.slice(first, first + rows)}
+                    loading={loading}
+                    emptyMessage="No Record Found"
+                    className="p-datatable-sm"
+                    rowClassName={(data, props) => props.rowIndex % 2 !== 0 ? "ota-row-odd" : ""}
+                  >
+                    <Column sortable field="adhocid" header="Adhoc ID"></Column>
+                    <Column field="empCode" header="EmployeeID"></Column>
+                    <Column field="empName" header="Employee Name"></Column>
+                    <Column field="AdhocDate" header="Shift Date" body={(rowData) => new Date(rowData.AdhocDate).toLocaleDateString()}></Column>
+                    <Column field="ShiftTime" header="Shift"></Column>
+                    <Column field="TripType" header="Trip Type" body={(rowData) => <TripTypeBadge type={rowData.TripType} />}></Column>
+                    <Column field="facilityName" header="Facility"></Column>
+                    <Column field="Status" header="Status" align="center" body={(rowData) => <StatusBadge status={rowData.Status} />}></Column>
+                    <Column field="RaisedBy" header="Raised By"></Column>
+                    <Column field="adhocreason" header="Reason"></Column>
+                    <Column field="AprovedBy" header="Approved"></Column>
+
+                  </CustomDataTable>
+                  <CustomPaginator
+                      first={first}
+                      rows={rows}
+                      totalRecords={filteredAdhocData.length}
+                      onPageChange={onPageChange}
+                      rowsPerPageOptions={[5, 10, 25, 50]}
+                  />
+                </>
               ) : (
                 <div>No Record Found</div>
               )}
@@ -993,10 +927,10 @@ const AdhocManagement = () => {
                 icon="pi pi-times"
                 className="p-button-rounded p-button-text text-white"
                 onClick={handleSidebarClose}
-                style={{ color: "white" }}
+                style={{ color: "white",  backgroundColor: "black" }}
               />
             </div>
-            <div className="sidebarBody p-3">
+            <div className="sidebarBody p-3" style={{ backgroundColor: "white" }}>
               <div className="row">
                 <div className="col-12">
                   <div className="row">

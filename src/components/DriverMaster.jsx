@@ -13,9 +13,11 @@ import { Sidebar as PrimeSidebar } from "primereact/sidebar";
 import { Checkbox } from "primereact/checkbox";
 import { Badge } from "primereact/badge";
 import { Toast } from "primereact/toast";
+import { ToastContainer } from "react-toastify";
 
 import sessionManager from "../utils/SessionManager";
 import driverMasterService from "../services/compliance/DriverMasterService";
+import ReportButton from "./common/ReportButton";
 
 const DriverMaster = () => {
   const toastRef = React.useRef(null);
@@ -340,6 +342,7 @@ const DriverMaster = () => {
         onNewButtonClick={openAddSidebar}
       />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">
@@ -373,11 +376,10 @@ const DriverMaster = () => {
                     filter
                   />
                 </div>
-                <div className="col-2">
-                  <Button
+                <div className="col-2 no-label">
+                  <ReportButton
                     label="Submit"
                     disabled={!selFacility && !selVendor}
-                    className="btn btn-dark no-label-prime"
                     onClick={fetchDriverDetails}
                   />
                 </div>
@@ -468,11 +470,12 @@ const DriverMaster = () => {
               <Button
                 icon="pi pi-times"
                 className="p-button-rounded p-button-text"
+                style={{ backgroundColor: "black" }}
                 onClick={() => setVisibleLeft(false)}
               />
             </div>
-            <div className="sidebarBody">
-              <div className="row">
+            <div className="sidebarBody" style={{ backgroundColor: "white" }} >
+              <div className="row" >
                 <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Personal Details</h6>
                 </div>
@@ -810,10 +813,11 @@ const DriverMaster = () => {
               <Button
                 icon="pi pi-times"
                 className="p-button-rounded p-button-text"
+                style={{ backgroundColor: "black" }}
                 onClick={() => setAddDriverMaster(false)}
               />
             </div>
-            <div className="sidebarBody">
+            <div className="sidebarBody" style={{ backgroundColor: "white" }}>
               <div className="row">
                 <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Personal Details</h6>

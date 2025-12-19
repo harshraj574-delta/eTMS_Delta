@@ -19,7 +19,9 @@ import { set } from "lodash";
 import TableToolbar from "./common/TableToolbar.jsx";
 import Loader from "./common/Loader.jsx";
 import { Calendar } from "primereact/calendar";
+import CustomPaginator from "./common/CustomPaginator";
 import calendarIcon from "../assets/calendar.png";
+import TripTypeBadge from "./common/TripTypeBadge";
 const formatDateTime = (dateStr, timeStr) => {
   if (!dateStr || !timeStr || timeStr === 'null' || timeStr.trim().toUpperCase() === 'N/A') {
     console.warn(`Skipping time parsing for 'N/A' or null`);
@@ -691,7 +693,8 @@ const MySchedule = () => {
       // console.log("Extracted Login Time:", loginTime);
       // console.log("Extracted Logout Time:", logoutTime);
       // 3. Get schedule and lock details
-      let scheduleData = await fetchEmployeeSchedule(employee.EmployeeID);
+      // 3. Get schedule and lock details
+      let scheduleData = await fetchEmployeeSchedule(employee.EmployeeID, selectedDate);
       let schedule = (scheduleData && scheduleData[0]) || {};
       const lockPickTime = new Date(lockDetails.pickLockDateTime);
       const lockDropTime = new Date(lockDetails.dropLockDateTime);
@@ -874,10 +877,10 @@ const MySchedule = () => {
 
       // 11. Fetch available shift times for dropdowns
       if (loginFacilityId) {
-        await fetchPickShiftTimes(employee.EmployeeID, loginFacilityId);
+        await fetchPickShiftTimes(employee.EmployeeID, loginFacilityId, selectedDate);
       }
       if (logoutFacilityId) {
-        await fetchDropShiftTimes(employee.EmployeeID, logoutFacilityId);
+        await fetchDropShiftTimes(employee.EmployeeID, logoutFacilityId, selectedDate);
       }
 
       // 12. Set dropdown values after a short delay (to ensure options are loaded)
@@ -1161,9 +1164,9 @@ const MySchedule = () => {
   //     console.error("Error handling employee shift click:", error);
   //   }
   // };
-  const fetchEmployeeSchedule = async (employeeId) => {
+  const fetchEmployeeSchedule = async (employeeId, shiftDate = null) => {
     try {
-      const fromDate = mainFromDate;
+      const fromDate = shiftDate || mainFromDate;
 
       // Call the API service
       const response = await apiService.GetOneEmployeeSchedule({
@@ -1237,18 +1240,19 @@ const MySchedule = () => {
 
     // If we have an employee schedule, fetch the shift times for the selected employee with the new facility
     if (employeeSchedule && employeeSchedule.length > 0) {
-      await fetchPickShiftTimes(employeeSchedule[0].employeeID);
+      await fetchPickShiftTimes(employeeSchedule[0].employeeID, null, selectedShiftDate);
     }
   };
   // ... existing code ...
-  const fetchPickShiftTimes = async (employeeId) => {
+  const fetchPickShiftTimes = async (employeeId, facilityId = null, shiftDate = null) => {
     try {
-      const fromDate = mainFromDate;
+      const fromDate = shiftDate || mainFromDate;
       // Get the pickFacilityID from the employee schedule if available
       const pickFacilityID =
-        employeeSchedule && employeeSchedule.length > 0
+        facilityId ||
+        (employeeSchedule && employeeSchedule.length > 0
           ? employeeSchedule[0].pickFacilityID
-          : selectedloginfacility;
+          : selectedloginfacility);
 
       const response = await apiService.GetPickShiftTime({
         facilityid: pickFacilityID,
@@ -1284,9 +1288,9 @@ const MySchedule = () => {
     }
   };
   // Add a new function to fetch logout shift times
-  const fetchDropShiftTimes = async (employeeId, facilityId = null) => {
+  const fetchDropShiftTimes = async (employeeId, facilityId = null, shiftDate = null) => {
     try {
-      const fromDate = mainFromDate;
+      const fromDate = shiftDate || mainFromDate;
       // Use the provided facilityId or fall back to the selected one
       const dropFacilityID =
         facilityId ||
@@ -1344,7 +1348,7 @@ const MySchedule = () => {
 
     // If we have an employee schedule, fetch the logout shift times for the selected employee with the new facility
     if (employeeSchedule && employeeSchedule.length > 0) {
-      await fetchDropShiftTimes(employeeSchedule[0].employeeID, newFacilityId);
+      await fetchDropShiftTimes(employeeSchedule[0].employeeID, newFacilityId, selectedShiftDate);
     }
   };
   // Add this function to fetch employee trips
@@ -1609,9 +1613,7 @@ const MySchedule = () => {
   const handleSubmit = async () => {
 
     setLoading(true); // Loader ON
-    // Get selected dates from state (or directly from input if you want)
-    const fromDateValue = document.getElementById("txtNewfromDate")?.value;
-    const toDateValue = document.getElementById("txtNewtoDate")?.value;
+    // Use fromDate and toDate from state (already in YYYY-MM-DD format)
     const selectedEmployees = mgrassociate
       .filter((emp) => emp.isChecked)
       .map((emp) => emp.EmployeeID);
@@ -1626,8 +1628,8 @@ const MySchedule = () => {
 
     const params = {
       empID: selectedEmployees, // Assuming you have the employee ID from the session
-      fromDate: fromDateValue,
-      toDate: toDateValue,
+      fromDate: fromDate,
+      toDate: toDate,
       facilityIn: selectedloginfacility,
       facilityOut: selectedlogoutfacility,
       logIn: document.getElementById("ddlNewLoginShift").value,
@@ -1746,9 +1748,24 @@ const MySchedule = () => {
       <div className="middle">
         <div className="row mt-3">
           <div className="col-12">
+            <style>{`
+              .replicate-btn {
+                background-color: transparent !important;
+                color: #0BAA60 !important; 
+                border: 1px solid #0BAA60 !important;
+                font-weight: 500;
+                transition: all 0.3s ease;
+              }
+              .replicate-btn:hover, .replicate-btn:focus, .replicate-btn:active {
+                background-color: rgba(11, 170, 96, 0.1) !important;
+                color: #0BAA60 !important;
+                border-color: #0BAA60 !important;
+                box-shadow: none !important;
+              }
+            `}</style>
             <button
               type="button"
-              className="btn btn-dark"
+              className="btn replicate-btn"
               onClick={handleReplicateClick}
             >
               Replicate Schedule
@@ -1852,10 +1869,33 @@ const MySchedule = () => {
                       <th>Schedule</th>
                       {weekDays.map((day, index) => (
                         <th key={index}>
-                          <span className="badge rounded-pill text-bg-dark fs-13">
-                            {day.day}
-                          </span>{" "}
-                          {day.date}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '78px', height: '19px' }}>
+                            <span className="badge text-bg-dark" style={{
+                              width: '42px',
+                              height: '19px',
+                              borderRadius: '10px',
+                              paddingLeft: '10px',
+                              paddingRight: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontFamily: "'Plus Jakarta Sans', sans-serif",
+                              fontWeight: 800,
+                              fontSize: '13px',
+                              lineHeight: '19px',
+                              letterSpacing: '-0.03em'
+                            }}>
+                              {day.day}
+                            </span>
+                            <span style={{
+                              fontFamily: "'Plus Jakarta Sans', sans-serif",
+                              fontSize: '13px',
+                              fontWeight: 600,
+                              color: '#111827'
+                            }}>
+                              {day.date}
+                            </span>
+                          </div>
                         </th>
                       ))}
                     </tr>
@@ -2030,22 +2070,14 @@ const MySchedule = () => {
                 </table>
                 {/* Pagination controls */}
                 {/* PrimeReact paginator for schedule table */}
-                <div className="d-flex justify-content-between align-items-center mt-3">
-                  <div className="text-muted">
-                    Showing {schedTotal === 0 ? 0 : schedFirst + 1} to{" "}
-                    {Math.min(schedFirst + schedRows, schedTotal)} of {schedTotal} entries
-                  </div>
-                  <div>
-                    <Paginator
-                      first={schedFirst}
-                      rows={schedRows}
-                      totalRecords={schedTotal}
-                      template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-                      rowsPerPageOptions={[50, 100, 200, 300, 400]}
-                      onPageChange={onSchedPageChange}
-                    />
-                  </div>
-                </div>
+                {/* Reusable Custom Paginator */}
+                <CustomPaginator
+                  first={schedFirst}
+                  rows={schedRows}
+                  totalRecords={schedTotal}
+                  onPageChange={onSchedPageChange}
+                  rowsPerPageOptions={[10, 20, 50]}
+                />
               </div>
             </div>
           </div>
@@ -2100,7 +2132,7 @@ const MySchedule = () => {
       >
         <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
           <h5 className="subtitle fw-normal">
-            Employee Shift Details -{" "}
+            Update Schedule -{" "}
             {employeeSchedule && employeeSchedule.length > 0
               ? `${employeeSchedule[0].empCode} ${employeeSchedule[0].empName} `
               : "Loading..."}
@@ -2145,157 +2177,131 @@ const MySchedule = () => {
                 )}
               </ul>
             </div>
-            <div className="col-6 mb-3">
-              <label className="form-label">Select Log-In Facility</label>
-              <select
-                className="form-select"
-                value={selectedloginfacility}
-                onChange={handleLoginFacilityChangeInModal}
-                disabled={shiftLockStatus.loginFacilityDisabled}
-              >
-                {loginFacilities.map((facility) => (
-                  <option key={facility.Id} value={facility.Id}>
-                    {facility.facilityName || facility.Name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-6 mb-3">
-              <label className="form-label">Select Log-Out Facility</label>
-              <select
-                className="form-select"
-                value={selectedlogoutfacility}
-                onChange={(e) => setSelectedlogoutfacility(e.target.value)}
-                disabled={shiftLockStatus.logoutFacilityDisabled}
-              >
-                {logoutFacilities.map((facility) => (
-                  <option key={facility.Id} value={facility.Id}>
-                    {facility.facilityName || facility.Name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* <div className="col-6">
-              {shiftLockStatus.loginTimeVisible ? (
-                <select
-                  className="form-select"
-                  id="loginShiftDropdown"
-                  value={selectedShiftTime}
-                  onChange={(e) => setSelectedShiftTime(e.target.value)}
-                  disabled={shiftLockStatus.loginTimeDisabled}
-                >
-                  <option value="">NA</option>
-                  {Array.isArray(availableShiftTimes) &&
-                    availableShiftTimes.length > 0
-                    ? availableShiftTimes.map((shift) => (
-                      <option
-                        key={shift.shiftTime}
-                        value={shift.ShiftValue || shift.shiftTime}
+            <div className="col-12 mb-3">
+              <div className="card form_card border-0">
+                <div className="card-header">Facility</div>
+                <div className="card-body">
+                  <div className="row">
+                    <div className="col-6 mb-3">
+                      <label className="form-label">Select Log-In Facility</label>
+                      <select
+                        className="form-select"
+                        value={selectedloginfacility}
+                        onChange={handleLoginFacilityChangeInModal}
+                        disabled={shiftLockStatus.loginFacilityDisabled}
                       >
-                        {shift.shiftTime}
-                      </option>
-                    ))
-                    : // If no available shift times, but we have a selected time, add it as an option
-                    selectedShiftTime && (
-                      <option value={selectedShiftTime}>
-                        {selectedShiftTime}
-                      </option>
-                    )}
-                </select>
-              ) : (
-                <div
-                  className="form-control-plaintext"
-                  style={{
-                    minHeight: "38px",
-                    padding: "8px 12px",
-                    background: "#f8f9fa",
-                    borderRadius: "4px",
-                    border: "1px solid #ced4da",
-                  }}
-                >
-                  {shiftLockStatus.loginTimeLabel}
-                </div>
-              )}
-            </div> */}
-            <div className="col-6">
-              <label className="form-label">Login Shift Time</label>
-              {(shiftLockStatus.loginTimeVisible && shiftLockStatus.tptForType !== 2) ? (
-                <select
-                  className="form-select"
-                  id="loginShiftDropdown"
-                  value={selectedShiftTime}
-                  onChange={(e) => setSelectedShiftTime(e.target.value)}
-                  disabled={shiftLockStatus.loginTimeDisabled}
-                >
-                  <option value="N/A">N/A</option>
-                  {Array.isArray(availableShiftTimes) &&
-                    availableShiftTimes.map((shift) => (
-                      <option
-                        key={shift.shiftTime}
-                        value={shift.ShiftValue || shift.shiftTime}
+                        {loginFacilities.map((facility) => (
+                          <option key={facility.Id} value={facility.Id}>
+                            {facility.facilityName || facility.Name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-6 mb-3">
+                      <label className="form-label">Select Log-Out Facility</label>
+                      <select
+                        className="form-select"
+                        value={selectedlogoutfacility}
+                        onChange={(e) => setSelectedlogoutfacility(e.target.value)}
+                        disabled={shiftLockStatus.logoutFacilityDisabled}
                       >
-                        {shift.shiftTime}
-                      </option>
-                    ))}
-                  {selectedShiftTime &&
-                    !availableShiftTimes.some(
-                      (shift) => (shift.ShiftValue || shift.shiftTime) === selectedShiftTime
-                    ) && (
-
-
-                      <option value={selectedShiftTime} disabled>
-                        {selectedShiftTime}
-                      </option>
-
-                    )}
-                </select>
-              ) : (
-                <div
-                  className="form-control-plaintext bg-light border rounded py-2 px-3"
-                  style={{ minHeight: "38px" }}
-                >
-                  {shiftLockStatus.loginTimeLabel || selectedShiftTime || "Locked"}
+                        {logoutFacilities.map((facility) => (
+                          <option key={facility.Id} value={facility.Id}>
+                            {facility.facilityName || facility.Name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
-            <div className="col-6">
-              <label className="form-label">Logout Shift Time</label>
+            <div className="col-12 mb-3">
+              <div className="card form_card border-0">
+                <div className="card-header">Shift</div>
+                <div className="card-body">
+                  <div className="row">
+                    <div className="col-6">
+                      <label className="form-label">Login Shift Time</label>
+                      {(shiftLockStatus.loginTimeVisible && shiftLockStatus.tptForType !== 2) ? (
+                        <select
+                          className="form-select"
+                          id="loginShiftDropdown"
+                          value={selectedShiftTime}
+                          onChange={(e) => setSelectedShiftTime(e.target.value)}
+                          disabled={shiftLockStatus.loginTimeDisabled}
+                        >
+                          <option value="N/A">N/A</option>
+                          {Array.isArray(availableShiftTimes) &&
+                            availableShiftTimes.map((shift) => (
+                              <option
+                                key={shift.shiftTime}
+                                value={shift.ShiftValue || shift.shiftTime}
+                              >
+                                {shift.shiftTime}
+                              </option>
+                            ))}
+                          {selectedShiftTime &&
+                            !availableShiftTimes.some(
+                              (shift) => (shift.ShiftValue || shift.shiftTime) === selectedShiftTime
+                            ) && (
+                              <option value={selectedShiftTime} disabled>
+                                {selectedShiftTime}
+                              </option>
+                            )}
+                        </select>
+                      ) : (
+                        <div
+                          className="form-control-plaintext bg-light border rounded py-2 px-3"
+                          style={{ minHeight: "38px" }}
+                        >
+                          {shiftLockStatus.loginTimeLabel || selectedShiftTime || "Locked"}
+                        </div>
+                      )}
+                    </div>
 
-              {(shiftLockStatus.logoutTimeVisible && shiftLockStatus.tptForType !== 1) ? (
+                    <div className="col-6">
+                      <label className="form-label">Logout Shift Time</label>
 
-                <select
-                  className="form-select"
-                  id="logoutShiftDropdown"
-                  value={selectedLogoutShiftTime}
-                  onChange={(e) => setSelectedLogoutShiftTime(e.target.value)}
-                  disabled={shiftLockStatus.logoutTimeDisabled}
-                >
-                  <option value="N/A">N/A</option>
-                  {Array.isArray(availableLogoutShiftTimes) &&
-                    availableLogoutShiftTimes.map((shift) => (
-                      <option
-                        key={shift.shiftTime}
-                        value={shift.ShiftValue || shift.shiftTime}
-                      >
-                        {shift.shiftTime}
-                      </option>
-                    ))}
-                  {selectedLogoutShiftTime &&
-                    !availableLogoutShiftTimes.some(
-                      (shift) => (shift.ShiftValue || shift.shiftTime) === selectedLogoutShiftTime
-                    ) && (
-                      <option value={selectedLogoutShiftTime} disabled>{selectedLogoutShiftTime} </option>
-                    )}
-                </select>
-              ) : (
-                <div
-                  className="form-control-plaintext bg-light border rounded py-2 px-3"
-                  style={{ minHeight: "38px" }}
-                >
-                  {shiftLockStatus.logoutTimeLabel || selectedLogoutShiftTime || "Locked"}
+                      {(shiftLockStatus.logoutTimeVisible && shiftLockStatus.tptForType !== 1) ? (
+
+                        <select
+                          className="form-select"
+                          id="logoutShiftDropdown"
+                          value={selectedLogoutShiftTime}
+                          onChange={(e) => setSelectedLogoutShiftTime(e.target.value)}
+                          disabled={shiftLockStatus.logoutTimeDisabled}
+                        >
+                          <option value="N/A">N/A</option>
+                          {Array.isArray(availableLogoutShiftTimes) &&
+                            availableLogoutShiftTimes.map((shift) => (
+                              <option
+                                key={shift.shiftTime}
+                                value={shift.ShiftValue || shift.shiftTime}
+                              >
+                                {shift.shiftTime}
+                              </option>
+                            ))}
+                          {selectedLogoutShiftTime &&
+                            !availableLogoutShiftTimes.some(
+                              (shift) => (shift.ShiftValue || shift.shiftTime) === selectedLogoutShiftTime
+                            ) && (
+                              <option value={selectedLogoutShiftTime} disabled>{selectedLogoutShiftTime} </option>
+                            )}
+                        </select>
+                      ) : (
+                        <div
+                          className="form-control-plaintext bg-light border rounded py-2 px-3"
+                          style={{ minHeight: "38px" }}
+                        >
+                          {shiftLockStatus.logoutTimeLabel || selectedLogoutShiftTime || "Locked"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
 
             {shiftLockStatus.tptForMessage && (
@@ -2437,16 +2443,7 @@ const MySchedule = () => {
                               : "N/A"}
                           </td>
                           <td>
-                            {" "}
-                            <span
-                              id="tripType"
-                              className={`badge text-bg-${trip.triptype === "PickUp"
-                                ? "primary"
-                                : "danger"
-                                } rounded-pill text-uppercase`}
-                            >
-                              {trip.triptype || "N/A"}
-                            </span>
+                            <TripTypeBadge type={trip.triptype || "N/A"} />
                           </td>
                           <td>{trip.shifttime || "N/A"}</td>
                           <td>{trip.facility || "N/A"}</td>
@@ -2615,10 +2612,13 @@ const MySchedule = () => {
                   className="w-100 custom-calendar-input"
                   value={fromDate ? new Date(fromDate) : null}
                   onChange={(e) => {
-                    const val = e.value ? e.value.toISOString().split("T")[0] : "";
+                    const date = e.value;
+                    const val = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : "";
                     handleFromDateChange({ target: { value: val } });
                   }}
                   dateFormat="mm/dd/yy"
+                  appendTo={document.body}
+                  panelStyle={{ zIndex: '99999 !important' }}
                 />
               </div>
             </div>
@@ -2631,10 +2631,13 @@ const MySchedule = () => {
                   className="w-100 custom-calendar-input"
                   value={toDate ? new Date(toDate) : null}
                   onChange={(e) => {
-                    const val = e.value ? e.value.toISOString().split("T")[0] : "";
+                    const date = e.value;
+                    const val = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : "";
                     handleToDateChange({ target: { value: val } });
                   }}
                   dateFormat="mm/dd/yy"
+                  appendTo={document.body}
+                  panelStyle={{ zIndex: '99999 !important' }}
                 />
               </div>
             </div>

@@ -9,6 +9,7 @@ import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
 import ExcelJS from 'exceljs';
 import { toastService } from "../services/toastService";
+import ReportButton from "./common/ReportButton";
 
 const EmpDump = () => {
     const userID = sessionStorage.getItem("ID")
@@ -230,14 +231,12 @@ const EmpDump = () => {
                             {/* Export Button */}
                             {/* <button className="btn btn-primary w-100">Export Employee Dump</button> */}
                         </div>
-                        <div className="field col-4 mb-3 no-label">
-                            <button className="btn btn-primary" onClick={handleExport}>Export Employee Dump</button>
-                            {/* <Button
+                        <div className="field col-3 mb-3 no-label">
+                            <ReportButton
                                 label="Export Employee Dump"
-                                className="btn btn-primary no-label"
                                 onClick={handleExport}
-                            /> */}
-
+                                disabled={isSubmitting}
+                            />
                         </div>
                     </div>
                 </div>

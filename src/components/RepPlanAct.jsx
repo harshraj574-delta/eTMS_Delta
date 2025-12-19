@@ -422,7 +422,7 @@ const RepPlanAct = () => {
     // Accumulate values from all loaded detailed data
     const allDetails = Object.values(detailedShiftData)
       .flatMap(item => item.data || []);
-    
+
     // Also include vendorName if we are looking for ActVendor (mapped to vendorName in export)
     // Field 'PlanVendor' maps to 'PlanVendor'
     // Field 'ActVendor' maps to 'vendorName' in detailRow based on export logic
@@ -753,14 +753,14 @@ const RepPlanAct = () => {
                         </tr>
                         <tr>
                           <th>Planned</th>
-                          <th>Recorded</th>
+                          <th>Executed</th>
                           <th>Pending</th>
                           <th>Cancelled</th>
                           <th>Rostered</th>
-                          <th>Boarded</th>
                           <th>UnRostered</th>
+                          <th>Boarded</th>
                           <th>No-Show</th>
-                          <th>OTBYTPT</th>
+                          {/* <th>OTBYTPT</th> */}
                         </tr>
                       </thead>
                       <tbody>
@@ -774,9 +774,8 @@ const RepPlanAct = () => {
                           filteredData.map((row, index) => (
                             <React.Fragment key={index}>
                               <tr
-                                className={`${
-                                  index % 2 !== 0 ? "ota-row-odd" : ""
-                                } ota-row-hover`}
+                                className={`${index % 2 !== 0 ? "ota-row-odd" : ""
+                                  } ota-row-hover`}
                               >
                                 <td>
                                   <a
@@ -805,10 +804,10 @@ const RepPlanAct = () => {
                                 <td>{row.PendingRoutes}</td>
                                 <td>{row.CancelledRoutes}</td>
                                 <td>{row.PlanedEmployee}</td>
-                                <td>{row.BoardedEmployee}</td>
                                 <td>{row.UnRosteredEmp}</td>
+                                <td>{row.BoardedEmployee}</td>
                                 <td>{row.NoShowEmp}</td>
-                                <td>{row.CancelledEmployee}</td>
+                                {/* <td>{row.CancelledEmployee}</td> */}
                               </tr>
 
                               {expandedRows.includes(index) && (
@@ -829,12 +828,12 @@ const RepPlanAct = () => {
                                             </tr>
                                             <tr>
                                               <th>Planned</th>
-                                              <th>Recorded</th>
+                                              <th>Executed</th>
                                               <th>Pending</th>
                                               <th>Cancelled</th>
                                               <th>Rostered</th>
-                                              <th>Boarded</th>
                                               <th>UnRostered</th>
+                                              <th>Boarded</th>
                                               <th>No-Show</th>
                                               <th>Cancelled</th>
                                             </tr>
@@ -845,11 +844,11 @@ const RepPlanAct = () => {
                                             ).map((shiftRow, sIdx) => {
                                               const innerExpanded =
                                                 innerExpandedRows[
-                                                  row.Shiftdate
+                                                row.Shiftdate
                                                 ] || {};
                                               const isExpanded =
                                                 innerExpanded[
-                                                  shiftRow.shifttime
+                                                shiftRow.shifttime
                                                 ];
 
                                               return (
@@ -857,11 +856,10 @@ const RepPlanAct = () => {
                                                   key={shiftRow.shifttime}
                                                 >
                                                   <tr
-                                                    className={`${
-                                                      sIdx % 2 !== 0
-                                                        ? "ota-row-odd"
-                                                        : ""
-                                                    } ota-row-hover`}
+                                                    className={`${sIdx % 2 !== 0
+                                                      ? "ota-row-odd"
+                                                      : ""
+                                                      } ota-row-hover`}
                                                   >
                                                     <td>
                                                       <a
@@ -904,10 +902,10 @@ const RepPlanAct = () => {
                                                       {shiftRow.PlanedEmployee}
                                                     </td>
                                                     <td>
-                                                      {shiftRow.BoardedEmployee}
+                                                      {shiftRow.UnRosteredEmp}
                                                     </td>
                                                     <td>
-                                                      {shiftRow.UnRosteredEmp}
+                                                      {shiftRow.BoardedEmployee}
                                                     </td>
                                                     <td>
                                                       {shiftRow.NoShowEmp}
@@ -949,15 +947,15 @@ const RepPlanAct = () => {
                                                                   <th>
                                                                     Trip Type
                                                                   </th>
-                                                                  <th>
+                                                                  {/* <th>
                                                                     Planned Kms
-                                                                  </th>
+                                                                  </th> */}
                                                                   <th>
-                                                                    Actual Kms
+                                                                     Kms Runs
                                                                   </th>
-                                                                  <th>
+                                                                  {/* <th>
                                                                     Approved Kms
-                                                                  </th>
+                                                                  </th> */}
                                                                   <th>
                                                                     Planned
                                                                     Stops
@@ -983,7 +981,7 @@ const RepPlanAct = () => {
                                                                   }
                                                                   if (filters.ActVendor && filters.ActVendor.length > 0) {
                                                                     filteredDetail = filteredDetail.filter(d => filters.ActVendor.includes(d.vendorName));
-                                                                  } 
+                                                                  }
 
                                                                   if (
                                                                     filteredDetail.length ===
@@ -1014,13 +1012,12 @@ const RepPlanAct = () => {
                                                                         key={
                                                                           dIdx
                                                                         }
-                                                                        className={`${
-                                                                          dIdx %
-                                                                            2 !==
+                                                                        className={`${dIdx %
+                                                                          2 !==
                                                                           0
-                                                                            ? "ota-row-odd"
-                                                                            : ""
-                                                                        } ota-row-hover`}
+                                                                          ? "ota-row-odd"
+                                                                          : ""
+                                                                          } ota-row-hover`}
                                                                       >
                                                                         <td>
                                                                           {
@@ -1057,21 +1054,21 @@ const RepPlanAct = () => {
                                                                             detailRow.tripType
                                                                           }
                                                                         </td>
-                                                                        <td>
+                                                                        {/* <td>
                                                                           {
                                                                             detailRow.approvedKm
                                                                           }
-                                                                        </td>
+                                                                        </td> */}
                                                                         <td>
                                                                           {
                                                                             detailRow.actTotalKm
                                                                           }
                                                                         </td>
-                                                                        <td>
+                                                                        {/* <td>
                                                                           {
                                                                             detailRow.approvedKm
                                                                           }
-                                                                        </td>
+                                                                        </td> */}
                                                                         <td>
                                                                           {
                                                                             detailRow.totalStop

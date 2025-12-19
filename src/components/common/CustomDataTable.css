@@ -1,4 +1,3 @@
-
 .custom-table .p-datatable-thead>tr>th {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 800 !important;
@@ -10,12 +9,12 @@
 }
 
 .custom-table .p-datatable-tbody>tr>td {
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 400 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 500 !important;
     font-style: normal !important;
-    font-size: 12px !important;
-    line-height: 140% !important;
-    letter-spacing: 0% !important;
+    font-size: 11px !important;
+    line-height: 19px !important;
+    letter-spacing: -2% !important;
     color: #1C1D20 !important;
 }
 
@@ -33,11 +32,65 @@
 
 .custom-html-table tbody tr td,
 .custom-html-table tbody td {
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 400 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 500 !important;
     font-style: normal !important;
-    font-size: 12px !important;
-    line-height: 140% !important;
-    letter-spacing: 0% !important;
+    font-size: 11px !important;
+    line-height: 19px !important;
+    letter-spacing: -2% !important;
     color: #1C1D20 !important;
+}
+
+/* Override for custom html tables to avoid black borders */
+.custom-html-table,
+.custom-html-table th,
+.custom-html-table td,
+.custom-html-table tr,
+.custom-html-table thead th {
+    border-color: #e9ecef !important;
+}
+
+.custom-html-table .table-bordered {
+    border: 1px solid #e9ecef !important;
+}
+
+/* Custom Sort Icon Styles */
+.custom-table .p-sortable-column-icon {
+    display: none !important;
+}
+
+.custom-sort-icon-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    top: 0;
+    left: 0;
+    /* margin-left: 0px; */
+    height: auto;
+    line-height: 1;
+}
+
+.custom-sort-icon {
+    font-size: 28px !important;
+    color: #D2D2D2 !important;
+    opacity: 1;
+    border-radius: 0.5px;
+    transition: color 0.2s ease;
+    display: block;
+    line-height: 0.7;
+}
+
+.custom-sort-icon.sort-up {
+    margin-bottom: -10px;
+}
+
+.custom-sort-icon.sort-down {
+    margin-top: -10px;
+}
+
+/* Active state - highlighted color */
+.custom-sort-icon.active {
+    color: #545557 !important;
 }

@@ -14,6 +14,8 @@ import { Sidebar as PrimeSidebar } from "primereact/sidebar";
 import VehicleMasterService from "../services/compliance/VehicleMasterService";
 import sessionManager from "../utils/SessionManager.js";
 import { toastService } from "../services/toastService.js";
+import ReportButton from "./common/ReportButton";
+import { ToastContainer } from "react-toastify";
 
 const VehicleMaster = () => {
     // ========== ALL STATE DECLARATIONS FIRST ==========
@@ -692,6 +694,7 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                 setAddVehicle(true);
             }} />
             <Sidebar />
+            <ToastContainer position="top-right" autoClose={3000} />
             <div className="middle">
                 <div className="row">
                     <div className="col-12">
@@ -716,8 +719,12 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                                         placeholder="Select Vendor" className="w-100" filter />
                                 </div>
 
-                                <div className="col-2">
-                                    <Button label="Submit" className="btn btn-primary no-label" onClick={VehiclesDetailsData} />
+                                <div className="col-2 no-label">
+                                    <ReportButton
+                                        label="Submit"
+                                        onClick={VehiclesDetailsData}
+                                        disabled={isSubmitting}
+                                    />
                                 </div>
                                 <div className="col-2 offset-4 d-none">
                                     <label htmlFor="">Search Any</label>
@@ -879,10 +886,10 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                             <h6 className="sidebarTitle">Add Vehicle Master</h6>
                             <span className="d-flex align-items-center">
                                 {isAttrited && <p className="text-warning mb-0 me-2">Attrited</p>}
-                                <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setAddVehicle(false)} />
+                                <Button icon="pi pi-times" className="p-button-rounded p-button-text" style={{ backgroundColor: "black" }} onClick={() => setAddVehicle(false)} />
                             </span>
                         </div>
-                        <div className="sidebarBody">
+                        <div className="sidebarBody" style={{ backgroundColor: "white" }}>
                             <div className="row">
                                 <div className="col-12 mb-3">
                                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
@@ -1094,10 +1101,10 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                             <h6 className="sidebarTitle">Edit Vehicle Master</h6>
                             <span className="d-flex align-items-center">
                                 {editAttrited && <p className="text-warning mb-0 me-2">Attrited</p>}
-                                <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setUpdateVehicle(false)} />
+                                <Button icon="pi pi-times" className="p-button-rounded p-button-text" style={{ backgroundColor: "black" }} onClick={() => setUpdateVehicle(false)} />
                             </span>
                         </div>
-                        <div className="sidebarBody">
+                        <div className="sidebarBody" style={{ backgroundColor: "white" }}>
                             <div className="row">
                                 <div className="col-12 mb-3">
                                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">

@@ -19,6 +19,7 @@ import { toastService } from "../services/toastService";
 import { InputNumber } from "primereact/inputnumber";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
+import { ToastContainer } from "react-toastify";
 
 const VendorMaster = () => {
   const [selectedFacility, setSelectedfacility] = useState(null);
@@ -331,6 +332,7 @@ const VendorMaster = () => {
         onNewButtonClick={() => setVisibleLeftAdd(true)}
       />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">
@@ -429,11 +431,12 @@ const VendorMaster = () => {
                 <Button
                   icon="pi pi-times"
                   className="p-button-rounded p-button-text"
+                  style={{ backgroundColor: "black" }}
                   onClick={() => setVisibleLeftAdd(false)}
                 />
               </span>
             </div>
-            <div className="sidebarBody">
+            <div className="sidebarBody" style={{ backgroundColor: "white" }}>
               <div className="row">
                 <div className="col-12">
                   <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center mb-3 pe-3">
@@ -675,11 +678,12 @@ const VendorMaster = () => {
                 <Button
                   icon="pi pi-times"
                   className="p-button-rounded p-button-text"
+                  style={{ backgroundColor: "black" }}
                   onClick={() => setVisibleLeft(false)}
                 />
               </span>
             </div>
-            <div className="sidebarBody">
+            <div className="sidebarBody" style={{ backgroundColor: "white" }}>
               {selectedVendor && (
                 <div className="row">
                   {/* <div className="col-12 mb-3">

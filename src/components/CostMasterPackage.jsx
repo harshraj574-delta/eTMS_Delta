@@ -670,12 +670,13 @@ const CostMasterPackage = () => {
           <Button
             icon="pi pi-times"
             className="p-button-rounded p-button-text"
+            style={{ backgroundColor: "black" }}
             onClick={() => {
               setAddNewCost(false);
             }}
           />
         </div>
-        <div className="sidebarBody">
+        <div className="sidebarBody" style={{ backgroundColor: "white" }}>
           <div className="row">
             <div className="col-6 mb-3">
               <label>

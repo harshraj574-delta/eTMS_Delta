@@ -9,6 +9,7 @@ import { Calendar } from "primereact/calendar";
 import calendarIcon from "../assets/calendar.png";
 import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
+import ReportButton from "./common/ReportButton";
 const RouteDeletion = () => {
   const UserId = sessionStorage.getItem("ID");
   const [facility, setFacility] = useState([]);
@@ -215,8 +216,12 @@ const RouteDeletion = () => {
                 filter
               />
             </div>
-            <div className="field col-2 mb-3">
-              <button className="btn btn-primary no-label" type="button" onClick={handleSearchClick}>Submit</button>
+            <div className="field col-2 mb-3 no-label">
+              <ReportButton
+                label="Submit"
+                onClick={handleSearchClick}
+                disabled={isSubmitting}
+              />
             </div>
           </div>
         </div>

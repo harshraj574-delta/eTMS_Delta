@@ -72,9 +72,9 @@ const FeedbackReport = () => {
         typeof response === "string" ? JSON.parse(response) : response;
       const formattedData = Array.isArray(parsedResponse)
         ? parsedResponse.map((item) => ({
-            label: item.facility || item.facilityName,
-            value: item.Id,
-          }))
+          label: item.facility || item.facilityName,
+          value: item.Id,
+        }))
         : [];
 
       formattedData.unshift({ label: "All Facility", value: 0 });
@@ -390,7 +390,7 @@ const FeedbackReport = () => {
           <table className="table table-sm table-bordered mb-0">
             <thead className="table-light">
               <tr>
-                <th>Ticket No</th>
+                <th>RouteId</th>
                 <th>Action By</th>
                 <th>Description</th>
                 <th>Updated Time</th>
@@ -400,7 +400,8 @@ const FeedbackReport = () => {
             <tbody>
               {replies.map((reply, index) => (
                 <tr key={index}>
-                  <td>{reply.TicktNo || ticketNo}</td>
+                  {/* <td>{reply.TicktNo || ticketNo}</td> */}
+                  <td>{reply.RouteId || "-"}</td>
                   <td>
                     {reply.empCode && reply.empName
                       ? `${reply.empCode} - ${reply.empName}`
@@ -410,11 +411,10 @@ const FeedbackReport = () => {
                   <td>{reply.UpdatedAt || "-"}</td>
                   <td>
                     <span
-                      className={`badge ${
-                        reply.Status === "Closed"
-                          ? "bg-success"
-                          : "bg-warning text-dark"
-                      }`}
+                      className={`badge ${reply.Status === "Closed"
+                        ? "bg-success"
+                        : "bg-warning text-dark"
+                        }`}
                     >
                       {reply.Status}
                     </span>
@@ -674,13 +674,14 @@ const FeedbackReport = () => {
                         <tr>
                           <th style={{ width: "40px" }}></th>
                           <th className="text-center">Ticket No</th>
-                          <th className="text-center">Facility</th>
-                          <th className="text-center">Employee Code</th>
                           <th className="text-center">Employee Name</th>
+                          <th className="text-center">Employee Code</th>
+                          <th className="text-center">Facility</th>
+                          <th className="text-center"> Date</th>
+
                           <th className="text-center">Description</th>
-                          <th className="text-center">Shift Date</th>
                           <th className="text-center">Raised Time</th>
-                          <th className="text-center">Updated By</th>
+                          {/* <th className="text-center">Updated By</ th> */}
                           <th className="text-center">Updated Time</th>
                           <th className="text-center">Updated Remark</th>
                           <th className="text-center">Status</th>
@@ -745,11 +746,14 @@ const FeedbackReport = () => {
                                     {feedback.TicketNo}
                                   </a>
                                 </td>
+                                <td className="text-center">{feedback.empName}</td>
+                                <td className="text-center">{feedback.empCode}</td>
                                 <td className="text-center">
                                   {feedback.facilityname}
                                 </td>
-                                <td className="text-center">{feedback.empCode}</td>
-                                <td className="text-center">{feedback.empName}</td>
+                                <td className="text-center">
+                                  {feedback.Shiftdate}
+                                </td>
                                 <td className="text-center">
                                   <span
                                     className="text-truncate d-inline-block"
@@ -760,12 +764,9 @@ const FeedbackReport = () => {
                                   </span>
                                 </td>
                                 <td className="text-center">
-                                  {feedback.Shiftdate}
-                                </td>
-                                <td className="text-center">
                                   {feedback.RaisedTime}
                                 </td>
-                                <td className="text-center">{feedback.ActionBy}</td>
+                                {/* <td className="text-center">{feedback.ActionBy}</td> */}
                                 <td className="text-center">
                                   {feedback.ActionAt || "-"}
                                 </td>
@@ -774,11 +775,10 @@ const FeedbackReport = () => {
                                 </td>
                                 <td className="text-center">
                                   <span
-                                    className={`badge ${
-                                      feedback.Status === "Closed"
-                                        ? "bg-success"
-                                        : "bg-warning text-dark"
-                                    }`}
+                                    className={`badge ${feedback.Status === "Closed"
+                                      ? "bg-success"
+                                      : "bg-warning text-dark"
+                                      }`}
                                   >
                                     {feedback.Status}
                                   </span>

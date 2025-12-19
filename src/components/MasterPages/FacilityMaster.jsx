@@ -891,7 +891,8 @@ const FacilityMaster = () => {
           </div>
         }
       >
-        <div className="row g-2">
+        <div className="p-3">
+          <div className="row g-2">
           <div className="col-12 col-sm-6 mb-2">
             <label htmlFor="facilityName" className="form-label">
               Facility Name <span>*</span>
@@ -983,6 +984,7 @@ const FacilityMaster = () => {
           <div className="col-12 mb-2">
             <MapPickerRow mode="add" />
           </div>
+          </div>
         </div>
       </MasterSidebar>
 
@@ -1011,7 +1013,8 @@ const FacilityMaster = () => {
           </div>
         }
       >
-        {selectedFacility && (
+        <div className="p-3">
+          {selectedFacility && (
           <div className="row g-2">
             <div className="col-12 col-sm-6 mb-2">
               <label
@@ -1164,7 +1167,8 @@ const FacilityMaster = () => {
               <MapPickerRow mode="edit" />
             </div>
           </div>
-        )}
+          )}
+        </div>
       </MasterSidebar>
 
       {/* Offcanvas: Facility Map Selector (Add/Edit) */}
@@ -1308,7 +1312,8 @@ const FacilityMaster = () => {
           </div>
         }
       >
-        <div className="mb-3">
+        <div className="p-3">
+          <div className="mb-3">
           <label htmlFor="Location" className="form-label">
             Location <span>*</span>
           </label>
@@ -1371,6 +1376,7 @@ const FacilityMaster = () => {
             id="txtContactEmail"
             placeholder="Enter Email"
           />
+          </div>
         </div>
       </MasterSidebar>
 

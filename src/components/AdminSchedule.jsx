@@ -17,6 +17,7 @@ import AdminScheduleService from "../services/compliance/AdminScheduleService";
 import { toastService } from "../services/toastService";
 import { apiService } from "../services/api";
 import calendarIcon from "../assets/calendar.png";
+import ReportButton from "./common/ReportButton";
 
 // Helper to get 7 days from selectedDate
 // const month = date.toLocaleString("default", { month: "long" });
@@ -532,10 +533,10 @@ const AdminSchedule = () => {
               />
             </div>
             <div className="field col-2 mb-3 no-label">
-              <Button
+              <ReportButton
                 label="Search"
-                className="btn btn-primary"
                 onClick={() => handleUpdateVendor()}
+                disabled={isSubmitting}
               />
             </div>
           </div>

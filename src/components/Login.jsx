@@ -112,7 +112,7 @@ const Login = () => {
               menus.push({ MenuURL: "ReplicateSchedule" });
             }
 
-            // Update store
+            // Update store with full menus (including ReplicateSchedule for authorization)
             login(userdetails[0], menus);
 
             // Calculate allowed paths for navigation

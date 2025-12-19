@@ -53,7 +53,7 @@ const OTAReport = () => {
 
   const reportTypes = [
     { label: "Detailed", value: "detailed" },
-    { label: "Shift Wise", value: "shiftwise" },
+    { label: "Date Wise", value: "shiftwise" },
     { label: "Vendor Wise", value: "vendorwise" },
   ];
 
@@ -163,26 +163,33 @@ const OTAReport = () => {
     });
   };
 
-  const groupVendorDataByDate = (vendorData) => {
+  const groupVendorDataByVendor = (vendorData) => {
     const grouped = {};
 
     vendorData.forEach((item) => {
-      const date = item.shiftDate;
-      if (!grouped[date]) {
-        grouped[date] = {
-          shiftDate: date,
-          vendors: [],
+      // Group by Vendor Name (or ID if available, but using name as per previous logic)
+      const vendorName = item.Vendor || item.vendorName || "Unknown Vendor";
+      
+      if (!grouped[vendorName]) {
+        grouped[vendorName] = {
+          vendorName: vendorName,
+          dailyData: [],
           TotalCabs: 0,
           Arrived: 0,
           OnTime: 0,
           Delayed: 0,
         };
       }
-      grouped[date].vendors.push(item);
-      grouped[date].TotalCabs += item.TotalCabs || 0;
-      grouped[date].Arrived += item.Arrived || 0;
-      grouped[date].OnTime += item.OnTime || 0;
-      grouped[date].Delayed += item.Delayed || 0;
+      
+      // Add standard fields that might be useful for the parent row
+      // We are aggregating totals
+      grouped[vendorName].TotalCabs += item.TotalCabs || 0;
+      grouped[vendorName].Arrived += item.Arrived || 0;
+      grouped[vendorName].OnTime += item.OnTime || 0;
+      grouped[vendorName].Delayed += item.Delayed || 0;
+      
+      // Push the daily item (which represents a shift/date for that vendor)
+      grouped[vendorName].dailyData.push(item);
     });
 
     return Object.values(grouped).map((group) => {
@@ -233,9 +240,9 @@ const OTAReport = () => {
                   String(val).toLowerCase().includes(searchLower)
                 )
               )) ||
-            (item.vendors &&
-              item.vendors.some((vendor) =>
-                Object.values(vendor).some((val) =>
+            (item.dailyData &&
+              item.dailyData.some((day) =>
+                Object.values(day).some((val) =>
                   String(val).toLowerCase().includes(searchLower)
                 )
               ));
@@ -324,7 +331,7 @@ const OTAReport = () => {
         const groupedData = groupShiftDataByDate(validatedData);
         setReportData(groupedData);
       } else if (selectedReportType === "vendorwise") {
-        const groupedVendorData = groupVendorDataByDate(validatedData);
+        const groupedVendorData = groupVendorDataByVendor(validatedData);
         setReportData(groupedVendorData);
         setDetailedData(validatedData);
       } else {
@@ -914,10 +921,10 @@ const OTAReport = () => {
                               Arrived
                             </th>
                             <th className="text-center">On Time</th>
-                            <th className="text-center">Delayed</th>
                             <th className="text-center d-none d-lg-table-cell">
                               On Time %
                             </th>
+                            <th className="text-center">Delayed</th>
                             <th className="text-center d-none d-lg-table-cell">
                               Delayed %
                             </th>
@@ -960,10 +967,10 @@ const OTAReport = () => {
                                   {row.Arrived}
                                 </td>
                                 <td className="text-center">{row.OnTime}</td>
-                                <td className="text-center">{row.Delayed}</td>
                                 <td className="text-center d-none d-lg-table-cell">
                                   {row.OnTimePer}
                                 </td>
+                                <td className="text-center">{row.Delayed}</td>
                                 <td className="text-center d-none d-lg-table-cell">
                                   {row.DelayedPer}
                                 </td>
@@ -981,10 +988,10 @@ const OTAReport = () => {
                                               <th>Total Cabs</th>
                                               <th>Arrived</th>
                                               <th>On Time</th>
-                                              <th>Delayed</th>
                                               <th className="d-none d-md-table-cell">
                                                 On Time %
                                               </th>
+                                              <th>Delayed</th>
                                               <th className="d-none d-md-table-cell">
                                                 Delayed %
                                               </th>
@@ -998,10 +1005,10 @@ const OTAReport = () => {
                                                   <td>{shift.TotalCabs}</td>
                                                   <td>{shift.Arrived}</td>
                                                   <td>{shift.OnTime}</td>
-                                                  <td>{shift.Delayed}</td>
                                                   <td className="d-none d-md-table-cell">
                                                     {shift.OnTimePer}
                                                   </td>
+                                                  <td>{shift.Delayed}</td>
                                                   <td className="d-none d-md-table-cell">
                                                     {shift.DelayedPer}
                                                   </td>
@@ -1027,7 +1034,7 @@ const OTAReport = () => {
                         <thead className="table-light">
                           <tr>
                             <th style={{ width: "40px" }} />
-                            <th className="text-center">Shift Date</th>
+                            <th className="text-center">Vendor Name</th>
                             <th className="text-center d-none d-md-table-cell">
                               Total Cabs
                             </th>
@@ -1035,10 +1042,10 @@ const OTAReport = () => {
                               Arrived
                             </th>
                             <th className="text-center">On Time</th>
-                            <th className="text-center">Delayed</th>
                             <th className="text-center d-none d-lg-table-cell">
                               On Time %
                             </th>
+                            <th className="text-center">Delayed</th>
                             <th className="text-center d-none d-lg-table-cell">
                               Delayed %
                             </th>
@@ -1073,7 +1080,7 @@ const OTAReport = () => {
                                     )}
                                   </a>
                                 </td>
-                                <td className="text-center">{row.shiftDate}</td>
+                                <td className="text-center">{row.vendorName}</td>
                                 <td className="text-center d-none d-md-table-cell">
                                   {row.TotalCabs}
                                 </td>
@@ -1081,10 +1088,10 @@ const OTAReport = () => {
                                   {row.Arrived}
                                 </td>
                                 <td className="text-center">{row.OnTime}</td>
-                                <td className="text-center">{row.Delayed}</td>
                                 <td className="text-center d-none d-lg-table-cell">
                                   {row.OnTimePer}
                                 </td>
+                                <td className="text-center">{row.Delayed}</td>
                                 <td className="text-center d-none d-lg-table-cell">
                                   {row.DelayedPer}
                                 </td>
@@ -1094,44 +1101,43 @@ const OTAReport = () => {
                                 <tr>
                                   <td colSpan={8} className="leftStrip p-2">
                                     <div className="expanded-content">
-                                      {row.vendors && row.vendors.length === 0 ? (
-                                        <p>No vendor records found</p>
+                                      {row.dailyData && row.dailyData.length === 0 ? (
+                                        <p>No daily records found</p>
                                       ) : (
                                         <div className="table-responsive">
                                           <table className="table table-sm table-bordered mb-0">
                                             <thead>
                                               <tr>
-                                                <th>Vendor</th>
+                                                <th>Date</th>
                                                 <th>Total Cabs</th>
                                                 <th>Arrived</th>
                                                 <th>On Time</th>
-                                                <th>Delayed</th>
                                                 <th className="d-none d-md-table-cell">
                                                   On Time %
                                                 </th>
+                                                <th>Delayed</th>
                                                 <th className="d-none d-md-table-cell">
                                                   Delayed %
                                                 </th>
                                               </tr>
                                             </thead>
                                             <tbody>
-                                              {row.vendors &&
-                                                row.vendors.map(
-                                                  (vendor, vIdx) => (
+                                              {row.dailyData &&
+                                                row.dailyData.map(
+                                                  (dayData, vIdx) => (
                                                     <tr key={vIdx} className={`${vIdx % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
                                                       <td>
-                                                        {vendor.Vendor ||
-                                                          vendor.vendorName}
+                                                        {dayData.shiftDate}
                                                       </td>
-                                                      <td>{vendor.TotalCabs}</td>
-                                                      <td>{vendor.Arrived}</td>
-                                                      <td>{vendor.OnTime}</td>
-                                                      <td>{vendor.Delayed}</td>
+                                                      <td>{dayData.TotalCabs}</td>
+                                                      <td>{dayData.Arrived}</td>
+                                                      <td>{dayData.OnTime}</td>
                                                       <td className="d-none d-md-table-cell">
-                                                        {vendor.OnTimePer}
+                                                        {dayData.OnTimePer}
                                                       </td>
+                                                      <td>{dayData.Delayed}</td>
                                                       <td className="d-none d-md-table-cell">
-                                                        {vendor.DelayedPer}
+                                                        {dayData.DelayedPer}
                                                       </td>
                                                     </tr>
                                                   )

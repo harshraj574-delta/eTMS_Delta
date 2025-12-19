@@ -37,6 +37,7 @@
     border-radius: 12px;
     box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
     border: 1px solid #e5e7eb;
+    background-color: #ffffff !important;
 }
 
 .ota-filter-overlay .p-overlaypanel-content {
@@ -46,7 +47,7 @@
 .ota-filter-header {
     padding: 0.6rem 0.9rem;
     border-bottom: 1px solid #e5e7eb;
-    background: linear-gradient(90deg, #f9fafb 0%, #ffffff 60%);
+    background: #ffffff;
 }
 
 .ota-filter-title {
@@ -81,7 +82,7 @@
 .ota-filter-footer {
     padding: 0.5rem 0.9rem 0.75rem;
     border-top: 1px solid #e5e7eb;
-    background: #f9fafb;
+    background: #ffffff;
 }
 
 .ota-filter-field {
@@ -155,7 +156,46 @@
     transition: all 0.2s;
 }
 
+
 .ota-filter-chip-remove:hover {
     color: #111827;
     background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Force transparent background and remove border for secondary buttons in the toolbar */
+.p-button.p-button-secondary.p-button-text {
+    background-color: transparent !important;
+    border: none !important;
+    color: #6c757d !important;
+}
+
+
+/* Force white background for PrimeReact Overlay Panels (Dropdowns, MultiSelects, Calendar) */
+.p-dropdown-panel,
+.p-multiselect-panel,
+.p-overlay-panel,
+.p-datepicker {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item,
+.p-multiselect-panel .p-multiselect-items .p-multiselect-item {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+}
+
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item:hover,
+.p-multiselect-panel .p-multiselect-items .p-multiselect-item:hover {
+    background-color: #f3f4f6 !important;
+}
+
+/* Specific style for Clear all filters button if it has a specific class or falls under secondary button */
+.ota-filter-footer .p-button.p-button-secondary.p-button-text {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.ota-filter-footer .p-button.p-button-secondary.p-button-text:hover {
+    background-color: #f3f4f6 !important;
 }

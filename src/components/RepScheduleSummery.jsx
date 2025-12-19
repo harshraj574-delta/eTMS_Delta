@@ -54,7 +54,7 @@ const RepScheduleSummery = () => {
     RouteZone: null,
     BillingVehicleType: null,
   });
-  
+
   const op = useRef(null);
   const filterButtonRef = useRef(null);
   const dt = useRef(null);
@@ -80,9 +80,9 @@ const RepScheduleSummery = () => {
     if (globalFilter && globalFilter.trim() !== "") {
       const searchLower = globalFilter.toLowerCase();
       filtered = filtered.filter((item) => {
-         return Object.values(item).some((val) =>
-             val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
-         );
+        return Object.values(item).some((val) =>
+          val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
+        );
       });
     }
     setFilteredData(filtered);
@@ -119,9 +119,9 @@ const RepScheduleSummery = () => {
         typeof response === "string" ? JSON.parse(response) : response;
       const formatted = Array.isArray(parsed)
         ? parsed.map((f) => ({
-            label: f.facility || f.facilityName,
-            value: f.Id,
-          }))
+          label: f.facility || f.facilityName,
+          value: f.Id,
+        }))
         : [];
       setFacilities(formatted);
     } catch (err) {
@@ -158,32 +158,36 @@ const RepScheduleSummery = () => {
   };
 
   const detailedColumns = [
-    { field: "ShiftDate", header: "Shift Date" },
-    { field: "PlanVendorName", header: "Plan Vendor Name" },
-    { field: "ActVendorName", header: "Act Vendor Name" },
-    { field: "VehicleNo", header: "Vehicle No" },
+    { field: "ShiftDate", header: "Date" },
     { field: "TripType", header: "Trip Type" },
-    { field: "RouteId", header: "Route Id" },
-    { field: "RouteNo", header: "Route No" },
-    { field: "Location", header: "Location" },
-    { field: "BillingZone", header: "Billing Zone" },
-    { field: "RouteZone", header: "Route Zone" },
     { field: "LogInOut", header: "Log In Out" },
     { field: "ActLogInOut", header: "Act Log In Out" },
-    { field: "VehicleType", header: "Deployed Vehicle Type" },
-    { field: "BillingVehicleType", header: "Billing Vehicle Type" },
-    { field: "TotCapacity", header: "Tot Capacity" },
-    { field: "SchedulePax", header: "Schedule Pax" },
-    { field: "ActPax", header: "Act Pax" },
-    { field: "NoShowPax", header: "No Show Pax" },
+    { field: "RouteId", header: "Route Id" },
+    { field: "VehicleType", header: "Vehicle Type" },
+    { field: "BillingVehicleType", header: "Seat Capacity" },
+    { field: "ActVendorName", header: "Vendor Name" },
+    { field: "VehicleNo", header: "Vehicle No" },
+    { field: "Location", header: "Location" },
+    { field: "RouteZone", header: "Planned Zone" },
+    { field: "BillingZone", header: "Billing Zone" },
+    { field: "PlannedEmployeeCount", header: "Planned Employee Count" },
     { field: "FuleType", header: "Fuel Type" },
-    { field: "FuleRate", header: "Fuel Rate" },
+    { field: "Ac/nonac", header: "AC/NONAC" },
     { field: "Cost", header: "Cost" },
-    { field: "TollName", header: "Toll Name" },
-    { field: "TollCost", header: "Toll Cost" },
     { field: "GuardCost", header: "Guard Cost" },
+    { field: "TollCost", header: "Toll Cost" },
+    { field: "PenaltyCost", header: "penalty" },
     { field: "TotalCost", header: "Total Cost" },
-    { field: "TripSheetUpdated", header: "Trip Sheet" },
+
+    // { field: "PlanVendorName", header: "Plan Vendor Name" },
+    // { field: "RouteNo", header: "Route No" },
+    // { field: "TotCapacity", header: "Tot Capacity" },
+    // { field: "SchedulePax", header: "Schedule Pax" },
+    // { field: "ActPax", header: "Act Pax" },
+    // { field: "NoShowPax", header: "No Show Pax" },
+    // { field: "FuleRate", header: "Fuel Rate" },
+    // { field: "TollName", header: "Toll Name" },
+    // { field: "TripSheetUpdated", header: "Trip Sheet" },
   ];
 
   // Render columns for detailed report
@@ -247,7 +251,7 @@ const RepScheduleSummery = () => {
       if (dt.current) {
         dt.current.exportCSV({ fileName });
       } else if (filteredData.length > 0) {
-          exportToCSV(filteredData, fileName);
+        exportToCSV(filteredData, fileName);
       }
       return;
     }
@@ -349,7 +353,7 @@ const RepScheduleSummery = () => {
                 />
               </div>
 
-               <div className="ota-filter-field">
+              <div className="ota-filter-field">
                 <label className="ota-filter-label">Route Zone</label>
                 <MultiSelect
                   value={filters.RouteZone}
@@ -563,14 +567,14 @@ const RepScheduleSummery = () => {
             border: 1px solid #dee2e6;
             padding: 16px 10px;
             font-size: 13px;
-            text-align: center;
+            text-align: left;
             vertical-align: middle;
           }
           .vendor-table tbody td {
             padding: 0.5rem;
             border: 1px solid #dee2e6;
             font-size: 0.875rem;
-            text-align: center;
+            text-align: left;
             vertical-align: middle;
           }
           .vendor-table .table-light th {
@@ -583,13 +587,13 @@ const RepScheduleSummery = () => {
             border: 1px solid #dee2e6;
             padding: 16px 10px;
             font-size: 13px;
-            text-align: center;
+            text-align: left;
           }
           .nested-vendor-table tbody td {
             padding: 0.5rem;
             border: 1px solid #dee2e6;
             font-size: 0.8125rem;
-            text-align: center;
+            text-align: left;
           }
           .expansion-icon {
             color: #0d6efd;
@@ -731,6 +735,7 @@ const RepScheduleSummery = () => {
                           <tr>
                             <th style={{ width: "40px" }}></th>
                             <th>Vendor Name</th>
+                            <th>Vendor ID</th>
                             <th>Trip Count</th>
                             <th>Trip Amount</th>
                             <th>Guard Count</th>
@@ -756,9 +761,8 @@ const RepScheduleSummery = () => {
                               return (
                                 <React.Fragment key={index}>
                                   <tr
-                                    className={`${
-                                      index % 2 !== 0 ? "ota-row-odd" : ""
-                                    } ota-row-hover`}
+                                    className={`${index % 2 !== 0 ? "ota-row-odd" : ""
+                                      } ota-row-hover`}
                                   >
                                     <td>
                                       <a
@@ -782,6 +786,7 @@ const RepScheduleSummery = () => {
                                     <td style={{ textAlign: "left" }}>
                                       {row.vendorName}
                                     </td>
+                                    <td style={{ textAlign: "left" }}>{row.vid}</td>
                                     <td>{row.ScRoute}</td>
                                     <td>{row.Cost}</td>
                                     <td>{row.GuardCount}</td>
@@ -804,7 +809,8 @@ const RepScheduleSummery = () => {
                                               <table className="table table-sm table-bordered mb-0 nested-vendor-table custom-html-table">
                                                 <thead>
                                                   <tr>
-                                                    <th>Vendor Name</th>
+                                                    {/* <th>Vendor Name</th> */}
+                                                    <th>Date</th>
                                                     <th>Vehicle Type</th>
                                                     <th>Trip Count</th>
                                                     <th>TripRate</th>
@@ -822,18 +828,20 @@ const RepScheduleSummery = () => {
                                                     (childRow, cIdx) => (
                                                       <tr
                                                         key={cIdx}
-                                                        className={`${
-                                                          cIdx % 2 !== 0
-                                                            ? "ota-row-odd"
-                                                            : ""
-                                                        } ota-row-hover`}
+                                                        className={`${cIdx % 2 !== 0
+                                                          ? "ota-row-odd"
+                                                          : ""
+                                                          } ota-row-hover`}
                                                       >
-                                                        <td
+                                                        {/* <td
                                                           style={{
                                                             textAlign: "left",
                                                           }}
                                                         >
                                                           {childRow.vendorName}
+                                                        </td> */}
+                                                        <td>
+                                                          {childRow.Date}
                                                         </td>
                                                         <td>
                                                           {childRow.VehicleType}

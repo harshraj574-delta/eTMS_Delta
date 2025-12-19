@@ -38,7 +38,13 @@
     border-radius: 4px;
 }
 
-body,
+body {
+    font-family: PlusJakartaSans !important;
+    font-stretch: normal !important;
+    font-style: normal !important;
+    background-color: rgb(249, 249, 249);
+}
+
 .p-component {
     font-family: PlusJakartaSans !important;
     font-stretch: normal !important;
@@ -298,6 +304,29 @@ button {
     color: var(--primary-color) !important;
 }
 
+
+.btn-dark {
+    background-color: var(--secondary-color) !important;
+    color: #fff !important;
+    border-color: var(--secondary-color) !important;
+}
+
+.btn-dark:hover {
+    background-color: #000 !important;
+    border-color: #000 !important;
+}
+
+.btn-outline-dark {
+    color: var(--secondary-color) !important;
+    border-color: var(--secondary-color) !important;
+    background: transparent !important;
+}
+
+.btn-outline-dark:hover {
+    background-color: var(--secondary-color) !important;
+    color: #fff !important;
+}
+
 .btn-outline-secondary {
     border-color: var(--secondary-color);
     color: var(--secondary-color);
@@ -305,6 +334,163 @@ button {
 
 .btn-outline-secondary:hover {
     background-color: var(--secondary-color);
+}
+
+.replicate-btn:hover {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+/* Header User Name Typography */
+.header-user-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 24px;
+    letter-spacing: -0.01em;
+    color: #1C1D20;
+    vertical-align: middle;
+}
+
+/* Profile Sidebar Styling */
+.profile-sidebar {
+    width: 495px !important;
+}
+
+@media (max-width: 576px) {
+    .profile-sidebar {
+        width: 100% !important;
+    }
+}
+
+.profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.profile-user-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    /* Bold as per image */
+    font-size: 24px;
+    color: #1C1D20;
+    margin-bottom: 0.5rem;
+}
+
+.profile-info-row {
+    display: flex;
+    align-items: center;
+    color: #4B5563;
+    /* Grey text */
+    font-size: 14px;
+    margin-bottom: 0.5rem;
+}
+
+.profile-info-row .material-icons {
+    font-size: 18px;
+    margin-right: 10px;
+    color: #9CA3AF;
+}
+
+.status-card {
+    background-color: #F9FAFB;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.status-label {
+    font-size: 12px;
+    color: #6B7280;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.status-value {
+    font-weight: 600;
+    color: #111827;
+    font-size: 14px;
+}
+
+.status-badge-yes {
+    background-color: #10B981;
+    /* Green */
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    /* Pill shape */
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.help-section-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    color: #111827;
+}
+
+.help-item {
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.help-item:hover {
+    transform: translateY(-2px);
+}
+
+.help-icon-box {
+    width: 60px;
+    height: 60px;
+    background-color: #F3F4F6;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+}
+
+.help-icon-box img {
+    width: 32px;
+    height: 32px;
+}
+
+.help-text {
+    font-size: 12px;
+    color: #4B5563;
+    font-weight: 500;
+}
+
+.need-assistance-title {
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    color: #111827;
+}
+
+.assistance-link {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    color: #4B5563;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.assistance-link:hover {
+    color: #111827;
+}
+
+.assistance-link .material-icons {
+    font-size: 18px;
+    margin-right: 12px;
+    color: #9CA3AF;
 }
 
 .btn-light {
@@ -516,8 +702,10 @@ label {
 }
 
 .header {
-    /* box-shadow: 0 0 0 0 rgba(163, 163, 163, 0.1), 0 4px 8px 0 rgba(163, 163, 163, 0.1), 0 15px 15px 0 rgba(163, 163, 163, 0.09), 0 33px 20px 0 rgba(163, 163, 163, 0.05), 0 58px 23px 0 rgba(163, 163, 163, 0.01), 0 91px 25px 0 rgba(163, 163, 163, 0); */
-    padding: 14px 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    padding: 0 15px;
+    height: 68px;
+    align-items: center;
     display: flex;
     justify-content: start;
     position: fixed;
@@ -553,9 +741,28 @@ label {
 }
 
 /* .link-right{ background: #ff0;} */
+
+.link-right {
+    margin-left: 24px;
+}
+
 .link-right li {
     display: inline-block;
     vertical-align: middle;
+}
+
+.link-right li:nth-child(1) {
+    position: relative;
+}
+
+.link-right li:nth-child(1)::before {
+    content: '';
+    height: 75px;
+    width: 1px;
+    background: var(--grey-2);
+    position: absolute;
+    top: -21px;
+    left: 0;
 }
 
 /* .link-right li:nth-child(2){ border-left:1px solid var(--grey-2); border-right:1px solid var(--grey-2) } */
@@ -565,7 +772,7 @@ label {
     font-weight: 500;
 }
 
-.link-right li:nth-child(2)::after {
+/* .link-right li:nth-child(2)::after {
     content: '';
     height: 75px;
     width: 1px;
@@ -573,7 +780,7 @@ label {
     position: absolute;
     top: -21px;
     right: 0;
-}
+} */
 
 .link-right li:nth-child(2)::before {
     content: '';
@@ -782,7 +989,7 @@ label {
 
 .offcanvas-backdrop,
 .offcanvas.offcanvas-end {
-    top: 70px;
+    top: 68px;
 }
 
 .offcanvas-header .btn-close {
@@ -986,10 +1193,9 @@ label {
 }
 
 .helpline {
-    position: absolute;
+    position: relative;
     width: 100%;
-    bottom: 0;
-    left: 0;
+    margin-top: 20px;
     background-color: var(--offwhite);
     padding: 26px;
     display: flex;
@@ -1836,11 +2042,10 @@ input[type="number"] {
 
 
 .offcanvas_list {
-    /* width: 100%;
-    background-color: var(--offwhite);
-    padding: 26px; */
-
     margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
 }
 
 .offcanvas_list li small {
@@ -1854,9 +2059,14 @@ input[type="number"] {
     font-size: 14px;
     font-weight: 600;
     color: var(--secondary-color);
-    width: 49%;
-    display: inline-block;
+    flex: 0 0 50%;
+    width: 50%;
+    max-width: 50%;
     margin-bottom: 15px;
+    margin-right: 0;
+    padding-right: 15px;
+    box-sizing: border-box;
+    display: block;
 }
 
 .offcanvas_list li:last-child {
@@ -3368,4 +3578,223 @@ input[type="date"],
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(74, 54, 236, 0.3);
     color: #fff;
+}
+
+/* Custom Paginator Styles */
+.custom-schedule-paginator {
+    width: 100%;
+    padding: 12px 20px !important;
+    gap: 10px;
+    /* Reduced gap since elements are grouped */
+    background: transparent !important;
+    border: none !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.custom-schedule-paginator .p-paginator-left-content {
+    margin-right: auto;
+}
+
+.custom-schedule-paginator .p-paginator-rpp-options {
+    border: none;
+    background: transparent;
+    color: var(--secondary-color);
+    font-size: 13px;
+    padding: 0;
+    margin-left: -5px;
+    /* Pull dropdown closer */
+    display: flex;
+    align-items: center;
+}
+
+.custom-schedule-paginator .p-paginator-rpp-options:focus {
+    box-shadow: none;
+}
+
+.custom-schedule-paginator .p-dropdown .p-dropdown-label {
+    padding: 0 0.5rem 0 0 !important;
+    /* Adjust padding, remove top/bottom */
+    display: flex;
+    align-items: center;
+    line-height: 1;
+    /* Reset line height */
+    margin-top: 2px;
+    /* Slight optical adjustment if needed */
+}
+
+.custom-schedule-paginator .p-dropdown .p-dropdown-trigger {
+    width: 1rem;
+    color: var(--grey-4);
+    display: flex;
+    align-items: center;
+}
+
+.custom-schedule-paginator .p-paginator-page,
+.custom-schedule-paginator .p-paginator-first,
+.custom-schedule-paginator .p-paginator-last {
+    display: none !important;
+}
+
+.custom-schedule-paginator .p-paginator-prev,
+.custom-schedule-paginator .p-paginator-next {
+    min-width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    /* Changed from 50% to match generic button shape if needed, but user asked for box-shadow on chevron */
+    border: none !important;
+    margin: 0 4px;
+    color: var(--grey-4);
+    box-shadow: 0px 0px 0px 1px #464F603D;
+    /* Added box-shadow */
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-schedule-paginator .p-paginator-prev:not(.p-disabled):hover,
+.custom-schedule-paginator .p-paginator-next:not(.p-disabled):hover {
+    background: #f0f0f0;
+    color: var(--primary-color);
+}
+
+/* Style for the new x/y indicator */
+.custom-schedule-paginator .p-paginator-current {
+    margin: 0 8px;
+    /* Spacing between buttons and text */
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--secondary-color);
+    user-select: none;
+}
+
+.card_tb {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.p-inputtext,
+.p-dropdown,
+.p-calendar input,
+.form-control,
+.form-select {
+    background-color: #ffffff !important;
+}
+
+/* Profile Sidebar Styles */
+.profile-sidebar-img {
+    width: 56px !important;
+    height: 56px !important;
+}
+
+.profile-sidebar-name {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 19px !important;
+    line-height: 28px !important;
+    letter-spacing: -0.02em !important;
+    color: #000000 !important;
+}
+
+.profile-contact-text {
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 16px !important;
+    line-height: 24px !important;
+    letter-spacing: -0.01em !important;
+    vertical-align: middle !important;
+    color: #1C1D20 !important;
+}
+
+.profile-action-btn {
+    height: 40px !important;
+    padding: 8px 20px !important;
+    gap: 8px !important;
+    border-radius: 8px !important;
+    box-shadow: 0px 1px 2px -1px #110C2214 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.profile-btn-view {
+    width: 120px !important;
+    border: 1px solid #D2D2D2 !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    white-space: nowrap !important;
+}
+
+.profile-btn-logout {
+    width: 89px !important;
+    border: 1px solid #FFC7C7 !important;
+}
+
+.profile-status-badge {
+    width: 88px !important;
+    height: 24px !important;
+    border-radius: 29px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.requi_sec li small {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-style: normal;
+    font-size: 13px;
+    line-height: 19px;
+    letter-spacing: 0.03em;
+    vertical-align: middle;
+    color: #545557;
+}
+
+.profile-btn-view {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-style: normal;
+    font-size: 14px;
+    line-height: 24px;
+    letter-spacing: 0;
+    vertical-align: middle;
+    color: #4F4B5C !important;
+}
+
+.profile-btn-view:hover {
+    background-color: rgba(28, 29, 32, 0.05) !important;
+    color: #4F4B5C !important;
+}
+
+.profile-btn-logout:hover {
+    background-color: rgba(255, 199, 199, 0.2) !important;
+    color: #f03d3d !important;
+}
+
+.need-assistance-subtitle {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-style: normal;
+    font-size: 19px;
+    line-height: 28px;
+    letter-spacing: -0.02em;
+    color: #111827;
+}
+
+.btn-close-fixed {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1051;
+    width: 22px !important;
+    height: 22px !important;
+    opacity: 1 !important;
+}
+
+/* Fix PrimeReact Calendar popup appearing behind Bootstrap Offcanvas */
+.p-datepicker {
+    z-index: 9999 !important;
 }

@@ -26,9 +26,6 @@ import TableToolbar from "./common/TableToolbar.jsx";
 import { set } from "lodash";
 import { CustomDataTable } from "./common/CustomDataTable";
 import { ToastContainer } from "react-toastify";
-import CustomPaginator from "./common/CustomPaginator";
-import ChatIcon from "./common/ChatIcon";
-import TabSwitcher from "./common/TabSwitcher";
 const MyFeedback = () => {
   const [feedbackData, setFeedbackData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,15 +51,6 @@ const MyFeedback = () => {
     RouteId: null,
     TicketNo: null,
   });
-
-  // Pagination state
-  const [first, setFirst] = useState(0);
-  const [rows, setRows] = useState(50);
-
-  const onPageChange = (event) => {
-      setFirst(event.first);
-      setRows(event.rows);
-  };
 
   const op = useRef(null);
   const filterButtonRef = useRef(null);
@@ -222,13 +210,11 @@ const MyFeedback = () => {
     const selectedCategory = document.getElementById("categorySelect").value;
     if (!selectedCategory) {
       toastService.warn("Please select a category type");
-      setLoading(false);
       return;
     }
 
     if (!feedbackText) {
       toastService.warn("Please enter feedback text");
-      setLoading(false);
       return;
     }
 
@@ -379,10 +365,25 @@ const MyFeedback = () => {
     }
     // optional: resetFormValues();
   };
-  // Simple tab switching - no loading needed since it's client-side filtering
+  // Track if data is ready for current filter
+  const [filterDataReady, setFilterDataReady] = useState(true);
+
   const handleFilterClick = (filter) => {
+    setLoading(true);
+    setFilterDataReady(false);
     setFeedbackFilter(filter);
   };
+
+  // Auto-stop loading when data matches filter
+  useEffect(() => {
+    if (feedbackData.length > 0 && !filterDataReady) {
+      const timer = setTimeout(() => {
+        setLoading(false);
+        setFilterDataReady(true);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [feedbackData, feedbackFilter, filterDataReady]);
   // search filter
   const applyGlobalFilter = (data, search) => {
     if (!search || !search.trim()) return data;
@@ -499,38 +500,90 @@ const MyFeedback = () => {
             </div>
           </div>
         </div> */}
-        <div className="row mt-3">
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark">{feedbackCount.total}</h3>
-              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Total Feedbacks</span>
+        <div className="row">
+          <div className="col-lg-12">
+            <div className="row">
+              <div className="col">
+                <div
+                  className={`cardx p-3 ${feedbackFilter === "total"
+                    ? "bg-secondary text-white"
+                    : "bg-white"
+                    }`}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handleFilterClick("total")}
+                >
+                  <h3>
+                    <strong
+                      className={
+                        feedbackFilter === "total" ? "text-white" : "text-dark"
+                      }
+                    >
+                      {feedbackCount.total}
+                    </strong>
+                  </h3>
+                  <span
+                    className={`subtitle_sm ${feedbackFilter === "total" ? "text-white" : "text-dark"
+                      }`}
+                  >
+                    Total Feedbacks
+                  </span>
+                </div>
+              </div>
+              <div className="col">
+                <div
+                  className={`cardx p-3 ${feedbackFilter === "open"
+                    ? "bg-secondary text-white"
+                    : "bg-white"
+                    }`}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handleFilterClick("open")}
+                >
+                  <h3>
+                    <strong
+                      className={
+                        feedbackFilter === "open" ? "text-warning" : "text-dark"
+                      }
+                    >
+                      {feedbackCount.open}
+                    </strong>
+                  </h3>
+                  <span
+                    className={`subtitle_sm ${feedbackFilter === "open" ? "text-white" : "text-dark"
+                      }`}
+                  >
+                    Open Tickets
+                  </span>
+                </div>
+              </div>
+              <div className="col">
+                <div
+                  className={`cardx p-3 ${feedbackFilter === "closed"
+                    ? "bg-secondary text-white"
+                    : "bg-white"
+                    }`}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handleFilterClick("closed")}
+                >
+                  <h3>
+                    <strong
+                      className={
+                        feedbackFilter === "closed"
+                          ? "text-white text-opacity-50"
+                          : "text-dark"
+                      }
+                    >
+                      {feedbackCount.closed}
+                    </strong>
+                  </h3>
+                  <span
+                    className={`subtitle_sm ${feedbackFilter === "closed" ? "text-white" : "text-dark"
+                      }`}
+                  >
+                    Closed Tickets
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-warning">{feedbackCount.open}</h3>
-              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Open Tickets</span>
-            </div>
-          </div>
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark text-opacity-50">{feedbackCount.closed}</h3>
-              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Closed Tickets</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="row mt-4">
-          <div className="col-12">
-            <TabSwitcher
-              tabs={[
-                { label: "Open Tickets", value: "open" },
-                { label: "Closed Tickets", value: "closed" },
-                { label: "Total Tickets", value: "total" },
-              ]}
-              activeTab={feedbackFilter}
-              onTabChange={(value) => handleFilterClick(value)}
-            />
           </div>
         </div>
         {/* Feedback Table */}
@@ -656,7 +709,10 @@ const MyFeedback = () => {
                 </TableToolbar>
                 <div className="table-responsive">
                   <CustomDataTable
-                    value={finalTableData.slice(first, first + rows)}
+                    value={finalTableData}
+                    paginator
+                    rows={50}
+                    rowsPerPageOptions={[50, 100, 150, 200]}
                     loading={loading}
                     emptyMessage="No feedback data available"
                     className="p-datatable-sm"
@@ -670,26 +726,18 @@ const MyFeedback = () => {
                   >
                     <Column
                       header="Ticket No."
-                      body={(rowData) => {
-                        const hasConversation = rowData.ActionBy !== null && rowData.ActionBy !== '';
-                        const textColor = hasConversation ? '#0BAA60' : 'inherit';
-                        return (
-                          <a
-                            href="#!"
-                            className="btn-text"
-                            data-bs-toggle="offcanvas"
-                            data-bs-target="#ticketNumber"
-                            aria-controls="offcanvasRight"
-                            onClick={() => fetchTicketReplies(rowData.TicketNo)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
-                          >
-                            <ChatIcon hasConversation={hasConversation} />
-                            <span style={{ color: textColor, fontWeight: hasConversation ? '500' : 'normal' }}>
-                              {rowData.TicketNo}
-                            </span>
-                          </a>
-                        );
-                      }}
+                      body={(rowData) => (
+                        <a
+                          href="#!"
+                          className="btn-text"
+                          data-bs-toggle="offcanvas"
+                          data-bs-target="#ticketNumber"
+                          aria-controls="offcanvasRight"
+                          onClick={() => fetchTicketReplies(rowData.TicketNo)}
+                        >
+                          <span className="ms-3">{rowData.TicketNo}</span>
+                        </a>
+                      )}
                     />
                     <Column
                       field="RaisedDate"
@@ -764,14 +812,6 @@ const MyFeedback = () => {
                       )}
                     />
                   </CustomDataTable>
-                  <CustomPaginator
-                      first={first}
-                      rows={rows}
-                      totalRecords={finalTableData.length}
-                      onPageChange={onPageChange}
-                      rowsPerPageOptions={[50, 100, 150, 200]}
-                  />
-
                 </div>
               </div>
             </div>
