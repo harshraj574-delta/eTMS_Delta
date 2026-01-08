@@ -1598,7 +1598,14 @@ label {
     font-weight: 500;
     color: var(--grey-4);
     display: inline-block;
-    width: 30%;
+}
+
+.profile_card ul li span:nth-child(1) {
+    width: 40%;
+}
+
+.profile_card ul li span:nth-child(2) {
+    width: 55%;
 }
 
 .cutoff {

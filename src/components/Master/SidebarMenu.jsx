@@ -28,12 +28,12 @@ const SidebarMenu = () => {
         (subItem) => subItem.ParentId == menuItem.MenuId
       );
 
-      // Filter out ReplicateSchedule from children/subItems (kept in session for authorization)
-      children = children.filter(child => {
-        const name = child.MenuName?.toLowerCase() || '';
-        const url = child.MenuURL?.toLowerCase() || '';
-        return !name.includes('replicate') && !url.includes('replicate');
-      });
+      // Filter logic removed to allow Replicate Roster
+      // children = children.filter(child => {
+      //   const name = child.MenuName?.toLowerCase() || '';
+      //   const url = child.MenuURL?.toLowerCase() || '';
+      //   return !name.includes('replicate') && !url.includes('replicate');
+      // });
 
       // Grouping logic for Reports
       if (menuItem.MenuName === 'Reports' && children.length > 0) {
@@ -74,12 +74,12 @@ const SidebarMenu = () => {
         subItems: children,
       };
     })
-    // Filter out ReplicateSchedule from sidebar display (but keep in session for authorization)
-    .filter(menuItem => {
-      const menuName = menuItem.MenuName?.toLowerCase() || '';
-      const menuURL = menuItem.MenuURL?.toLowerCase() || '';
-      return !menuName.includes('replicate') && !menuURL.includes('replicate');
-    });
+    // Filter logic removed
+    // .filter(menuItem => {
+    //   const menuName = menuItem.MenuName?.toLowerCase() || '';
+    //   const menuURL = menuItem.MenuURL?.toLowerCase() || '';
+    //   return !menuName.includes('replicate') && !menuURL.includes('replicate');
+    // });
   };
 
   const menuItems = useMemo(

@@ -378,32 +378,73 @@ const MySchedule = () => {
     }
   };
 
-  const fetchFacilityDetails = async () => {
+  // const fetchFacilityDetails = async () => {
+  //   try {
+  //     setLoading(true);
+
+  //     let empid = 0;
+
+  //     if (
+  //       !sessionManager.isBackupManager() &&
+  //       sessionManager.getUserSession().ManagerId === "0"
+  //     ) {
+  //       empid = empid;
+  //     } else {
+  //       empid = -1;
+  //     }
+
+  //     const response = await apiService.SelectFacilityByGroup({
+  //       empid: empid,
+  //     });
+
+  //     // console.log("Facility Details", response);
+  //     if (response) {
+  //       setLoginFacilities(response); // Set login facilities
+  //       setLogoutFacilities(response); // Set logout facilities
+  //       setloginfacility(response);
+  //       setSelectedloginfacility(response[0]?.Id || ""); // Set default value for login facility
+  //       setSelectedlogoutfacility(response[0]?.Id || ""); // Set default value for logout facility
+  //       // console.log("loginfacility", response);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching facility details:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+   const fetchFacilityDetails = async () => {
     try {
       setLoading(true);
-
+ 
       let empid = 0;
-
+ 
       if (
         !sessionManager.isBackupManager() &&
         sessionManager.getUserSession().ManagerId === "0"
       ) {
-        empid = empid;
+        empid = sessionManager.getUserSession().ID; // Use user's ID when employee
       } else {
         empid = -1;
       }
-
+ 
       const response = await apiService.SelectFacilityByGroup({
         empid: empid,
       });
-
-      // console.log("Facility Details", response);
+ 
+      console.log("Facility Details", response);
       if (response) {
         setLoginFacilities(response); // Set login facilities
         setLogoutFacilities(response); // Set logout facilities
         setloginfacility(response);
-        setSelectedloginfacility(response[0]?.Id || ""); // Set default value for login facility
-        setSelectedlogoutfacility(response[0]?.Id || ""); // Set default value for logout facility
+       
+        // Find the facility matching the user's facility ID, similar to C# logic
+        const userFacility = response.find(fac => fac.Id == facID);
+        const defaultFacilityId = userFacility ? userFacility.Id : (response[0]?.Id || "");
+       
+        setSelectedloginfacility(defaultFacilityId); // Set default value for login facility
+        setSelectedlogoutfacility(defaultFacilityId); // Set default value for logout facility
         // console.log("loginfacility", response);
       }
     } catch (error) {
@@ -412,7 +453,7 @@ const MySchedule = () => {
       setLoading(false);
     }
   };
-
+  
   const fetchMgrSchedule = async (sdateOverride) => {
     try {
       //setIsSubmitting(true);

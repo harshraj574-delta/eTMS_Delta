@@ -14,8 +14,11 @@ import sessionManager from "../utils/SessionManager.js";
 import { vendorAllocationService } from "../services/compliance/VendorAllocationService.js";
 import { toastService } from "../services/toastService.js";
 import { ToastContainer } from "react-toastify";
-import ReportButton from "./common/ReportButton";
 
+
+import ReportButton from "./common/ReportButton";
+import calendarIcon from "../assets/calendar.png";
+import Loader from "./common/Loader";
 
 const VendorAllocation = () => {
   const [selectdate, setSelectDate] = useState(new Date());
@@ -98,7 +101,7 @@ const VendorAllocation = () => {
   };
   const handleShowData = async () => {
     setIsSubmitting(true);
-    setIsDataShown(true);
+    // setIsDataShown(true); // Moved to success block
     if (!selectedShiftTime) {
       toastService.warn("Please select a shift time.");
       setIsSubmitting(false);
@@ -139,14 +142,16 @@ const VendorAllocation = () => {
       }
 
       // Restore vendor mapping from localStorage
-      const vendorMap = JSON.parse(localStorage.getItem("routeVendorMap") || "{}");
+    //  const vendorMap = JSON.parse(localStorage.getItem("routeVendorMap") || "{}");
       parsedData = parsedData.map((row, index) => ({
         ...row,
-        vendor: vendorMap[row.RouteID] || row.vendor || null,
+        vendor: row.PlannedVendorID || row.vendorId || null,  // vendorId use karo (number: 4)
         _rowIndex: index,
       }));
+      //console.log("Fixed data with vendorIds:", parsedData.map(d => ({ RouteID: d.RouteID, vendor: d.vendor })));
       setFetchData(parsedData);
-      await fetchVendors(); // Make sure this is awaited
+      setIsDataShown(true); // Show data only after successful fetch
+      await fetchVendors(); 
       await GetRoutesStatistics();
     } catch (error) {
       setFetchData([]);
@@ -154,7 +159,7 @@ const VendorAllocation = () => {
       toastService.error("Error fetching routes by order:", error);
     } finally {
       setIsSubmitting(false);
-      await fetchAssignedVendorCounts(); // Refresh assigned vendor counts after fetching data
+      await fetchAssignedVendorCounts();
     }
   };
 
@@ -304,32 +309,7 @@ const VendorAllocation = () => {
   };
   return (
     <div>
-      {/* <h2>Vendor Allocation</h2> */}
-      {/* Yahan aap vendor allocation ka form, table ya controls add kar sakte hain */}
-      {isSubmitting && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(255,255,255,0.7)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            className="spinner-border text-primary"
-            style={{ width: 60, height: 60, fontSize: 32 }}
-            role="status"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      )}
+      <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header
         pageTitle="Vendor Allocation"
         showNewButton={false}
@@ -341,19 +321,22 @@ const VendorAllocation = () => {
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">
-            <div className="field col-2 mb-3">
+            <div className="field col-12 col-md-6 col-lg-2 mb-3">
               <label>Shift Date</label>
-              <Calendar
-                className="w-100"
-                name="shiftDate"
-                placeholder="Shift Date"
-                dateFormat="dd-mm-yy"
-                onChange={(e) => setSelectDate(e.value)}
-                value={selectdate}
-              />
+              <div className="custom-calendar-wrapper">
+                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                <Calendar
+                  className="w-100 custom-calendar-input"
+                  name="shiftDate"
+                  placeholder="Shift Date"
+                  dateFormat="dd-mm-yy"
+                  onChange={(e) => setSelectDate(e.value)}
+                  value={selectdate}
+                />
+              </div>
             </div>
 
-            <div className="field col-2 mb-3">
+            <div className="field col-12 col-md-6 col-lg-2 mb-3">
               <label>Facility Name</label>
               <Dropdown
                 options={facilities}
@@ -368,7 +351,7 @@ const VendorAllocation = () => {
                 }}
               />
             </div>
-            <div className="field col-2 mb-3">
+            <div className="field col-12 col-md-6 col-lg-2 mb-3">
               <label>Trip Type</label>
               <Dropdown
                 options={tripType}
@@ -379,7 +362,7 @@ const VendorAllocation = () => {
                 filter
               />
             </div>
-            <div className="field col-2 mb-3">
+            <div className="field col-12 col-md-6 col-lg-2 mb-3">
               <label>Shift Time</label>
               <Dropdown
                 options={shiftTimeOptions}
@@ -391,11 +374,10 @@ const VendorAllocation = () => {
                 filter
               />
             </div>
-            <div className="field col-2 mb-3 no-label">
+            <div className="field col-12 col-md-6 col-lg-2 mb-3 no-label">
               <ReportButton
                 label="Show"
-                onClick={() => handleShowData()}
-                disabled={isSubmitting}
+                onClick={handleShowData}
               />
             </div>
           </div>
@@ -449,7 +431,7 @@ const VendorAllocation = () => {
                       style={{ minWidth: "160px", maxWidth: "200px", width: "180px" }}
                       body={(rowData) => (
                         <Dropdown
-                          value={rowData.vendor ?? null}
+                          value={rowData.vendor}
                           options={vendors}
                           onChange={(e) => {
                             // Row index ya unique ID se update karein
@@ -487,6 +469,27 @@ const VendorAllocation = () => {
           </>
         )}
       </div>
+      <style>
+        {`
+          .custom-calendar-wrapper {
+            position: relative;
+            width: 100%;
+          }
+          .custom-calendar-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            z-index: 2;
+            pointer-events: none;
+          }
+          .custom-calendar-input .p-inputtext {
+            padding-left: 35px !important;
+          }
+        `}
+      </style>
     </div>
   );
 };

@@ -82,6 +82,10 @@ const Header = ({
   return (
     <div className="header" ref={headerRef}>
       <style>{`
+        .header {
+          overflow: hidden;
+        }
+                
         @media (max-width: 767px) {
           .header .header-mid {
             flex-wrap: wrap;

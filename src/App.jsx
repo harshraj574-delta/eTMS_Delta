@@ -60,6 +60,8 @@ import RepScheduleSummery from "./components/RepScheduleSummery";
 import EmpAccessRights from "./components/EmpAccessRights";
 import ManageMenu from "./components/ManageMenu";
 import EmployeeMaster from "./components/EmployeeMaster";
+import MapGeocoding from "./components/MapGeocoding";
+import ReplicateRoster from "./components/ReplicateRoster";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -138,6 +140,9 @@ function App() {
         <Route path="/EmpAccessRights" element={<PrivateRoute element={<EmpAccessRights />} />} />
         <Route path="/ManageMenu" element={<PrivateRoute element={<ManageMenu />} />} />
         <Route path="/EmployeeMaster" element={<PrivateRoute element={<EmployeeMaster />} />} />
+        <Route path="/MapGeocoding" element={<PrivateRoute element={<MapGeocoding />} />} />
+        <Route path="/ReplicateRoster" element={<PrivateRoute element={<ReplicateRoster />} />} />
+
 
 
 

@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { apiService } from "../services/api";
 import Alert from '@mui/material/Alert';
 import locationIcon from '../assets/location.png';
+import Loader from "./common/Loader";
 
 const MyProfile = () => {
   const [profileData, setProfileData] = useState(null);
@@ -62,6 +63,7 @@ const MyProfile = () => {
         showNewButton={false}
         onNewButtonClick={() => {}}
       />
+      <Loader isVisible={loading} fullScreen={true} />
       <Sidebar />
       <div class="middle">
         <div class="row mt-3">
@@ -320,7 +322,7 @@ const MyProfile = () => {
                   class="card profile_card"
                   style={{
                     width: '100%',
-                    height: '346px',
+                    minHeight: '346px',
                     borderRadius: '20px',
                     border: '1px solid #D2D2D2'
                   }}
