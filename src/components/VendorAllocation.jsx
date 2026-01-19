@@ -18,6 +18,7 @@ import { ToastContainer } from "react-toastify";
 
 import ReportButton from "./common/ReportButton";
 import calendarIcon from "../assets/calendar.png";
+import noReportImage from "../assets/no_report.png";
 import Loader from "./common/Loader";
 
 const VendorAllocation = () => {
@@ -382,6 +383,27 @@ const VendorAllocation = () => {
             </div>
           </div>
         </div>
+        {!isDataShown && (
+          <div className="card_tb">
+            <div
+              className="d-flex flex-column align-items-center justify-content-center p-5"
+              style={{ minHeight: "70vh" }}
+            >
+              <img
+                src={noReportImage}
+                alt="No Report Selected"
+                style={{
+                  maxWidth: "100px",
+                  opacity: 0.5,
+                  marginBottom: "1rem",
+                }}
+              />
+              <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
+                Please select above parameters to show data
+              </p>
+            </div>
+          </div>
+        )}
         {isDataShown && (
           <>
             <div className="row">

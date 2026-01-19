@@ -97,10 +97,10 @@ const RouteDeletion = () => {
     const today = new Date().toISOString().split("T")[0];
     const selectedDateStr = formatDate(date);
 
-    if (selectedDateStr < today) {
-      toastService.error("Date must be greater than the current date");
-      return;
-    }
+    // if (selectedDateStr < today) {
+    //   toastService.error("Date must be greater than the current date");
+    //   return;
+    // }
     if (!selFacility) {
       toastService.warn("Please select Facility");
       return;

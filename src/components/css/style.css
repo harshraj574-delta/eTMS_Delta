@@ -872,7 +872,38 @@ label {
     transition: 0.3s;
     overflow-y: auto;
     overflow-x: hidden;
+    /* YouTube-style scrollbar - hidden by default */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
 
+/* YouTube-style scrollbar for Webkit browsers (Chrome, Safari, Edge) */
+.sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+/* Show scrollbar on sidebar hover */
+.sidebar:hover {
+    scrollbar-color: rgba(180, 180, 180, 0.6) transparent;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(180, 180, 180, 0.6);
+}
+
+/* Slightly darker scrollbar when hovering directly on scrollbar */
+.sidebar:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(150, 150, 150, 0.8);
 }
 
 .sidebar .accordion-button:not(.collapsed) {
@@ -953,6 +984,254 @@ label {
 .sidebarClose {
     margin-left: -268px !important;
 }
+
+/* ========================================
+   YouTube-Style Collapsed Sidebar (Mini Rail)
+   Professional styling matching YouTube's design
+   ======================================== */
+
+/* Collapsed sidebar - Mini rail */
+.sidebar.collapsed {
+    width: 72px !important;
+    padding: 78px 0 20px 0 !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Override default close/hide styles */
+    margin-left: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    left: 0 !important;
+    transform: none !important;
+    transition: width 0.2s ease-in-out;
+    background: #fff;
+    border-right: 1px solid var(--grey-1);
+}
+
+/* Hide submenus when collapsed */
+.sidebar.collapsed .accordion-collapse {
+    display: none !important;
+}
+
+/* Hide accordion arrows when collapsed */
+.sidebar.collapsed .accordion-button::after {
+    display: none !important;
+}
+
+/* Hide help section when collapsed */
+.sidebar.collapsed .sidebar-help-section {
+    display: none !important;
+}
+
+/* Menu wrapper in collapsed mode */
+.sidebar.collapsed .sidebar-menu-wrapper {
+    padding: 0;
+}
+
+/* Menu item container - collapsed */
+.sidebar.collapsed .menu-item {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.sidebar.collapsed .accordion-item {
+    width: 100%;
+    background: transparent !important;
+}
+
+/* ========== MAIN BUTTON STYLING ========== */
+.sidebar.collapsed .accordion-button {
+    /* Layout */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+
+    /* Sizing */
+    width: 64px !important;
+    min-height: 74px !important;
+    padding: 16px 0 14px 0 !important;
+    margin: 0 auto !important;
+
+    /* Appearance */
+    background: transparent !important;
+    border: none !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+
+    /* Text - hide default text */
+    font-size: 0 !important;
+    color: transparent !important;
+
+    /* Interaction */
+    cursor: pointer !important;
+    transition: background-color 0.15s ease !important;
+    position: relative;
+}
+
+/* Hover effect - subtle gray background like YouTube */
+.sidebar.collapsed .accordion-button:hover {
+    background-color: #f2f2f2 !important;
+}
+
+/* Active/selected state */
+.sidebar.collapsed .accordion-button:not(.collapsed) {
+    background-color: transparent !important;
+}
+
+/* ========== ICON STYLING ========== */
+.sidebar.collapsed .accordion-button .material-icons {
+    /* Remove default background */
+    background: none !important;
+    background-color: transparent !important;
+
+    /* Sizing */
+    font-size: 24px !important;
+    width: 24px;
+    height: 24px;
+
+    /* Appearance */
+    color: #606060 !important;
+    padding: 0 !important;
+    margin: 0 0 6px 0 !important;
+    border-radius: 0 !important;
+
+    /* Animation */
+    transition: color 0.15s ease, transform 0.15s ease;
+    line-height: 1;
+}
+
+/* Icon hover - subtle color change */
+.sidebar.collapsed .accordion-button:hover .material-icons {
+    color: #030303 !important;
+}
+
+/* Active/selected icon */
+.sidebar.collapsed .accordion-button:not(.collapsed) .material-icons {
+    color: #030303 !important;
+    font-weight: 600;
+}
+
+/* ========== MINI LABEL BELOW ICON ========== */
+.sidebar.collapsed .accordion-button::before {
+    content: attr(data-label);
+    display: block !important;
+    font-size: 10px !important;
+    font-weight: 400;
+    color: #606060;
+    text-align: center;
+    /* Allow 2-line wrapping for longer labels */
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 68px;
+    max-height: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.2px;
+    order: 2;
+    word-break: break-word;
+}
+
+/* Label on hover */
+.sidebar.collapsed .accordion-button:hover::before {
+    color: #030303;
+}
+
+/* Active label */
+.sidebar.collapsed .accordion-button:not(.collapsed)::before {
+    color: #030303;
+    font-weight: 500;
+}
+
+/* ========== HIDE DEFAULT TEXT ========== */
+.sidebar.collapsed .accordion-button .menu-text {
+    display: none !important;
+}
+
+/* ========== MAKE ENTIRE BUTTON CLICKABLE ========== */
+.sidebar.collapsed .accordion-button * {
+    pointer-events: none;
+}
+
+.sidebar.collapsed .accordion-button {
+    pointer-events: auto !important;
+}
+
+/* ========== TOOLTIP ON HOVER ========== */
+.sidebar.collapsed .accordion-button[title] {
+    position: relative;
+}
+
+.sidebar.collapsed .accordion-button[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 8px 12px;
+    background: #606060;
+    color: white;
+    font-size: 12px !important;
+    font-weight: 500;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 9999;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    animation: tooltipSlideIn 0.15s ease;
+    pointer-events: none;
+}
+
+@keyframes tooltipSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
+}
+
+/* ========== CONTENT AREA ADJUSTMENT ========== */
+body.sidebar-collapsed .middle {
+    margin-left: 72px !important;
+    transition: margin-left 0.2s ease-in-out;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .sidebar.collapsed {
+        width: 64px !important;
+    }
+
+    body.sidebar-collapsed .middle {
+        margin-left: 64px !important;
+    }
+
+    .sidebar.collapsed .accordion-button {
+        width: 56px !important;
+        min-height: 66px !important;
+        padding: 12px 0 10px 0 !important;
+    }
+
+    .sidebar.collapsed .accordion-button .material-icons {
+        font-size: 22px !important;
+    }
+
+    .sidebar.collapsed .accordion-button::before {
+        font-size: 9px !important;
+    }
+}
+
+/* Hide tooltips on touch devices */
+@media (hover: none) {
+    .sidebar.collapsed .accordion-button[title]:hover::after {
+        display: none;
+    }
+}
+
+
 
 
 /* .offcanvas-menu {
@@ -2430,12 +2709,8 @@ label>span {
     /* width: 250px; */
 }
 
-.sidebar.collapsed {
-    width: 0px;
-    /* Collapsed width */
-    opacity: 0;
-    transition: all 0.3s ease;
-}
+/* Removed conflicting .sidebar.collapsed styles - 
+   YouTube-style collapsed sidebar is defined earlier in the file (around line 994) */
 
 .middle {
     /* transition: margin-left 0.3s ease; */
@@ -2445,10 +2720,18 @@ label>span {
 }
 
 .middle.expanded {
-    margin-left: 0px;
+    margin-left: 72px;
     /* Expanded margin, should match collapsed sidebar width */
-    width: 100%;
+    width: calc(100% - 72px);
     transition: all 0.3s ease;
+}
+
+/* Responsive width for collapsed sidebar on smaller screens */
+@media (max-width: 768px) {
+    .middle.expanded {
+        margin-left: 64px;
+        width: calc(100% - 64px);
+    }
 }
 
 /* Optional: For responsive design */

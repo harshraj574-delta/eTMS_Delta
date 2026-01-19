@@ -7,8 +7,10 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
+import { Calendar } from "primereact/calendar";
+import calendarIcon from "../assets/calendar.png";
 import { Dropdown } from "primereact/dropdown";
-import { Sidebar as PrimeSidebar } from "primereact/sidebar"; // Renamed to avoid conflict with your Sidebar component
+import MasterSidebar from "./Master/MasterSidebar";
 import { Col } from "react-bootstrap";
 import { SelectButton } from "primereact/selectbutton";
 import AdhocmanagementService from "../services/compliance/AdhocmanagementService";
@@ -56,6 +58,9 @@ const AdhocManagement = () => {
   ]);
   const [selectedRequestType, setSelectedRequestType] = useState(null);
   const [reasonData, setReasonData] = useState([]);
+  // Sidebar employee table pagination state
+  const [sidebarFirst, setSidebarFirst] = useState(0);
+  const [sidebarRows, setSidebarRows] = useState(10);
   const [selectedReason, setSelectedReason] = useState(null);
 
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false);
@@ -599,6 +604,45 @@ const AdhocManagement = () => {
   }, [adhocData, globalFilter, adhocFilter, filters]);
   return (
     <>
+      <style>
+        {`
+          .custom-calendar-wrapper {
+            position: relative;
+            width: 100%;
+          }
+          .custom-calendar-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            z-index: 2;
+            pointer-events: none;
+          }
+          .custom-calendar-input .p-inputtext {
+            padding-left: 35px !important;
+          }
+          /* Responsive SelectButton styles */
+          .p-selectbutton {
+            display: flex;
+            flex-wrap: wrap;
+          }
+          .p-selectbutton .p-button {
+            flex: 1 1 auto;
+            min-width: 60px;
+            font-size: 14px;
+            padding: 0.5rem 0.75rem;
+          }
+          @media (max-width: 768px) {
+            .p-selectbutton .p-button {
+              font-size: 12px;
+              padding: 0.4rem 0.5rem;
+              min-width: 50px;
+            }
+          }
+        `}
+      </style>
       <Loader isVisible={loading} fullScreen={true} />
       <Header
         pageTitle="Adhoc Management"
@@ -914,206 +958,209 @@ const AdhocManagement = () => {
               )}
             </div>
           </div>
+        </div>
 
-          <PrimeSidebar
-            visible={visibleLeft}
-            position="right"
-            onHide={() => setVisibleLeft(false)}
-            style={{ width: "80%" }}
-            showCloseIcon={false}
-            dismissable={false}
+        <MasterSidebar
+            show={visibleLeft}
+            onClose={handleSidebarClose}
+            title="Raise Adhoc"
+            width="80%"
+            footerButtons={[
+              {
+                label: "Cancel",
+                className: "btn btn-outline-secondary",
+                onClick: handleSidebarClose,
+              },
+              {
+                label: "Save Changes",
+                className: "btn btn-success",
+                onClick: handleSaveChanges,
+              },
+            ]}
           >
-            <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-              <h6 className="sidebarTitle">Raise Adhoc</h6>
-              <Button
-                icon="pi pi-times"
-                className="p-button-rounded p-button-text text-white"
-                onClick={handleSidebarClose}
-                style={{ color: "white",  backgroundColor: "black" }}
-              />
-            </div>
-            <div className="sidebarBody p-3" style={{ backgroundColor: "white" }}>
+            <div className="px-3 py-2">
+              <div className="row align-items-end">
+                <div className="field col-6 col-md-4 col-lg-2 mb-2">
+                  <SelectButton
+                    severity="success"
+                    value={value}
+                    onChange={(e) => setValue(e.value)}
+                    options={options}
+                    className="no-label"
+                    style={{ width: "100%" }}
+                  />
+                </div>
+                <div className="field col-6 col-md-4 col-lg-2 mb-2">
+                  <label>Select Date</label>
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      className="w-100 custom-calendar-input"
+                      value={selectedDate ? new Date(selectedDate) : null}
+                      onChange={(e) => {
+                        const date = e.value;
+                        if (date) {
+                          const year = date.getFullYear();
+                          const month = String(date.getMonth() + 1).padStart(2, "0");
+                          const day = String(date.getDate()).padStart(2, "0");
+                          setSelectedDate(`${year}-${month}-${day}`);
+                        }
+                      }}
+                      dateFormat="dd-mm-yy"
+                      placeholder="Select Date"
+                    />
+                  </div>
+                </div>
+                <div className="field col-6 col-md-4 col-lg-2 mb-2">
+                  <label>Facility</label>
+                  <Dropdown
+                    value={selectedFacility}
+                    options={facilityData}
+                    optionLabel="facilityName"
+                    optionValue="Id"
+                    placeholder="Select Facility"
+                    className="w-100"
+                    onChange={(e) => {
+                      console.log("Selected Facility:", e.value);
+                      setSelectedFacility(e.value);
+                    }}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="field col-6 col-md-4 col-lg-2 mb-2">
+                  <label>
+                    Shift <span className="text-danger">*</span>
+                  </label>
+                  <Dropdown
+                    value={selectedShift}
+                    options={shiftData}
+                    optionLabel="shiftTime"
+                    optionValue="shiftTime"
+                    placeholder="Select Shift"
+                    className="w-100"
+                    onChange={(e) => setSelectedShift(e.value)}
+                  />
+                </div>
+                <div className="field col-6 col-md-4 col-lg-2 mb-2">
+                  <label>Request Type</label>
+                  <Dropdown
+                    value={selectedRequestType}
+                    options={requestTypes}
+                    optionLabel="name"
+                    optionValue="value"
+                    placeholder="Select Request Type"
+                    className="w-100"
+                    onChange={handleRequestTypeChange}
+                  />
+                </div>
+
+                <div className="field col-6 col-md-4 col-lg-2 mb-2">
+                  <label>
+                    Reason <span className="text-danger">*</span>
+                  </label>
+                  <Dropdown
+                    value={selectedReason}
+                    options={reasonData}
+                    optionLabel="AdhocReason"
+                    optionValue="ID"
+                    placeholder="Select Reason"
+                    className="w-100"
+                    onChange={(e) => setSelectedReason(e.value)}
+                  />
+                </div>
+              </div>
+              <hr className="my-2" />
+              <div className="row">
+                <div className="field col-12 col-md-4 col-lg-3 mb-2">
+                  <label>Select Manager</label>
+                  <Dropdown
+                    value={selectedManager}
+                    options={managerData}
+                    optionLabel="ManagerName"
+                    optionValue="MgrId"
+                    placeholder="Select Manager"
+                    className="w-100"
+                    onChange={(e) => {
+                      console.log("Selected Manager:", e.value);
+                      setSelectedManager(e.value);
+                      const originalID = sessionStorage.getItem("ID");
+                      sessionStorage.setItem("ID", e.value);
+                      fetchEmployeeData();
+                      fetchAdhocData();
+                      sessionStorage.setItem("ID", originalID);
+                    }}
+                  />
+                </div>
+              </div>
               <div className="row">
                 <div className="col-12">
-                  <div className="row">
-                    <div className="field col-2 mb-3">
-                      <SelectButton
-                        severity="success"
-                        value={value}
-                        onChange={(e) => setValue(e.value)}
-                        options={options}
-                        className="no-label"
-                        style={{ width: "100%" }}
-                      />
-                    </div>
-                    <div className="field col-2 mb-3">
-                      <label>Select Date</label>
-                      <InputText
-                        type="date"
-                        className="form-control"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="field col-2 mb-3">
-                      <label>Facility</label>
-                      <Dropdown
-                        value={selectedFacility}
-                        options={facilityData}
-                        optionLabel="facilityName"
-                        optionValue="Id"
-                        placeholder="Select Facility"
-                        className="w-100"
-                        onChange={(e) => {
-                          console.log("Selected Facility:", e.value);
-                          setSelectedFacility(e.value);
-                        }}
-                        disabled={loading}
-                      />
-                    </div>
-                    <div className="field col-2 mb-3">
-                      <label>
-                        Shift <span className="text-danger">*</span>
-                      </label>
-                      <Dropdown
-                        value={selectedShift}
-                        options={shiftData}
-                        optionLabel="shiftTime"
-                        optionValue="shiftTime"
-                        placeholder="Select Shift"
-                        className="w-100"
-                        onChange={(e) => setSelectedShift(e.value)}
-                      />
-                    </div>
-                    <div className="field col-2 mb-3">
-                      <label>Request Type</label>
-                      <Dropdown
-                        value={selectedRequestType}
-                        options={requestTypes}
-                        optionLabel="name"
-                        optionValue="value"
-                        placeholder="Select Request Type"
-                        className="w-100"
-                        onChange={handleRequestTypeChange}
-                      />
-                    </div>
-
-                    <div className="field col-2 mb-3">
-                      <label>
-                        Reason <span className="text-danger">*</span>
-                      </label>
-                      <Dropdown
-                        value={selectedReason}
-                        options={reasonData}
-                        optionLabel="AdhocReason"
-                        optionValue="ID"
-                        placeholder="Select Reason"
-                        className="w-100"
-                        onChange={(e) => setSelectedReason(e.value)}
-                      />
-                    </div>
-                    <hr className="mx-3" />
-                    <div className="field col-2">
-                      <label>Select Manager</label>
-                      <Dropdown
-                        value={selectedManager}
-                        options={managerData}
-                        optionLabel="ManagerName"
-                        optionValue="MgrId"
-                        placeholder="Select Manager"
-                        className="w-100"
-                        onChange={(e) => {
-                          console.log("Selected Manager:", e.value);
-                          setSelectedManager(e.value);
-                          const originalID = sessionStorage.getItem("ID");
-                          sessionStorage.setItem("ID", e.value);
-                          // Fetch employee data for selected manager
-                          fetchEmployeeData();
-                          fetchAdhocData();
-                          sessionStorage.setItem("ID", originalID);
-                        }}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <div className="card_tb">
-                        <DataTable
-                          value={employeeData}
-                          selectionMode="multiple"
-                          selection={selectedEmployees}
-                          onSelectionChange={(e) =>
-                            setSelectedEmployees(e.value)
-                          }
-                          paginator
-                          rows={10}
-                          rowsPerPageOptions={[10, 25, 50, 100]}
-                        >
-                          <Column
-                            selectionMode="multiple"
-                            headerStyle={{ width: "3rem" }}
-                          ></Column>
-
-                          <Column
-                            field="status"
-                            header=""
-                            body={(rowData) => (
-                              <div className="d-flex align-items-center">
-                                <span
-                                  className="material-icons md-18 text-danger"
-                                  title={
-                                    rowData.tptreq === "Y"
-                                      ? "Transport"
-                                      : "NoTransport"
-                                  }
-                                >
-                                  {rowData.tptreq === "Y"
-                                    ? "directions_bus"
-                                    : "no_transfer"}
-                                </span>
-                                <span
-                                  className="material-icons md-18 text-danger mx-2"
-                                  title={
-                                    rowData.geoCode === "Y"
-                                      ? "Geocoded"
-                                      : "NoGeocoded"
-                                  }
-                                >
-                                  {rowData.geoCode === "Y"
-                                    ? "location_on"
-                                    : "location_off"}
-                                </span>
-                              </div>
-                            )}
-                          ></Column>
-                          <Column field="empName" header="Employee"></Column>
-                          <Column field="processName" header="Project"></Column>
-                          <Column
-                            field="facilityName"
-                            header="Facility"
-                          ></Column>
-                        </DataTable>
-                      </div>
-                    </div>
-                    {/* Fixed button container at bottom of sidebar */}
-                    <div className="sidebar-fixed-bottom">
-                      <div className="d-flex gap-3 justify-content-end">
-                        <Button
-                          label="Cancel"
-                          className="btn btn-outline-secondary"
-                          onClick={handleSidebarClose}
-                        />
-                        <Button
-                          label="Save Changes"
-                          className="btn btn-success me-3"
-                          onClick={handleSaveChanges}
-                        />
-                      </div>
-                    </div>
+                  <div className="card_tb">
+                    <CustomDataTable
+                      value={employeeData ? employeeData.slice(sidebarFirst, sidebarFirst + sidebarRows) : []}
+                      selectionMode="multiple"
+                      selection={selectedEmployees}
+                      onSelectionChange={(e) =>
+                        setSelectedEmployees(e.value)
+                      }
+                    >
+                      <Column
+                        selectionMode="multiple"
+                        headerStyle={{ width: "3rem" }}
+                      ></Column>
+                      <Column
+                        field="status"
+                        header=""
+                        body={(rowData) => (
+                          <div className="d-flex align-items-center">
+                            <span
+                              className="material-icons md-18 text-danger"
+                              title={
+                                rowData.tptreq === "Y"
+                                  ? "Transport"
+                                  : "NoTransport"
+                              }
+                            >
+                              {rowData.tptreq === "Y"
+                                ? "directions_bus"
+                                : "no_transfer"}
+                            </span>
+                            <span
+                              className="material-icons md-18 text-danger mx-2"
+                              title={
+                                rowData.geoCode === "Y"
+                                  ? "Geocoded"
+                                  : "NoGeocoded"
+                              }
+                            >
+                              {rowData.geoCode === "Y"
+                                ? "location_on"
+                                : "location_off"}
+                            </span>
+                          </div>
+                        )}
+                      ></Column>
+                      <Column field="empName" header="Employee"></Column>
+                      <Column field="processName" header="Project"></Column>
+                      <Column
+                        field="facilityName"
+                        header="Facility"
+                      ></Column>
+                    </CustomDataTable>
+                    <CustomPaginator
+                      first={sidebarFirst}
+                      rows={sidebarRows}
+                      totalRecords={employeeData ? employeeData.length : 0}
+                      rowsPerPageOptions={[10, 25, 50, 100]}
+                      onPageChange={(e) => {
+                        setSidebarFirst(e.first);
+                        setSidebarRows(e.rows);
+                      }}
+                    />
                   </div>
                 </div>
               </div>
             </div>
-          </PrimeSidebar>
-        </div>
+          </MasterSidebar>
       </div>
     </>
   );

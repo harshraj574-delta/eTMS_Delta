@@ -87,6 +87,39 @@ const MapGeocoding = () => {
     lng: "77.2090",
   });
 
+  // Responsive widths
+  const getOffcanvasWidth = () => {
+    if (typeof window !== "undefined") {
+      if (window.innerWidth < 576) return "95%";
+      if (window.innerWidth < 768) return "85%";
+      if (window.innerWidth < 1024) return "60%";
+      return "40%";
+    }
+    return "40%";
+  };
+
+  const getMapOffcanvasWidth = () => {
+    if (typeof window !== "undefined") {
+      if (window.innerWidth < 576) return "100%";
+      if (window.innerWidth < 768) return "90%";
+      if (window.innerWidth < 1024) return "70%";
+      return "60%";
+    }
+    return "60%";
+  };
+
+  const [offcanvasWidth, setOffcanvasWidth] = useState(getOffcanvasWidth());
+  const [mapOffcanvasWidth, setMapOffcanvasWidth] = useState(getMapOffcanvasWidth());
+
+  useEffect(() => {
+    const handleResize = () => {
+      setOffcanvasWidth(getOffcanvasWidth());
+      setMapOffcanvasWidth(getMapOffcanvasWidth());
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // --- Effects ---
 
   useEffect(() => {
@@ -931,7 +964,7 @@ const MapGeocoding = () => {
         show={showGeocodeSidebar}
         onClose={() => setShowGeocodeSidebar(false)}
         title="Geocode Employee"
-        width="40%"
+        width={offcanvasWidth}
         headerBgColor="bg-primary text-white"
         backdropOpacity={0.7}
         backdropBlur="50px"
@@ -1036,8 +1069,10 @@ const MapGeocoding = () => {
         show={showMapSidebar}
         onClose={() => setShowMapSidebar(false)}
         title="Set Location"
-        width="60%"
+        width={mapOffcanvasWidth}
         backdrop={false}
+        bodyClassName="map-body"
+        bodyStyle={{ padding: 0 }}
         footer={
           <div className="row g-2 w-100 bg-white p-2 m-0 align-items-end">
             <div className="col">
@@ -1069,11 +1104,13 @@ const MapGeocoding = () => {
         }
       >
         {showMapSidebar && (
-          <LocationMapComponent
-            latitude={mapLatitude}
-            longitude={mapLongitude}
-            onCoordinatesChange={handleMapCoordinatesChange}
-          />
+          <div style={{ height: '100%', width: '100%', display: 'flex', flex: 1 }}>
+            <LocationMapComponent
+              latitude={mapLatitude}
+              longitude={mapLongitude}
+              onCoordinatesChange={handleMapCoordinatesChange}
+            />
+          </div>
         )}
       </MasterSidebar>
     </div>

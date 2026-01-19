@@ -119,6 +119,7 @@ class ManageRouteService {
         shifttime: params.shifttime,
         jsonstring: params.jsonstring,
         updatedBy: params.updatedBy,
+        IsNewAdded: params.IsNewAdded
       });
       return response.data;
     } catch (err) {

@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   MapContainer,
-  TileLayer,
   Polyline,
   Marker,
   Popup,
@@ -16,8 +15,105 @@ import { MultiSelect } from 'primereact/multiselect';
 import "leaflet/dist/leaflet.css";
 import "primereact/resources/themes/lara-light-indigo/theme.css";
 import "primereact/resources/primereact.min.css";
-// The incorrect line has been removed
 import ManageRouteService from "../services/compliance/ManageRouteService";
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import '@maplibre/maplibre-gl-leaflet';
+
+
+function MapLibreLayer() {
+  const map = useMap();
+  const layerRef = useRef(null);
+  const glMapRef = useRef(null);
+
+  useEffect(() => {
+    if (!map) return;
+    
+    
+    if (!window.maplibregl) {
+      window.maplibregl = maplibregl;
+    }
+
+    
+    try {
+      const maplibreLayer = L.maplibreGL({
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        interactive: false,
+        maplibreOptions: {
+          maxTileCacheSize: 300,
+          fadeDuration: 300,
+          crossSourceCollisions: false,
+          optimizeForTerrain: false,
+          refreshExpiredTiles: false,
+          preserveDrawingBuffer: true,
+          trackResize: true,
+          antialias: true,
+        }
+      });
+      
+      maplibreLayer.addTo(map);
+      layerRef.current = maplibreLayer;
+
+
+      setTimeout(() => {
+        if (maplibreLayer.getMaplibreMap) {
+          const glMap = maplibreLayer.getMaplibreMap();
+          glMapRef.current = glMap;
+          
+          if (glMap) {
+
+            glMap.on('load', () => {
+              const style = glMap.getStyle();
+              if (style && style.sources) {
+                Object.keys(style.sources).forEach(sourceId => {
+                  const source = glMap.getSource(sourceId);
+                  if (source && source.setTiles) {
+                    // Source is loaded, ready for optimizations
+                  }
+                });
+              }
+            });
+            
+
+            glMap.on('idle', () => {
+              const currentZoom = glMap.getZoom();
+              const bounds = glMap.getBounds();
+              
+              if (currentZoom < 18) {
+                glMap.triggerRepaint();
+              }
+            });
+          }
+        }
+      }, 500);
+
+    } catch (err) {
+      console.error('Failed to initialize MapLibre GL layer:', err);
+      // Fallback to regular OSM tiles
+      const fallbackLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      });
+      fallbackLayer.addTo(map);
+      layerRef.current = fallbackLayer;
+    }
+
+    return () => {
+      if (glMapRef.current) {
+        glMapRef.current = null;
+      }
+      if (layerRef.current && map) {
+        try {
+          map.removeLayer(layerRef.current);
+        } catch (e) {
+          // Layer might already be removed
+        }
+      }
+    };
+  }, [map]);
+
+  return null;
+}
+
 
 // Helper function for retrying failed requests with an async function
 const retryAsync = async (asyncFn, args, maxRetries = 3, delay = 1000) => {
@@ -1241,6 +1337,23 @@ export default function RouteMap() {
       color: white !important;
       background: rgba(0, 0, 0, 0.2) !important;
     }
+
+    /* Zoom control styling */
+    .leaflet-control-zoom {
+      border: none !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    }
+    .leaflet-control-zoom a {
+      background: #fff !important;
+      color: #333 !important;
+      font-size: 18px !important;
+      width: 36px !important;
+      height: 36px !important;
+      line-height: 36px !important;
+    }
+    .leaflet-control-zoom a:hover {
+      background: #f5f5f5 !important;
+    }
   `;
 
   return (
@@ -1414,13 +1527,14 @@ export default function RouteMap() {
             zoom={6}
             style={{ height: "100vh", width: "100vw", zIndex: 1 }}
             zoomControl={false}
+            // Enable smooth/fractional zooming
+            zoomSnap={0.25}
+            zoomDelta={0.5}
+            wheelPxPerZoomLevel={120}
           >
             <FitMapToRoutes routes={routesForMap} />
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="© OpenStreetMap"
-            />
-            <ZoomControl position="bottomright" />
+            <MapLibreLayer />
+            <ZoomControl position="topright" />
             {routesForMap.map((route) => {
               const originalIndex = allRouteMetas.findIndex(meta => meta.RouteID === route.routeid);
               const routeColor = colors[originalIndex % colors.length];

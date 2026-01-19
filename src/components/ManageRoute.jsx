@@ -3319,6 +3319,7 @@ const ManageRoute = () => {
         shifttime: selectedShifts,
         jsonstring: JSON.stringify(generatedRouteJson),
         updatedBy: 0,
+        IsNewAdded: 0,
       });
       setProgressStatus((prev) => ({
         ...prev,

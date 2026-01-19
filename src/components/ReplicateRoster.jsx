@@ -114,7 +114,7 @@ const ReplicateRoster = () => {
         setLoading(true);
         try {
             const shiftTimeStr = selectedShifts.map(s => s.shiftTime).join(",");
-            const response = await ReplicateRosterService.ReplicateRoster({
+            let response = await ReplicateRosterService.ReplicateRoster({
                 CopyFromDate: formatDate(fromDate),
                 CopyToDate: formatDate(toDate),
                 facilityid: selectedFacility,
@@ -124,10 +124,25 @@ const ReplicateRoster = () => {
                 isvendor: 0 // Default based on legacy code checkbox being hidden
             });
             
+            // Parse response if it's a string
+            if (typeof response === "string") {
+                try {
+                    response = JSON.parse(response);
+                } catch (e) {
+                    console.error("Error parsing response:", e);
+                }
+            }
+            
             // Check response format based on legacy code inspection
             // Legacy: .ElementAtOrDefault(0).result.ToString()
             const resultMsg = Array.isArray(response) && response.length > 0 ? response[0].result : "Operation completed";
-            toastService.success(resultMsg || "Replication processed.");
+            
+            // Check if routes already exist
+            if (resultMsg && resultMsg.toLowerCase().includes("already exists")) {
+                toastService.warn("Routes already replicated for the selected date.");
+            } else {
+                toastService.success(resultMsg || "Replication processed.");
+            }
             
         } catch (error) {
             toastService.error("Error during replication.");

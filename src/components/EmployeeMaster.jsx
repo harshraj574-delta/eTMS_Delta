@@ -20,6 +20,7 @@ import MasterSidebar from "./Master/MasterSidebar";
 import ReportButton from "./common/ReportButton";
 import { CustomDataTable } from "./common/CustomDataTable";
 import CustomPaginator from "./common/CustomPaginator";
+import noReportImage from "../assets/no_report.png";
 const EmployeeMaster = () => {
     const [loading, setLoading] = useState(false);
     const UserId = sessionManager.getUserSession().ID;
@@ -121,25 +122,25 @@ const EmployeeMaster = () => {
         const onlyDigits = value.replace(/\D/g, "").slice(0, 10);
         setMobile(onlyDigits);
 
-        let msg = "";
-        if (!onlyDigits) {
-            msg = "Mobile is required.";
-        } else if (onlyDigits.length !== 10) {
-            msg = "Enter 10 digit mobile no.";
-        }
-        setErrors((prev) => ({ ...prev, mobile: msg }));
+        //     let msg = "";
+        //     if (!onlyDigits) {
+        //         msg = "Mobile is required.";
+        //     } else if (onlyDigits.length !== 10) {
+        //         msg = "Enter 10 digit mobile no.";
+        //     }
+        //     setErrors((prev) => ({ ...prev, mobile: msg }));
     };
 
     const handleEmailChange = (value) => {
         setEmail(value);
 
-        let msg = "";
-        if (!value.trim()) {
-            msg = "Email is required.";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
-            msg = "Enter valid email address.";
-        }
-        setErrors((prev) => ({ ...prev, email: msg }));
+        // let msg = "";
+        // if (!value.trim()) {
+        //     msg = "Email is required.";
+        // } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+        //     msg = "Enter valid email address.";
+        // }
+        // setErrors((prev) => ({ ...prev, email: msg }));
     };
     const handleNewClick = () => {
         setShowSidebar(true);
@@ -367,14 +368,46 @@ const EmployeeMaster = () => {
             toastService.warn("Employee Name is required");
             return;
         }
+        if (!mobile || mobile.length !== 10) {
+            toastService.warn("Enter valid 10 digit mobile number");
+            return;
+        }
+
+        // Email validation
+        if (!email?.trim()) {
+            toastService.warn("Email is required");
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+            toastService.warn("Enter valid email (e.g., abc12@gmail.com)"); return;
+        }
+
         if (!facility && facility !== 0) {
             toastService.warn("Facility is required");
             return;
         }
-        if (!employeeId) {
-            toastService.warn("Employee ID is required. Please wait for ID generation.");
+        if (!process && process !== 0) {
+            toastService.warn("Process is required");
             return;
         }
+        if (!subProcess && subProcess !== 0) {
+            toastService.warn("Sub Process is required");
+            return;
+        }
+        if (!city && city !== 0) {
+            toastService.warn("City is required");
+            return;
+        }
+        if (!area && area !== 0) {
+            toastService.warn("Area is required");
+            return;
+        }
+        if (!landmark && landmark !== 0) {
+            toastService.warn("Landmark is required");
+            return;
+        }
+
+
         const employeeData = {
             id: 0,
             empCode: employeeId || "",
@@ -615,6 +648,7 @@ const EmployeeMaster = () => {
             console.error("No employee data passed to bindEmployeeFromApi");
             return;
         }
+       
         //console.log("Binding employee:", emp);
         setEmployeeId(emp.empCode || "");
         setEmpName(emp.empName || "");
@@ -643,11 +677,15 @@ const EmployeeMaster = () => {
         setDate(formattedDate);
         if (emp.facilityId) {
             setFacility(emp.facilityId);
-            setTimeout(() => fetchGetProcessByFacility(emp.facilityId), 100);
+            await new Promise(resolve => setTimeout(resolve, 50));
+            await fetchGetProcessByFacility(emp.facilityId);
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
         if (emp.processId) {
             setProcess(emp.processId);
-            setTimeout(() => fetchGetSubProcess(emp.processId), 300);
+            await new Promise(resolve => setTimeout(resolve, 50));
+            await fetchGetSubProcess(emp.processId);
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
         if (emp.subProcessId) {
             setSubProcess(emp.subProcessId);
@@ -655,25 +693,39 @@ const EmployeeMaster = () => {
         if (emp.managerId) {
             setManager(String(emp.managerId));
         }
+        
+        // Handle City, Area, Landmark cascading
         if (emp.City) {
             const cityValue = emp.City.trim();
             //console.log("Setting City:", cityValue);
+            
+            // Fetch and set city options
             await fetchGetGeoCityByRS();
             await new Promise(resolve => setTimeout(resolve, 100));
             setCity(cityValue);
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
             if (emp.Colony) {
                 const areaValue = emp.Colony.trim();
                 //console.log("Setting Area:", areaValue);
+                
+                // Fetch area options based on selected city
                 await fetchGetGeoCityColonyRS(cityValue);
                 await new Promise(resolve => setTimeout(resolve, 100));
                 setArea(areaValue);
-                if (emp.SubColony) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                // Fetch landmark options based on selected area
+                if (emp.geoCodeId) {
+                   // console.log("Setting GeoCodeId:", emp.geoCodeId);
                     await fetchGetSubColonyRs(areaValue);
                     await new Promise(resolve => setTimeout(resolve, 100));
-                    setLandmark(String(emp.geoCodeId || ""));
+                    setGeoCodeId(parseInt(emp.geoCodeId));
+                    setLandmark(String(emp.geoCodeId));
                 }
             }
         }
+        
         setErrors({ mobile: "", email: "" });
         setSelectedEmployee(emp);
     };
@@ -781,6 +833,27 @@ const EmployeeMaster = () => {
                         </div>
                     </div>
                 </div>
+                {!hasSearched && (
+                    <div className="card_tb">
+                        <div
+                            className="d-flex flex-column align-items-center justify-content-center p-5"
+                            style={{ minHeight: "70vh" }}
+                        >
+                            <img
+                                src={noReportImage}
+                                alt="No Report Selected"
+                                style={{
+                                    maxWidth: "100px",
+                                    opacity: 0.5,
+                                    marginBottom: "1rem",
+                                }}
+                            />
+                            <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
+                                Please search for an employee by ID or name
+                            </p>
+                        </div>
+                    </div>
+                )}
                 {hasSearched && (
                     <>
                         <div className="card_tb p-3">
@@ -954,7 +1027,7 @@ const EmployeeMaster = () => {
                                 value={manager}
                                 onChange={(e) => {
                                     const selectedValue = e.value;
-                                    console.log("Manager dropdown selected:", selectedValue, typeof selectedValue);
+                                    //console.log("Manager dropdown selected:", selectedValue, typeof selectedValue);
                                     setManager(selectedValue);
                                 }}
                                 options={managerOptions}
@@ -1082,6 +1155,7 @@ const EmployeeMaster = () => {
                                 onChange={(e) => {
                                     const val = e.value;
                                     setArea(val);
+                                    setGeoCodeId(0);
                                     setLandmark(null);
                                     setLandmarkOptions([]);
                                     fetchGetSubColonyRs(val);
@@ -1092,10 +1166,10 @@ const EmployeeMaster = () => {
                         <div className="field col-12 col-sm-6 col-md-3 mb-2">
                             <label>Landmark:</label>
                             <Dropdown
-                                value={landmark}
+                                value={geoCodeId}
                                 onChange={(e) => {
-                                    setLandmark(e.value);
                                     setGeoCodeId(e.value);
+                                    setLandmark(String(e.value));
                                 }}
                                 options={landmarkOptions}
                                 optionLabel="label"

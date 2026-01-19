@@ -62,6 +62,9 @@ import ManageMenu from "./components/ManageMenu";
 import EmployeeMaster from "./components/EmployeeMaster";
 import MapGeocoding from "./components/MapGeocoding";
 import ReplicateRoster from "./components/ReplicateRoster";
+import ReplicationException from "./components/ReplicationException";
+import ReplyFeedback from "./components/ReplyFeedback";
+import ManageColony from "./components/ManageColony";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -142,6 +145,9 @@ function App() {
         <Route path="/EmployeeMaster" element={<PrivateRoute element={<EmployeeMaster />} />} />
         <Route path="/MapGeocoding" element={<PrivateRoute element={<MapGeocoding />} />} />
         <Route path="/ReplicateRoster" element={<PrivateRoute element={<ReplicateRoster />} />} />
+        <Route path="/ReplicationException" element={<PrivateRoute element={<ReplicationException />} />} />
+        <Route path="/ReplyFeedback" element={<PrivateRoute element={<ReplyFeedback />} />} />
+        <Route path="/ManageColony" element={<PrivateRoute element={<ManageColony />} />} />
 
 
 

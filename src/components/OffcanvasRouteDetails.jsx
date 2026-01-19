@@ -1,11 +1,90 @@
-import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, ZoomControl } from "react-leaflet";
+import React, { useEffect, useState, useRef } from "react";
+import { MapContainer, Polyline, Marker, Popup, useMap, ZoomControl } from "react-leaflet";
 import L from "leaflet";
 import polyline from "@mapbox/polyline";
 import "leaflet/dist/leaflet.css";
 import ManageRouteService from "../services/compliance/ManageRouteService";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import '@maplibre/maplibre-gl-leaflet';
 
+
+function MapLibreLayer() {
+  const map = useMap();
+  const layerRef = useRef(null);
+  const glMapRef = useRef(null);
+
+  useEffect(() => {
+    if (!map) return;
+    
+    
+    if (!window.maplibregl) {
+      window.maplibregl = maplibregl;
+    }
+
+    
+    try {
+      const maplibreLayer = L.maplibreGL({
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        interactive: false,
+        maplibreOptions: {
+          maxTileCacheSize: 300,
+          fadeDuration: 300,
+          crossSourceCollisions: false,
+          optimizeForTerrain: false,
+          refreshExpiredTiles: false,
+          preserveDrawingBuffer: true,
+          trackResize: true,
+          antialias: true,
+        }
+      });
+      
+      maplibreLayer.addTo(map);
+      layerRef.current = maplibreLayer;
+
+      
+      setTimeout(() => {
+        if (maplibreLayer.getMaplibreMap) {
+          const glMap = maplibreLayer.getMaplibreMap();
+          glMapRef.current = glMap;
+          
+          if (glMap) {
+            glMap.on('idle', () => {
+              const currentZoom = glMap.getZoom();
+              if (currentZoom < 18) {
+                glMap.triggerRepaint();
+              }
+            });
+          }
+        }
+      }, 500);
+
+    } catch (err) {
+      console.error('Failed to initialize MapLibre GL layer:', err);
+      const fallbackLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      });
+      fallbackLayer.addTo(map);
+      layerRef.current = fallbackLayer;
+    }
+
+    return () => {
+      if (glMapRef.current) {
+        glMapRef.current = null;
+      }
+      if (layerRef.current && map) {
+        try {
+          map.removeLayer(layerRef.current);
+        } catch (e) {
+          
+        }
+      }
+    };
+  }, [map]);
+
+  return null;
+}
 // Helper function for retrying failed requests with an async function
 const retryAsync = async (asyncFn, args, maxRetries = 3, delay = 1000) => {
   let lastError;
@@ -376,6 +455,27 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
           background: rgba(0, 0, 0, 0.1) !important; /* Subtle dark background on hover */
         }
 
+        /* Zoom control positioning to avoid header overlap */
+        .leaflet-top.leaflet-right {
+          top: 80px !important;
+          right: 10px !important;
+        }
+        .leaflet-control-zoom {
+          border: none !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+        }
+        .leaflet-control-zoom a {
+          background: #fff !important;
+          color: #333 !important;
+          font-size: 18px !important;
+          width: 36px !important;
+          height: 36px !important;
+          line-height: 36px !important;
+        }
+        .leaflet-control-zoom a:hover {
+          background: #f5f5f5 !important;
+        }
+
       `}</style>
 
       {/* Map as background */}
@@ -390,13 +490,17 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
           attributionControl={false}
+          // Enable smooth/fractional zooming
+          zoomSnap={0.25}
+          zoomDelta={0.5}
+          wheelPxPerZoomLevel={120}
           whenReady={() => {
             // When map is ready, we'll use the timeout set above for full loading
             // console.log("Map is ready");
           }}
         >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" />
-          <ZoomControl position="bottomright" />
+          <MapLibreLayer />
+          <ZoomControl position="topright" />
           {route && route.geometry && <FitToPolyline geometry={route.geometry} />}
           {route && route.geometry && (
             <Polyline

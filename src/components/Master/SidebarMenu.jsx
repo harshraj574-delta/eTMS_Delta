@@ -220,7 +220,34 @@ const SidebarMenu = () => {
             className={`accordion-button ${
               item.subItems?.length || item.isGrouped ? '' : 'no-submenu'
             } overline_textB ${openSubmenu === item.MenuId ? '' : 'collapsed'}`}
-            onClick={() => {
+            onClick={(e) => {
+              // Check if sidebar is in collapsed mode
+              const sidebar = document.querySelector('.sidebar');
+              const isCollapsed = sidebar?.classList.contains('collapsed');
+              
+              if (isCollapsed) {
+                // Expand the sidebar when clicking on any icon in collapsed mode
+                sidebar.classList.remove('collapsed');
+                document.body.classList.remove('sidebar-collapsed');
+                
+                // Toggle middle content area class
+                const middle = document.querySelector('.middle');
+                if (middle) {
+                  middle.classList.remove('expanded');
+                }
+                
+                // Dispatch custom event to sync Header's React state
+                window.dispatchEvent(new CustomEvent('sidebarExpand'));
+                
+                // Also open this submenu if it has children
+                if (item.subItems?.length || item.isGrouped) {
+                  setOpenSubmenu(item.MenuId);
+                }
+                e.preventDefault();
+                return;
+              }
+              
+              // Normal behavior when expanded
               if (item.subItems?.length || item.isGrouped) {
                 setOpenSubmenu(
                   openSubmenu === item.MenuId ? null : item.MenuId
@@ -228,11 +255,13 @@ const SidebarMenu = () => {
               }
             }}
             aria-expanded={openSubmenu === item.MenuId}
+            data-label={item.MenuName?.length > 10 ? item.MenuName?.substring(0, 9) + '.' : item.MenuName || ''}
+            title={item.MenuName || ''}
           >
             {item.IconClass && (
               <span className="material-icons">{item.IconClass}</span>
             )}
-            {item.MenuName}
+            <span className="menu-text">{item.MenuName}</span>
           </a>
 
           {(item.subItems?.length > 0 || item.isGrouped) && (

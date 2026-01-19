@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 const MasterSidebar = ({
   show,
@@ -26,6 +26,43 @@ const MasterSidebar = ({
   leftBorderWidth = "0.1px",
 }) => {
   
+  // Use a ref to track if this sidebar instance has contributed to the counter
+  const hasCountedRef = React.useRef(false);
+  
+  // Use a global counter to track how many sidebars are open
+  // This prevents the body scrollbar from appearing when closing nested sidebars
+  useEffect(() => {
+    if (show && !hasCountedRef.current) {
+      // Increment counter and hide overflow only if we haven't already counted this instance
+      window.__openSidebarCount = (window.__openSidebarCount || 0) + 1;
+      hasCountedRef.current = true;
+      document.body.style.overflow = 'hidden';
+    } else if (!show && hasCountedRef.current) {
+      // Decrement counter only if we had previously counted this instance
+      if (window.__openSidebarCount > 0) {
+        window.__openSidebarCount--;
+      }
+      hasCountedRef.current = false;
+      // Only restore overflow if no sidebars are open
+      if (window.__openSidebarCount === 0) {
+        document.body.style.overflow = '';
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (hasCountedRef.current) {
+        if (window.__openSidebarCount > 0) {
+          window.__openSidebarCount--;
+        }
+        hasCountedRef.current = false;
+        if (window.__openSidebarCount === 0) {
+          document.body.style.overflow = '';
+        }
+      }
+    };
+  }, [show]);
+
   const renderFooter = () => {
     if (footer) return footer;
     
@@ -120,6 +157,28 @@ const MasterSidebar = ({
 
           .offcanvas-body {
             padding-bottom: 7rem !important; /* Ensure content doesn't get hidden behind footer */
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+          }
+          
+          /* Ensure PrimeReact dropdown/multiselect panels appear above sidebar */
+          .p-dropdown-panel,
+          .p-multiselect-panel {
+            z-index: 1100 !important;
+          }
+          
+          /* When body has no padding (for maps), use full height layout */
+          .offcanvas-body.map-body {
+            padding-bottom: 0 !important;
+            height: calc(100vh - 56px - 80px); /* viewport - header - footer */
+            overflow: hidden;
+          }
+          
+          .offcanvas-body.map-body > * {
+            flex: 1;
+            min-height: 0;
           }
 
           @media (max-width: 576px) {

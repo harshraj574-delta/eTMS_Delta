@@ -1186,6 +1186,7 @@ const FacilityMaster = () => {
         backdrop={false}
         backdropOpacity={0.7}
         backdropBlur="50px"
+        bodyClassName="map-body"
         bodyStyle={{ padding: 0 }}
         footer={
           <div className="row g-2 w-100 bg-white p-2 m-0 align-items-end">
@@ -1227,12 +1228,14 @@ const FacilityMaster = () => {
         }
       >
         {showMap && (
-          <LocationMapComponent
-            key={`${mapContext}-${mapLatitude}-${mapLongitude}`}
-            latitude={mapLatitude}
-            longitude={mapLongitude}
-            onCoordinatesChange={handleMapCoordinatesChange}
-          />
+          <div style={{ height: '100%', width: '100%', display: 'flex', flex: 1 }}>
+            <LocationMapComponent
+              key={`${mapContext}-${mapLatitude}-${mapLongitude}`}
+              latitude={mapLatitude}
+              longitude={mapLongitude}
+              onCoordinatesChange={handleMapCoordinatesChange}
+            />
+          </div>
         )}
       </MasterSidebar>
 
@@ -1245,6 +1248,7 @@ const FacilityMaster = () => {
         backdrop={false}
         backdropOpacity={0.7}
         backdropBlur="50px"
+        bodyClassName="map-body"
         bodyStyle={{ padding: 0 }}
         footer={
           <div className="row g-2 w-100 bg-white p-2 m-0 align-items-end">
@@ -1275,12 +1279,14 @@ const FacilityMaster = () => {
         }
       >
         {showViewMap && (
-          <LocationMapComponent
-            key={`view-${mapLatitude}-${mapLongitude}`}
-            latitude={mapLatitude}
-            longitude={mapLongitude}
-            onCoordinatesChange={handleMapCoordinatesChange}
-          />
+          <div style={{ height: '100%', width: '100%', display: 'flex', flex: 1 }}>
+            <LocationMapComponent
+              key={`view-${mapLatitude}-${mapLongitude}`}
+              latitude={mapLatitude}
+              longitude={mapLongitude}
+              onCoordinatesChange={handleMapCoordinatesChange}
+            />
+          </div>
         )}
       </MasterSidebar>
 

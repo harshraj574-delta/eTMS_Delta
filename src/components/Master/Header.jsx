@@ -51,6 +51,16 @@ const Header = ({
     fetchProfile();
   }, []);
 
+  // Listen for sidebar expand event (dispatched from SidebarMenu when icon is clicked in collapsed mode)
+  useEffect(() => {
+    const handleSidebarExpand = () => {
+      setIsSidebarCollapsed(false);
+    };
+    
+    window.addEventListener('sidebarExpand', handleSidebarExpand);
+    return () => window.removeEventListener('sidebarExpand', handleSidebarExpand);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate("/");

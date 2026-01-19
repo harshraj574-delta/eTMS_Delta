@@ -35,7 +35,8 @@ const LocationMapComponent = ({
   const containerStyle = {
     width: "100%",
     height: "100%",
-    minHeight: "400px",
+    minHeight: "300px",
+    flex: 1,
   };
 
   const mapOptions = {
