@@ -2,6 +2,45 @@ import { use } from "react";
 import { api } from "../axios/api";
 import { Route } from "react-router-dom";
 
+// Routing Engine API Configuration
+const ROUTING_ENGINE_BASE_URL = "https://ftqbvxxmpm.ap-south-1.awsapprunner.com";
+// const ROUTING_ENGINE_BASE_URL = "http://localhost:5001";
+
+const ROUTING_ENGINE_ENDPOINTS = {
+  V1: {
+    generate: `${ROUTING_ENGINE_BASE_URL}/api/v1/route-generation/generate`,
+    recalculate: `${ROUTING_ENGINE_BASE_URL}/api/v1/route-generation/recalculate`,
+  },
+  V2: {
+    generate: `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/generate`,
+    recalculate: `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/recalculate`,
+  },
+
+  DEFAULT: {
+    generate: `${ROUTING_ENGINE_BASE_URL}/api/route-generation/generate`,
+    recalculate: `${ROUTING_ENGINE_BASE_URL}/api/route-generation/recalculate`,
+  },
+};
+
+/**
+ * Get the routing engine endpoint based on user's configured version
+ * @param {string} action - 'generate' or 'recalculate'
+ * @returns {string} The API endpoint URL
+ */
+const getRoutingEngineEndpoint = (action) => {
+  const version = sessionStorage.getItem('routingEngineVersion') || 'V1';
+  const normalizedVersion = version.toUpperCase();
+
+
+  if (ROUTING_ENGINE_ENDPOINTS[normalizedVersion]) {
+    return ROUTING_ENGINE_ENDPOINTS[normalizedVersion][action];
+  }
+
+
+  console.warn(`Unknown routing engine version: ${version}, falling back to DEFAULT`);
+  return ROUTING_ENGINE_ENDPOINTS.DEFAULT[action];
+};
+
 class ManageRouteService {
   async SelectBaseFacility(params) {
     try {
@@ -28,7 +67,7 @@ class ManageRouteService {
     }
   }
 
-  // FIXED: Wrapped this method in a try...catch block for proper error handling
+ 
   async GetRoutesByOrder(params) {
     try {
       const response = await api.post("/GetRoutesByOrder", {
@@ -186,8 +225,8 @@ class ManageRouteService {
       console.error("Error in WBS_GetBulkRouteData:", error);
       throw error;
     }
-  } 
-async PushRouteToDashbaord(params) {
+  }
+  async PushRouteToDashbaord(params) {
     try {
       const response = await api.post("/PushRouteToDashbaord", {
         sDate: params.sDate,
@@ -350,7 +389,7 @@ async PushRouteToDashbaord(params) {
   }
 
   async getInputJsonByrouteids(params) {
-    try{
+    try {
       const response = await api.post("/getInputJsonByrouteids", {
         routeids: params.routeids,
       });
@@ -358,13 +397,13 @@ async PushRouteToDashbaord(params) {
       return response.data;
 
     }
-    catch(error){
+    catch (error) {
       console.error("Error in getInputJsonByrouteids:", error);
       throw error;
     }
-}
-  async GetIsRouteFinalized(params){
-    try{
+  }
+  async GetIsRouteFinalized(params) {
+    try {
       const response = await api.post("/GetIsRouteFinalized", {
         sDate: params.sDate,
         FacilityID: params.FacilityID,
@@ -374,25 +413,109 @@ async PushRouteToDashbaord(params) {
       });
       console.log("GetIsRouteFinalized response:", response.data);
       return response.data;
-    } catch(error){
+    } catch (error) {
       console.error("Error in GetIsRouteFinalized:", error);
       throw error;
     }
   }
 
-  async BlockTransport(params){
-    try{
+  async BlockTransport(params) {
+    try {
       const response = await api.post("/BlockTransport", {
         RouteIDs: params.RouteIDs,
         userid: params.userid
       });
       console.log("BlockTransport response:", response.data);
       return response.data;
-    } catch(error){
+    } catch (error) {
       console.error("Error in BlockTransport:", error);
       throw error;
     }
-}
+  }
+
+  /**
+   * Generate routes using the routing engine (V1 or V2 based on user config)
+   * @param {Object} routeInputData - The route input data from GetRouteInputJson
+   * @returns {Promise<Object>} The generated route data
+   */
+  async generateRoutes(routeInputData) {
+    const endpoint = getRoutingEngineEndpoint('generate');
+    const version = sessionStorage.getItem('routingEngineVersion') || 'V1';
+
+    console.log(`[RoutingEngine] Using ${version} API for route generation: ${endpoint}`);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        mode: "cors",
+        credentials: "omit",
+        body: JSON.stringify(routeInputData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to generate route from routing engine (${version}): ${response.status} ${response.statusText}. ${errorText}`
+        );
+      }
+
+      const generatedRouteJson = await response.json();
+      console.log(`[RoutingEngine] ${version} route generation successful`);
+      return generatedRouteJson;
+    } catch (error) {
+      console.error(`[RoutingEngine] Error in generateRoutes (${version}):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Recalculate routes using the routing engine (V1 or V2 based on user config)
+   * @param {Object} inputJsonData - The input JSON data for recalculation
+   * @returns {Promise<Object>} The recalculated route data
+   */
+  async recalculateRoutes(inputJsonData) {
+    const endpoint = getRoutingEngineEndpoint('recalculate');
+    const version = sessionStorage.getItem('routingEngineVersion') || 'V1';
+
+    console.log(`[RoutingEngine] Using ${version} API for route recalculation: ${endpoint}`);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(inputJsonData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Recalculation server failed (${version}): ${response.status} ${errorText}`
+        );
+      }
+
+      const recalculatedRouteJson = await response.json();
+      console.log(`[RoutingEngine] ${version} route recalculation successful`);
+      return recalculatedRouteJson;
+    } catch (error) {
+      console.error(`[RoutingEngine] Error in recalculateRoutes (${version}):`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the current routing engine version for the logged-in user
+   * @returns {string} The routing engine version (V1 or V2)
+   */
+  getRoutingEngineVersion() {
+    return sessionStorage.getItem('routingEngineVersion') || 'V1';
+  }
 }
 
 export default new ManageRouteService();

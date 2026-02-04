@@ -27,6 +27,7 @@ const VehicleUtilizationReport = () => {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedDates, setExpandedDates] = useState([]);
+  const [expandedShifts, setExpandedShifts] = useState({});
   const [expandedVendorRows, setExpandedVendorRows] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const [filters, setFilters] = useState({
@@ -120,11 +121,12 @@ const VehicleUtilizationReport = () => {
 
     data.forEach((item) => {
       const date = item.shiftDate;
+      const shiftTime = item.shiftTime;
 
       if (!groupedByDate[date]) {
         groupedByDate[date] = {
           shiftDate: date,
-          vendors: {},
+          shifts: {},
           TotalRoutes: 0,
           TotalCapacity: 0,
           TotalEmps: 0,
@@ -133,10 +135,23 @@ const VehicleUtilizationReport = () => {
       }
 
       const dateGroup = groupedByDate[date];
+
+      if (!dateGroup.shifts[shiftTime]) {
+        dateGroup.shifts[shiftTime] = {
+          shiftTime: shiftTime,
+          vendors: {},
+          TotalRoutes: 0,
+          TotalCapacity: 0,
+          TotalEmps: 0,
+          ActTotalEmps: 0,
+        };
+      }
+
+      const shiftGroup = dateGroup.shifts[shiftTime];
       const vendor = item.Vendor;
 
-      if (!dateGroup.vendors[vendor]) {
-        dateGroup.vendors[vendor] = {
+      if (!shiftGroup.vendors[vendor]) {
+        shiftGroup.vendors[vendor] = {
           Vendor: vendor,
           vehicles: [],
           TotalRoutes: 0,
@@ -146,11 +161,16 @@ const VehicleUtilizationReport = () => {
         };
       }
 
-      dateGroup.vendors[vendor].vehicles.push(item);
-      dateGroup.vendors[vendor].TotalRoutes += item.TotalRoutes || 0;
-      dateGroup.vendors[vendor].TotalCapacity += item.TotalCapacity || 0;
-      dateGroup.vendors[vendor].TotalEmps += item.TotalEmps || 0;
-      dateGroup.vendors[vendor].ActTotalEmps += item.ActTotalEmps || 0;
+      shiftGroup.vendors[vendor].vehicles.push(item);
+      shiftGroup.vendors[vendor].TotalRoutes += item.TotalRoutes || 0;
+      shiftGroup.vendors[vendor].TotalCapacity += item.TotalCapacity || 0;
+      shiftGroup.vendors[vendor].TotalEmps += item.TotalEmps || 0;
+      shiftGroup.vendors[vendor].ActTotalEmps += item.ActTotalEmps || 0;
+
+      shiftGroup.TotalRoutes += item.TotalRoutes || 0;
+      shiftGroup.TotalCapacity += item.TotalCapacity || 0;
+      shiftGroup.TotalEmps += item.TotalEmps || 0;
+      shiftGroup.ActTotalEmps += item.ActTotalEmps || 0;
 
       dateGroup.TotalRoutes += item.TotalRoutes || 0;
       dateGroup.TotalCapacity += item.TotalCapacity || 0;
@@ -170,32 +190,56 @@ const VehicleUtilizationReport = () => {
           )
           : 0;
 
-      const vendors = Object.values(dateGroup.vendors).map((vendorGroup) => {
-        const vPlanUtilPer =
-          vendorGroup.TotalCapacity > 0
+      const shifts = Object.values(dateGroup.shifts).map((shiftGroup) => {
+        const sPlanUtilPer =
+          shiftGroup.TotalCapacity > 0
             ? (
-              (vendorGroup.TotalEmps / vendorGroup.TotalCapacity) *
+              (shiftGroup.TotalEmps / shiftGroup.TotalCapacity) *
               100
             ).toFixed(2)
             : 0;
-        const vActOccPer =
-          vendorGroup.TotalCapacity > 0
+        const sActOccPer =
+          shiftGroup.TotalCapacity > 0
             ? (
-              (vendorGroup.ActTotalEmps / vendorGroup.TotalCapacity) *
+              (shiftGroup.ActTotalEmps / shiftGroup.TotalCapacity) *
               100
             ).toFixed(2)
             : 0;
 
+        const vendors = Object.values(shiftGroup.vendors).map((vendorGroup) => {
+          const vPlanUtilPer =
+            vendorGroup.TotalCapacity > 0
+              ? (
+                (vendorGroup.TotalEmps / vendorGroup.TotalCapacity) *
+                100
+              ).toFixed(2)
+              : 0;
+          const vActOccPer =
+            vendorGroup.TotalCapacity > 0
+              ? (
+                (vendorGroup.ActTotalEmps / vendorGroup.TotalCapacity) *
+                100
+              ).toFixed(2)
+              : 0;
+
+          return {
+            ...vendorGroup,
+            PlanOccPer: parseFloat(vPlanUtilPer),
+            ActOccPer: parseFloat(vActOccPer),
+          };
+        });
+
         return {
-          ...vendorGroup,
-          PlanOccPer: parseFloat(vPlanUtilPer),
-          ActOccPer: parseFloat(vActOccPer),
+          ...shiftGroup,
+          vendors,
+          PlanOccPer: parseFloat(sPlanUtilPer),
+          ActOccPer: parseFloat(sActOccPer),
         };
       });
 
       return {
         ...dateGroup,
-        vendors,
+        shifts,
         PlanOccPer: parseFloat(planUtilPer),
         ActOccPer: parseFloat(actOccPer),
       };
@@ -321,9 +365,12 @@ const VehicleUtilizationReport = () => {
     const dateIndex = newExpandedDates.indexOf(index);
     if (dateIndex > -1) {
       newExpandedDates.splice(dateIndex, 1);
-      // Clear vendor expansions for this date
+      // Clear shift and vendor expansions for this date
+      const newExpandedShifts = { ...expandedShifts };
       const newExpandedVendors = { ...expandedVendorRows };
+      delete newExpandedShifts[index];
       delete newExpandedVendors[index];
+      setExpandedShifts(newExpandedShifts);
       setExpandedVendorRows(newExpandedVendors);
     } else {
       newExpandedDates.push(index);
@@ -331,19 +378,40 @@ const VehicleUtilizationReport = () => {
     setExpandedDates(newExpandedDates);
   };
 
-  const toggleVendorExpansion = (dateIndex, vendorIndex) => {
-    const key = `${dateIndex}-${vendorIndex}`;
-    const newExpandedVendors = { ...expandedVendorRows };
+  const toggleShiftExpansion = (dateIndex, shiftIndex) => {
+    const newExpandedShifts = { ...expandedShifts };
 
-    if (!newExpandedVendors[dateIndex]) {
-      newExpandedVendors[dateIndex] = [];
+    if (!newExpandedShifts[dateIndex]) {
+      newExpandedShifts[dateIndex] = [];
     }
 
-    const vendorIndexPos = newExpandedVendors[dateIndex].indexOf(vendorIndex);
-    if (vendorIndexPos > -1) {
-      newExpandedVendors[dateIndex].splice(vendorIndexPos, 1);
+    const shiftIndexPos = newExpandedShifts[dateIndex].indexOf(shiftIndex);
+    if (shiftIndexPos > -1) {
+      newExpandedShifts[dateIndex].splice(shiftIndexPos, 1);
+      // Clear vendor expansions for this shift
+      const newExpandedVendors = { ...expandedVendorRows };
+      delete newExpandedVendors[`${dateIndex}-${shiftIndex}`];
+      setExpandedVendorRows(newExpandedVendors);
     } else {
-      newExpandedVendors[dateIndex].push(vendorIndex);
+      newExpandedShifts[dateIndex].push(shiftIndex);
+    }
+
+    setExpandedShifts(newExpandedShifts);
+  };
+
+  const toggleVendorExpansion = (dateIndex, shiftIndex, vendorIndex) => {
+    const key = `${dateIndex}-${shiftIndex}`;
+    const newExpandedVendors = { ...expandedVendorRows };
+
+    if (!newExpandedVendors[key]) {
+      newExpandedVendors[key] = [];
+    }
+
+    const vendorIndexPos = newExpandedVendors[key].indexOf(vendorIndex);
+    if (vendorIndexPos > -1) {
+      newExpandedVendors[key].splice(vendorIndexPos, 1);
+    } else {
+      newExpandedVendors[key].push(vendorIndex);
     }
 
     setExpandedVendorRows(newExpandedVendors);
@@ -581,14 +649,14 @@ const VehicleUtilizationReport = () => {
                                     {expandedDates.includes(dateIndex) ? (
                                       <span
                                         className="material-icons"
-                                        style={{ fontSize: "20px" }}
+                                        style={{ fontSize: "20px", color: "#0d6efd" }}
                                       >
                                         remove_circle
                                       </span>
                                     ) : (
                                       <span
                                         className="material-icons"
-                                        style={{ fontSize: "20px" }}
+                                        style={{ fontSize: "20px", color: "#0d6efd" }}
                                       >
                                         add_circle
                                       </span>
@@ -598,8 +666,6 @@ const VehicleUtilizationReport = () => {
                                 <td className="text-center fw-bold">
                                   {dateRow.shiftDate}
                                 </td>
-                                {/* <td className="text-center"></td>
-                                <td className="text-center d-none d-md-table-cell"></td> */}
                                 <td className="text-center fw-bold">
                                   {dateRow.TotalRoutes}
                                 </td>
@@ -615,23 +681,22 @@ const VehicleUtilizationReport = () => {
                                 <td className="text-center fw-bold d-none d-xl-table-cell">
                                   {dateRow.PlanOccPer}
                                 </td>
-
                                 <td className="text-center fw-bold">
                                   {dateRow.ActOccPer}
                                 </td>
                               </tr>
 
-                              {/* Vendor Level Rows - Expanded Section */}
+                              {/* Shift Level Rows - Expanded Section */}
                               {expandedDates.includes(dateIndex) && (
                                 <tr>
-                                  <td colSpan="10" className="leftStrip p-2">
+                                  <td colSpan="8" className="leftStrip p-2">
                                     <div className="expanded-content">
                                       <div className="table-responsive">
                                         <table className="table table-sm table-bordered mb-0">
                                           <thead>
                                             <tr>
                                               <th style={{ width: "40px" }}></th>
-                                              <th>Vendor</th>
+                                              <th>Shift Time</th>
                                               <th>Total Trips</th>
                                               <th className="d-none d-lg-table-cell">
                                                 Total Capacity
@@ -645,38 +710,35 @@ const VehicleUtilizationReport = () => {
                                               <th className="d-none d-xl-table-cell">
                                                 Utilization%
                                               </th>
-
-                                              <th> Occupancy %</th>
+                                              <th>Occupancy %</th>
                                             </tr>
                                           </thead>
                                           <tbody>
-                                            {dateRow.vendors.map(
-                                              (vendorRow, vendorIndex) => (
+                                            {dateRow.shifts.map(
+                                              (shiftRow, shiftIndex) => (
                                                 <React.Fragment
-                                                  key={`${dateIndex}-${vendorIndex}`}
+                                                  key={`${dateIndex}-${shiftIndex}`}
                                                 >
-                                                  <tr className={`${vendorIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
+                                                  <tr className={`${shiftIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
                                                     <td>
                                                       <a
                                                         href="#!"
                                                         onClick={(e) => {
                                                           e.preventDefault();
-                                                          toggleVendorExpansion(
+                                                          toggleShiftExpansion(
                                                             dateIndex,
-                                                            vendorIndex
+                                                            shiftIndex
                                                           );
                                                         }}
                                                       >
-                                                        {expandedVendorRows[
-                                                          dateIndex
-                                                        ]?.includes(
-                                                          vendorIndex
+                                                        {expandedShifts[dateIndex]?.includes(
+                                                          shiftIndex
                                                         ) ? (
                                                           <span
                                                             className="material-icons"
                                                             style={{
-                                                              fontSize:
-                                                                "20px",
+                                                              fontSize: "20px",
+                                                              color: "#0d6efd"
                                                             }}
                                                           >
                                                             remove_circle
@@ -685,8 +747,8 @@ const VehicleUtilizationReport = () => {
                                                           <span
                                                             className="material-icons"
                                                             style={{
-                                                              fontSize:
-                                                                "20px",
+                                                              fontSize: "20px",
+                                                              color: "#0d6efd"
                                                             }}
                                                           >
                                                             add_circle
@@ -695,123 +757,199 @@ const VehicleUtilizationReport = () => {
                                                       </a>
                                                     </td>
                                                     <td className="fw-bold">
-                                                      {vendorRow.Vendor}
+                                                      {shiftRow.shiftTime}
                                                     </td>
                                                     <td className="fw-bold">
-                                                      {vendorRow.TotalRoutes}
+                                                      {shiftRow.TotalRoutes}
                                                     </td>
                                                     <td className="fw-bold d-none d-lg-table-cell">
-                                                      {vendorRow.TotalCapacity}
+                                                      {shiftRow.TotalCapacity}
                                                     </td>
                                                     <td className="fw-bold d-none d-md-table-cell">
-                                                      {vendorRow.TotalEmps}
+                                                      {shiftRow.TotalEmps}
                                                     </td>
                                                     <td className="fw-bold d-none d-lg-table-cell">
-                                                      {
-                                                        vendorRow.ActTotalEmps
-                                                      }
+                                                      {shiftRow.ActTotalEmps}
                                                     </td>
                                                     <td className="fw-bold d-none d-xl-table-cell">
-                                                      {vendorRow.PlanOccPer}
+                                                      {shiftRow.PlanOccPer}
                                                     </td>
-
                                                     <td className="fw-bold">
-                                                      {vendorRow.ActOccPer}
+                                                      {shiftRow.ActOccPer}
                                                     </td>
                                                   </tr>
 
-                                                  {/* Vehicle Type Level Rows - Expanded Section */}
-                                                  {expandedVendorRows[
-                                                    dateIndex
-                                                  ]?.includes(vendorIndex) && (
+                                                  {/* Vendor Level Rows - Expanded Section */}
+                                                  {expandedShifts[dateIndex]?.includes(
+                                                    shiftIndex
+                                                  ) && (
                                                       <tr>
-                                                        <td
-                                                          colSpan="8"
-                                                          className="leftStrip p-2"
-                                                        >
+                                                        <td colSpan="8" className="leftStrip p-2">
                                                           <div className="expanded-content">
                                                             <div className="table-responsive">
                                                               <table className="table table-sm table-bordered mb-0">
                                                                 <thead>
                                                                   <tr>
-                                                                    <th>
-                                                                      Vehicle
-                                                                      Type
-                                                                    </th>
-                                                                    <th>
-                                                                      Total
-                                                                      Trips
-                                                                    </th>
+                                                                    <th style={{ width: "40px" }}></th>
+                                                                    <th>Vendor</th>
+                                                                    <th>Total Trips</th>
                                                                     <th className="d-none d-lg-table-cell">
-                                                                      Total
-                                                                      Capacity
+                                                                      Total Capacity
                                                                     </th>
                                                                     <th className="d-none d-md-table-cell">
-                                                                      Employee
-                                                                      Scheduled
+                                                                      Employees Scheduled
                                                                     </th>
                                                                     <th className="d-none d-lg-table-cell">
-                                                                      Actual
-                                                                      Employees
-                                                                      Boarded
+                                                                      Actual Employees Boarded
                                                                     </th>
                                                                     <th className="d-none d-xl-table-cell">
                                                                       Utilization%
                                                                     </th>
-                                                                    <th>
-                                                                      Occupancy
-                                                                      %
-                                                                    </th>
+                                                                    <th>Occupancy %</th>
                                                                   </tr>
                                                                 </thead>
                                                                 <tbody>
-                                                                  {vendorRow.vehicles.map(
-                                                                    (
-                                                                      vehicleRow,
-                                                                      vehicleIndex
-                                                                    ) => (
-                                                                      <tr
-                                                                        key={
-                                                                          vehicleIndex
-                                                                        }
-                                                                        className={`${vehicleIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}
+                                                                  {shiftRow.vendors.map(
+                                                                    (vendorRow, vendorIndex) => (
+                                                                      <React.Fragment
+                                                                        key={`${dateIndex}-${shiftIndex}-${vendorIndex}`}
                                                                       >
-                                                                        <td>
-                                                                          {
-                                                                            vehicleRow.vehicleType
-                                                                          }
-                                                                        </td>
-                                                                        <td>
-                                                                          {
-                                                                            vehicleRow.TotalRoutes
-                                                                          }
-                                                                        </td>
-                                                                        <td className="d-none d-lg-table-cell">
-                                                                          {
-                                                                            vehicleRow.TotalCapacity
-                                                                          }
-                                                                        </td>
-                                                                        <td className="d-none d-md-table-cell">
-                                                                          {
-                                                                            vehicleRow.TotalEmps
-                                                                          }
-                                                                        </td>
-                                                                        <td className="d-none d-lg-table-cell">
-                                                                          {
-                                                                            vehicleRow.ActTotalEmps
-                                                                          }
-                                                                        </td>
-                                                                        <td className="d-none d-xl-table-cell">
-                                                                          {vehicleRow.PlanOccPer?.toFixed(
-                                                                            2
+                                                                        <tr className={`${vendorIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}>
+                                                                          <td>
+                                                                            <a
+                                                                              href="#!"
+                                                                              onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                toggleVendorExpansion(
+                                                                                  dateIndex,
+                                                                                  shiftIndex,
+                                                                                  vendorIndex
+                                                                                );
+                                                                              }}
+                                                                            >
+                                                                              {expandedVendorRows[
+                                                                                `${dateIndex}-${shiftIndex}`
+                                                                              ]?.includes(
+                                                                                vendorIndex
+                                                                              ) ? (
+                                                                                <span
+                                                                                  className="material-icons"
+                                                                                  style={{
+                                                                                    fontSize: "20px",
+                                                                                    color: "#0d6efd"
+                                                                                  }}
+                                                                                >
+                                                                                  remove_circle
+                                                                                </span>
+                                                                              ) : (
+                                                                                <span
+                                                                                  className="material-icons"
+                                                                                  style={{
+                                                                                    fontSize: "20px",
+                                                                                    color: "#0d6efd"
+                                                                                  }}
+                                                                                >
+                                                                                  add_circle
+                                                                                </span>
+                                                                              )}
+                                                                            </a>
+                                                                          </td>
+                                                                          <td className="fw-bold">
+                                                                            {vendorRow.Vendor}
+                                                                          </td>
+                                                                          <td className="fw-bold">
+                                                                            {vendorRow.TotalRoutes}
+                                                                          </td>
+                                                                          <td className="fw-bold d-none d-lg-table-cell">
+                                                                            {vendorRow.TotalCapacity}
+                                                                          </td>
+                                                                          <td className="fw-bold d-none d-md-table-cell">
+                                                                            {vendorRow.TotalEmps}
+                                                                          </td>
+                                                                          <td className="fw-bold d-none d-lg-table-cell">
+                                                                            {vendorRow.ActTotalEmps}
+                                                                          </td>
+                                                                          <td className="fw-bold d-none d-xl-table-cell">
+                                                                            {vendorRow.PlanOccPer}
+                                                                          </td>
+                                                                          <td className="fw-bold">
+                                                                            {vendorRow.ActOccPer}
+                                                                          </td>
+                                                                        </tr>
+
+                                                                        {/* Vehicle Type Level Rows - Expanded Section */}
+                                                                        {expandedVendorRows[
+                                                                          `${dateIndex}-${shiftIndex}`
+                                                                        ]?.includes(vendorIndex) && (
+                                                                            <tr>
+                                                                              <td
+                                                                                colSpan="8"
+                                                                                className="leftStrip p-2"
+                                                                              >
+                                                                                <div className="expanded-content">
+                                                                                  <div className="table-responsive">
+                                                                                    <table className="table table-sm table-bordered mb-0">
+                                                                                      <thead>
+                                                                                        <tr>
+                                                                                          <th>Vehicle Type</th>
+                                                                                          <th>Total Trips</th>
+                                                                                          <th className="d-none d-lg-table-cell">
+                                                                                            Total Capacity
+                                                                                          </th>
+                                                                                          <th className="d-none d-md-table-cell">
+                                                                                            Employees Scheduled
+                                                                                          </th>
+                                                                                          <th className="d-none d-lg-table-cell">
+                                                                                            Actual Employees Boarded
+                                                                                          </th>
+                                                                                          <th className="d-none d-xl-table-cell">
+                                                                                            Utilization%
+                                                                                          </th>
+                                                                                          <th>Occupancy %</th>
+                                                                                        </tr>
+                                                                                      </thead>
+                                                                                      <tbody>
+                                                                                        {vendorRow.vehicles.map(
+                                                                                          (
+                                                                                            vehicleRow,
+                                                                                            vehicleIndex
+                                                                                          ) => (
+                                                                                            <tr
+                                                                                              key={vehicleIndex}
+                                                                                              className={`${vehicleIndex % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover`}
+                                                                                            >
+                                                                                              <td>
+                                                                                                {vehicleRow.vehicleType}
+                                                                                              </td>
+                                                                                              <td>
+                                                                                                {vehicleRow.TotalRoutes}
+                                                                                              </td>
+                                                                                              <td className="d-none d-lg-table-cell">
+                                                                                                {vehicleRow.TotalCapacity}
+                                                                                              </td>
+                                                                                              <td className="d-none d-md-table-cell">
+                                                                                                {vehicleRow.TotalEmps}
+                                                                                              </td>
+                                                                                              <td className="d-none d-lg-table-cell">
+                                                                                                {vehicleRow.ActTotalEmps}
+                                                                                              </td>
+                                                                                              <td className="d-none d-xl-table-cell">
+                                                                                                {vehicleRow.PlanOccPer?.toFixed(2)}
+                                                                                              </td>
+                                                                                              <td>
+                                                                                                {vehicleRow.ActOccPer?.toFixed(2)}
+                                                                                              </td>
+                                                                                            </tr>
+                                                                                          )
+                                                                                        )}
+                                                                                      </tbody>
+                                                                                    </table>
+                                                                                  </div>
+                                                                                </div>
+                                                                              </td>
+                                                                            </tr>
                                                                           )}
-                                                                        </td>
-                                                                        <td>
-                                                                          {vehicleRow.ActOccPer?.toFixed(
-                                                                            2
-                                                                          )}
-                                                                        </td>
-                                                                      </tr>
+                                                                      </React.Fragment>
                                                                     )
                                                                   )}
                                                                 </tbody>

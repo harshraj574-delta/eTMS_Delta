@@ -164,7 +164,7 @@ const StrongIntensityHeatmapLayer = ({ points, onDensityStats }) => {
   return null;
 };
 
-const LeafletHeatMap = ({ filter, type = 1 }) => {
+const LeafletHeatMap = ({ filter, type = 1, height = "100%" }) => {
   const fetchBody = {
     facilityid: filter?.facilityid,
     sDate: filter?.sDate,
@@ -223,13 +223,9 @@ const LeafletHeatMap = ({ filter, type = 1 }) => {
 
         if (retryCount < maxRetries) {
           console.log(
-            `Auto-retrying HeatMap... Attempt ${retryCount + 1}/${maxRetries}`
+            `Retrying fetch (${retryCount + 1}/${maxRetries}) in 2s...`
           );
-          setTimeout(() => {
-            setRetryCount((prev) => prev + 1);
-          }, 2000);
-        } else {
-          setEmployeeData([]);
+          setTimeout(() => setRetryCount((prev) => prev + 1), 2000);
         }
       } finally {
         setLoading(false);
@@ -238,14 +234,7 @@ const LeafletHeatMap = ({ filter, type = 1 }) => {
 
     fetchEmpData();
     // eslint-disable-next-line
-  }, [
-    filter?.facilityid,
-    filter?.sDate,
-    filter?.eDate,
-    filter?.triptype,
-    type,
-    retryCount,
-  ]);
+  }, [JSON.stringify(fetchBody), retryCount]);
 
   useEffect(() => {
     if (mapRef.current && employeeData.length) {
@@ -265,7 +254,7 @@ const LeafletHeatMap = ({ filter, type = 1 }) => {
     return (
       <div
         style={{
-          height: "70vh",
+          height: height,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -296,7 +285,7 @@ const LeafletHeatMap = ({ filter, type = 1 }) => {
   return (
     <>
       <Loader isVisible={loading} fullScreen={false} />
-      <div style={{ height: "70vh", width: "100%", position: "relative" }}>
+      <div style={{ height: height, width: "100%", position: "relative" }}>
         <div
           style={{
             position: "absolute",

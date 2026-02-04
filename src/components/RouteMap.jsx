@@ -10,31 +10,36 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import polylineUtil from "@mapbox/polyline";
-// CHANGED: Swapped Dropdown for MultiSelect
 import { MultiSelect } from 'primereact/multiselect';
 import "leaflet/dist/leaflet.css";
 import "primereact/resources/themes/lara-light-indigo/theme.css";
 import "primereact/resources/primereact.min.css";
 import ManageRouteService from "../services/compliance/ManageRouteService";
+import Loader from "./common/Loader";
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@maplibre/maplibre-gl-leaflet';
 
 
-function MapLibreLayer() {
+function MapLibreLayer({ onTilesLoaded }) {
   const map = useMap();
   const layerRef = useRef(null);
   const glMapRef = useRef(null);
+  const tilesLoadedRef = useRef(false);
+  const onTilesLoadedRef = useRef(onTilesLoaded);
+  
+  useEffect(() => {
+    onTilesLoadedRef.current = onTilesLoaded;
+  }, [onTilesLoaded]);
 
   useEffect(() => {
+    if (layerRef.current) return;
     if (!map) return;
-    
     
     if (!window.maplibregl) {
       window.maplibregl = maplibregl;
     }
 
-    
     try {
       const maplibreLayer = L.maplibreGL({
         style: 'https://tiles.openfreemap.org/styles/liberty',
@@ -54,31 +59,33 @@ function MapLibreLayer() {
       maplibreLayer.addTo(map);
       layerRef.current = maplibreLayer;
 
-
       setTimeout(() => {
         if (maplibreLayer.getMaplibreMap) {
           const glMap = maplibreLayer.getMaplibreMap();
           glMapRef.current = glMap;
           
           if (glMap) {
-
             glMap.on('load', () => {
               const style = glMap.getStyle();
               if (style && style.sources) {
                 Object.keys(style.sources).forEach(sourceId => {
                   const source = glMap.getSource(sourceId);
                   if (source && source.setTiles) {
-                    // Source is loaded, ready for optimizations
+                    // Source is loaded
                   }
                 });
               }
             });
-            
 
             glMap.on('idle', () => {
-              const currentZoom = glMap.getZoom();
-              const bounds = glMap.getBounds();
+              if (!tilesLoadedRef.current) {
+                tilesLoadedRef.current = true;
+                if (onTilesLoadedRef.current) {
+                  onTilesLoadedRef.current();
+                }
+              }
               
+              const currentZoom = glMap.getZoom();
               if (currentZoom < 18) {
                 glMap.triggerRepaint();
               }
@@ -89,12 +96,17 @@ function MapLibreLayer() {
 
     } catch (err) {
       console.error('Failed to initialize MapLibre GL layer:', err);
-      // Fallback to regular OSM tiles
-      const fallbackLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-      });
+      const fallbackLayer = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { attribution: '© OpenStreetMap' }
+      );
       fallbackLayer.addTo(map);
       layerRef.current = fallbackLayer;
+      
+      if (onTilesLoadedRef.current && !tilesLoadedRef.current) {
+        tilesLoadedRef.current = true;
+        setTimeout(() => onTilesLoadedRef.current(), 1000);
+      }
     }
 
     return () => {
@@ -104,6 +116,7 @@ function MapLibreLayer() {
       if (layerRef.current && map) {
         try {
           map.removeLayer(layerRef.current);
+          layerRef.current = null;
         } catch (e) {
           // Layer might already be removed
         }
@@ -115,7 +128,6 @@ function MapLibreLayer() {
 }
 
 
-// Helper function for retrying failed requests with an async function
 const retryAsync = async (asyncFn, args, maxRetries = 3, delay = 1000) => {
   let lastError;
   for (let i = 0; i < maxRetries; i++) {
@@ -126,9 +138,7 @@ const retryAsync = async (asyncFn, args, maxRetries = 3, delay = 1000) => {
       console.error(`Request failed (attempt ${i + 1}/${maxRetries}):`, error);
       if (i < maxRetries - 1) {
         console.log(
-          `Retrying in ${delay * (i + 1)}ms (attempt ${
-            i + 2
-          }/${maxRetries})...`
+          `Retrying in ${delay * (i + 1)}ms (attempt ${i + 2}/${maxRetries})...`
         );
         await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
       }
@@ -137,7 +147,6 @@ const retryAsync = async (asyncFn, args, maxRetries = 3, delay = 1000) => {
   throw lastError;
 };
 
-// Helper function to convert hex color to RGB
 const hexToRgb = (hex) => {
   const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
   hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -150,7 +159,6 @@ const hexToRgb = (hex) => {
     : null;
 };
 
-// Helper function to parse URL query parameters
 const getQueryParams = () => {
   const search = window.location.search.substring(1);
   const params = {};
@@ -163,21 +171,30 @@ const getQueryParams = () => {
   return params;
 };
 
-// Helper for colored SVG marker
-function createColoredMarker(color, label) {
+// Updated marker function to match RouteInfo.aspx styling
+function createColoredMarker(color, stopNo, gender) {
+  const genderInitial = gender ? gender.charAt(0).toUpperCase() : '';
+  const markerText = `${stopNo}${genderInitial}`;
+  
   const svg = `
-    <svg width="28" height="28" viewBox="0 0 28 28" 
-         xmlns="http://www.w3.org/2000/svg">
-      <circle cx="14" cy="14" r="12" fill="${color}" stroke="#fff" stroke-width="1.5"/>
-      <text x="14" y="19" text-anchor="middle" font-size="13" font-family="Inter,Arial,sans-serif" 
-            fill="#fff" font-weight="bold">${label || ""}</text>
+    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+      <circle cx="18" cy="18" r="16" fill="white" stroke="#333" stroke-width="2"/>
+      <circle cx="18" cy="18" r="14" fill="${color}"/>
+      <text x="18" y="23" text-anchor="middle" 
+            font-family="Arial Black, sans-serif" 
+            font-size="12" 
+            font-weight="900" 
+            fill="white" 
+            stroke="rgba(0,0,0,0.8)" 
+            stroke-width="2" 
+            paint-order="stroke fill">${markerText}</text>
     </svg>
   `;
   return new L.Icon({
     iconUrl: "data:image/svg+xml;base64," + btoa(svg),
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
-    popupAnchor: [0, -28],
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18],
   });
 }
 
@@ -273,27 +290,8 @@ const safeParseJson = (data, fieldName = "response") => {
   return parsedData;
 };
 
-// Helper function to call external recalculate API
 const callRecalculateAPI = async (inputData) => {
-  try {
-    const response = await fetch('https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/recalculate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(inputData)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Recalculate API failed with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error calling recalculate API:', error);
-    throw error;
-  }
+  return ManageRouteService.recalculateRoutes(inputData);
 };
 
 const VehicleIcon = ({ type, isActive }) => {
@@ -371,12 +369,13 @@ export default function RouteMap() {
   const [fetchedRoutesData, setFetchedRoutesData] = useState({});
   const [routeVisible, setRouteVisible] = useState({});
   const [showAll, setShowAll] = useState(false);
-  // CHANGED: State is now an array to hold multiple locations
   const [selectedLocation, setSelectedLocation] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRouteLoading, setIsRouteLoading] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [mapTilesLoaded, setMapTilesLoaded] = useState(false);
   const [queryParams, setQueryParams] = useState({});
   const [ParsedRouteStats, setParsedRouteStats] = useState([]);
 
@@ -385,7 +384,6 @@ export default function RouteMap() {
     setQueryParams(params);
   }, []);
 
-  // CHANGED: Removed the 'All Locations' option, as an empty selection now means 'all'
   const locationOptions = useMemo(() => {
     if (!allRouteMetas || allRouteMetas.length === 0) return [];
     
@@ -401,10 +399,9 @@ export default function RouteMap() {
     }));
   }, [allRouteMetas]);
 
-  // CHANGED: Filtering logic now checks if the route's location is in the selected locations array
   const filteredRouteMetas = useMemo(() => {
     if (!selectedLocation || selectedLocation.length === 0) {
-      return allRouteMetas; // Show all if no locations are selected
+      return allRouteMetas;
     }
     return allRouteMetas.filter(route => selectedLocation.includes(route.Location));
   }, [allRouteMetas, selectedLocation]);
@@ -478,12 +475,12 @@ export default function RouteMap() {
     const fetchInitialData = async () => {
       setLoading(true);
       setIsMapReady(false);
+      setMapTilesLoaded(false);
       setError(null);
       setAllRouteMetas([]);
       setFetchedRoutesData({});
       setRouteVisible({});
       setShowAll(false);
-      // CHANGED: Resetting state to an empty array
       setSelectedLocation([]);
       setIsRecalculating(false);
       
@@ -518,7 +515,6 @@ export default function RouteMap() {
 
         console.log("Routes metadata fetched:", parsedRoutesMeta.length, "routes");
 
-        // NEW FLOW: Check for route updates before proceeding
         if (parsedRoutesMeta.length > 0) {
           const routeIds = parsedRoutesMeta.map(route => route.RouteID).join(',');
           console.log("Checking for route updates with IDs:", routeIds);
@@ -574,7 +570,6 @@ export default function RouteMap() {
           }
         }
 
-        // Fetch route statistics
         const routeStats = {
           sdate: queryParams.sDate,
           edate: queryParams.sDate,
@@ -593,7 +588,6 @@ export default function RouteMap() {
 
         setAllRouteMetas(parsedRoutesMeta);
         
-        // Load first route details as before
         if (parsedRoutesMeta.length > 0) {
           const firstRouteMeta = parsedRoutesMeta[0];
           const firstRouteFullData = await fetchRouteDetailsAndGeometry(
@@ -648,7 +642,6 @@ export default function RouteMap() {
     );
   }, [displayRoutes, routeVisible]);
 
-  // Update stats to reflect filtered routes
   const totalDistance = useMemo(
     () =>
       filteredRouteMetas.reduce(
@@ -670,13 +663,13 @@ export default function RouteMap() {
     const newLocation = e.value;
     setSelectedLocation(newLocation);
     setShowAll(false);
-    setRouteVisible({}); // Clear all visible routes when location changes
+    setRouteVisible({});
   };
 
   const handleToggleAll = async (checked) => {
     setShowAll(checked);
     if (checked) {
-      setLoading(true);
+      setIsRouteLoading(true);
       const routesToFetchDetailsFor = filteredRouteMetas.filter(
         (meta) => !fetchedRoutesData[meta.RouteID]
       );
@@ -706,7 +699,7 @@ export default function RouteMap() {
         });
         setRouteVisible(currentVis);
       } finally {
-        setLoading(false);
+        setIsRouteLoading(false);
       }
     } else {
       const noneVisible = {};
@@ -720,7 +713,7 @@ export default function RouteMap() {
     const makeVisible = !isCurrentlyVisible;
     let operationSuccess = true;
     if (makeVisible && !fetchedRoutesData[routeid]) {
-      setLoading(true);
+      setIsRouteLoading(true);
       const routeMeta = filteredRouteMetas.find((meta) => meta.RouteID === routeid);
       if (routeMeta) {
         const routeFullData = await fetchRouteDetailsAndGeometry(
@@ -737,7 +730,7 @@ export default function RouteMap() {
         operationSuccess = false;
         setError(`Route metadata not found for ${routeid}.`);
       }
-      setLoading(false);
+      setIsRouteLoading(false);
     }
     if (operationSuccess) {
       setRouteVisible((prev) => {
@@ -751,78 +744,7 @@ export default function RouteMap() {
     }
   };
 
-  const LoadingScreen = () => (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(255, 255, 255, 0.95)",
-        backdropFilter: "blur(8px)",
-        zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "24px",
-        opacity: loading ? 1 : 0,
-        visibility: loading ? "visible" : "hidden",
-        transition: "opacity 0.3s ease-in-out, visibility 0.3s ease-in-out",
-      }}
-    >
-      <div style={{ width: "80px", height: "80px", position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            width: "100%",
-            height: "100%",
-            border: "4px solid #e2e8f0",
-            borderTopColor: "#3b82f6",
-            borderRadius: "50%",
-            animation: "spin 1s linear infinite",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            width: "60%",
-            height: "60%",
-            top: "20%",
-            left: "20%",
-            border: "4px solid #e2e8f0",
-            borderTopColor: "#3b82f6",
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite reverse",
-          }}
-        />
-      </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "24px",
-            fontWeight: "600",
-            color: "#1e293b",
-            margin: 0,
-          }}
-        >
-          Loading Routes
-        </h2>
-        <p style={{ fontSize: "16px", color: "#64748b", margin: 0 }}>
-          Please wait while we fetch your route data...
-        </p>
-      </div>
-      <style>{`@keyframes spin {0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);}}`}</style>
-    </div>
-  );
+  const showFullScreenLoader = loading || isRouteLoading || (isMapReady && !mapTilesLoaded);
 
   const RecalculatingScreen = () => (
     <div
@@ -1023,7 +945,6 @@ export default function RouteMap() {
   const componentStyles = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* Sidebar Styles */
     .sidebar-react {
       position: absolute;
       top: 10px;
@@ -1067,7 +988,6 @@ export default function RouteMap() {
       font-weight: 600;
     }
     
-    /* CHANGED: Styles updated for MultiSelect component */
     .location-filter-container {
       margin-bottom: 12px;
       padding: 0 2px;
@@ -1104,6 +1024,45 @@ export default function RouteMap() {
       border-radius: 6px;
       border: 1.5px solid #e2e8f0;
     }
+    .location-filter-container .p-multiselect-header {
+      padding: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .location-filter-container .p-multiselect-filter-container {
+      width: 100%;
+    }
+    .location-filter-container .p-multiselect-filter {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .location-filter-container .p-multiselect-filter:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .location-filter-container .p-multiselect-filter-icon {
+      right: 12px;
+      color: #6b7280;
+    }
+    .location-filter-container .p-multiselect-close {
+      display: none;
+    }
+    .location-filter-container .p-checkbox .p-checkbox-box {
+      border: 1.5px solid #d1d5db;
+      border-radius: 4px;
+      width: 18px;
+      height: 18px;
+    }
+    .location-filter-container .p-checkbox .p-checkbox-box.p-highlight {
+      background: #3b82f6;
+      border-color: #3b82f6;
+    }
     .location-filter-container .p-multiselect-items .p-multiselect-item {
       font-size: 14px;
       padding: 8px 12px;
@@ -1115,8 +1074,14 @@ export default function RouteMap() {
       color: #1e293b;
     }
     .location-filter-container .p-multiselect-items .p-multiselect-item.p-highlight {
-      background: #3b82f6;
-      color: white;
+      background: #eff6ff;
+      color: #1e40af;
+    }
+    .location-filter-container .p-multiselect-empty-message {
+      padding: 12px;
+      color: #6b7280;
+      font-size: 14px;
+      text-align: center;
     }
     
     .sidebar-switch-row {
@@ -1228,11 +1193,10 @@ export default function RouteMap() {
       color: #2563eb;
     }
 
-    /* Popup (Info Window) Styles */
     .info-window {
       font-family: 'Inter', sans-serif;
       font-size: 12px;
-      max-width: 200px;
+      max-width: 220px;
       padding: 0;
       background: white;
       border-radius: 8px;
@@ -1242,22 +1206,32 @@ export default function RouteMap() {
     .info-header {
       font-weight: 700;
       font-size: 13px;
-      padding: 6px 28px 6px 12px;
+      padding: 8px 28px 8px 12px;
       color: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
       background: var(--route-color, #2563eb);
       border-bottom: none;
       position: relative;
     }
-    .info-header span {
-      font-weight: 500;
+    .stop-route-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .stop-label, .route-label {
+      font-size: 11px;
+      font-weight: 600;
       color: rgba(255, 255, 255, 0.9);
-      background: rgba(0, 0, 0, 0.1);
-      padding: 1px 6px;
-      border-radius: 3px;
-      font-size: 10px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .stop-number, .route-number {
+      font-weight: 700;
+      color: white;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
     }
     .employee-details {
       list-style: none;
@@ -1299,7 +1273,6 @@ export default function RouteMap() {
         padding-bottom: 0;
     }
 
-    /* Leaflet Popup Overrides */
     .leaflet-popup-content {
       margin: 0 !important;
       font-family: 'Inter', sans-serif;
@@ -1338,7 +1311,6 @@ export default function RouteMap() {
       background: rgba(0, 0, 0, 0.2) !important;
     }
 
-    /* Zoom control styling */
     .leaflet-control-zoom {
       border: none !important;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
@@ -1366,11 +1338,10 @@ export default function RouteMap() {
       }}
     >
       <style>{componentStyles}</style>
-      <LoadingScreen />
+      <Loader isVisible={showFullScreenLoader} fullScreen={true} />
       <RecalculatingScreen />
       {error && <ErrorMessage message={error} />}
 
-      {/* Conditionally render the map and sidebar */}
       {isMapReady && (
         <>
           <div className="sidebar-react">
@@ -1393,7 +1364,6 @@ export default function RouteMap() {
               </div>
             </div>
             
-            {/* CHANGED: Replaced Dropdown with MultiSelect */}
             <div className="location-filter-container">
               <label className="location-filter-label">Filter by Location:</label>
               <MultiSelect
@@ -1404,6 +1374,12 @@ export default function RouteMap() {
                 placeholder="Select Locations"
                 display="chip"
                 maxSelectedLabels={2}
+                filter
+                filterPlaceholder="Search locations..."
+                filterBy="label"
+                showSelectAll={true}
+                selectAllLabel="Select All"
+                emptyFilterMessage="No locations found"
               />
             </div>
             
@@ -1459,7 +1435,6 @@ export default function RouteMap() {
             <div id="route-buttons">
               {displayRoutes.map((route, idx) => {
                 const isActive = !!routeVisible[route.routeid];
-                // Use the original index from allRouteMetas for consistent color assignment
                 const originalIndex = allRouteMetas.findIndex(meta => meta.RouteID === route.routeid);
                 return (
                   <div className="route-item" key={route.routeid}>
@@ -1527,13 +1502,12 @@ export default function RouteMap() {
             zoom={6}
             style={{ height: "100vh", width: "100vw", zIndex: 1 }}
             zoomControl={false}
-            // Enable smooth/fractional zooming
             zoomSnap={0.25}
             zoomDelta={0.5}
             wheelPxPerZoomLevel={120}
           >
             <FitMapToRoutes routes={routesForMap} />
-            <MapLibreLayer />
+            <MapLibreLayer onTilesLoaded={() => setMapTilesLoaded(true)} />
             <ZoomControl position="topright" />
             {routesForMap.map((route) => {
               const originalIndex = allRouteMetas.findIndex(meta => meta.RouteID === route.routeid);
@@ -1547,8 +1521,8 @@ export default function RouteMap() {
                         .decode(route.geometry)
                         .map((coord) => [coord[0], coord[1]])}
                       color={routeColor}
-                      weight={5}
-                      opacity={1}
+                      weight={4}
+                      opacity={0.8}
                     />
                   )}
                   {route.stops &&
@@ -1560,7 +1534,7 @@ export default function RouteMap() {
                         <Marker
                           key={`${route.routeid}-stop-${sidx}`}
                           position={[lat, lng]}
-                          icon={createColoredMarker(routeColor, stop.stopNo)}
+                          icon={createColoredMarker(routeColor, stop.stopNo, stop.gender)}
                         >
                           <Popup>
                             <div
@@ -1571,7 +1545,14 @@ export default function RouteMap() {
                               }}
                             >
                               <div className="info-header">
-                                 Stop <span>{stop.stopNo}</span>
+                                <div className="stop-route-info">
+                                  <span className="stop-label">
+                                    Stop <span className="stop-number">{stop.stopNo}</span>
+                                  </span>
+                                  <span className="route-label">
+                                    Route <span className="route-number">{route.routeid}</span>
+                                  </span>
+                                </div>
                               </div>
                               <ul className="employee-details">
                                 <li>

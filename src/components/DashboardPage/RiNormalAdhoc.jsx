@@ -1,15 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../services/api";
-import { Chart } from "primereact/chart";
 import { BiExpand } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
 import Loader from "../common/Loader";
 import React from "react";
+import * as echarts from "echarts";
+import EChartsBase, {
+  TOOLTIP_CONFIG,
+  LEGEND_CONFIG,
+  GRID_CONFIG,
+  X_AXIS_CONFIG,
+  Y_AXIS_CONFIG,
+  ANIMATION_CONFIG,
+} from "./EChartsBase";
 
 const RiNormalAdhoc = ({ filter }) => {
-  const [barChartData, setBarChartData] = useState({});
-  const [barChartOptions, setBarChartOptions] = useState({});
+  const [chartData, setChartData] = useState(null);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,15 +24,6 @@ const RiNormalAdhoc = ({ filter }) => {
   const maxRetries = 3;
 
   useEffect(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
-    const textColor = documentStyle.getPropertyValue("--text-color").trim();
-    const textColorSecondary = documentStyle
-      .getPropertyValue("--text-color-secondary")
-      .trim();
-    const surfaceBorder = documentStyle
-      .getPropertyValue("--surface-border")
-      .trim();
-
     const fetchNormalAdhoc = async () => {
       setLoading(true);
       setError(null);
@@ -44,7 +42,7 @@ const RiNormalAdhoc = ({ filter }) => {
         const responseData = JSON.parse(res) || [];
 
         if (!responseData.length) {
-          setBarChartData({});
+          setChartData(null);
           setRetryCount(0);
           return;
         }
@@ -58,67 +56,18 @@ const RiNormalAdhoc = ({ filter }) => {
         const labels = responseData.map((item) =>
           convertShiftTimeToLabel(item.shiftTime)
         );
-        const normalTrips = responseData.map((item) => item.NornalTripCount);
-        const adhocTrips = responseData.map((item) => item.AdhocTripcount);
+        const normalTrips = responseData.map((item) => item.NornalTripCount || 0);
+        const adhocTrips = responseData.map((item) => item.AdhocTripcount || 0);
 
-        setBarChartData({
+        const totalNormal = normalTrips.reduce((a, b) => a + b, 0);
+        const totalAdhoc = adhocTrips.reduce((a, b) => a + b, 0);
+
+        setChartData({
           labels,
-          datasets: [
-            {
-              type: "bar",
-              label: `Normal Trips`,
-              backgroundColor: "#5c92ff",
-              data: normalTrips,
-              barPercentage: 0.6,
-              categoryPercentage: 0.6,
-            },
-            {
-              type: "bar",
-              label: `Adhoc Trips`,
-              backgroundColor: "#e3a008",
-              data: adhocTrips,
-              barPercentage: 0.6,
-              categoryPercentage: 0.6,
-            },
-          ],
-        });
-
-        setBarChartOptions({
-          maintainAspectRatio: false,
-          aspectRatio: 0.58,
-          plugins: {
-            tooltip: {
-              mode: "index",
-              intersect: false,
-              callbacks: {
-                label: (context) => {
-                  const label = context.dataset.label || "";
-                  const value = context.parsed.y ?? context.parsed;
-                  return `${label}: ${value}`;
-                },
-              },
-            },
-            legend: {
-              labels: {
-                color: textColor,
-                usePointStyle: true,
-                pointStyle: "circle",
-              },
-              position: "bottom",
-            },
-          },
-          scales: {
-            x: {
-              stacked: true,
-              ticks: { color: textColorSecondary },
-              grid: { color: surfaceBorder },
-            },
-            y: {
-              stacked: true,
-              ticks: { color: textColorSecondary, reverse: true },
-              grid: { color: surfaceBorder },
-            },
-          },
+          normalTrips,
+          adhocTrips,
+          totalNormal,
+          totalAdhoc,
         });
 
         setRetryCount(0);
@@ -135,7 +84,7 @@ const RiNormalAdhoc = ({ filter }) => {
             setRetryCount((prev) => prev + 1);
           }, 2000);
         } else {
-          setBarChartData({});
+          setChartData(null);
         }
       } finally {
         setLoading(false);
@@ -146,6 +95,110 @@ const RiNormalAdhoc = ({ filter }) => {
       fetchNormalAdhoc();
     }
   }, [filter, retryCount]);
+
+  // Generate ECharts option
+  const chartOption = useMemo(() => {
+    if (!chartData) return null;
+
+    const { labels, normalTrips, adhocTrips, totalNormal, totalAdhoc } = chartData;
+
+    return {
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        ...TOOLTIP_CONFIG,
+        trigger: "axis",
+        axisPointer: {
+          type: "shadow",
+        },
+        formatter: (params) => {
+          let result = `<div style="font-weight: 600; margin-bottom: 8px;">${params[0].axisValue}</div>`;
+          let total = 0;
+          params.forEach((param) => {
+            const marker = `<span style="display:inline-block;margin-right:4px;border-radius:4px;width:10px;height:10px;background-color:${param.color};"></span>`;
+            result += `<div style="margin: 4px 0;">${marker}${param.seriesName}: <strong>${param.value}</strong></div>`;
+            total += param.value;
+          });
+          result += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-weight: 600;">Total: ${total}</div>`;
+          return result;
+        },
+      },
+      legend: {
+        ...LEGEND_CONFIG,
+        data: [
+          `Normal Trips (${totalNormal})`,
+          `Adhoc Trips (${totalAdhoc})`,
+        ],
+        bottom: 10,
+      },
+      grid: {
+        ...GRID_CONFIG,
+        top: 30,
+        bottom: 80,
+        left: 50,
+        right: 20,
+      },
+      xAxis: {
+        ...X_AXIS_CONFIG,
+        data: labels,
+        axisLabel: {
+          ...X_AXIS_CONFIG.axisLabel,
+          rotate: labels.length > 12 ? 45 : 0,
+        },
+      },
+      yAxis: {
+        ...Y_AXIS_CONFIG,
+        name: "Number of Trips",
+        nameLocation: "center",
+        nameGap: 40,
+        nameTextStyle: {
+          color: "#6b7280",
+          fontSize: 12,
+        },
+      },
+      series: [
+        {
+          name: `Normal Trips (${totalNormal})`,
+          type: "bar",
+          stack: "trips",
+          data: normalTrips,
+          barWidth: "50%",
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "#93c5fd" },
+              { offset: 1, color: "#5c92ff" },
+            ]),
+            borderRadius: [0, 0, 0, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(92, 146, 255, 0.3)",
+            },
+          },
+        },
+        {
+          name: `Adhoc Trips (${totalAdhoc})`,
+          type: "bar",
+          stack: "trips",
+          data: adhocTrips,
+          barWidth: "50%",
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "#fcd34d" },
+              { offset: 1, color: "#e3a008" },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(227, 160, 8, 0.3)",
+            },
+          },
+        },
+      ],
+    };
+  }, [chartData]);
 
   if (error && retryCount >= maxRetries) {
     return (
@@ -197,14 +250,23 @@ const RiNormalAdhoc = ({ filter }) => {
         </span>
       </div>
       <hr />
-      {!loading && (
-        <Chart
-          type="bar"
-          data={barChartData}
-          options={barChartOptions}
-          className="w-full md:w-30rem"
-          style={{ height: "50vh", width: "100%" }}
+      {!loading && chartOption && (
+        <EChartsBase
+          option={chartOption}
+          height="50vh"
+          loading={loading}
+          style={{ minHeight: "300px" }}
         />
+      )}
+      {!loading && !chartOption && (
+        <div className="text-center text-muted py-5">
+          <p style={{ fontSize: "16px", marginBottom: "8px" }}>
+            No data available
+          </p>
+          <p style={{ fontSize: "14px", color: "#999" }}>
+            Try adjusting your filters to see data
+          </p>
+        </div>
       )}
 
       <Dialog
@@ -213,13 +275,13 @@ const RiNormalAdhoc = ({ filter }) => {
         style={{ width: "90vw", minHeight: "90vh" }}
         onHide={() => setDialogVisible(false)}
       >
-        <Chart
-          type="bar"
-          data={barChartData}
-          options={barChartOptions}
-          className="w-full md:w-30rem"
-          style={{ height: "75vh", width: "100%" }}
-        />
+        {chartOption && (
+          <EChartsBase
+            option={chartOption}
+            height="75vh"
+            loading={loading}
+          />
+        )}
       </Dialog>
       <Tooltip target="#adhoc" content="Expand Chart" position="left" />
     </div>

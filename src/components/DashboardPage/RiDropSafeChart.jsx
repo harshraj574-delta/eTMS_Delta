@@ -1,15 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../services/api";
-import { Chart } from "primereact/chart";
 import { BiExpand } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
 import Loader from "../common/Loader";
 import React from "react";
+import * as echarts from "echarts";
+import EChartsBase, {
+  TOOLTIP_CONFIG,
+  LEGEND_CONFIG,
+  GRID_CONFIG,
+  X_AXIS_CONFIG,
+  Y_AXIS_CONFIG,
+  ANIMATION_CONFIG,
+} from "./EChartsBase";
 
 const RiDropSafeChart = ({ filter }) => {
-  const [barChartData, setBarChartData] = useState({});
-  const [barChartOptions, setBarChartOptions] = useState({});
+  const [chartData, setChartData] = useState(null);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,15 +24,6 @@ const RiDropSafeChart = ({ filter }) => {
   const maxRetries = 3;
 
   useEffect(() => {
-    const documentStyle = getComputedStyle(document.documentElement);
-    const textColor = documentStyle.getPropertyValue("--text-color").trim();
-    const textColorSecondary = documentStyle
-      .getPropertyValue("--text-color-secondary")
-      .trim();
-    const surfaceBorder = documentStyle
-      .getPropertyValue("--surface-border")
-      .trim();
-
     const fetchChartData = async () => {
       setLoading(true);
       setError(null);
@@ -44,7 +42,7 @@ const RiDropSafeChart = ({ filter }) => {
         const apiData = typeof res === "string" ? JSON.parse(res) : res || [];
 
         if (!apiData || apiData.length === 0) {
-          setBarChartData({});
+          setChartData(null);
           setRetryCount(0);
           return;
         }
@@ -58,67 +56,18 @@ const RiDropSafeChart = ({ filter }) => {
         const labels = apiData.map((item) =>
           convertShiftTimeToLabel(item.shiftTime)
         );
-        const femaleCounts = apiData.map((item) => Number(item.femalecount));
-        const dsyCounts = apiData.map((item) => Number(item.dsycount));
+        const femaleCounts = apiData.map((item) => Number(item.femalecount || 0));
+        const dsyCounts = apiData.map((item) => Number(item.dsycount || 0));
 
-        setBarChartData({
+        const totalFemale = femaleCounts.reduce((a, b) => a + b, 0);
+        const totalDsy = dsyCounts.reduce((a, b) => a + b, 0);
+
+        setChartData({
           labels,
-          datasets: [
-            {
-              type: "bar",
-              label: `Women Employees`,
-              backgroundColor: "#007bff",
-              data: femaleCounts,
-              barPercentage: 0.7,
-              categoryPercentage: 0.8,
-            },
-            {
-              type: "bar",
-              label: `DSY Count`,
-              backgroundColor: "#dc3545",
-              data: dsyCounts,
-              barPercentage: 0.7,
-              categoryPercentage: 0.8,
-            },
-          ],
-        });
-
-        setBarChartOptions({
-          maintainAspectRatio: false,
-          aspectRatio: 0.58,
-          plugins: {
-            tooltip: {
-              mode: "index",
-              intersect: false,
-              callbacks: {
-                label: (context) => {
-                  const label = context.dataset.label || "";
-                  const value = context.parsed.y ?? context.parsed;
-                  return `${label}: ${value}`;
-                },
-              },
-            },
-            legend: {
-              position: "bottom",
-              labels: {
-                color: textColor,
-                usePointStyle: true,
-                pointStyle: "circle",
-              },
-            },
-          },
-          scales: {
-            x: {
-              stacked: false,
-              ticks: { color: textColorSecondary },
-              grid: { color: surfaceBorder },
-            },
-            y: {
-              stacked: false,
-              ticks: { color: textColorSecondary },
-              grid: { color: surfaceBorder },
-            },
-          },
+          femaleCounts,
+          dsyCounts,
+          totalFemale,
+          totalDsy,
         });
 
         setRetryCount(0);
@@ -135,7 +84,7 @@ const RiDropSafeChart = ({ filter }) => {
             setRetryCount((prev) => prev + 1);
           }, 2000);
         } else {
-          setBarChartData({});
+          setChartData(null);
         }
       } finally {
         setLoading(false);
@@ -151,9 +100,109 @@ const RiDropSafeChart = ({ filter }) => {
     ) {
       fetchChartData();
     } else {
-      setBarChartData({});
+      setChartData(null);
     }
   }, [filter, retryCount]);
+
+  // Generate ECharts option
+  const chartOption = useMemo(() => {
+    if (!chartData) return null;
+
+    const { labels, femaleCounts, dsyCounts, totalFemale, totalDsy } = chartData;
+
+    return {
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        ...TOOLTIP_CONFIG,
+        trigger: "axis",
+        axisPointer: {
+          type: "shadow",
+        },
+        formatter: (params) => {
+          let result = `<div style="font-weight: 600; margin-bottom: 8px;">${params[0].axisValue}</div>`;
+          params.forEach((param) => {
+            const marker = `<span style="display:inline-block;margin-right:4px;border-radius:4px;width:10px;height:10px;background-color:${param.color};"></span>`;
+            result += `<div style="margin: 4px 0;">${marker}${param.seriesName}: <strong>${param.value}</strong></div>`;
+          });
+          return result;
+        },
+      },
+      legend: {
+        ...LEGEND_CONFIG,
+        data: [
+          `Women Employees (${totalFemale})`,
+          `DSY Count (${totalDsy})`,
+        ],
+        bottom: 10,
+      },
+      grid: {
+        ...GRID_CONFIG,
+        top: 30,
+        bottom: 80,
+        left: 50,
+        right: 20,
+      },
+      xAxis: {
+        ...X_AXIS_CONFIG,
+        data: labels,
+        axisLabel: {
+          ...X_AXIS_CONFIG.axisLabel,
+          rotate: labels.length > 12 ? 45 : 0,
+        },
+      },
+      yAxis: {
+        ...Y_AXIS_CONFIG,
+        name: "Count",
+        nameLocation: "center",
+        nameGap: 40,
+        nameTextStyle: {
+          color: "#6b7280",
+          fontSize: 12,
+        },
+      },
+      series: [
+        {
+          name: `Women Employees (${totalFemale})`,
+          type: "bar",
+          data: femaleCounts,
+          barWidth: "35%",
+          barGap: "10%",
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "#60a5fa" },
+              { offset: 1, color: "#2563eb" },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(37, 99, 235, 0.3)",
+            },
+          },
+        },
+        {
+          name: `DSY Count (${totalDsy})`,
+          type: "bar",
+          data: dsyCounts,
+          barWidth: "35%",
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "#f87171" },
+              { offset: 1, color: "#dc2626" },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(220, 38, 38, 0.3)",
+            },
+          },
+        },
+      ],
+    };
+  }, [chartData]);
 
   if (error && retryCount >= maxRetries) {
     return (
@@ -205,24 +254,23 @@ const RiDropSafeChart = ({ filter }) => {
         </span>
       </div>
       <hr />
-      {!loading && barChartData?.datasets?.length > 0 ? (
-        <Chart
-          type="bar"
-          data={barChartData}
-          options={barChartOptions}
-          style={{ height: "50vh", width: "100%" }}
+      {!loading && chartOption && (
+        <EChartsBase
+          option={chartOption}
+          height="50vh"
+          loading={loading}
+          style={{ minHeight: "300px" }}
         />
-      ) : (
-        !loading && (
-          <div className="text-center text-muted py-5">
-            <p style={{ fontSize: "16px", marginBottom: "8px" }}>
-              No records found
-            </p>
-            <p style={{ fontSize: "14px", color: "#999" }}>
-              Try adjusting your filters to see data
-            </p>
-          </div>
-        )
+      )}
+      {!loading && !chartOption && (
+        <div className="text-center text-muted py-5">
+          <p style={{ fontSize: "16px", marginBottom: "8px" }}>
+            No records found
+          </p>
+          <p style={{ fontSize: "14px", color: "#999" }}>
+            Try adjusting your filters to see data
+          </p>
+        </div>
       )}
 
       <Dialog
@@ -231,12 +279,13 @@ const RiDropSafeChart = ({ filter }) => {
         style={{ width: "90vw", minHeight: "90vh" }}
         onHide={() => setDialogVisible(false)}
       >
-        <Chart
-          type="bar"
-          data={barChartData}
-          options={barChartOptions}
-          style={{ height: "75vh", width: "100%" }}
-        />
+        {chartOption && (
+          <EChartsBase
+            option={chartOption}
+            height="75vh"
+            loading={loading}
+          />
+        )}
       </Dialog>
 
       <Tooltip target="#dsy" content="Expand Chart" position="left" />

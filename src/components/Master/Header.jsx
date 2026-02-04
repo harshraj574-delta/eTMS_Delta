@@ -6,6 +6,8 @@ import useSessionStore from '../../store/useSessionStore';
 import { Offcanvas } from "bootstrap";
 import { apiService } from "../../services/api";
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import { Avatar } from 'primereact/avatar';
+import { OverlayPanel } from 'primereact/overlaypanel';
 
 const Header = ({ 
   mainTitle, 
@@ -18,6 +20,7 @@ const Header = ({
   const [profileData, setProfileData] = useState(null);
   const navigate = useNavigate();
   const headerRef = useRef(null);
+  const profileMenuRef = useRef(null);
   const logout = useSessionStore((state) => state.logout);
 
   useEffect(() => {
@@ -51,10 +54,29 @@ const Header = ({
     fetchProfile();
   }, []);
 
+  // Sync DOM classes with React state whenever isSidebarCollapsed changes
+  useEffect(() => {
+    // Update body class
+    document.body.classList.toggle('sidebar-collapsed', isSidebarCollapsed);
+    
+    // Update sidebar class
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      sidebar.classList.toggle('collapsed', isSidebarCollapsed);
+    }
+    
+    // Update middle class
+    const middle = document.querySelector('.middle');
+    if (middle) {
+      middle.classList.toggle('expanded', isSidebarCollapsed);
+    }
+  }, [isSidebarCollapsed]);
+
   // Listen for sidebar expand event (dispatched from SidebarMenu when icon is clicked in collapsed mode)
   useEffect(() => {
     const handleSidebarExpand = () => {
       setIsSidebarCollapsed(false);
+      // DOM classes will be synced by the above useEffect
     };
     
     window.addEventListener('sidebarExpand', handleSidebarExpand);
@@ -70,23 +92,8 @@ const Header = ({
   const employeeName = userData.empName || 'Guest';
 
   const sidebarToggle = () => {
-    const newState = !isSidebarCollapsed;
-    setIsSidebarCollapsed(newState);
-    
-    // Toggle body class
-    document.body.classList.toggle('sidebar-collapsed', newState);
-    
-    // Toggle sidebar class
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-      sidebar.classList.toggle('collapsed', newState);
-    }
-    
-    // Toggle middle class
-    const middle = document.querySelector('.middle');
-    if (middle) {
-      middle.classList.toggle('expanded', newState);
-    }
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+    // DOM classes are synced by the useEffect above
   };
 
   return (
@@ -95,10 +102,10 @@ const Header = ({
         .header {
           overflow: hidden;
         }
-                
+        
         @media (max-width: 767px) {
           .header .header-mid {
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
           }
           .header .breadcrumb-cnt {
             display: none;
@@ -108,6 +115,21 @@ const Header = ({
           }
           .header .logo {
             margin-left: 0;
+          }
+          .header-user-info {
+            display: none !important;
+          }
+        }
+        
+        @media (max-width: 576px) {
+          .header .header-mid {
+            gap: 8px;
+          }
+          .header .btn .btn-text {
+            display: none;
+          }
+          .header .btn .material-icons {
+            margin-right: 0 !important;
           }
         }
       `}</style>
@@ -132,7 +154,7 @@ const Header = ({
       </div>
       
       <div className="header-mid">
-        <div className="breadcrumb-cnt">
+        <div className="breadcrumb-cnt d-none d-lg-block">
           <ol className="breadcrumb mb-0">
             <li className="breadcrumb-item text1-body">
               <a href="#">Etms</a>
@@ -179,79 +201,264 @@ const Header = ({
             </a>
           </li>
           <li className="dropdown">
+            <style>{`
+              .header-profile-trigger {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 6px 12px;
+                border-radius: 8px;
+                transition: all 0.2s ease;
+                cursor: pointer;
+                text-decoration: none;
+              }
+              .header-profile-trigger:hover {
+                background: rgba(0, 0, 0, 0.04);
+              }
+              .header-profile-trigger .p-avatar {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #fff;
+                font-weight: 600;
+                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+              }
+              .header-user-info {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                line-height: 1.3;
+              }
+              .header-user-name-text {
+                font-size: 14px;
+                font-weight: 600;
+                color: #1a1a2e;
+                white-space: nowrap;
+              }
+              .header-dropdown-icon {
+                color: #9ca3af;
+                font-size: 20px !important;
+                transition: transform 0.2s ease;
+              }
+              .header-profile-trigger:hover .header-dropdown-icon {
+                color: #6b7280;
+              }
+              @media (max-width: 576px) {
+                .header-user-info {
+                  display: none;
+                }
+              }
+              
+              /* Profile Dropdown Styles */
+              .profile-dropdown {
+                border-radius: 12px !important;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+                border: 1px solid #e5e7eb !important;
+                padding: 0 !important;
+                min-width: 280px;
+              }
+              .profile-dropdown::before,
+              .profile-dropdown::after {
+                display: none !important;
+              }
+              .profile-dropdown-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 16px;
+                border-bottom: 1px solid #f3f4f6;
+              }
+              .profile-dropdown-header .p-avatar {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #fff;
+                font-weight: 700;
+                width: 48px;
+                height: 48px;
+                font-size: 18px;
+              }
+              .profile-dropdown-header-info h6 {
+                margin: 0;
+                font-size: 15px;
+                font-weight: 600;
+                color: #1a1a2e;
+              }
+              .profile-dropdown-header-info span {
+                font-size: 13px;
+                color: #6b7280;
+              }
+              .profile-dropdown-menu {
+                list-style: none;
+                margin: 0;
+                padding: 8px 0;
+              }
+              .profile-dropdown-menu li {
+                padding: 0;
+              }
+              .profile-dropdown-menu a,
+              .profile-dropdown-menu button {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 10px 16px;
+                text-decoration: none;
+                color: #374151;
+                font-size: 14px;
+                font-weight: 500;
+                transition: background 0.15s ease;
+                border: none;
+                background: transparent;
+                width: 100%;
+                cursor: pointer;
+                text-align: left;
+              }
+              .profile-dropdown-menu a:hover,
+              .profile-dropdown-menu button:hover {
+                background: #f9fafb;
+              }
+              .profile-dropdown-menu .material-icons {
+                font-size: 20px;
+                color: #9ca3af;
+              }
+              .profile-dropdown-menu .logout-item {
+                color: #dc2626;
+                border-top: 1px solid #f3f4f6;
+                margin-top: 4px;
+                padding-top: 12px;
+              }
+              .profile-dropdown-menu .logout-item .material-icons {
+                color: #dc2626;
+              }
+            `}</style>
             <a 
               href="#!" 
-              data-bs-toggle="offcanvas" 
-              data-bs-target="#profileSidebar" 
-              aria-controls="profileSidebar"
-              className="d-flex align-items-center text-decoration-none"
+              onClick={(e) => profileMenuRef.current.toggle(e)}
+              className="header-profile-trigger"
             >
-              <img src="images/al1i.png" alt="Profile" className="rounded-circle" width="32" height="32" /> 
-              <span className="header-user-name ms-2">{employeeName}</span>
-              <ArrowDropDownIcon className="ms-2 text-dark" />
+              <Avatar 
+                label={employeeName ? employeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+                size="normal"
+                shape="circle"
+              />
+              <div className="header-user-info">
+                <span className="header-user-name-text">{employeeName}</span>
+              </div>
+              <ArrowDropDownIcon className="header-dropdown-icon" />
             </a>
+            
+            {/* Profile Dropdown Menu */}
+            <OverlayPanel ref={profileMenuRef} className="profile-dropdown" dismissable>
+              <div className="profile-dropdown-header">
+                <Avatar 
+                  label={employeeName ? employeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+                  size="large"
+                  shape="circle"
+                />
+                <div className="profile-dropdown-header-info">
+                  <h6>{employeeName}</h6>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#6b7280' }}>
+                    <span className="material-icons" style={{ fontSize: '14px' }}>email</span>
+                    {profileData?.Email || "No Email"}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#6b7280' }}>
+                    <span className="material-icons" style={{ fontSize: '14px' }}>call</span>
+                    {profileData?.mobile || "No Contact"}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Transport Info Section */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px',
+                padding: '12px 16px', 
+                borderBottom: '1px solid #f3f4f6',
+                backgroundColor: '#fafafa'
+              }}>
+                <div style={{ 
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: profileData?.tptReqText === "Yes" ? 'rgba(16, 185, 129, 0.08)' : 'rgba(107, 114, 128, 0.08)',
+                  border: profileData?.tptReqText === "Yes" ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(107, 114, 128, 0.15)'
+                }}>
+                  <span className="material-icons" style={{ 
+                    fontSize: '18px', 
+                    color: profileData?.tptReqText === "Yes" ? '#10b981' : '#6b7280'
+                  }}>directions_car</span>
+                  <div>
+                    <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Transport</div>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      fontWeight: '600', 
+                      color: profileData?.tptReqText === "Yes" ? '#10b981' : '#6b7280'
+                    }}>
+                      {profileData?.tptReqText === "Yes" ? "Required" : "Not Required"}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ 
+                  flex: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(102, 126, 234, 0.06)',
+                  border: '1px solid rgba(102, 126, 234, 0.15)'
+                }}>
+                  <span className="material-icons" style={{ fontSize: '18px', color: '#667eea' }}>location_on</span>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nodal Point</div>
+                    <div style={{ 
+                      fontSize: '12px', 
+                      fontWeight: '600', 
+                      color: '#1a1a2e',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {profileData?.landmark || "Not Set"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <ul className="profile-dropdown-menu">
+                <li>
+                  <a href="#!" onClick={() => { profileMenuRef.current.hide(); navigate('/MyProfile'); }}>
+                    <span className="material-icons">person</span>
+                    My Profile
+                  </a>
+                </li>
+                <li>
+                  <a href="#!" onClick={() => profileMenuRef.current.hide()}>
+                    <span className="material-icons">help_outline</span>
+                    FAQs
+                  </a>
+                </li>
+                <li>
+                  <a href="#!" onClick={() => profileMenuRef.current.hide()}>
+                    <span className="material-icons">menu_book</span>
+                    Help Documents
+                  </a>
+                </li>
+                <li>
+                  <a href="#!" onClick={() => profileMenuRef.current.hide()}>
+                    <span className="material-icons">description</span>
+                    Terms & Conditions
+                  </a>
+                </li>
+                <li>
+                  <button className="logout-item" onClick={() => { profileMenuRef.current.hide(); handleLogout(); }}>
+                    <span className="material-icons">logout</span>
+                    Logout
+                  </button>
+                </li>
+              </ul>
+            </OverlayPanel>
           </li>
           {/* Removed direct logout button */}
         </ul>
-      </div>
-
-      {/* Profile Sidebar */}
-      <div 
-        className="offcanvas offcanvas-end profile-sidebar" 
-        tabIndex="-1" 
-        id="profileSidebar" 
-        aria-labelledby="profileSidebarLabel"
-      >
-        <div className="offcanvas-body position-relative p-0">
-          <button type="button" className="btn-close text-reset btn-close-fixed" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-          <div className="d-flex justify-content-start align-items-start p-3">
-            <img src="images/al1i.png" className="me-3 profile-sidebar-img" alt="Profile" />
-            <div>
-              <h5 className="profile-sidebar-name mb-1"> {employeeName}</h5>
-              <ul className="personal_info">
-                <li><span className="material-icons">email</span> <span className="profile-contact-text">{profileData?.Email || "No Email"}</span></li>
-                <li><span className="material-icons">call</span> <span className="profile-contact-text">{profileData?.mobile || "No Contact"}</span></li>
-              </ul>
-
-              <div className="d-flex gap-2 mt-3">
-                <button className="btn btn-outline-secondary profile-action-btn profile-btn-view" onClick={() => navigate('/MyProfile')}>
-                  View Profile
-                </button>
-                <button className="btn btn-outline-danger profile-action-btn profile-btn-logout text-danger" onClick={handleLogout}>
-                  Logout
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <ul className="requi_sec">
-            <li> <small>Transport Required</small> 
-                <span className={`badge rounded-pill profile-status-badge ${profileData?.tptReqText === "Yes" ? "bg-success" : "bg-secondary"}`}>
-                    {profileData?.tptReqText === "Yes" ? "YES" : "NO"}
-                </span>
-            </li>
-            <li> <small>Nodal Point</small> {profileData?.landmark || "N/A"}</li>
-          </ul>
-
-          <ul className="icon_sec">
-            <li><span><span className="circle"><span className="material-icons">question_answer</span></span> <a href="#!">FAQs</a></span></li>
-            <li><span><span className="circle"><span className="material-icons">menu_book</span></span> <a href="#!">Help Documents</a></span></li>
-            <li><span><span className="circle"><span className="material-icons">video_call</span></span> <a href="#!">Video Tutorials</a></span></li>
-          </ul>
-
-          <p className="need-assistance-subtitle ms-3">Need Assistance ?</p>
-          <ul className="assistance_list ms-3">
-            <li><a href="#!"> <span className="material-icons me-2 text-primary">help_outline</span> Have a question ? Ask away!</a></li>
-            <li><a href="#!"><span className="material-icons me-2 text-primary">email</span> Send an email</a></li>
-            <li><a href="#!"><span className="material-icons me-2 text-primary">privacy_tip</span>Privacy Policy</a></li>
-            <li><a href="#!"><span className="material-icons me-2 text-primary">description</span> Terms and conditions</a></li>
-          </ul>
-
-          <ul className="helpline">
-            <li> <span className="material-icons me-2 text-success">call</span> <span><small>Transport Desk</small> 1800 266 399</span></li>
-            <li> <span className="material-icons me-2 text-danger">call</span> <span><small>Women Helpline No.</small> 1800 555 222</span></li>
-          </ul>
-        </div>
       </div>
     </div>
   );

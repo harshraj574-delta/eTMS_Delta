@@ -19,6 +19,7 @@ import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 import "./common/CustomDataTable.css";
+import AutoAllocationService from "../services/compliance/AutoAllocationService";
 
 const ReplicationException = () => {
   // Form state
@@ -268,29 +269,194 @@ const ReplicationException = () => {
   };
 
   const handleAutoAllocation = async () => {
+    if (addExceptionData.length === 0) {
+      toastService.error("No exception employees to allocate");
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await ReplicationExceptionService.AutoAdhocAllocation({
+
+      // Helper to format date as YYYY-MM-DD for API
+      const formatApiDate = (date) => {
+        const d = new Date(date);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+
+      // Step 1: Get existing routes with space from sp_getrouteforAdhoc
+      const routesResponse = await ReplicationExceptionService.sp_getrouteforAdhoc({
         sDate: formatDate(selectedDate),
         FacilityID: selectedFacility,
         Shifttimes: getShiftString(),
         TripType: tripType,
-        statustype: "Route",
       });
 
-      const result =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const message =
-        result && result[0] && result[0].RESULT
-          ? result[0].RESULT
-          : "Auto allocation completed";
+      const existingRoutes =
+        typeof routesResponse === "string"
+          ? JSON.parse(routesResponse)
+          : routesResponse;
 
-      toastService.success(message);
-      handleSubmit(); // Refresh data
+      // If no existing routes, generate fresh routes for all employees
+      if (!existingRoutes || existingRoutes.length === 0) {
+        console.log("[AutoAllocation] No existing routes, generating fresh routes for all employees");
+        
+        // Get input JSON for all exception employees
+        const empCodes = addExceptionData.map(e => e.empCode).join(",");
+        const inputJsonResponse = await ReplicationExceptionService.GetInputJsonAutoAllocation({
+          facilityid: selectedFacility,
+          empcode: empCodes,
+          sDate: formatDate(selectedDate),
+          triptype: tripType,
+          shifttime: getShiftString().split(",")[0]
+        });
+
+        const inputJson = typeof inputJsonResponse === "string"
+          ? JSON.parse(inputJsonResponse) : inputJsonResponse;
+
+        // Generate routes using routing engine
+        const generatedRoutes = await AutoAllocationService.callGenerateApi(inputJson);
+
+        // Save new routes
+        await ReplicationExceptionService.Save_AutoAllocationRoute({
+          facilityid: selectedFacility,
+          sDate: formatApiDate(selectedDate),
+          triptype: tripType,
+          shifttime: getShiftString(),
+          jsonstring: JSON.stringify(generatedRoutes),
+          updatedBy: UserID,
+          IsNewAdded: true
+        });
+
+        toastService.success(`New routes generated for ${addExceptionData.length} employee(s).`);
+        handleSubmit();
+        return;
+      }
+
+      console.log("[AutoAllocation] Existing routes fetched:", existingRoutes.length, "employees");
+
+      // Extract facility coordinates from the first record (same for all)
+      const facilityGeo = existingRoutes.length > 0 
+        ? { 
+            geoX: existingRoutes[0].FacilitygeoX, 
+            geoY: existingRoutes[0].FacilitygeoY 
+          }
+        : { geoX: 77.0871, geoY: 28.4624 }; // Fallback to NCR if no routes
+
+      console.log("[AutoAllocation] Using facility coordinates:", facilityGeo);
+
+      // Step 2: Allocate exception employees to existing routes (with actual facility geo for direction matching)
+      const {
+        allocatedRoutes,
+        allocatedEmployees,
+        unallocatedEmployees,
+        allocationDetails,
+      } = AutoAllocationService.allocateEmployeesToRoutes(
+        existingRoutes,
+        addExceptionData,
+        facilityGeo,  // Pass actual facility coordinates for sector/direction calculations
+        tripType
+      );
+
+      console.log("[AutoAllocation] Allocation results:", {
+        allocated: allocatedEmployees.length,
+        unallocated: unallocatedEmployees.length,
+        details: allocationDetails,
+      });
+
+      // Track if any routes were modified
+      let allocatedToExisting = false;
+
+      // Step 3: Handle allocated employees (recalculate existing routes)
+      const recalculateJson = AutoAllocationService.buildRecalculateJson(
+        allocatedRoutes,
+        facilityGeo,
+        getShiftString().split(",")[0],
+        existingRoutes[0]?.locationName || "ncr",
+        tripType
+      );
+
+      if (recalculateJson && recalculateJson.routes.length > 0) {
+        console.log("[AutoAllocation] Recalculating routes for allocated employees");
+        
+        const recalculateResult = await AutoAllocationService.callRecalculateApi(
+          recalculateJson
+        );
+
+        // Save the recalculated routes
+        await ReplicationExceptionService.Save_AutoAllocationRoute({
+          facilityid: selectedFacility,
+          sDate: formatApiDate(selectedDate),
+          triptype: tripType,
+          shifttime: getShiftString(),
+          jsonstring: JSON.stringify(recalculateResult),
+          updatedBy: UserID,
+          IsNewAdded: true
+        });
+
+        allocatedToExisting = true;
+        console.log("[AutoAllocation] Allocated employees saved to existing routes");
+      }
+
+      // Step 4: Handle unallocated employees (generate new routes)
+      if (unallocatedEmployees.length > 0) {
+        console.log("[AutoAllocation] Generating new routes for", unallocatedEmployees.length, "unallocated employees");
+        
+        // Get employee codes for unallocated employees
+        const empCodes = unallocatedEmployees.map(e => e.empCode).join(",");
+        
+        // Call GetInputJsonAutoAllocation API
+        const inputJsonResponse = await ReplicationExceptionService.GetInputJsonAutoAllocation({
+          facilityid: selectedFacility,
+          empcode: empCodes,
+          sDate: formatDate(selectedDate),
+          triptype: tripType,
+          shifttime: getShiftString().split(",")[0]
+        });
+
+        const inputJson = typeof inputJsonResponse === "string"
+          ? JSON.parse(inputJsonResponse) : inputJsonResponse;
+
+        console.log("[AutoAllocation] Input JSON for generate API:", inputJson);
+
+        // Generate routes using routing engine
+        const generatedRoutes = await AutoAllocationService.callGenerateApi(inputJson);
+
+        console.log("[AutoAllocation] Generated routes:", generatedRoutes);
+
+        // Save new routes
+        await ReplicationExceptionService.Save_AutoAllocationRoute({
+          facilityid: selectedFacility,
+          sDate: formatApiDate(selectedDate),
+          triptype: tripType,
+          shifttime: getShiftString(),
+          jsonstring: JSON.stringify(generatedRoutes),
+          updatedBy: UserID,
+          IsNewAdded: true
+        });
+
+        console.log("[AutoAllocation] New routes saved for unallocated employees");
+      }
+
+      // Build success message
+      let successMessage = "";
+      if (allocatedToExisting && unallocatedEmployees.length > 0) {
+        successMessage = `Auto allocation complete! ${allocatedEmployees.length} employee(s) added to existing routes. ${unallocatedEmployees.length} employee(s) got new routes.`;
+      } else if (allocatedToExisting) {
+        successMessage = `Auto allocation complete! All ${allocatedEmployees.length} employee(s) added to existing routes.`;
+      } else if (unallocatedEmployees.length > 0) {
+        successMessage = `Auto allocation complete! ${unallocatedEmployees.length} employee(s) got new routes.`;
+      } else {
+        successMessage = "No employees were allocated. Please check employee coordinates.";
+      }
+
+      toastService.success(successMessage);
+
+      // Refresh data to show updated state
+      handleSubmit();
     } catch (err) {
-      console.error("Error in auto allocation:", err);
+      console.error("[AutoAllocation] Error in auto allocation:", err);
       setLoading(false);
-      toastService.error("Error in auto allocation");
+      toastService.error("Error in auto allocation: " + (err.message || "Unknown error"));
     }
   };
 
@@ -614,6 +780,8 @@ const ReplicationException = () => {
                     className="w-100"
                     display="chip"
                     disabled={!selectedFacility}
+                    filter
+                    filterPlaceholder="Search shift"
                   />
                 </div>
 

@@ -1,15 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../services/api";
-import { Chart } from "primereact/chart";
 import { BiExpand } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
 import Loader from "../common/Loader";
 import React from "react";
+import * as echarts from "echarts";
+import EChartsBase, {
+  TOOLTIP_CONFIG,
+  LEGEND_CONFIG,
+  GRID_CONFIG,
+  X_AXIS_CONFIG,
+  Y_AXIS_CONFIG,
+  ANIMATION_CONFIG,
+} from "./EChartsBase";
 
 const RiPickDrop = ({ filter }) => {
-  const [barChartData, setBarChartData] = useState({});
-  const [barChartOptions, setBarChartOptions] = useState({});
+  const [chartData, setChartData] = useState(null);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -45,81 +52,15 @@ const RiPickDrop = ({ filter }) => {
         const pickupCounts = data.map((entry) => entry.totalpickup || 0);
         const dropCounts = data.map((entry) => entry.totaldrop || 0);
 
-        const documentStyle = getComputedStyle(document.documentElement);
-        const textColorSecondary = documentStyle.getPropertyValue(
-          "--text-color-secondary"
-        );
-        const surfaceBorder =
-          documentStyle.getPropertyValue("--surface-border");
-
         const totalPick = pickupCounts.reduce((a, b) => a + b, 0);
         const totalDrop = dropCounts.reduce((a, b) => a + b, 0);
 
-        setBarChartData({
+        setChartData({
           labels,
-          datasets: [
-            {
-              type: "bar",
-              label: "Pick Trips",
-              backgroundColor: "#3377ff",
-              data: pickupCounts,
-              barPercentage: 0.6,
-              categoryPercentage: 0.6,
-            },
-            {
-              type: "bar",
-              label: "Drop Trips",
-              backgroundColor: "#ea7878",
-              data: dropCounts,
-              barPercentage: 0.6,
-              categoryPercentage: 0.6,
-            },
-          ],
-        });
-
-        setBarChartOptions({
-          maintainAspectRatio: false,
-          aspectRatio: 0.8,
-          plugins: {
-            tooltip: { mode: "index", intersect: false },
-            legend: {
-              labels: {
-                color: "#000",
-                usePointStyle: true,
-                pointStyle: "circle",
-                padding: 30,
-                fontSize: "24px",
-                boxWidth: 20,
-                generateLabels: (chart) => {
-                  const datasets = chart.data.datasets;
-                  return datasets.map((ds, i) => {
-                    let total = i === 0 ? totalPick : totalDrop;
-                    return {
-                      text: `${ds.label} (${total})`,
-                      fillStyle: ds.backgroundColor,
-                      strokeStyle: ds.backgroundColor,
-                      lineWidth: 1,
-                      hidden: !chart.isDatasetVisible(i),
-                      index: i,
-                    };
-                  });
-                },
-              },
-              position: "bottom",
-            },
-          },
-          scales: {
-            x: {
-              stacked: true,
-              ticks: { color: textColorSecondary },
-              grid: { color: surfaceBorder },
-            },
-            y: {
-              stacked: true,
-              ticks: { color: textColorSecondary, reverse: true },
-              grid: { color: surfaceBorder },
-            },
-          },
+          pickupCounts,
+          dropCounts,
+          totalPick,
+          totalDrop,
         });
 
         setRetryCount(0);
@@ -136,7 +77,7 @@ const RiPickDrop = ({ filter }) => {
             setRetryCount((prev) => prev + 1);
           }, 2000);
         } else {
-          setBarChartData({});
+          setChartData(null);
         }
       } finally {
         setLoading(false);
@@ -145,6 +86,110 @@ const RiPickDrop = ({ filter }) => {
 
     fetchAndPrepareChart();
   }, [filter, retryCount]);
+
+  // Generate ECharts option
+  const chartOption = useMemo(() => {
+    if (!chartData) return null;
+
+    const { labels, pickupCounts, dropCounts, totalPick, totalDrop } = chartData;
+
+    return {
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        ...TOOLTIP_CONFIG,
+        trigger: "axis",
+        axisPointer: {
+          type: "shadow",
+        },
+        formatter: (params) => {
+          let result = `<div style="font-weight: 600; margin-bottom: 8px;">${params[0].axisValue}</div>`;
+          let total = 0;
+          params.forEach((param) => {
+            const marker = `<span style="display:inline-block;margin-right:4px;border-radius:4px;width:10px;height:10px;background-color:${param.color};"></span>`;
+            result += `<div style="margin: 4px 0;">${marker}${param.seriesName}: <strong>${param.value}</strong></div>`;
+            total += param.value;
+          });
+          result += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-weight: 600;">Total: ${total}</div>`;
+          return result;
+        },
+      },
+      legend: {
+        ...LEGEND_CONFIG,
+        data: [
+          `Pick Trips (${totalPick})`,
+          `Drop Trips (${totalDrop})`,
+        ],
+        bottom: 10,
+      },
+      grid: {
+        ...GRID_CONFIG,
+        top: 30,
+        bottom: 80,
+        left: 50,
+        right: 20,
+      },
+      xAxis: {
+        ...X_AXIS_CONFIG,
+        data: labels,
+        axisLabel: {
+          ...X_AXIS_CONFIG.axisLabel,
+          rotate: labels.length > 12 ? 45 : 0,
+        },
+      },
+      yAxis: {
+        ...Y_AXIS_CONFIG,
+        name: "Number of Trips",
+        nameLocation: "center",
+        nameGap: 40,
+        nameTextStyle: {
+          color: "#6b7280",
+          fontSize: 12,
+        },
+      },
+      series: [
+        {
+          name: `Pick Trips (${totalPick})`,
+          type: "bar",
+          stack: "trips",
+          data: pickupCounts,
+          barWidth: "50%",
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "#60a5fa" },
+              { offset: 1, color: "#3b82f6" },
+            ]),
+            borderRadius: [0, 0, 0, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(59, 130, 246, 0.3)",
+            },
+          },
+        },
+        {
+          name: `Drop Trips (${totalDrop})`,
+          type: "bar",
+          stack: "trips",
+          data: dropCounts,
+          barWidth: "50%",
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "#fca5a5" },
+              { offset: 1, color: "#ef4444" },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(239, 68, 68, 0.3)",
+            },
+          },
+        },
+      ],
+    };
+  }, [chartData]);
 
   if (error && retryCount >= maxRetries) {
     return (
@@ -196,13 +241,22 @@ const RiPickDrop = ({ filter }) => {
         </span>
       </div>
       <hr />
-      {!loading && (
-        <Chart
-          type="bar"
-          data={barChartData}
-          options={barChartOptions}
-          className="w-full md:w-30rem"
+      {!loading && chartOption && (
+        <EChartsBase
+          option={chartOption}
+          height="350px"
+          loading={loading}
         />
+      )}
+      {!loading && !chartOption && (
+        <div className="text-center text-muted py-5">
+          <p style={{ fontSize: "16px", marginBottom: "8px" }}>
+            No data available
+          </p>
+          <p style={{ fontSize: "14px", color: "#999" }}>
+            Try adjusting your filters to see data
+          </p>
+        </div>
       )}
 
       <Dialog
@@ -211,13 +265,13 @@ const RiPickDrop = ({ filter }) => {
         style={{ width: "90vw", minHeight: "90vh" }}
         onHide={() => setDialogVisible(false)}
       >
-        <Chart
-          type="bar"
-          data={barChartData}
-          options={barChartOptions}
-          className="w-full md:w-30rem"
-          style={{ height: "75vh", width: "100%" }}
-        />
+        {chartOption && (
+          <EChartsBase
+            option={chartOption}
+            height="75vh"
+            loading={loading}
+          />
+        )}
       </Dialog>
       <Tooltip target="#pickDrop" content="Expand Chart" position="left" />
     </div>

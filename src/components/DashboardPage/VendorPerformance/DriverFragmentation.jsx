@@ -1,37 +1,9 @@
-import React, { useEffect, useState } from "react";
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
+import React, { useEffect, useState, useMemo } from "react";
 import { apiService } from "../../../services/api";
 import Loader from "../../common/Loader";
-
-const CustomTooltip = ({ active, payload }) => {
-  if (!active || !payload || !payload.length) return null;
-  const p = payload[0].payload || {};
-  const isPercent = p.skill && p.skill.includes("%");
-  return (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid rgba(0,0,0,0.12)",
-        padding: 8,
-        borderRadius: 4,
-        minWidth: 160,
-      }}
-    >
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>{p.skill}</div>
-      <div style={{ fontSize: 13 }}>
-        {isPercent ? `${payload[0].value}%` : `${payload[0].value} count`}
-      </div>
-    </div>
-  );
-};
+import EChartsBase, {
+  ANIMATION_CONFIG,
+} from "../EChartsBase";
 
 const DriverFragmentation = ({ filter = {} }) => {
   const [driverData, setDriverData] = useState([]);
@@ -94,8 +66,8 @@ const DriverFragmentation = ({ filter = {} }) => {
 
         const formattedData = [
           {
-            skill: "On-time Count",
-            current: Number(
+            name: "On-time Count",
+            value: Number(
               obj.ontimecount ??
                 obj.OnTimeCount ??
                 obj.onTimeCount ??
@@ -103,14 +75,14 @@ const DriverFragmentation = ({ filter = {} }) => {
             ),
           },
           {
-            skill: "BGC Done",
-            current: Number(
+            name: "BGC Done",
+            value: Number(
               obj.BGCDone ?? obj.BGCDoneCount ?? obj.bgcdone ?? 0
             ),
           },
           {
-            skill: "Driver Refusal Count",
-            current: Number(
+            name: "Driver Refusal",
+            value: Number(
               obj.DriverRefusalCount ??
                 obj.DriverRefusal ??
                 obj.driverRefusalCount ??
@@ -118,17 +90,18 @@ const DriverFragmentation = ({ filter = {} }) => {
             ),
           },
           {
-            skill: "Drivers 50+ (%)",
-            current: Number(
+            name: "Drivers 50+ (%)",
+            value: Number(
               obj.DriverfifthyAbovePer ??
                 obj.DriverFiftyAbovePer ??
                 obj.Driver50AbovePer ??
                 0
             ),
+            isPercent: true,
           },
           {
-            skill: "Duty Hour >12 Count",
-            current: Number(
+            name: "Duty Hour >12",
+            value: Number(
               obj.dutyhourAboveTwelvecount ??
                 obj.DutyHourAbove12Count ??
                 obj.dutyHourAbove12Count ??
@@ -166,6 +139,93 @@ const DriverFragmentation = ({ filter = {} }) => {
       mounted = false;
     };
   }, [sDate, eDate, locationid, facilityid, vendorid, triptype, retryCount]);
+
+  // Generate ECharts option for radar chart
+  const chartOption = useMemo(() => {
+    if (!driverData || driverData.length === 0) return null;
+
+    const maxValue = Math.max(100, ...driverData.map((d) => d.value));
+    const indicators = driverData.map((d) => ({
+      name: d.name,
+      max: maxValue,
+    }));
+    const values = driverData.map((d) => d.value);
+
+    return {
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        trigger: "item",
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        borderColor: "#e5e7eb",
+        borderWidth: 1,
+        textStyle: {
+          color: "#374151",
+          fontSize: 13,
+        },
+        padding: [10, 14],
+        extraCssText: "box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border-radius: 8px;",
+        formatter: (params) => {
+          if (!params.value) return "";
+          let result = `<div style="font-weight: 600; margin-bottom: 8px;">${params.name}</div>`;
+          indicators.forEach((ind, idx) => {
+            const isPercent = driverData[idx]?.isPercent;
+            const unit = isPercent ? "%" : "";
+            result += `<div style="margin: 4px 0;">${ind.name}: <strong>${params.value[idx]}${unit}</strong></div>`;
+          });
+          return result;
+        },
+      },
+      radar: {
+        indicator: indicators,
+        shape: "polygon",
+        radius: "65%",
+        center: ["50%", "50%"],
+        axisName: {
+          color: "#6b7280",
+          fontSize: 11,
+        },
+        splitArea: {
+          areaStyle: {
+            color: ["rgba(99, 102, 241, 0.02)", "rgba(99, 102, 241, 0.04)"],
+          },
+        },
+        axisLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+      },
+      series: [
+        {
+          name: "Driver Metrics",
+          type: "radar",
+          data: [
+            {
+              value: values,
+              name: "Driver Metrics",
+              symbol: "circle",
+              symbolSize: 6,
+              lineStyle: {
+                color: "#3b82f6",
+                width: 2,
+              },
+              itemStyle: {
+                color: "#3b82f6",
+              },
+              areaStyle: {
+                color: "rgba(59, 130, 246, 0.2)",
+              },
+            },
+          ],
+        },
+      ],
+    };
+  }, [driverData]);
 
   if (error && retryCount >= maxRetries) {
     return (
@@ -208,41 +268,13 @@ const DriverFragmentation = ({ filter = {} }) => {
       <Loader isVisible={loading} fullScreen={false} />
       <h6>Driver Fragmentation</h6>
       <hr />
-      {!loading && driverData.length > 0 && (
+      {!loading && chartOption && (
         <>
-          <div style={{ height: "300px" }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart
-                data={driverData}
-                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-              >
-                <PolarGrid gridType="polygon" />
-                <PolarAngleAxis
-                  dataKey="skill"
-                  tick={{ fontSize: 11, fill: "#666", textAnchor: "middle" }}
-                />
-                <PolarRadiusAxis
-                  angle={90}
-                  domain={[
-                    0,
-                    Math.max(100, ...driverData.map((d) => d.current)),
-                  ]}
-                  tick={{ fontSize: 10, fill: "#999" }}
-                  tickFormatter={(value) => `${value}`}
-                />
-                <Radar
-                  name="Driver Metrics"
-                  dataKey="current"
-                  stroke="#3b82f6"
-                  fill="#3b82f6"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
-                <Tooltip content={<CustomTooltip />} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-
+          <EChartsBase
+            option={chartOption}
+            height="280px"
+            loading={loading}
+          />
           <div
             style={{
               display: "flex",
@@ -254,7 +286,7 @@ const DriverFragmentation = ({ filter = {} }) => {
             }}
           >
             {driverData.map((d, i) => {
-              const isPercent = d.skill && d.skill.includes("%");
+              const isPercent = d.isPercent;
               return (
                 <div
                   key={i}
@@ -276,16 +308,21 @@ const DriverFragmentation = ({ filter = {} }) => {
                       whiteSpace: "pre-wrap",
                     }}
                   >
-                    {d.skill}
+                    {d.name}
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#222" }}>
-                    {isPercent ? `${d.current}%` : d.current}
+                    {isPercent ? `${d.value}%` : d.value}
                   </div>
                 </div>
               );
             })}
           </div>
         </>
+      )}
+      {!loading && !chartOption && (
+        <div className="text-center text-muted py-5">
+          <p>No data available.</p>
+        </div>
       )}
     </div>
   );

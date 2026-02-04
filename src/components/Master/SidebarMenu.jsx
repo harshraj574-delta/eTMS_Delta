@@ -226,17 +226,7 @@ const SidebarMenu = () => {
               const isCollapsed = sidebar?.classList.contains('collapsed');
               
               if (isCollapsed) {
-                // Expand the sidebar when clicking on any icon in collapsed mode
-                sidebar.classList.remove('collapsed');
-                document.body.classList.remove('sidebar-collapsed');
-                
-                // Toggle middle content area class
-                const middle = document.querySelector('.middle');
-                if (middle) {
-                  middle.classList.remove('expanded');
-                }
-                
-                // Dispatch custom event to sync Header's React state
+                // Dispatch event to sync Header's React state - DOM classes will be synced by Header's useEffect
                 window.dispatchEvent(new CustomEvent('sidebarExpand'));
                 
                 // Also open this submenu if it has children

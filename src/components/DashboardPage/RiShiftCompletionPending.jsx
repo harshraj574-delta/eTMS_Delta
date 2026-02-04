@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../services/api";
 import { BiExpand } from "react-icons/bi";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
 import Loader from "../common/Loader";
 import React from "react";
+import EChartsBase, {
+  ANIMATION_CONFIG,
+} from "./EChartsBase";
 
 const RiShiftCompletionPending = ({ filter }) => {
-  const [chartValues, setChartValues] = useState([]);
+  const [chartData, setChartData] = useState(null);
   const [isAllZero, setIsAllZero] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,30 +67,23 @@ const RiShiftCompletionPending = ({ filter }) => {
         ];
 
         const colors = [
-          "#9e9e9e",
-          "#3b00ed",
-          "#0baa60",
-          "#d81b60",
-          "#ff9800",
-          "#000",
+          "#6b7280",
+          "#6366f1",
+          "#10b981",
+          "#ec4899",
+          "#f59e0b",
+          "#1f2937",
         ];
 
         const total = values[0];
         setIsAllZero(values.every((v) => v === 0));
 
-        setChartValues(
-          labels.map((label, idx) => {
-            const absoluteValue = values[idx];
-            const relativeValue =
-              total > 0 ? Math.min((absoluteValue / total) * 100, 100) : 0;
-            return {
-              label,
-              value: relativeValue,
-              displayValue: absoluteValue,
-              color: colors[idx],
-            };
-          })
-        );
+        setChartData({
+          labels,
+          values,
+          colors,
+          total,
+        });
 
         setRetryCount(0);
         setError(null);
@@ -103,7 +99,7 @@ const RiShiftCompletionPending = ({ filter }) => {
             setRetryCount((prev) => prev + 1);
           }, 2000);
         } else {
-          setChartValues([]);
+          setChartData(null);
         }
       } finally {
         setLoading(false);
@@ -112,6 +108,110 @@ const RiShiftCompletionPending = ({ filter }) => {
 
     fetchChartData();
   }, [filter, retryCount]);
+
+  // Generate ECharts option for horizontal bar chart
+  const chartOption = useMemo(() => {
+    if (!chartData || isAllZero) return null;
+
+    const { labels, values, colors, total } = chartData;
+
+    // Create percentage values for visualization but show absolute in tooltip
+    const percentages = values.map((v) =>
+      total > 0 ? Math.min((v / total) * 100, 100) : 0
+    );
+
+    return {
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "shadow",
+        },
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        borderColor: "#e5e7eb",
+        borderWidth: 1,
+        textStyle: {
+          color: "#374151",
+          fontSize: 13,
+        },
+        padding: [10, 14],
+        extraCssText: "box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border-radius: 8px;",
+        formatter: (params) => {
+          const param = params[0];
+          const idx = param.dataIndex;
+          const percentage = total > 0 ? ((values[idx] / total) * 100).toFixed(1) : 0;
+          return `
+            <div style="font-weight: 600; margin-bottom: 6px;">${labels[idx]}</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background-color:${colors[idx]};"></span>
+              <span><strong>${values[idx]}</strong> (${percentage}%)</span>
+            </div>
+          `;
+        },
+      },
+      grid: {
+        top: 20,
+        right: 80,
+        bottom: 20,
+        left: 130,
+        containLabel: false,
+      },
+      xAxis: {
+        type: "value",
+        max: 100,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { show: false },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: "category",
+        data: labels,
+        inverse: true,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: {
+          color: "#374151",
+          fontSize: 12,
+          fontWeight: 500,
+          margin: 12,
+        },
+      },
+      series: [
+        {
+          type: "bar",
+          data: percentages.map((val, idx) => ({
+            value: val,
+            itemStyle: {
+              color: colors[idx],
+              borderRadius: [0, 4, 4, 0],
+            },
+          })),
+          barWidth: 12,
+          label: {
+            show: true,
+            position: "right",
+            formatter: (param) => values[param.dataIndex],
+            color: "#374151",
+            fontSize: 12,
+            fontWeight: 600,
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 8,
+              shadowColor: "rgba(0, 0, 0, 0.15)",
+            },
+          },
+          // Background bars
+          showBackground: true,
+          backgroundStyle: {
+            color: "#f3f4f6",
+            borderRadius: [0, 4, 4, 0],
+          },
+        },
+      ],
+    };
+  }, [chartData, isAllZero]);
 
   if (error && retryCount >= maxRetries) {
     return (
@@ -154,50 +254,34 @@ const RiShiftCompletionPending = ({ filter }) => {
       <Loader isVisible={loading} fullScreen={false} />
       <div className="d-flex justify-content-between align-items-center border-0">
         <h6>Route Completion</h6>
+        <span
+          id="routeCompletion"
+          style={{ cursor: "pointer" }}
+          onClick={() => setDialogVisible(true)}
+        >
+          <BiExpand />
+        </span>
       </div>
       <hr />
 
-      <div className="row py-5 mt-5 d-flex align-items-center">
-        <div className="col-12 px-0">
-          {!loading && !isAllZero ? (
-            <div className="mt-3 grid grid-cols-2 gap-2 text-sm p-3">
-              {chartValues.map((item, idx) => (
-                <div key={idx} className="flex flex-col mb-3">
-                  <div className="d-flex justify-content-between mb-1">
-                    <small style={{ fontSize: "12px" }}>{item.label}:</small>
-                    <small style={{ fontSize: "12px", fontWeight: "bold" }}>
-                      {item.displayValue}
-                    </small>
-                  </div>
-                  <div
-                    className="progress-container"
-                    style={{
-                      backgroundColor: "#eee",
-                      borderRadius: "8px",
-                      overflow: "hidden",
-                      height: "6px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${item.value}%`,
-                        backgroundColor: item.color,
-                        height: "6px",
-                        transition: "width 0.8s ease-in-out",
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            !loading && (
-              <p className="text-muted mt-2 text-sm">
-                Note: All values are currently zero for this period.
-              </p>
-            )
-          )}
-        </div>
+      <div className="py-3">
+        {!loading && chartOption && (
+          <EChartsBase
+            option={chartOption}
+            height="280px"
+            loading={loading}
+          />
+        )}
+        {!loading && !chartOption && !isAllZero && (
+          <div className="text-center text-muted py-5">
+            <p>No data available</p>
+          </div>
+        )}
+        {!loading && isAllZero && (
+          <p className="text-muted mt-2 text-sm text-center py-4">
+            Note: All values are currently zero for this period.
+          </p>
+        )}
       </div>
 
       <Dialog
@@ -206,36 +290,13 @@ const RiShiftCompletionPending = ({ filter }) => {
         style={{ width: "90vw", minHeight: "90vh" }}
         onHide={() => setDialogVisible(false)}
       >
-        <div className="m-0 bg-light">
-          {chartValues.map((item, idx) => (
-            <div key={idx} className="flex flex-col mb-3">
-              <div className="d-flex justify-content-between mb-1">
-                <small style={{ fontSize: "12px" }}>{item.label}:</small>
-                <small style={{ fontSize: "12px", fontWeight: "bold" }}>
-                  {item.displayValue}
-                </small>
-              </div>
-              <div
-                className="progress-container"
-                style={{
-                  backgroundColor: "#eee",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  height: "6px",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${item.value}%`,
-                    backgroundColor: item.color,
-                    height: "6px",
-                    transition: "width 0.8s ease-in-out",
-                  }}
-                ></div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {chartOption && (
+          <EChartsBase
+            option={chartOption}
+            height="70vh"
+            loading={loading}
+          />
+        )}
       </Dialog>
       <Tooltip target="#routeCompletion" content="Expand" position="top" />
     </div>

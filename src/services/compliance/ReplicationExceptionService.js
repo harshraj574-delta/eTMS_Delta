@@ -1,7 +1,7 @@
 import { api } from "../axios/api";
 
 class ReplicationExceptionService {
-     async SelectFacility(params) {
+    async SelectFacility(params) {
         try {
             const response = await api.post("/SelectFacility", {
                 Userid: params.Userid,
@@ -25,7 +25,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async GetIsRouteFinalized(params){
+    async GetIsRouteFinalized(params) {
         try {
             const response = await api.post("/GetIsRouteFinalized", {
                 sDate: params.sDate,
@@ -40,7 +40,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async GetDeleteException(params){
+    async GetDeleteException(params) {
         try {
             const response = await api.post("/GetDeleteException", {
                 sDate: params.sDate,
@@ -55,7 +55,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async GetAddException(params){
+    async GetAddException(params) {
         try {
             const response = await api.post("/GetAddException", {
                 sDate: params.sDate,
@@ -70,7 +70,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async SprDeleteExceptionEmp(params){
+    async SprDeleteExceptionEmp(params) {
         try {
             const response = await api.post("/SprDeleteExceptionEmp", {
                 sDate: params.sDate,
@@ -86,7 +86,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async DeleteException(params){
+    async DeleteException(params) {
         try {
             const response = await api.post("/DeleteExceptionEmp", {
                 sDate: params.sDate,
@@ -101,7 +101,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async MakeRouteReplicateException(params){
+    async MakeRouteReplicateException(params) {
         try {
             const response = await api.post("/MakeRouteReplicateException", {
                 sDate: params.sDate,
@@ -117,7 +117,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async MakeNewRoute(params){
+    async MakeNewRoute(params) {
         try {
             const response = await api.post("/MakeNewRoute", {
                 routeid: params.routeid,
@@ -130,7 +130,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async GetRoutesByOrder(params){
+    async GetRoutesByOrder(params) {
         try {
             const response = await api.post("/GetRoutesByOrder", {
                 sDate: params.sDate,
@@ -149,7 +149,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async GetRoutesDetailsnew(params){
+    async GetRoutesDetailsnew(params) {
         try {
             const response = await api.post("/GetRoutesDetailsnew", {
                 RouteID: params.Routeid,
@@ -161,7 +161,7 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async AddEmpToRoute(params){
+    async AddEmpToRoute(params) {
         try {
             const response = await api.post("/AddEmpToRoute", {
                 empId: params.empId,
@@ -177,8 +177,8 @@ class ReplicationExceptionService {
             throw error;
         }
     }
-    async UpdateRoute(params){
-        try{
+    async UpdateRoute(params) {
+        try {
             const response = await api.post("/UpdateRoute", {
                 RouteID: params.RouteID,
                 EmployeeID: params.EmployeeID,
@@ -189,13 +189,13 @@ class ReplicationExceptionService {
                 userid: params.userid
             })
             return response.data;
-        }catch(error){
+        } catch (error) {
             console.error("Error in UpdateRoute:", error);
             throw error;
         }
     }
-    async UpdateCutPaste(params){
-        try{
+    async UpdateCutPaste(params) {
+        try {
             const response = await api.post("/UpdateCutPaste", {
                 OldRouteid: params.OldRouteid,
                 oldemployeeid: params.oldemployeeid,
@@ -204,13 +204,13 @@ class ReplicationExceptionService {
                 userid: params.userid
             })
             return response.data;
-        }catch(error){
+        } catch (error) {
             console.error("Error in UpdateCutPaste:", error);
             throw error;
         }
     }
-    async AutoAdhocAllocation(params){
-        try{
+    async AutoAdhocAllocation(params) {
+        try {
             const response = await api.post("/AutoAdhocAllocation", {
                 sDate: params.sDate,
                 FacilityID: params.FacilityID,
@@ -219,23 +219,69 @@ class ReplicationExceptionService {
                 statustype: params.statustype
             })
             return response.data;
-        }catch(error){
+        } catch (error) {
             console.error("Error in AutoAdhocAllocation:", error);
             throw error;
         }
     }
-    async IsTripB2B(params){
-        try{
-            const response  = await api.post("/IsTripB2B", {
+    async IsTripB2B(params) {
+        try {
+            const response = await api.post("/IsTripB2B", {
                 routeids: params.routeids
             })
             return response.data;
-        }catch(error){
+        } catch (error) {
             console.error("Error in IsTripB2B:", error);
             throw error;
         }
     }
-  
+    async sp_getrouteforAdhoc(params) {
+        try {
+            const response = await api.post("/sp_getrouteforAdhoc", {
+                sDate: params.sDate,
+                FacilityID: params.FacilityID,
+                Shifttimes: params.Shifttimes,
+                TripType: params.TripType
+            })
+            return response.data;
+        } catch (error) {
+            console.error("Error in sp_getrouteforAdhoc:", error);
+            throw error;
+        }
+    }
+    async Save_AutoAllocationRoute(params) {
+        try {
+            const response = await api.post("/Save_AutoAllocationRoute", {
+                facilityid: params.facilityid,
+                sDate: params.sDate,
+                triptype: params.triptype,
+                shifttime: params.shifttime,
+                jsonstring: params.jsonstring,
+                updatedBy: params.updatedBy,
+                IsNewAdded:true
+            })
+            return response.data;
+        } catch (error) {
+            console.error("Error in updateRouteMapbased:", error);
+            throw error;
+        }
+    }
+    async GetInputJsonAutoAllocation(params) {
+        try {
+            const response = await api.post("/GetInputJsonAutoAllocation", {
+                sDate: params.sDate,
+                facilityid: params.facilityid,
+                empcode: params.empcode,
+                shifttime: params.shifttime,
+                triptype: params.triptype
+            })
+            return response.data;
+        } catch (error) {
+            console.error("Error in GetInputJsonAutoAllocation:", error);
+            throw error;
+        }
+    }
+
 }
 
 export default new ReplicationExceptionService();

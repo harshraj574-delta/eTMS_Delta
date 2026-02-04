@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Sidebar from "./Master/SidebarMenu";
 import Header from "./Master/Header";
 import Notifications from "./Master/Notifications";
@@ -10,20 +10,39 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import { Offcanvas } from "bootstrap";
 import { ToastContainer } from "react-toastify";
-// PrimeReact paginator
 import { Paginator } from "primereact/paginator";
 import "primereact/resources/themes/saga-blue/theme.css";
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
-import { set } from "lodash";
 import TableToolbar from "./common/TableToolbar.jsx";
 import Loader from "./common/Loader.jsx";
 import { Calendar } from "primereact/calendar";
 import CustomPaginator from "./common/CustomPaginator";
 import calendarIcon from "../assets/calendar.png";
 import TripTypeBadge from "./common/TripTypeBadge";
+import useIsMobile from "./common/useIsMobile";
+import MobileScheduleView from "./common/MobileScheduleView";
+import "./css/MobileSchedule.css";
+
+const TripCarIcon = ({ title = "Trip Details" }) => {
+  return (
+    <span
+      className="trip-car-icon material-icons"
+      aria-hidden="true"
+      title={title}
+    >
+      directions_car
+    </span>
+  );
+};
+
 const formatDateTime = (dateStr, timeStr) => {
-  if (!dateStr || !timeStr || timeStr === 'null' || timeStr.trim().toUpperCase() === 'N/A') {
+  if (
+    !dateStr ||
+    !timeStr ||
+    timeStr === "null" ||
+    timeStr.trim().toUpperCase() === "N/A"
+  ) {
     console.warn(`Skipping time parsing for 'N/A' or null`);
     return null;
   }
@@ -41,13 +60,13 @@ const formatDateTime = (dateStr, timeStr) => {
     }
     return parsed;
   } catch (error) {
-    console.error(`Error parsing datetime from '${dateStr}' and '${timeStr}':`, error);
+    console.error(
+      `Error parsing datetime from '${dateStr}' and '${timeStr}':`,
+      error
+    );
     return null;
   }
 };
-
-
-
 
 const addDay = (dateString, days) => {
   if (!dateString) return "";
@@ -55,9 +74,9 @@ const addDay = (dateString, days) => {
   date.setDate(date.getDate() + days + 1);
   return date.toISOString().split("T")[0];
 };
+
 const generateWeekDays = (fromDate) => {
   const days = [];
-  // Convert fromDate string to Date object
   const startDate = new Date(fromDate);
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const monthNames = [
@@ -75,7 +94,6 @@ const generateWeekDays = (fromDate) => {
     "Dec",
   ];
 
-  // Start directly from fromDate instead of calculating start of week
   const startOfWeek = new Date(startDate);
 
   for (let i = 0; i < 7; i++) {
@@ -91,12 +109,11 @@ const generateWeekDays = (fromDate) => {
   return days;
 };
 
-
-
 const MySchedule = () => {
   const navigate = useNavigate();
   const facID = sessionManager.getUserSession().FacilityID;
   const empid = sessionManager.getUserSession().ID;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedShiftDate, setSelectedShiftDate] = useState("");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
@@ -113,52 +130,53 @@ const MySchedule = () => {
     tptForMessage: "",
     tptForType: 0,
   });
+
   const [processes, setProcesses] = useState([]);
   const [selectedProcess, setSelectedProcess] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
   const [managers, setManagers] = useState([]);
   const [selectedManager, setSelectedManager] = useState("");
   const [mgrscheduledata, setMgrscheduledata] = useState([]);
   const [weekDays, setWeekDays] = useState([]);
+
   const [loginfacility, setloginfacility] = useState([]);
-  const [loginFacilities, setLoginFacilities] = useState([]); // State to hold login facilities
-  const [logoutFacilities, setLogoutFacilities] = useState([]); // State to hold logout facilities
+  const [loginFacilities, setLoginFacilities] = useState([]);
+  const [logoutFacilities, setLogoutFacilities] = useState([]);
   const [selectedloginfacility, setSelectedloginfacility] = useState("");
   const [selectedlogoutfacility, setSelectedlogoutfacility] = useState("");
+
   const [mgrassociate, setMgrassociate] = useState([]);
   const [LoginNewShiftPickup, setLoginNewShiftPickup] = useState([]);
   const [LoginNewShiftDrop, setLoginNewShiftDrop] = useState([]);
   const [LoginWeekEndShiftPickup, setLoginWeekEndShiftPickup] = useState([]);
   const [LoginWeekEndShiftDrop, setLoginWeekEndShiftDrop] = useState([]);
-  const [isEmployeeShiftOpen, setIsEmployeeShiftOpen] = useState(false); // State for offcanvas visibility
-  const [employeeSchedule, setEmployeeSchedule] = useState([]); // State to hold employee schedule data
-  const [availableShiftTimes, setAvailableShiftTimes] = useState([]);
-  const [routeDetails, setRouteDetails] = useState([]);
 
-  // Add a new state to store the selected time
-  const [selectedShiftTime, setSelectedShiftTime] = useState("");
-  //const [selectedLogoutTime, setSelectedLogoutTime] = useState("");
-  //const [selectedEmployee, setSelectedEmployee] = useState(null); // State for selected employee details
-  // Make sure to add this state variable at the top of your component
+  const [isEmployeeShiftOpen, setIsEmployeeShiftOpen] = useState(false);
+  const [employeeSchedule, setEmployeeSchedule] = useState([]);
+  const [availableShiftTimes, setAvailableShiftTimes] = useState([]);
   const [availableLogoutShiftTimes, setAvailableLogoutShiftTimes] = useState(
     []
   );
+
+  const [weekendLoginShift, setWeekendLoginShift] = useState("0");
+  const [weekendLogoutShift, setWeekendLogoutShift] = useState("0");
+  const [selectedShiftTime, setSelectedShiftTime] = useState("");
   const [selectedLogoutShiftTime, setSelectedLogoutShiftTime] = useState("");
-  // Add these state variables at the top of your component
+
   const [employeeTrips, setEmployeeTrips] = useState([]);
   const [isTripsModalOpen, setIsTripsModalOpen] = useState(false);
   const [selectedEmployeeForTrips, setSelectedEmployeeForTrips] =
     useState(null);
-  const [selectedRouteId, setSelectedRouteId] = useState(null); // State to track the selected route ID
+  const [selectedRouteId, setSelectedRouteId] = useState(null);
+  const [routeDetails, setRouteDetails] = useState([]);
+  const [error, setError] = useState(null);
 
-  //const defaultWeekendDays = { sat: false, sun: false }; // Default weekend days
   const [weekendDays, setWeekendDays] = useState({
     sat: true,
     sun: true,
   });
 
-  // Initialize lockDetails with default values
   const [lockDetails, setLockDetailsState] = useState({
     AdhocMaxDay: "",
     DayNames: "",
@@ -176,25 +194,18 @@ const MySchedule = () => {
     lockweekenddrophrs: "",
     pickLockDateTime: "",
   });
+
   const addMonth = (dateString, months) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     date.setMonth(date.getMonth() + months);
     return date.toISOString().split("T")[0];
   };
-  // const addMonth = (dateString, months) => {
-  // if (!dateString) return "";
-  // const date = new Date(dateString);
-  // date.setMonth(date.getMonth() + months);
-  // return date.toISOString().split("T")[0];
-  // };
+
   const todayStr = new Date().toISOString().split("T")[0];
   const [fromDate, setFromDate] = useState(todayStr);
-  // const [toDate, setToDate] = useState(
-  //   addDay(lockDetails?.lockSDate, lockDetails?.lockDiffDays - 2) || ""
-  // );
   const [toDate, setToDate] = useState(addMonth(todayStr, 1));
-  // PrimeReact pagination state for manager associates table
+
   const [mgrFirst, setMgrFirst] = useState(0);
   const [mgrRows, setMgrRows] = useState(50);
 
@@ -203,22 +214,19 @@ const MySchedule = () => {
     setMgrRows(e.rows);
   };
 
-  // PrimeReact pagination state for schedule table
   const [schedFirst, setSchedFirst] = useState(0);
   const [schedRows, setSchedRows] = useState(50);
 
-  const [mainFromDate, setMainFromDate] = useState(todayStr); // State for main page From Date
-  // Search/filter for schedule table (connected to top TableToolbar)
+  const [mainFromDate, setMainFromDate] = useState(todayStr);
   const [scheduleFilter, setScheduleFilter] = useState("");
-  // Filtered schedule computed from mgrscheduledata + search text
+
   const filteredSchedule = useMemo(() => {
-    if (!scheduleFilter || scheduleFilter.trim() === "")
-      return mgrscheduledata;
+    if (!scheduleFilter || scheduleFilter.trim() === "") return mgrscheduledata;
     const q = scheduleFilter.toLowerCase();
     return mgrscheduledata.filter((row) => {
-      // match on employee name, empCode or any SETime fields
       if ((row.EmpName || "").toString().toLowerCase().includes(q)) return true;
-      if ((row.EmployeeID || "").toString().toLowerCase().includes(q)) return true;
+      if ((row.EmployeeID || "").toString().toLowerCase().includes(q))
+        return true;
       for (let i = 0; i < 7; i++) {
         const val = row[`SETime${i}`];
         if (val && val.toString().toLowerCase().includes(q)) return true;
@@ -228,14 +236,18 @@ const MySchedule = () => {
   }, [mgrscheduledata, scheduleFilter]);
 
   const schedTotal = filteredSchedule.length;
-  const displayedSchedule = filteredSchedule.slice(schedFirst, schedFirst + schedRows);
+  const displayedSchedule = filteredSchedule.slice(
+    schedFirst,
+    schedFirst + schedRows
+  );
+
   const onSchedPageChange = (e) => {
     setSchedFirst(e.first);
     setSchedRows(e.rows);
   };
+
   const [globalFilter, setGlobalFilter] = useState("");
-  //const op = useRef(null);
-  //const filterButtonRef = useRef(null);
+
   const filteredData = useMemo(() => {
     if (!globalFilter || globalFilter.trim() === "") {
       return mgrassociate;
@@ -247,41 +259,64 @@ const MySchedule = () => {
       )
     );
   }, [mgrassociate, globalFilter]);
+
+  const isMobile = useIsMobile(768);
+
+  const extractTimeFromString = useCallback((str) => {
+    if (!str) return "";
+    const timeMatch = str.match(/\d{4}/);
+    return timeMatch ? timeMatch[0] : "";
+  }, []);
+
+  const parsedSchedule = useMemo(() => {
+    return mgrscheduledata.map((employee) => ({
+      employeeId: employee.EmployeeID,
+      empCode: employee.empCode || employee.EmpCode,
+      empName: employee.EmpName,
+      geoCode: employee.geoCode,
+      tptReq: employee.tptReq,
+      _original: employee,
+      days: [0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
+        const seTime = employee[`SETime${dayIndex}`] || "";
+        const parts = seTime.split("!");
+        const timeInfo = parts[0] || "";
+        const hasTrip = parts[1] === "true";
+        const timeParts = timeInfo.split("<BR>");
+        const pickup = extractTimeFromString(timeParts[0]);
+        const drop = extractTimeFromString(timeParts[1]);
+        return {
+          pickup,
+          drop,
+          hasTrip,
+          rawPickup: timeParts[0] || "",
+          rawDrop: timeParts[1] || "",
+        };
+      }),
+    }));
+  }, [mgrscheduledata, extractTimeFromString]);
+
   const mgrTotal = filteredData.length;
-  const displayedMgrAssociate = filteredData.slice(mgrFirst, mgrFirst + mgrRows);
-  // RESET PAGINATION WHEN SEARCH CHANGES
+  const displayedMgrAssociate = filteredData.slice(
+    mgrFirst,
+    mgrFirst + mgrRows
+  );
+
   useEffect(() => {
     setMgrFirst(0);
   }, [globalFilter]);
 
-
-  // Reset schedule paginator when search changes
   useEffect(() => {
     setSchedFirst(0);
   }, [scheduleFilter]);
-  // Fetch data on component mount
+
   useEffect(() => {
     fetchMgrSchedule(mainFromDate);
     fetchScheduleDetails();
-    // const fromDate = document.getElementById("fromDate").value; // Replaced by mainFromDate state
     const days = generateWeekDays(mainFromDate);
     setWeekDays(days);
     fetchLockDetails();
     fetchFacilityDetails();
-    // console.log("MySchedule component mounted",empid, facID);
-    // setFromDate(lockDetails?.lockSDate || "");
-    // setToDate(
-    //   addDay(lockDetails?.lockSDate, lockDetails?.lockDiffDays - 2) || ""
-    // );
-    // const offcanvasElement = document.getElementById("Employee_Shift");
-    // if (offcanvasElement) {
-    //   offcanvasElement.addEventListener("hidden.bs.offcanvas", resetFormValues);
-    //   return () => {
-    //     offcanvasElement.removeEventListener(
-    //       "hidden.bs.offcanvas",
-    //       resetFormValues
-    //    );
-    // };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lockDetails?.lockSDate, lockDetails?.lockDiffDays]);
 
   const handleCancelTrip = async (trip) => {
@@ -292,20 +327,17 @@ const MySchedule = () => {
         updatedby: sessionManager.getUserSession().ID,
         shiftdate: trip.shiftdate,
         triptype: trip.triptype,
-        Reason: "", // You can make this dynamic if needed
+        Reason: "",
       };
-      // console.log("Cancel params", params);
       const response = await apiService.CancelTrip(params);
 
       if (response) {
         toastService.success("Trip cancelled successfully.");
-        // Refresh the trips data
         fetchMgrSchedule();
         fetchScheduleDetails();
         if (selectedEmployeeForTrips) {
           fetchEmployeeTrips(selectedEmployeeForTrips);
         }
-        //fetchEmployeeTrips(selectedEmployeeForTrips);
       }
     } catch (error) {
       console.error("Error cancelling trip:", error);
@@ -320,7 +352,6 @@ const MySchedule = () => {
         mgrId: empid,
         ProcessId: document.getElementById("ddlProcess").value,
       });
-      // console.log("Mgr Associate", response);
       setMgrassociate(response);
     } catch (error) {
       console.error("Error fetching manager associates:", error);
@@ -328,9 +359,9 @@ const MySchedule = () => {
       setLoading(false);
     }
   };
+
   const handleRefresh = async () => {
     setLoading(true);
-    //setIsSubmitting(true);
     try {
       await fetchMgrAssociate();
       toastService.success("Table refreshed successfully");
@@ -339,9 +370,8 @@ const MySchedule = () => {
       console.error("Error fetching manager associates:", error);
     } finally {
       setLoading(false);
-      // setIsSubmitting(false);
     }
-  }
+  };
 
   const fetchLockDetails = async () => {
     try {
@@ -378,74 +408,37 @@ const MySchedule = () => {
     }
   };
 
-  // const fetchFacilityDetails = async () => {
-  //   try {
-  //     setLoading(true);
-
-  //     let empid = 0;
-
-  //     if (
-  //       !sessionManager.isBackupManager() &&
-  //       sessionManager.getUserSession().ManagerId === "0"
-  //     ) {
-  //       empid = empid;
-  //     } else {
-  //       empid = -1;
-  //     }
-
-  //     const response = await apiService.SelectFacilityByGroup({
-  //       empid: empid,
-  //     });
-
-  //     // console.log("Facility Details", response);
-  //     if (response) {
-  //       setLoginFacilities(response); // Set login facilities
-  //       setLogoutFacilities(response); // Set logout facilities
-  //       setloginfacility(response);
-  //       setSelectedloginfacility(response[0]?.Id || ""); // Set default value for login facility
-  //       setSelectedlogoutfacility(response[0]?.Id || ""); // Set default value for logout facility
-  //       // console.log("loginfacility", response);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching facility details:", error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-
-   const fetchFacilityDetails = async () => {
+  const fetchFacilityDetails = async () => {
     try {
       setLoading(true);
- 
-      let empid = 0;
- 
+
+      let scopedEmpId = 0;
+
       if (
         !sessionManager.isBackupManager() &&
         sessionManager.getUserSession().ManagerId === "0"
       ) {
-        empid = sessionManager.getUserSession().ID; // Use user's ID when employee
+        scopedEmpId = sessionManager.getUserSession().ID;
       } else {
-        empid = -1;
+        scopedEmpId = -1;
       }
- 
+
       const response = await apiService.SelectFacilityByGroup({
-        empid: empid,
+        empid: scopedEmpId,
       });
- 
-      console.log("Facility Details", response);
+
       if (response) {
-        setLoginFacilities(response); // Set login facilities
-        setLogoutFacilities(response); // Set logout facilities
+        setLoginFacilities(response);
+        setLogoutFacilities(response);
         setloginfacility(response);
-       
-        // Find the facility matching the user's facility ID, similar to C# logic
-        const userFacility = response.find(fac => fac.Id == facID);
-        const defaultFacilityId = userFacility ? userFacility.Id : (response[0]?.Id || "");
-       
-        setSelectedloginfacility(defaultFacilityId); // Set default value for login facility
-        setSelectedlogoutfacility(defaultFacilityId); // Set default value for logout facility
-        // console.log("loginfacility", response);
+
+        const userFacility = response.find((fac) => fac.Id == facID);
+        const defaultFacilityId = userFacility
+          ? userFacility.Id
+          : response[0]?.Id || "";
+
+        setSelectedloginfacility(defaultFacilityId);
+        setSelectedlogoutfacility(defaultFacilityId);
       }
     } catch (error) {
       console.error("Error fetching facility details:", error);
@@ -453,27 +446,23 @@ const MySchedule = () => {
       setLoading(false);
     }
   };
-  
+
   const fetchMgrSchedule = async (sdateOverride) => {
     try {
-      //setIsSubmitting(true);
       setLoading(true);
-      let mgrid = empid;
-      if (document.getElementById("ddlManager").value !== "") {
-        mgrid = document.getElementById("ddlManager").value;
-      }
-      const mgrscheduledata = await apiService.GetMgrSchedule({
+      let mgrid = selectedManager || empid;
+      const data = await apiService.GetMgrSchedule({
         mgrid: mgrid,
         sdate: sdateOverride || mainFromDate,
       });
-      setMgrscheduledata(mgrscheduledata);
+      setMgrscheduledata(data);
     } catch (error) {
       console.error("Error fetching manager schedule:", error);
     } finally {
       setLoading(false);
-      //setIsSubmitting(false);
     }
   };
+
   const handleRefreshSchedule = async () => {
     setLoading(true);
     try {
@@ -482,11 +471,11 @@ const MySchedule = () => {
     } catch (error) {
       toastService.error("Failed to refresh table");
       console.error("Refresh Error:", error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
-  }
+  };
+
   const fetchScheduleDetails = async () => {
     try {
       setLoading(true);
@@ -495,19 +484,17 @@ const MySchedule = () => {
       };
 
       const managerResponse = await apiService.GetBackupMgrId(params);
-
-      //console.log("managerResponse",managerResponse);
       if (managerResponse) {
         setManagers(managerResponse);
       }
 
-      const ProjectResponse = await apiService.GetSpocAssignedProcess({
+      const projectResponse = await apiService.GetSpocAssignedProcess({
         empid: empid,
         type: "M",
       });
 
-      if (ProjectResponse) {
-        setProcesses(ProjectResponse);
+      if (projectResponse) {
+        setProcesses(projectResponse);
       }
     } catch (error) {
       console.error("Error fetching details:", error);
@@ -572,29 +559,10 @@ const MySchedule = () => {
     fetchMgrSchedule();
   };
 
-  // Add pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(50); // Show 7 employees per page
-
-  // Calculate pagination indexes
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = mgrscheduledata.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(mgrscheduledata.length / itemsPerPage);
-
-  // Handle page change
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  // Add this function to handle date changes
   const handleFromDateChange = (e) => {
-    //   setFromDate(e.target.value);
-    // setToDate(addMonth(newFromDate, 1)); // 1 month आगे set करें
     const newFromDate = e.target.value;
     setFromDate(newFromDate);
-    setToDate(addMonth(newFromDate, 1)); // 
-    // You can add validation or additional logic here if needed
+    setToDate(addMonth(newFromDate, 1));
   };
 
   const onchangedFromDate = (newDate) => {
@@ -604,14 +572,9 @@ const MySchedule = () => {
     setWeekDays(days);
   };
 
-  // Add these handler functions
   const handleToDateChange = (e) => {
-    // Add any validation logic here if needed
     setToDate(e.target.value);
-
-    // console.log("To date changed:", e.target.value);
   };
-
 
   const handleLoginFacilityChange = (e) => {
     const facilityId = e.target.value;
@@ -620,8 +583,6 @@ const MySchedule = () => {
     fetchAllShiftData(processId, facilityId);
   };
 
-
-
   const handleLogoutFacilityChange = (e) => {
     const facilityId = e.target.value;
     const processId = selectedProcess;
@@ -629,28 +590,199 @@ const MySchedule = () => {
     fetchAllShiftData(processId, facilityId);
   };
 
-  const handleUpdateEmpSchedule = async () => {
-    setLoading(true); // Loader ON
+  const fetchEmployeeSchedule = async (employeeId, shiftDate = null) => {
     try {
-      // Employee schedule se values le lo
+      const fromDateValue = shiftDate || mainFromDate;
+
+      const response = await apiService.GetOneEmployeeSchedule({
+        empid: employeeId,
+        sdate: fromDateValue,
+      });
+
+      let scheduleData = response;
+      if (typeof response === "string") {
+        try {
+          scheduleData = JSON.parse(response);
+        } catch (e) {
+          console.error("Error parsing response:", e);
+        }
+      }
+
+      if (!Array.isArray(scheduleData)) {
+        scheduleData = scheduleData ? [scheduleData] : [];
+      }
+
+      if (scheduleData.length > 0) {
+        const formattedSchedule = scheduleData.map((schedule) => ({
+          employeeID: schedule.employeeID || "",
+          empCode: schedule.empCode || "",
+          empName: schedule.empName || "",
+          startDate: schedule.startDate || "",
+          startTime: schedule.startTime || "",
+          pickFacilityID: schedule.pickFacilityID || 0,
+          endDate: schedule.endDate || "",
+          endTime: schedule.endTime || "",
+          dropFacilityID: schedule.dropFacilityID || 0,
+          dropadflag: schedule.dropadflag || 0,
+          pickadflag: schedule.pickadflag || 0,
+          lastUpdatedBy: schedule.lastUpdatedBy,
+          lastUpdatedAt: schedule.lastUpdatedAt,
+          LastUpdate: schedule.LastUpdate,
+          TPTFor: schedule.TPTFor || 0,
+          Gender: schedule.Gender || "",
+        }));
+
+        setEmployeeSchedule(formattedSchedule);
+        setSelectedEmployeeId(formattedSchedule[0].empCode);
+        return formattedSchedule;
+      }
+
+      setEmployeeSchedule([]);
+      return [];
+    } catch (error) {
+      console.error("Error fetching employee schedule:", error);
+      setEmployeeSchedule([]);
+      return [];
+    }
+  };
+
+  const fetchPickShiftTimes = async (
+    employeeId,
+    facilityId = null,
+    shiftDate = null
+  ) => {
+    try {
+      const fromDateValue = shiftDate || mainFromDate;
+
+      const pickFacilityID =
+        facilityId ||
+        (employeeSchedule && employeeSchedule.length > 0
+          ? employeeSchedule[0].pickFacilityID
+          : selectedloginfacility);
+
+      const response = await apiService.GetPickShiftTime({
+        facilityid: pickFacilityID,
+        sdate: fromDateValue,
+        empid: employeeId,
+        processid: "0",
+      });
+
+      let parsedResponse = response;
+      if (typeof response === "string") {
+        try {
+          parsedResponse = JSON.parse(response);
+        } catch (e) {
+          console.error("Error parsing shift times JSON:", e);
+          parsedResponse = [];
+        }
+      }
+
+      const shiftTimesArray = Array.isArray(parsedResponse)
+        ? parsedResponse
+        : [];
+
+      setAvailableShiftTimes(shiftTimesArray);
+      return shiftTimesArray;
+    } catch (error) {
+      console.error("Error fetching shift times:", error);
+      setAvailableShiftTimes([]);
+      return [];
+    }
+  };
+
+  const fetchDropShiftTimes = async (
+    employeeId,
+    facilityId = null,
+    shiftDate = null
+  ) => {
+    try {
+      const fromDateValue = shiftDate || mainFromDate;
+
+      const dropFacilityID =
+        facilityId ||
+        (employeeSchedule && employeeSchedule.length > 0
+          ? employeeSchedule[0].dropFacilityID
+          : selectedlogoutfacility);
+
+      const processId =
+        employeeSchedule &&
+        employeeSchedule.length > 0 &&
+        employeeSchedule[0].processId
+          ? employeeSchedule[0].processId
+          : selectedProcess || "0";
+
+      const response = await apiService.GetDropShiftTime({
+        facilityid: dropFacilityID,
+        sdate: fromDateValue,
+        callfrom: "A",
+        empid: employeeId,
+        processid: processId,
+      });
+
+      let parsedResponse = response;
+      if (typeof response === "string") {
+        try {
+          parsedResponse = JSON.parse(response);
+        } catch (e) {
+          console.error("Error parsing logout shift times JSON:", e);
+          parsedResponse = [];
+        }
+      }
+
+      const shiftTimesArray = Array.isArray(parsedResponse)
+        ? parsedResponse
+        : [];
+
+      setAvailableLogoutShiftTimes(shiftTimesArray);
+      return shiftTimesArray;
+    } catch (error) {
+      console.error("Error fetching logout shift times:", error);
+      setAvailableLogoutShiftTimes([]);
+      return [];
+    }
+  };
+
+  const handleLoginFacilityChangeInModal = async (e) => {
+    const newFacilityId = e.target.value;
+    setSelectedloginfacility(newFacilityId);
+
+    if (employeeSchedule && employeeSchedule.length > 0) {
+      await fetchPickShiftTimes(
+        employeeSchedule[0].employeeID,
+        newFacilityId,
+        selectedShiftDate
+      );
+    }
+  };
+
+  const handleLogoutFacilityChangeInModal = async (e) => {
+    const newFacilityId = e.target.value;
+    setSelectedlogoutfacility(newFacilityId);
+
+    if (employeeSchedule && employeeSchedule.length > 0) {
+      await fetchDropShiftTimes(
+        employeeSchedule[0].employeeID,
+        newFacilityId,
+        selectedShiftDate
+      );
+    }
+  };
+
+  const handleUpdateEmpSchedule = async () => {
+    setLoading(true);
+    try {
       const empSchedule = employeeSchedule && employeeSchedule[0];
       if (!empSchedule) {
         toastService.error("No employee schedule found!");
-        setLoading(false); // Loader OFF
         return;
       }
 
-      // Ensure time is in "HHmm" format (only digits, 4 chars)
       const formatTime = (time) => {
         if (!time) return "";
-        // If already 4 digits, return as is
         if (/^\d{4}$/.test(time)) return time;
-        // If in "HH:mm" format, remove colon
         if (/^\d{2}:\d{2}$/.test(time)) return time.replace(":", "");
-        // If in "YYYY-MM-DD HH:mm" or "MM/DD/YYYY HH:mm", extract only HH:mm
         const match = time.match(/(\d{2}):(\d{2})$/);
         if (match) return match[1] + match[2];
-        // If in "HHmm" somewhere in string, extract it
         const digits = time.match(/\d{4}/);
         if (digits) return digits[0];
         return "";
@@ -659,8 +791,8 @@ const MySchedule = () => {
       const params = {
         empID: selectedEmployeeId,
         StartDate: selectedShiftDate,
-        StartTime: formatTime(selectedShiftTime), // Fix here
-        EndTime: formatTime(selectedLogoutShiftTime), // Fix here
+        StartTime: formatTime(selectedShiftTime),
+        EndTime: formatTime(selectedLogoutShiftTime),
         pickFacilityID: selectedloginfacility,
         dropFacilityID: selectedlogoutfacility,
         userName: sessionManager.getUserSession().ID,
@@ -670,14 +802,12 @@ const MySchedule = () => {
       };
 
       let response = await apiService.UpdateEmpSchedule(params);
-      // console.log("Update response:", response);
 
       if (typeof response === "string") {
         try {
           response = JSON.parse(response);
         } catch (e) {
           toastService.error("Invalid response from server.");
-          setLoading(false); // Loader OFF
           return;
         }
       }
@@ -687,16 +817,14 @@ const MySchedule = () => {
 
       if (response) {
         toastService.success("Schedule updated successfully!");
-        // Properly close the Bootstrap Offcanvas using JS API
-
         setIsEmployeeShiftOpen(false);
-        // ---- Force table to reload from today's date ----
+
         const today = new Date().toISOString().split("T")[0];
         const fromDateInput = document.getElementById("fromDate");
         if (fromDateInput) {
           fromDateInput.value = today;
         }
-        setFromDate(today); // update state if needed
+        setFromDate(today);
         const days = generateWeekDays(today);
         setWeekDays(days);
 
@@ -707,40 +835,37 @@ const MySchedule = () => {
     } catch (error) {
       toastService.error("Error updating schedule: " + error);
     } finally {
-      setLoading(false); // Loader OFF
+      setLoading(false);
     }
   };
+
   const handleEmployeeShiftClick = async (employee, day) => {
     try {
-      // 1. Get sel
       setSelectedEmployeeId(employee.empCode);
+
       const selectedDate = weekDays[day]?.fullDate;
-      setSelectedShiftDate(selectedDate); // <-- Add this
+      setSelectedShiftDate(selectedDate);
+
       const fromDateInput = document.getElementById("fromDate");
       if (fromDateInput && selectedDate) {
         fromDateInput.value = selectedDate;
       }
 
-      // 2. Get shift times
       const seTimeData = employee[`SETime${day}`];
       const [timeInfo] = seTimeData.split("!");
       const [loginTime, logoutTime] = timeInfo.split("<BR>").map((time) => {
         const match = time.match(/\d{4}$/);
         return match ? match[0] : time.trim();
       });
-      // console.log("Clicked Employee:", employee.EmployeeID);
-      // console.log("Day Index:", day);
-      // console.log("Raw SETime Data:", seTimeData);
-      // console.log("Extracted Login Time:", loginTime);
-      // console.log("Extracted Logout Time:", logoutTime);
-      // 3. Get schedule and lock details
-      // 3. Get schedule and lock details
-      let scheduleData = await fetchEmployeeSchedule(employee.EmployeeID, selectedDate);
+
+      let scheduleData = await fetchEmployeeSchedule(
+        employee.EmployeeID,
+        selectedDate
+      );
       let schedule = (scheduleData && scheduleData[0]) || {};
+
       const lockPickTime = new Date(lockDetails.pickLockDateTime);
       const lockDropTime = new Date(lockDetails.dropLockDateTime);
-
-      // 4. Compose DateTime for comparison
 
       const sanitizeTime = (time) => {
         const match = time?.match(/\d{4}/);
@@ -750,27 +875,35 @@ const MySchedule = () => {
       const loginTimeSanitized = sanitizeTime(loginTime);
       const logoutTimeSanitized = sanitizeTime(logoutTime);
 
-      const loginDateTime = formatDateTime(schedule.startDate, loginTimeSanitized);
-      const logoutDateTime = formatDateTime(schedule.endDate, logoutTimeSanitized);
+      const loginDateTime = formatDateTime(
+        schedule.startDate,
+        loginTimeSanitized
+      );
+      const logoutDateTime = formatDateTime(
+        schedule.endDate,
+        logoutTimeSanitized
+      );
 
-
-      // ✅ Now safe to get day names
       const isWeekend = (dayName) => ["Saturday", "Sunday"].includes(dayName);
 
+      const loginDayName = loginDateTime
+        ? loginDateTime.toLocaleString("en-US", { weekday: "long" })
+        : "N/A";
+      const logoutDayName = logoutDateTime
+        ? logoutDateTime.toLocaleString("en-US", { weekday: "long" })
+        : "N/A";
 
-      const loginDayName = loginDateTime ? loginDateTime.toLocaleString("en-US", { weekday: "long" }) : "N/A";
-      const logoutDayName = logoutDateTime ? logoutDateTime.toLocaleString("en-US", { weekday: "long" }) : "N/A";
-
-
-
-      // ✅ Safe to adjust lock time if weekend
       if (isWeekend(loginDayName) && lockDetails.lockweekendpick) {
-        lockPickTime.setMinutes(lockPickTime.getMinutes() + Number(lockDetails.lockweekendpick));
+        lockPickTime.setMinutes(
+          lockPickTime.getMinutes() + Number(lockDetails.lockweekendpick)
+        );
       }
       if (isWeekend(logoutDayName) && lockDetails.lockweekenddrop) {
-        lockDropTime.setMinutes(lockDropTime.getMinutes() + Number(lockDetails.lockweekenddrop));
+        lockDropTime.setMinutes(
+          lockDropTime.getMinutes() + Number(lockDetails.lockweekenddrop)
+        );
       }
-      // // 5. Lock logic (C# mapping)
+
       let loginFacilityDisabled = true;
       let logoutFacilityDisabled = true;
       let loginTimeVisible = true;
@@ -783,40 +916,9 @@ const MySchedule = () => {
       let tptForMessage = "";
       let tptForType = 0;
 
-      // console.log("loginDateTime: ", loginDateTime);
-      // // console.log("lockPickTime: ", lockPickTime);
-      // console.log("loginTime: ", loginTime);
-      // // console.log(typeof loginTime);
-      // console.log("logoutDateTime: ", logoutDateTime);
-      // // console.log("lockDropTime: ", lockDropTime);
-      // console.log("logoutTime: ", logoutTime);
-      // console.log(typeof logoutTime);
-      // if (loginDateTime <= lockPickTime && loginTime) {
-      //   loginTimeVisible = false;
-      //   loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
-      //   loginTimeDisabled = true;
-      // }
-      // else {
-      //   loginTimeVisible = true;
-      //   loginTimeDisabled = false;
-      // }
+      const todayStrLocal = new Date().toISOString().split("T")[0];
 
-      // if (logoutDateTime <= lockDropTime && logoutTime) {
-      //   logoutTimeVisible = false;
-      //   logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
-      //   logoutTimeDisabled = true;
-      //   saveButtonVisible = false;
-      // }
-      // else {
-      //   logoutTimeVisible = true;
-      //   logoutTimeDisabled = false;
-      //   saveButtonVisible = true;
-      // }
-      // Shift logic (with time check)
-      const todayStr = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
-
-      if (selectedDate < todayStr) {
-        // ✅ Backdated: force locked
+      if (selectedDate < todayStrLocal) {
         loginTimeVisible = false;
         loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
         loginTimeDisabled = true;
@@ -827,8 +929,6 @@ const MySchedule = () => {
 
         saveButtonVisible = false;
       } else {
-        // ✅ Today or future: apply C#-style lock logic
-
         if (loginTime && loginDateTime && loginDateTime <= lockPickTime) {
           loginTimeVisible = false;
           loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
@@ -851,6 +951,7 @@ const MySchedule = () => {
           saveButtonVisible = true;
         }
       }
+
       if (schedule.TPTFor === 1) {
         tptForType = 1;
         tptForMessage = "You are not allowed to update drop shift.";
@@ -888,13 +989,11 @@ const MySchedule = () => {
         tptForType,
       });
 
-      // 8. Set facility dropdowns (matches: ddlInFacility.SelectedIndex, ddlOutFacility.SelectedIndex)
       let loginFacilityId =
         schedule.pickFacilityID || employee.pickFacilityID || "";
       let logoutFacilityId =
         schedule.dropFacilityID || employee.dropFacilityID || "";
 
-      // If not found, try to extract from SETime data
       if ((!loginFacilityId || !logoutFacilityId) && seTimeData.includes("!")) {
         const facilityInfo = seTimeData.split("!")[1];
         if (facilityInfo) {
@@ -909,22 +1008,26 @@ const MySchedule = () => {
       setSelectedloginfacility(loginFacilityId);
       setSelectedlogoutfacility(logoutFacilityId);
 
-      // 9. Open the offcanvas/modal
       setIsEmployeeShiftOpen(true);
 
-      // 10. Set the login/logout time values
       setSelectedShiftTime(loginTime);
       setSelectedLogoutShiftTime(logoutTime);
 
-      // 11. Fetch available shift times for dropdowns
       if (loginFacilityId) {
-        await fetchPickShiftTimes(employee.EmployeeID, loginFacilityId, selectedDate);
+        await fetchPickShiftTimes(
+          employee.EmployeeID,
+          loginFacilityId,
+          selectedDate
+        );
       }
       if (logoutFacilityId) {
-        await fetchDropShiftTimes(employee.EmployeeID, logoutFacilityId, selectedDate);
+        await fetchDropShiftTimes(
+          employee.EmployeeID,
+          logoutFacilityId,
+          selectedDate
+        );
       }
 
-      // 12. Set dropdown values after a short delay (to ensure options are loaded)
       setTimeout(() => {
         const loginDropdown = document.getElementById("loginShiftDropdown");
         if (loginDropdown) {
@@ -938,6 +1041,7 @@ const MySchedule = () => {
             setSelectedShiftTime(loginTime);
           }
         }
+
         const logoutDropdown = document.getElementById("logoutShiftDropdown");
         if (logoutDropdown) {
           const existingOptions = Array.from(logoutDropdown.options);
@@ -952,7 +1056,6 @@ const MySchedule = () => {
         }
       }, 300);
 
-      // 13. Show the offcanvas if not already visible
       const offcanvasElement = document.getElementById("Employee_Shift");
       if (offcanvasElement && !offcanvasElement.classList.contains("show")) {
         const offcanvasInstance = new window.bootstrap.Offcanvas(
@@ -964,467 +1067,23 @@ const MySchedule = () => {
       console.error("Error handling employee shift click:", error);
     }
   };
-  // const handleEmployeeShiftClick = async (employee, day) => {
-  //   try {
-  //     // Get the selected date from weekDays array using the day index
-  //     const selectedDate = weekDays[day]?.fullDate;
 
-  //     // Set the fromDate input value to the selected date
-  //     const fromDateInput = document.getElementById("fromDate");
-  //     if (fromDateInput && selectedDate) {
-  //       fromDateInput.value = selectedDate;
-  //     }
-  //     const seTimeData = employee[`SETime${day}`];
-  //     const [timeInfo] = seTimeData.split("!");
-  //     const [loginTime, logoutTime] = timeInfo.split("<BR>").map((time) => {
-  //       const match = time.match(/\d{4}$/);
-  //       return match ? match[0] : time.trim();
-  //     });
-  //     console.log("Parsed times:", { loginTime, logoutTime });
-  //     // Extract exactly the same values that are displayed in the table cell
-  //     // const loginTimeDisplay = employee[`SETime${day}`]
-  //     //   .split("!")[0]
-  //     //   .split("<BR>")[0].trim();
-  //     // const logoutTimeDisplay = employee[`SETime${day}`]
-  //     //   .split("!")[0]
-  //     //   .split("<BR>")[1].trim();
-
-  //     // console.log("Using exact displayed values:", {
-  //     //   loginTimeDisplay,
-  //     //   logoutTimeDisplay,
-  //     // });
-  //     console.log(`SETime for day ${day}:`, employee[`SETime${day}`]);
-  //     const schedule = (employeeSchedule && employeeSchedule[0]) || {};
-  //     const lockPickTime = new Date(lockDetails.pickLockDateTime);
-  //     const lockDropTime = new Date(lockDetails.dropLockDateTime);
-
-  //     const loginDateTime = new Date(
-  //       `${schedule.startDate}T${(loginTime || "00:00").replace(
-  //         /(\d{2})(\d{2})/,
-  //         "$1:$2"
-  //       )}`
-  //     );
-  //     const logoutDateTime = new Date(
-  //       `${schedule.endDate}T${(logoutTime || "00:00").replace(
-  //         /(\d{2})(\d{2})/,
-  //         "$1:$2"
-  //       )}`
-  //     );
-
-  //     // --- LOCK LOGIC START ---
-  //     // Always disable facility dropdowns as per C# logic
-  //     let loginFacilityDisabled = true;
-  //     let logoutFacilityDisabled = true;
-
-  //     // Default: show and enable both time dropdowns
-  //     let loginTimeVisible = true;
-  //     let loginTimeLabel = "";
-  //     let loginTimeDisabled = false;
-  //     let logoutTimeVisible = true;
-  //     let logoutTimeLabel = "";
-  //     let logoutTimeDisabled = false;
-  //     let saveButtonVisible = true;
-  //     let tptForMessage = "";
-  //     let tptForType = 0;
-
-  //     // Lock logic for login
-  //     if (loginDateTime <= lockPickTime && loginTime) {
-  //       loginTimeVisible = false;
-  //       loginTimeLabel = loginTime === "" ? "Locked" : loginTime;
-  //       loginTimeDisabled = true;
-  //     } else {
-  //       loginTimeVisible = true;
-  //       loginTimeDisabled = false;
-  //     }
-
-  //     // Lock logic for logout
-  //     if (logoutDateTime <= lockDropTime && logoutTime) {
-  //       logoutTimeVisible = false;
-  //       logoutTimeLabel = logoutTime === "" ? "Locked" : logoutTime;
-  //       logoutTimeDisabled = true;
-  //       saveButtonVisible = false;
-  //     } else {
-  //       logoutTimeVisible = true;
-  //       logoutTimeDisabled = false;
-  //       saveButtonVisible = true;
-  //     }
-
-  //     // TPTFor logic (overrides above)
-  //     if (schedule.TPTFor === 1) {
-  //       tptForType = 1;
-  //       tptForMessage = "You are not allowed to update drop shift.";
-  //       logoutTimeVisible = false;
-  //       logoutTimeDisabled = true;
-  //     } else if (schedule.TPTFor === 2) {
-  //       tptForType = 2;
-  //       tptForMessage = "You are not allowed to update pickup shift.";
-  //       loginTimeVisible = false;
-  //       loginTimeDisabled = true;
-  //     } else {
-  //       tptForType = 0;
-  //       tptForMessage = "";
-  //     }
-
-  //     setShiftLockStatus({
-  //       loginFacilityDisabled,
-  //       loginTimeVisible,
-  //       loginTimeLabel,
-  //       loginTimeDisabled,
-  //       logoutFacilityDisabled,
-  //       logoutTimeVisible,
-  //       logoutTimeLabel,
-  //       logoutTimeDisabled,
-  //       saveButtonVisible,
-  //       tptForMessage,
-  //       tptForType,
-  //     });
-  //     // --- LOCK LOGIC END ---
-
-  //     // Check if the employee has facility information
-  //     let loginFacilityId = null;
-  //     let logoutFacilityId = null;
-
-  //     // Try to extract facility information from the employee object
-  //     if (employee.pickFacilityID) {
-  //       loginFacilityId = employee.pickFacilityID;
-  //     }
-  //     if (employee.dropFacilityID) {
-  //       logoutFacilityId = employee.dropFacilityID;
-  //     }
-
-  //     // If we don't have facility IDs directly, try to extract from SETime data
-  //     if (!loginFacilityId || !logoutFacilityId) {
-  //       const fullTimeData = employee[`SETime${day}`].split("!");
-  //       if (fullTimeData.length > 1) {
-  //         const facilityInfo = fullTimeData[1];
-  //         console.log("Extracted facility info:", facilityInfo);
-  //         const facilityParts = facilityInfo.split("|");
-  //         if (facilityParts.length >= 2) {
-  //           loginFacilityId = facilityParts[0] || loginFacilityId;
-  //           logoutFacilityId = facilityParts[1] || logoutFacilityId;
-  //         }
-  //       }
-  //     }
-
-  //     // Fetch employee schedule data to get facility information if not available
-  //     if (!loginFacilityId || !logoutFacilityId) {
-  //       const scheduleData = await fetchEmployeeSchedule(employee.EmployeeID);
-  //       if (scheduleData && scheduleData.length > 0) {
-  //         loginFacilityId = scheduleData[0].pickFacilityID || loginFacilityId;
-  //         logoutFacilityId = scheduleData[0].dropFacilityID || logoutFacilityId;
-  //       }
-  //     }
-
-  //     console.log("Facility IDs:", { loginFacilityId, logoutFacilityId });
-
-  //     // Set the facility values if we have them
-  //     if (loginFacilityId) {
-  //       setSelectedloginfacility(loginFacilityId);
-  //     }
-  //     if (logoutFacilityId) {
-  //       setSelectedlogoutfacility(logoutFacilityId);
-  //     }
-
-  //     // Open the offcanvas
-  //     setIsEmployeeShiftOpen(true);
-
-  //     // Set the login time value
-  //     setSelectedShiftTime(loginTime);
-  //     setSelectedLogoutShiftTime(logoutTime);
-
-  //     if (loginFacilityId) {
-  //       await fetchPickShiftTimes(employee.EmployeeID, loginFacilityId);
-  //     }
-
-  //     if (logoutFacilityId) {
-  //       await fetchDropShiftTimes(employee.EmployeeID, logoutFacilityId);
-  //     }
-  //     // After a short delay to ensure the modal is ready
-  //     setTimeout(() => {
-  //       // Handle login time dropdown
-  //       const loginDropdown = document.getElementById("loginShiftDropdown");
-  //       if (loginDropdown) {
-  //         const existingOptions = Array.from(loginDropdown.options);
-  //         const matchingOption = existingOptions.find((opt) =>
-  //           opt.text.includes(loginTime)
-  //         );
-
-  //         if (matchingOption) {
-  //           // If time exists in API data, select it
-  //           loginDropdown.value = matchingOption.value;
-  //         } else {
-  //           // If time doesn't exist in API data, just show the time
-  //           setSelectedShiftTime(loginTime);
-  //         }
-  //       }
-
-  //       // Handle logout time dropdown
-  //       const logoutDropdown = document.getElementById("logoutShiftDropdown");
-  //       if (logoutDropdown) {
-  //         const existingOptions = Array.from(logoutDropdown.options);
-  //         const matchingOption = existingOptions.find((opt) =>
-  //           opt.text.includes(logoutTime)
-  //         );
-
-  //         if (matchingOption) {
-  //           // If time exists in API data, select it
-  //           logoutDropdown.value = matchingOption.value;
-  //         } else {
-  //           // If time doesn't exist in API data, just show the time
-  //           setSelectedLogoutShiftTime(logoutTime);
-  //         }
-  //       }
-
-  //       // Highlight the selected facility options in the dropdowns
-  //       if (loginFacilityId) {
-  //         const loginFacilityDropdown = document.querySelector(
-  //           'select[value="' + selectedloginfacility + '"]'
-  //         );
-  //         if (loginFacilityDropdown) {
-  //           loginFacilityDropdown.value = loginFacilityId;
-  //         }
-  //       }
-
-  //       if (logoutFacilityId) {
-  //         const logoutFacilityDropdown = document.querySelector(
-  //           'select[value="' + selectedlogoutfacility + '"]'
-  //         );
-  //         if (logoutFacilityDropdown) {
-  //           logoutFacilityDropdown.value = logoutFacilityId;
-  //         }
-  //       }
-  //     }, 300);
-
-  //     // Make sure the offcanvas is fully visible
-  //     const offcanvasElement = document.getElementById("Employee_Shift");
-  //     if (offcanvasElement && !offcanvasElement.classList.contains("show")) {
-  //       const offcanvasInstance = new bootstrap.Offcanvas(offcanvasElement);
-  //       offcanvasInstance.show();
-  //     }
-  //   } catch (error) {
-  //     console.error("Error handling employee shift click:", error);
-  //   }
-  // };
-  const fetchEmployeeSchedule = async (employeeId, shiftDate = null) => {
-    try {
-      const fromDate = shiftDate || mainFromDate;
-
-      // Call the API service
-      const response = await apiService.GetOneEmployeeSchedule({
-        empid: employeeId,
-        sdate: fromDate,
-      });
-
-      // console.log("Fetched Employee Schedule Response:", response);
-
-      // Check if response exists and parse it if needed
-      let scheduleData = response;
-
-      // If response is a string (JSON), parse it
-      if (typeof response === "string") {
-        try {
-          scheduleData = JSON.parse(response);
-        } catch (e) {
-          console.error("Error parsing response:", e);
-        }
-      }
-
-      // Ensure we have an array to work with
-      if (!Array.isArray(scheduleData)) {
-        scheduleData = scheduleData ? [scheduleData] : [];
-      }
-
-      if (scheduleData.length > 0) {
-        // Map the response data to match the exact API structure
-        const formattedSchedule = scheduleData.map((schedule) => ({
-          employeeID: schedule.employeeID || "",
-          empCode: schedule.empCode || "",
-          empName: schedule.empName || "",
-          startDate: schedule.startDate || "",
-          startTime: schedule.startTime || "",
-          pickFacilityID: schedule.pickFacilityID || 0,
-          endDate: schedule.endDate || "",
-          endTime: schedule.endTime || "",
-          dropFacilityID: schedule.dropFacilityID || 0,
-          dropadflag: schedule.dropadflag || 0,
-          pickadflag: schedule.pickadflag || 0,
-          lastUpdatedBy: schedule.lastUpdatedBy,
-          lastUpdatedAt: schedule.lastUpdatedAt,
-          LastUpdate: schedule.LastUpdate,
-          TPTFor: schedule.TPTFor || 0,
-          Gender: schedule.Gender || "",
-        }));
-
-        setEmployeeSchedule(formattedSchedule);
-        setSelectedEmployeeId(formattedSchedule[0].empCode);
-
-        // Log the formatted data
-        // console.log("Formatted Employee Schedule:", formattedSchedule);
-
-        // Return the formatted data for immediate use if needed
-        return formattedSchedule;
-      } else {
-        setEmployeeSchedule([]);
-        // console.log("No schedule data found");
-        return [];
-      }
-    } catch (error) {
-      console.error("Error fetching employee schedule:", error);
-      setEmployeeSchedule([]);
-      return [];
-    }
-  };
-  // ... existing code ...
-  const handleLoginFacilityChangeInModal = async (e) => {
-    const newFacilityId = e.target.value;
-    setSelectedloginfacility(newFacilityId);
-
-    // If we have an employee schedule, fetch the shift times for the selected employee with the new facility
-    if (employeeSchedule && employeeSchedule.length > 0) {
-      await fetchPickShiftTimes(employeeSchedule[0].employeeID, null, selectedShiftDate);
-    }
-  };
-  // ... existing code ...
-  const fetchPickShiftTimes = async (employeeId, facilityId = null, shiftDate = null) => {
-    try {
-      const fromDate = shiftDate || mainFromDate;
-      // Get the pickFacilityID from the employee schedule if available
-      const pickFacilityID =
-        facilityId ||
-        (employeeSchedule && employeeSchedule.length > 0
-          ? employeeSchedule[0].pickFacilityID
-          : selectedloginfacility);
-
-      const response = await apiService.GetPickShiftTime({
-        facilityid: pickFacilityID,
-        sdate: fromDate,
-        empid: employeeId,
-        processid: "0", // Using "0" as the default process ID
-      });
-
-      // console.log("Available Shift Times`:", response);
-
-      // Parse the JSON string if response is a string
-      let parsedResponse = response;
-      if (typeof response === "string") {
-        try {
-          parsedResponse = JSON.parse(response);
-        } catch (e) {
-          console.error("Error parsing shift times JSON:", e);
-          parsedResponse = [];
-        }
-      }
-
-      // Ensure we have an array to work with
-      const shiftTimesArray = Array.isArray(parsedResponse)
-        ? parsedResponse
-        : [];
-      setAvailableShiftTimes(shiftTimesArray);
-
-      return shiftTimesArray;
-    } catch (error) {
-      console.error("Error fetching shift times:", error);
-      setAvailableShiftTimes([]);
-      return [];
-    }
-  };
-  // Add a new function to fetch logout shift times
-  const fetchDropShiftTimes = async (employeeId, facilityId = null, shiftDate = null) => {
-    try {
-      const fromDate = shiftDate || mainFromDate;
-      // Use the provided facilityId or fall back to the selected one
-      const dropFacilityID =
-        facilityId ||
-        (employeeSchedule && employeeSchedule.length > 0
-          ? employeeSchedule[0].dropFacilityID
-          : selectedlogoutfacility);
-
-      // Get the process ID from the employee schedule if available
-      const processId =
-        employeeSchedule &&
-          employeeSchedule.length > 0 &&
-          employeeSchedule[0].processId
-          ? employeeSchedule[0].processId
-          : selectedProcess || "0";
-
-      const response = await apiService.GetDropShiftTime({
-        facilityid: dropFacilityID,
-        sdate: fromDate,
-        callfrom: "A", // or whatever value is appropriate for your API
-        empid: employeeId,
-        processid: processId,
-      });
-
-      // console.log("Available Logout Shift Times:", response);
-
-      // Parse the JSON string if response is a string
-      let parsedResponse = response;
-      if (typeof response === "string") {
-        try {
-          parsedResponse = JSON.parse(response);
-        } catch (e) {
-          console.error("Error parsing logout shift times JSON:", e);
-          parsedResponse = [];
-        }
-      }
-
-      // Ensure we have an array to work with
-      const shiftTimesArray = Array.isArray(parsedResponse)
-        ? parsedResponse
-        : [];
-
-      // Store the logout shift times in state
-      setAvailableLogoutShiftTimes(shiftTimesArray);
-      return shiftTimesArray;
-    } catch (error) {
-      console.error("Error fetching logout shift times:", error);
-      setAvailableLogoutShiftTimes([]);
-      return [];
-    }
-  };
-  // Update the handleLogoutFacilityChangeInModal function to fetch logout shift times
-  const handleLogoutFacilityChangeInModal = async (e) => {
-    const newFacilityId = e.target.value;
-    setSelectedlogoutfacility(newFacilityId);
-
-    // If we have an employee schedule, fetch the logout shift times for the selected employee with the new facility
-    if (employeeSchedule && employeeSchedule.length > 0) {
-      await fetchDropShiftTimes(employeeSchedule[0].employeeID, newFacilityId, selectedShiftDate);
-    }
-  };
-  // Add this function to fetch employee trips
   const fetchEmployeeTrips = async (employeeId, startDate) => {
     try {
-      // Format the date as needed by the API (YYYY-MM-DD)
       let formattedDate = startDate;
-      if (
-        startDate &&
-        typeof startDate === "string" &&
-        !startDate.includes("-")
-      ) {
-        // If date is not in YYYY-MM-DD format, convert it
+      if (startDate && typeof startDate === "string" && !startDate.includes("-")) {
         const dateParts = startDate.split("/");
         if (dateParts.length === 3) {
           formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
         }
       }
 
-      // console.log(
-      //   "Fetching trips for employee:",
-      //   employeeId,
-      //   "date:",
-      //   formattedDate
-      // );
-
       const response = await apiService.GetMyTrips({
         empid: employeeId,
         sDate: formattedDate,
-        eDate: formattedDate, // Using same date for start and end to get trips for a specific day
+        eDate: formattedDate,
       });
 
-      // console.log("Employee Trips API Response:", response);
-
-      // Parse the response if it's a string
       let tripsData = response;
       if (typeof response === "string") {
         try {
@@ -1435,12 +1094,8 @@ const MySchedule = () => {
         }
       }
 
-      // Ensure we have an array
       const tripsArray = Array.isArray(tripsData) ? tripsData : [];
-
-      // Update state with the trips data
       setEmployeeTrips(tripsArray);
-
       return tripsArray;
     } catch (error) {
       console.error("Error fetching employee trips:", error);
@@ -1448,14 +1103,11 @@ const MySchedule = () => {
       return [];
     }
   };
-  // Add a function to handle trip icon click
+
   const handleTripIconClick = async (employee, day) => {
     try {
-      // Get the date for the selected day from weekDays array
       const selectedDate = weekDays[day]?.fullDate;
-      // console.log("Selected date for trips:", selectedDate);
 
-      // Set the selected employee
       setSelectedEmployeeForTrips({
         id: employee.EmployeeID,
         name: employee.EmpName,
@@ -1463,44 +1115,38 @@ const MySchedule = () => {
         date: selectedDate,
       });
 
-      // Fetch trips for the selected employee and date
       await fetchEmployeeTrips(employee.EmployeeID, selectedDate);
 
-      // Open the trips modal
       setIsTripsModalOpen(true);
 
-      // Ensure the modal is shown
       const tripsModal = document.getElementById("trips");
       if (tripsModal && !tripsModal.classList.contains("show")) {
-        const bsModal = new bootstrap.Offcanvas(tripsModal);
+        const bsModal = new window.bootstrap.Offcanvas(tripsModal);
         bsModal.show();
       }
     } catch (error) {
       console.error("Error handling trip icon click:", error);
     }
   };
+
   const fetchRoutesDetails = async (routeId) => {
-    //setLoading(true);
     setError(null);
 
     const params = {
-      empid: 0, // Static empid as per your requirement
-      sDate: mainFromDate, // Current date in YYYY-MM-DD format
-      triptype: "", // Empty string as per your requirement
-      routeid: routeId, // Dynamic routeid based on user selection
+      empid: 0,
+      sDate: mainFromDate,
+      triptype: "",
+      routeid: routeId,
     };
-    console.log("Fetching route details with params:", params); // Log parameters
 
     try {
       let data = await apiService.GetMyRoutesDetails(params);
       data = JSON.parse(data);
-      // console.log("Fetched GetMyRoutesDetails :", data);
-      // Check if the response contains the expected data
+
       if (data && Array.isArray(data)) {
-        // console.log("this is data", data);
-        setRouteDetails(data); // Set the state with the correct property
+        setRouteDetails(data);
       } else {
-        setRouteDetails([]); // Set to empty array if no details found
+        setRouteDetails([]);
       }
     } catch (err) {
       setError(err);
@@ -1509,74 +1155,14 @@ const MySchedule = () => {
       setLoading(false);
     }
   };
-  // const resetFormValues = () => {
-  //   // Reset process name to first option
-  //   const processDropdown = document.getElementById("ddlProcess");
-  //   if (processDropdown) {
-  //     processDropdown.value = processes[0]?.ProcessId || "";
-  //     setSelectedProcess(processes[0]?.ProcessId || "");
-  //   }
 
-  //   // Reset dates to default
-  //   const fromDateInput = document.getElementById("fromDate");
-  //   const toDateInput = document.getElementById("toDate");
-  //   if (fromDateInput && toDateInput) {
-  //     fromDateInput.value =
-  //       lockDetails.lockSDate || new Date().toISOString().split("T")[0];
-  //     toDateInput.value =
-  //       addDay(lockDetails.lockSDate, lockDetails.lockDiffDays - 2) ||
-  //       new Date().toISOString().split("T")[0];
-  //   }
-
-  //   // Reset weekly off to default
-  //   setWeekendDays({
-  //     sat: true,
-  //     sun: true,
-  //   });
-
-  //   // Reset login and logout shifts to first options
-  //   const loginShiftDropdown = document.getElementById("ddlNewLoginShift");
-  //   const logoutShiftDropdown = document.getElementById("ddlNewLogoutShift");
-  //   if (loginShiftDropdown && loginShiftDropdown.options.length > 0) {
-  //     loginShiftDropdown.value = loginShiftDropdown.options[0].value;
-  //     setSelectedShiftTime(loginShiftDropdown.options[0].value);
-  //   }
-  //   if (logoutShiftDropdown && logoutShiftDropdown.options.length > 0) {
-  //     logoutShiftDropdown.value = logoutShiftDropdown.options[0].value;
-  //     setSelectedLogoutShiftTime(logoutShiftDropdown.options[0].value);
-  //   }
-  // };
   const resetFormValues = () => {
-    // Reset process dropdown and state
     const processDropdown = document.getElementById("ddlProcess");
     if (processDropdown) {
       processDropdown.value = processes[0]?.ProcessId || "";
       setSelectedProcess(processes[0]?.ProcessId || "");
     }
 
-    // Reset date states and inputs
-    // const defaultFromDate =
-    //   lockDetails.lockSDate || new Date().toISOString().split("T")[0];
-    // const defaultToDate =
-    //   addDay(lockDetails.lockSDate, lockDetails.lockDiffDays - 2) ||
-    //   new Date().toISOString().split("T")[0];
-    // setFromDate(defaultFromDate);
-    // setToDate(defaultToDate);
-
-    // const fromDateInput = document.getElementById("txtNewfromDate");
-    // const toDateInput = document.getElementById("txtNewtoDate");
-    // if (fromDateInput) fromDateInput.value = defaultFromDate;
-    // if (toDateInput) toDateInput.value = defaultToDate;
-    // const defaultFromDate = new Date().toISOString().split("T")[0];
-    // const defaultToDate = addMonth(defaultFromDate, 1);
-
-    // setFromDate(defaultFromDate);
-    // setToDate(defaultToDate);
-
-    // const fromDateInput = document.getElementById("txtNewfromDate");
-    // const toDateInput = document.getElementById("txtNewtoDate");
-    // if (fromDateInput) fromDateInput.value = defaultFromDate;
-    // if (toDateInput) toDateInput.value = defaultToDate;
     const defaultFromDate = new Date().toISOString().split("T")[0];
     const defaultToDate = addMonth(defaultFromDate, 1);
 
@@ -1587,22 +1173,22 @@ const MySchedule = () => {
     const toDateInput = document.getElementById("txtNewtoDate");
     if (fromDateInput) fromDateInput.value = defaultFromDate;
     if (toDateInput) toDateInput.value = defaultToDate;
-    // Reset weekend days
+
     setWeekendDays({ sat: true, sun: true });
 
-    // Reset login/logout facility
     setSelectedloginfacility(loginfacility[0]?.Id || "");
     setSelectedlogoutfacility(loginfacility[0]?.Id || "");
 
-    // Reset login/logout shift dropdowns and state
     const loginShiftDropdown = document.getElementById("ddlNewLoginShift");
     const logoutShiftDropdown = document.getElementById("ddlNewLogoutShift");
+
     if (loginShiftDropdown && loginShiftDropdown.options.length > 0) {
       loginShiftDropdown.value = loginShiftDropdown.options[0].value;
       setSelectedShiftTime(loginShiftDropdown.options[0].value);
     } else {
       setSelectedShiftTime("");
     }
+
     if (logoutShiftDropdown && logoutShiftDropdown.options.length > 0) {
       logoutShiftDropdown.value = logoutShiftDropdown.options[0].value;
       setSelectedLogoutShiftTime(logoutShiftDropdown.options[0].value);
@@ -1610,7 +1196,6 @@ const MySchedule = () => {
       setSelectedLogoutShiftTime("");
     }
 
-    // Reset all checkboxes in mgrassociate
     setMgrassociate((prev) =>
       prev.map((item) => ({
         ...item,
@@ -1618,7 +1203,7 @@ const MySchedule = () => {
       }))
     );
   };
-  // Loader ke liye
+
   useEffect(() => {
     if (isSubmitting) {
       document.body.style.overflow = "hidden";
@@ -1630,7 +1215,6 @@ const MySchedule = () => {
     };
   }, [isSubmitting]);
 
-  // Offcanvas ke liye
   useEffect(() => {
     const offcanvas = document.getElementById("raise_Feedback");
     function handleOffcanvasHidden() {
@@ -1652,62 +1236,47 @@ const MySchedule = () => {
   }, [isSubmitting]);
 
   const handleSubmit = async () => {
+    setLoading(true);
 
-    setLoading(true); // Loader ON
-    // Use fromDate and toDate from state (already in YYYY-MM-DD format)
     const selectedEmployees = mgrassociate
       .filter((emp) => emp.isChecked)
       .map((emp) => emp.EmployeeID);
-    // Check if any employees are selected
+
     if (selectedEmployees.length === 0) {
       toastService.error(
         "Please select at least one employee and complete all required fields before saving."
       );
-      setLoading(false); // Loader OFF
-      return; // Exit the function if no employees are selected
+      setLoading(false);
+      return;
     }
 
     const params = {
-      empID: selectedEmployees, // Assuming you have the employee ID from the session
+      empID: selectedEmployees,
       fromDate: fromDate,
       toDate: toDate,
       facilityIn: selectedloginfacility,
       facilityOut: selectedlogoutfacility,
       logIn: document.getElementById("ddlNewLoginShift").value,
       logOut: document.getElementById("ddlNewLogoutShift").value,
-      WeeklyOff: weekendDays.sat || weekendDays.sun ? "7,1" : "0", // Example logic for weekly off
-      userID: sessionManager.getUserSession().ID, // Assuming you have the user ID from the session
-      weekendlogin: weekendDays.sat ? "0" : "0",
-      weekendlogout: weekendDays.sun ? "0" : "0",
-      pickadflag: "1", // Replace with actual logic if needed
-      dropadflag: "1", // Replace with actual logic if needed
+      WeeklyOff: weekendDays.sat || weekendDays.sun ? "7,1" : "0",
+      userID: sessionManager.getUserSession().ID,
+      weekendlogin: weekendDays.sat ? "N/A" : weekendLoginShift,
+      weekendlogout: weekendDays.sun ? "N/A" : weekendLogoutShift,
+      pickadflag: "1",
+      dropadflag: "1",
     };
 
     try {
       const response = await apiService.InsertNewSchedule(params);
-      // console.log("Schedule saved successfully:", response);
-      // //alert("Record saved successfully!"); // Alert for successful save
-      // toastService.success("Record Saved successfully!"); // Show success toast
-      // const offcanvasElement = document.getElementById("Employee_Shift");
-      // offcanvasElement.classList.remove("show"); // Hide the offcanvas
-      //   // Reset form values after offcanvas is hidden
-      //   resetFormValues();
 
-      // // Refresh the main table data
-      // await fetchMgrSchedule(); // Call the function to refresh the main table data
       if (
         response &&
         Array.isArray(response) &&
         response.length > 0 &&
-        response[0].res2.includes(
+        response[0].res2?.includes(
           "Roster insert failed, due to difference between login and logout time is less than 9 hours."
         )
       ) {
-        // console.log(
-        //   "Roster insert failed: Login and logout time ",
-        //   response[0].res2
-        // );
-
         toastService.error(
           "Roster insertion failed: login and logout time must differ by at least 9 hours."
         );
@@ -1715,47 +1284,61 @@ const MySchedule = () => {
         toastService.success("Record saved!");
         resetFormValues();
         const offcanvasElement = document.getElementById("raise_Feedback");
-        offcanvasElement.classList.remove("show");
-        // --- Close the offcanvas modal ---
-        // const offcanvasElement = document.getElementById("Employee_Shift");
-        // if (offcanvasElement) {
-        //   offcanvasElement.addEventListener("hidden.bs.offcanvas", resetFormValues);
-        //   return () => {
-        //     offcanvasElement.removeEventListener(
-        //       "hidden.bs.offcanvas",
-        //       resetFormValues
-        //     );
-        //   }
+        if (offcanvasElement) {
+          const offcanvasInstance = Offcanvas.getOrCreateInstance(
+            offcanvasElement
+          );
+          offcanvasInstance.hide();
+        }
         await fetchMgrSchedule();
       }
     } catch (error) {
       console.error("Error saving schedule:", error);
-      //alert("Error saving schedule. Please try again."); // Alert for error
       toastService.error(
         "Failed to save the schedule. Please try again later."
-      ); // Show error toast
+      );
     } finally {
-      setLoading(false); // Loader OFF
+      setLoading(false);
     }
   };
+
   const handleReplicateClick = () => {
     navigate("/ReplicateSchedule");
   };
+
   const handleNewButtonClick = () => {
     const userFacilityId = sessionManager.getUserSession().FacilityID;
     setSelectedloginfacility(userFacilityId);
     setSelectedlogoutfacility(userFacilityId);
+
     const offcanvasElement = document.getElementById("raise_Feedback");
     if (offcanvasElement) {
       const offcanvas = new Offcanvas(offcanvasElement);
       offcanvas.show();
     }
-    // optional: resetFormValues();
   };
-  // Function to refresh trip data
 
   return (
     <div className="container-fluid p-0">
+      <style>{`
+        .trip-car-icon {
+          font-size: 20px;
+          line-height: 1;
+          color: #2563eb;
+          background: rgba(37, 99, 235, 0.12);
+          border-radius: 10px;
+          padding: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+        }
+        .trip-car-icon:hover {
+          background: rgba(37, 99, 235, 0.18);
+        }
+      `}</style>
+
       {isSubmitting && (
         <div
           style={{
@@ -1780,19 +1363,23 @@ const MySchedule = () => {
           </div>
         </div>
       )}
+
       <Loader isVisible={loading} fullScreen={true} />
-      <Header pageTitle="My Schedule" showNewButton={true} onNewButtonClick={handleNewButtonClick} />
+      <Header
+        pageTitle="My Schedule"
+        showNewButton={true}
+        onNewButtonClick={handleNewButtonClick}
+      />
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
 
-      {/* Middle Section */}
       <div className="middle">
         <div className="row mt-3">
           <div className="col-12">
             <style>{`
               .replicate-btn {
                 background-color: transparent !important;
-                color: #0BAA60 !important; 
+                color: #0BAA60 !important;
                 border: 1px solid #0BAA60 !important;
                 font-weight: 500;
                 transition: all 0.3s ease;
@@ -1804,6 +1391,7 @@ const MySchedule = () => {
                 box-shadow: none !important;
               }
             `}</style>
+
             <button
               type="button"
               className="btn replicate-btn"
@@ -1811,321 +1399,410 @@ const MySchedule = () => {
             >
               Replicate Schedule
             </button>
-            {/* <button type="button" className="btn btn-light">
-                  Roster Bulk Upload
-                </button> */}
           </div>
         </div>
-        {/* Schedule Table */}
-        <div className="row">
-          <div className="col-12">
-            <div className="card_tb p-3">
-              <div className="row mb-3">
-                <div className="col-2">
-                  {/* <div className="col-1"> */}
-                  <label className="form-label">Manager</label>
-                  {/* </div>
-                  <div className="col-2"> */}
-                  <select
-                    className="form-select"
-                    id="ddlManager"
-                    value={selectedManager}
-                    onChange={handleManagerChange}
-                  >
-                    {managers.map((manager) => (
-                      <option key={manager.MgrId} value={manager.MgrId}>
-                        {manager.ManagerName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="col-2">
-                  <label className="form-label">From Date</label>
-                  {/* </div>
-                  <div className="col-2"> */}
-                  <style>
-                    {`
-                      .custom-calendar-wrapper {
-                        position: relative;
-                        width: 100%;
-                      }
-                      .custom-calendar-icon {
-                        position: absolute;
-                        left: 10px;
-                        top: 50%;
-                        transform: translateY(-50%);
-                        width: 22px;
-                        height: 22px;
-                        z-index: 2;
-                        pointer-events: none;
-                      }
-                      .custom-calendar-input .p-inputtext {
-                        padding-left: 35px !important;
-                      }
-                    `}
-                  </style>
-                  <div className="custom-calendar-wrapper">
-                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                    <Calendar
-                      id="fromDate"
-                      className="w-100 custom-calendar-input"
-                      value={mainFromDate ? new Date(mainFromDate) : null}
-                      onChange={(e) => {
-                        const val = e.value ? e.value.toISOString().split("T")[0] : "";
-                        onchangedFromDate(val);
-                      }}
-                      dateFormat="mm/dd/yy"
-                    />
-                  </div>
-                </div>
-                {/* --- RIGHT SIDE TOOLBAR --- */}
-                <div className="col-8 d-flex justify-content-end align-items-end">
-                  <TableToolbar
-                    search={scheduleFilter}
-                    onSearch={(e) => setScheduleFilter(e.target.value)}
-                    showExport={false}
-                    //overlayRef={op}
-                    showFilter={false}
-                    //filterButtonRef={false}
-                    onRefresh={() => handleRefreshSchedule()}
-                    className="mb-0"
-                  >
-                    <div className="p-4 text-center">
-                      <i
-                        className="pi pi-info-circle text-muted mb-3 d-block"
-                        style={{ fontSize: "2rem" }}
-                      />
-                      <p className="m-0 text-muted" style={{ fontSize: "0.875rem" }}>
-                        No advanced filters available.
-                      </p>
-                    </div>
-                  </TableToolbar>
-                </div>
-              </div>
-              {/* </div> */}
-              <div className="table-responsive">
-                <table className="table table-sm mb-0 custom-html-table" id="mgrschedule">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Schedule</th>
-                      {weekDays.map((day, index) => (
-                        <th key={index}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '78px', height: '19px' }}>
-                            <span className="badge text-bg-dark" style={{
-                              width: '42px',
-                              height: '19px',
-                              borderRadius: '10px',
-                              paddingLeft: '10px',
-                              paddingRight: '10px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontFamily: "'Plus Jakarta Sans', sans-serif",
-                              fontWeight: 800,
-                              fontSize: '13px',
-                              lineHeight: '19px',
-                              letterSpacing: '-0.03em'
-                            }}>
-                              {day.day}
-                            </span>
-                            <span style={{
-                              fontFamily: "'Plus Jakarta Sans', sans-serif",
-                              fontSize: '13px',
-                              fontWeight: 600,
-                              color: '#111827'
-                            }}>
-                              {day.date}
-                            </span>
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="arrows">
-                    {loading ? (
-                      <tr>
-                        <td colSpan={8} className="text-center">
-                          <div className="spinner-border" role="status">
-                            <span className="visually-hidden">Loading...</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      displayedSchedule.map((employee, index) => (
-                        <tr
-                          key={employee.EmployeeID || index}
-                          className={`${index % 2 !== 0 ? "ota-row-odd" : ""} ota-row-hover ${employee.geoCode !== "Y" || employee.tptReq !== "Y" ? "disabled-row"
-                            : ""
-                            }`}
-                        >
-                          <td>
-                            <span className="text-muted">
-                              {employee.EmpName}
-                            </span>
-                            {employee.geoCode !== "Y" && (
-                              <span
-                                className="material-icons md-18 text-danger mx-2"
-                                title="NoGeocode"
-                              >
-                                location_off
-                              </span>
-                            )}
-                            {employee.tptReq !== "Y" && (
-                              <span
-                                className="material-icons md-18 text-danger"
-                                title="NoTransport"
-                              >
-                                no_transfer
-                              </span>
-                            )}
-                          </td>
-                          {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                            <td key={day} id={employee.EmployeeID}>
-                              {employee.geoCode !== "Y" ||
-                                employee.tptReq !== "Y" ? (
-                                 // Read-only view for disabled rows
-                                <div className="d-flex align-items-center gap-2">
-                                  <span>
-                                    {
-                                      employee[`SETime${day}`]
-                                        .split("!")[0]
-                                        .split("<BR>")[0]
-                                    }
-                                    <br />
-                                    {
-                                      employee[`SETime${day}`]
-                                        .split("!")[0]
-                                        .split("<BR>")[1]
-                                    }
-                                  </span>
-                                  {(() => {
-                                    const timeString =
-                                      employee[`SETime${day}`]?.split("!")[0];
-                                    const [pickupTime, dropTime] =
-                                      timeString?.split("<BR>") || [];
-                                    const showIcon =
-                                      employee[`SETime${day}`]?.split(
-                                        "!"
-                                      )[1] === "true";
 
-                                    const extractTime = (str) => {
-                                      if (!str) return null;
-                                      const timeMatch = str.match(/\d{4}/);
-                                      return timeMatch ? timeMatch[0] : null;
-                                    };
-
-                                    const pickupTimeValue =
-                                      extractTime(pickupTime);
-                                    const dropTimeValue = extractTime(dropTime);
-
-                                    return (pickupTimeValue || dropTimeValue) &&
-                                      showIcon ? (
-                                      <a
-                                        href="#!"
-                                        className=""
-                                        data-bs-toggle="offcanvas"
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          handleTripIconClick(employee, day);
-                                        }}
-                                        data-bs-target="#trips"
-                                      >
-                                        <img
-                                          src="images/icons/car.png"
-                                          alt=""
-                                        />
-                                      </a>
-                                    ) : null;
-                                  })()}
-                                </div>
-                              ) : (
-                                // Interactive view for enabled rows
-                                <div className="d-flex align-items-center gap-2">
-                                  <a
-                                    href="#!"
-                                    // data-bs-toggle="offcanvas"
-                                    // data-bs-target="#Employee_Shift"
-                                    onClick={() =>
-                                      handleEmployeeShiftClick(employee, day)
-                                    }
-                                  >
-                                    {
-                                      employee[`SETime${day}`]
-                                        .split("!")[0]
-                                        .split("<BR>")[0]
-                                    }
-                                    <br />
-                                    {
-                                      employee[`SETime${day}`]
-                                        .split("!")[0]
-                                        .split("<BR>")[1]
-                                    }
-                                  </a>
-                                  {(() => {
-                                    const timeString =
-                                      employee[`SETime${day}`]?.split("!")[0];
-                                    const [pickupTime, dropTime] =
-                                      timeString?.split("<BR>") || [];
-                                    const showIcon =
-                                      employee[`SETime${day}`]?.split(
-                                        "!"
-                                      )[1] === "true";
-
-                                    const extractTime = (str) => {
-                                      if (!str) return null;
-                                      const timeMatch = str.match(/\d{4}/);
-                                      return timeMatch ? timeMatch[0] : null;
-                                    };
-
-                                    const pickupTimeValue =
-                                      extractTime(pickupTime);
-                                    const dropTimeValue = extractTime(dropTime);
-
-                                    return (pickupTimeValue || dropTimeValue) &&
-                                      showIcon ? (
-                                      <a
-                                        href="#!"
-                                        className=""
-                                        data-bs-toggle="offcanvas"
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          handleTripIconClick(employee, day);
-                                        }}
-                                        data-bs-target="#trips"
-                                      >
-                                        <img
-                                          src="images/icons/car.png"
-                                          alt=""
-                                        />
-                                      </a>
-                                    ) : null;
-                                  })()}
-                                </div>
-                              )}
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-                {/* Pagination controls */}
-                {/* PrimeReact paginator for schedule table */}
-                {/* Reusable Custom Paginator */}
-                <CustomPaginator
-                  first={schedFirst}
-                  rows={schedRows}
-                  totalRecords={schedTotal}
-                  onPageChange={onSchedPageChange}
-                  rowsPerPageOptions={[10, 20, 50]}
+        {isMobile ? (
+          <div className="row">
+            <div className="col-12">
+              <div className="card_tb p-0">
+                <MobileScheduleView
+                  parsedSchedule={parsedSchedule}
+                  weekDays={weekDays}
+                  onShiftClick={(employee, dayIndex) => {
+                    handleEmployeeShiftClick(
+                      employee._original || employee,
+                      dayIndex
+                    );
+                  }}
+                  onTripClick={(employee, dayIndex) => {
+                    handleTripIconClick(employee._original || employee, dayIndex);
+                  }}
+                  loading={loading}
                 />
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="row">
+            <div className="col-12">
+              <div className="card_tb p-3">
+                <style>
+                  {`
+                    .schedule-filter-bar {
+                      display: flex;
+                      flex-wrap: wrap;
+                      gap: 16px;
+                      align-items: flex-end;
+                    }
+                    .schedule-filter-bar .filter-item {
+                      min-width: 160px;
+                      display: flex;
+                      flex-direction: column;
+                    }
+                    .schedule-filter-bar .filter-item .form-label {
+                      margin-bottom: 4px;
+                      font-size: 13px;
+                    }
+                    .schedule-filter-bar .filter-item.manager-select {
+                      flex: 0 0 auto;
+                      min-width: 180px;
+                      max-width: 220px;
+                    }
+                    .schedule-filter-bar .filter-item.date-select {
+                      flex: 0 0 auto;
+                      min-width: 160px;
+                      max-width: 200px;
+                    }
+                    .schedule-filter-bar .toolbar-wrapper {
+                      flex: 1;
+                      display: flex;
+                      justify-content: flex-end;
+                      align-items: flex-end;
+                      min-width: 200px;
+                    }
+                    .schedule-filter-bar .toolbar-wrapper > div {
+                      margin-bottom: 0 !important;
+                    }
+                    .schedule-filter-bar .toolbar-wrapper .mb-3 {
+                      margin-bottom: 0 !important;
+                    }
+                    @media (max-width: 768px) {
+                      .schedule-filter-bar {
+                        flex-direction: column;
+                        align-items: stretch;
+                      }
+                      .schedule-filter-bar .filter-item.manager-select,
+                      .schedule-filter-bar .filter-item.date-select {
+                        max-width: 100%;
+                        min-width: 100%;
+                      }
+                      .schedule-filter-bar .toolbar-wrapper {
+                        justify-content: flex-start;
+                        min-width: 100%;
+                      }
+                    }
+                    .custom-calendar-wrapper {
+                      position: relative;
+                      width: 100%;
+                    }
+                    .custom-calendar-icon {
+                      position: absolute;
+                      left: 10px;
+                      top: 50%;
+                      transform: translateY(-50%);
+                      width: 22px;
+                      height: 22px;
+                      z-index: 2;
+                      pointer-events: none;
+                    }
+                    .custom-calendar-input .p-inputtext {
+                      padding-left: 35px !important;
+                    }
+                  `}
+                </style>
+
+                <div className="schedule-filter-bar mb-3">
+                  <div className="filter-item manager-select">
+                    <label className="form-label">Manager</label>
+                    <select
+                      className="form-select"
+                      id="ddlManager"
+                      value={selectedManager}
+                      onChange={handleManagerChange}
+                    >
+                      {managers.map((manager) => (
+                        <option key={manager.MgrId} value={manager.MgrId}>
+                          {manager.ManagerName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="filter-item date-select">
+                    <label className="form-label">From Date</label>
+                    <div className="custom-calendar-wrapper">
+                      <img
+                        src={calendarIcon}
+                        alt="calendar"
+                        className="custom-calendar-icon"
+                      />
+                      <Calendar
+                        id="fromDate"
+                        className="w-100 custom-calendar-input"
+                        value={mainFromDate ? new Date(mainFromDate) : null}
+                        onChange={(e) => {
+                          const val = e.value
+                            ? e.value.toISOString().split("T")[0]
+                            : "";
+                          onchangedFromDate(val);
+                        }}
+                        dateFormat="mm/dd/yy"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="toolbar-wrapper">
+                    <TableToolbar
+                      search={scheduleFilter}
+                      onSearch={(e) => setScheduleFilter(e.target.value)}
+                      showExport={false}
+                      showFilter={false}
+                      onRefresh={() => handleRefreshSchedule()}
+                      className="mb-0"
+                    >
+                      <div className="p-4 text-center">
+                        <i
+                          className="pi pi-info-circle text-muted mb-3 d-block"
+                          style={{ fontSize: "2rem" }}
+                        />
+                        <p
+                          className="m-0 text-muted"
+                          style={{ fontSize: "0.875rem" }}
+                        >
+                          No advanced filters available.
+                        </p>
+                      </div>
+                    </TableToolbar>
+                  </div>
+                </div>
+
+                <div className="table-responsive">
+                  <table
+                    className="table table-sm mb-0 custom-html-table"
+                    id="mgrschedule"
+                  >
+                    <thead className="table-light">
+                      <tr>
+                        <th>Employee</th>
+                        {weekDays.map((day, index) => (
+                          <th key={index}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                width: "78px",
+                                height: "19px",
+                              }}
+                            >
+                              <span
+                                className="badge text-bg-dark"
+                                style={{
+                                  width: "42px",
+                                  height: "19px",
+                                  borderRadius: "10px",
+                                  paddingLeft: "10px",
+                                  paddingRight: "10px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontFamily:
+                                    "'Plus Jakarta Sans', sans-serif",
+                                  fontWeight: 800,
+                                  fontSize: "13px",
+                                  lineHeight: "19px",
+                                  letterSpacing: "-0.03em",
+                                }}
+                              >
+                                {day.day}
+                              </span>
+                              <span
+                                style={{
+                                  fontFamily:
+                                    "'Plus Jakarta Sans', sans-serif",
+                                  fontSize: "13px",
+                                  fontWeight: 600,
+                                  color: "#111827",
+                                }}
+                              >
+                                {day.date}
+                              </span>
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody className="arrows">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={8} className="text-center">
+                            <div className="spinner-border" role="status">
+                              <span className="visually-hidden">
+                                Loading...
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        displayedSchedule.map((employee, index) => (
+                          <tr
+                            key={employee.EmployeeID || index}
+                            className={`${
+                              index % 2 !== 0 ? "ota-row-odd" : ""
+                            } ota-row-hover ${
+                              employee.geoCode !== "Y" ||
+                              employee.tptReq !== "Y"
+                                ? "disabled-row"
+                                : ""
+                            }`}
+                          >
+                            <td>
+                              <span className="text-muted">
+                                {employee.EmpName}
+                              </span>
+                              {employee.geoCode !== "Y" && (
+                                <span
+                                  className="material-icons md-18 text-danger mx-2"
+                                  title="NoGeocode"
+                                >
+                                  location_off
+                                </span>
+                              )}
+                              {employee.tptReq !== "Y" && (
+                                <span
+                                  className="material-icons md-18 text-danger"
+                                  title="NoTransport"
+                                >
+                                  no_transfer
+                                </span>
+                              )}
+                            </td>
+
+                            {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+                              <td key={day} id={employee.EmployeeID}>
+                                {employee.geoCode !== "Y" ||
+                                employee.tptReq !== "Y" ? (
+                                  <div className="d-flex align-items-center gap-2">
+                                    <span>
+                                      {
+                                        employee[`SETime${day}`]
+                                          .split("!")[0]
+                                          .split("<BR>")[0]
+                                      }
+                                      <br />
+                                      {
+                                        employee[`SETime${day}`]
+                                          .split("!")[0]
+                                          .split("<BR>")[1]
+                                      }
+                                    </span>
+
+                                    {(() => {
+                                      const timeString =
+                                        employee[`SETime${day}`]?.split("!")[0];
+                                      const [pickupTime, dropTime] =
+                                        timeString?.split("<BR>") || [];
+                                      const showIcon =
+                                        employee[`SETime${day}`]?.split("!")[1] ===
+                                        "true";
+
+                                      const extractTime = (str) => {
+                                        if (!str) return null;
+                                        const timeMatch = str.match(/\d{4}/);
+                                        return timeMatch ? timeMatch[0] : null;
+                                      };
+
+                                      const pickupTimeValue =
+                                        extractTime(pickupTime);
+                                      const dropTimeValue = extractTime(dropTime);
+
+                                      return (pickupTimeValue || dropTimeValue) &&
+                                        showIcon ? (
+                                        <a
+                                          href="#!"
+                                          data-bs-toggle="offcanvas"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            handleTripIconClick(employee, day);
+                                          }}
+                                          data-bs-target="#trips"
+                                        >
+                                          <TripCarIcon />
+                                        </a>
+                                      ) : null;
+                                    })()}
+                                  </div>
+                                ) : (
+                                  <div className="d-flex align-items-center gap-2">
+                                    <a
+                                      href="#!"
+                                      onClick={() =>
+                                        handleEmployeeShiftClick(employee, day)
+                                      }
+                                    >
+                                      {
+                                        employee[`SETime${day}`]
+                                          .split("!")[0]
+                                          .split("<BR>")[0]
+                                      }
+                                      <br />
+                                      {
+                                        employee[`SETime${day}`]
+                                          .split("!")[0]
+                                          .split("<BR>")[1]
+                                      }
+                                    </a>
+
+                                    {(() => {
+                                      const timeString =
+                                        employee[`SETime${day}`]?.split("!")[0];
+                                      const [pickupTime, dropTime] =
+                                        timeString?.split("<BR>") || [];
+                                      const showIcon =
+                                        employee[`SETime${day}`]?.split("!")[1] ===
+                                        "true";
+
+                                      const extractTime = (str) => {
+                                        if (!str) return null;
+                                        const timeMatch = str.match(/\d{4}/);
+                                        return timeMatch ? timeMatch[0] : null;
+                                      };
+
+                                      const pickupTimeValue =
+                                        extractTime(pickupTime);
+                                      const dropTimeValue = extractTime(dropTime);
+
+                                      return (pickupTimeValue || dropTimeValue) &&
+                                        showIcon ? (
+                                        <a
+                                          href="#!"
+                                          data-bs-toggle="offcanvas"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            handleTripIconClick(employee, day);
+                                          }}
+                                          data-bs-target="#trips"
+                                        >
+                                          <TripCarIcon />
+                                        </a>
+                                      ) : null;
+                                    })()}
+                                  </div>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+
+                  <CustomPaginator
+                    first={schedFirst}
+                    rows={schedRows}
+                    totalRecords={schedTotal}
+                    onPageChange={onSchedPageChange}
+                    rowsPerPageOptions={[10, 20, 50]}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Notification Sidebar */}
       <Notifications />
       {/* Profile Sidebar */}
       <div
@@ -2875,9 +2552,12 @@ const MySchedule = () => {
                       <label className="form-label">Login Shift</label>
                       <select
                         className="form-select"
-                        defaultValue={weekendDays.sat ? "N/A" : "0"}
+                        value={weekendDays.sat ? "N/A" : weekendLoginShift}
                         id="ddlNewLoginWeekEndShift"
                         disabled={weekendDays.sat && weekendDays.sun}
+                        onChange={(e) =>
+                          setWeekendLoginShift(e.target.value)
+                        }
                       >
                         <option value="0">Select</option>
                         <option value="N/A">N/A</option>
@@ -2897,9 +2577,10 @@ const MySchedule = () => {
                       <label className="form-label">Logout Shift</label>
                       <select
                         className="form-select"
-                        defaultValue={weekendDays.sun ? "N/A" : "0"}
+                        value={weekendDays.sun ? "N/A" : weekendLogoutShift}
                         id="ddlNewLogoutWeekEndShift"
                         disabled={weekendDays.sat && weekendDays.sun}
+                        onChange={(e) => setWeekendLogoutShift(e.target.value)}
                       >
                         <option value="0">Select</option>
                         <option value="N/A">N/A</option>
@@ -2957,12 +2638,13 @@ const MySchedule = () => {
                           className="form-check-input"
                           type="checkbox"
                           id="flexCheckDefault"
+                          checked={mgrassociate.length > 0 && mgrassociate.every((item) => item.isChecked)}
                           onChange={(e) => {
                             const isChecked = e.target.checked;
                             setMgrassociate((prev) =>
                               prev.map((item) => ({
                                 ...item,
-                                isChecked: isChecked, // Add isChecked property to each item
+                                isChecked: isChecked,
                               }))
                             );
                           }}

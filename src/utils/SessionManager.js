@@ -15,14 +15,15 @@ class SessionManager {
       'isSpoc',
       'locationId',
       'userName',
-      'ComplaintCategoryId'
+      'ComplaintCategoryId',
+      'routingEngineVersion'
     ];
   }
 
   // Set user session data
   setUserSession(userdetails) {
     if (!userdetails || !userdetails[0]) return;
-    
+
     this.userFields.forEach(field => {
       sessionStorage.setItem(field, userdetails[0][field]);
     });
@@ -57,6 +58,11 @@ class SessionManager {
 
   isSpoc() {
     return sessionStorage.getItem('isSpoc') === 'true';
+  }
+
+  // Get routing engine version (V1 or V2)
+  getRoutingEngineVersion() {
+    return sessionStorage.getItem('routingEngineVersion') || 'V1';
   }
 
   // Clear session

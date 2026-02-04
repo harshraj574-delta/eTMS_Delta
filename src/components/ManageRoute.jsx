@@ -15,6 +15,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Toast } from "primereact/toast";
 import { Calendar } from "primereact/calendar";
+import { Checkbox } from "primereact/checkbox";
 import calendarIcon from "../assets/calendar.png";
 import noReportImage from "../assets/no_report.png";
 import ManageRouteService from "../services/compliance/ManageRouteService";
@@ -655,17 +656,20 @@ const DraggableEmployeeRow = React.memo(
     const foregroundStyle = useMemo(
       () => ({
         transform: `translateX(${swipeTranslateX}px)`,
-        backgroundColor: isSelected
-          ? selectedAction === 'split'
-            ? "#d1ecf1"
-            : "#e3f2fd"
-          : "#fff",
+        backgroundColor: employee.isNewAdded
+          ? "#e8f5e9" // Light green for newly added employees
+          : isSelected
+            ? selectedAction === 'split'
+              ? "#d1ecf1"
+              : "#e3f2fd"
+            : "#fff",
         position: "relative",
         zIndex: 2,
         transition: isDragging ? "none" : "transform 0.3s ease",
         willChange: "transform",
+        borderLeft: employee.isNewAdded ? "4px solid #4caf50" : "none",
       }),
-      [swipeTranslateX, isSelected, selectedAction, isDragging]
+      [swipeTranslateX, isSelected, selectedAction, isDragging, employee.isNewAdded]
     );
 
     const rowStyle = useMemo(
@@ -779,9 +783,25 @@ const DraggableEmployeeRow = React.memo(
 
           {/* Column 2: Employee */}
           <div className="col-2">
-
-
             {`${employee.empCode} - ${employee.empName}`}
+            {employee.isNewAdded && (
+              <span 
+                className="badge ms-2" 
+                style={{
+                  backgroundColor: '#4caf50',
+                  color: 'white',
+                  fontSize: '10px',
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+                data-pr-tooltip="Added via Replication Exception"
+                data-pr-position="top"
+              >
+                NEW
+              </span>
+            )}
           </div>
 
           {/* Column 3: Gender */}
@@ -801,23 +821,32 @@ const DraggableEmployeeRow = React.memo(
 
           {/* Column 4 & 5: Address & Location */}
           <div className="col-2">
-            <span title={employee.address || ""} style={{
-              width: "100%",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              display: "inline-block",
-            }}>
+            <span 
+              data-pr-tooltip={employee.address || ""} 
+              data-pr-position="top"
+              style={{
+                width: "100%",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "inline-block",
+                cursor: "pointer",
+              }}>
               {employee.address || ""}
             </span>
           </div>
           <div className="col-2">
-            <span title={employee.Location || ""} style={{
-              width: "100%",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}>
+            <span 
+              data-pr-tooltip={employee.Location || ""} 
+              data-pr-position="top"
+              style={{
+                width: "100%",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "inline-block",
+                cursor: "pointer",
+              }}>
               {employee.Location || ""}
             </span>
           </div>
@@ -994,6 +1023,8 @@ const ManageRoute = () => {
 
   // New state for initial no data report
   const [hasSearched, setHasSearched] = useState(false);
+  // Track the date that was actually searched (for unlock buttons visibility)
+  const [searchedShiftDate, setSearchedShiftDate] = useState(null);
 
 
   useEffect(() => {
@@ -1079,7 +1110,16 @@ const ManageRoute = () => {
     []
   );
 
-  const memoizedTableData = useMemo(() => tableData, [tableData]);
+  // Include unlock selection state in table data to force re-render when selection changes
+  const memoizedTableData = useMemo(() => {
+    if (isUnlockMode) {
+      return tableData.map(row => ({
+        ...row,
+        isSelectedForUnlock: routesToUnlock.has(row.RouteID)
+      }));
+    }
+    return tableData;
+  }, [tableData, isUnlockMode, routesToUnlock]);
 
   // Optimized sensors configuration
   const sensors = useSensors(
@@ -1550,6 +1590,7 @@ const ManageRoute = () => {
       setStatsDetails([]);
       setRouteDetails({});
       setHasSearched(true); // Set hasSearched to true when search/submit is clicked
+      setSearchedShiftDate(shiftDate); // Track the date that was searched
       setIsShiftLocked(false);
       setIsUnlockMode(false);
       setRoutesToUnlock(new Set());
@@ -1737,25 +1778,7 @@ const ManageRoute = () => {
             "Recalculating Modified Route - Fetching latest ETA and distance..."
           );
 
-          const recalculateResponse = await fetch(
-            "https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/recalculate",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-              },
-              body: JSON.stringify(inputJsonForRecalc),
-            }
-          );
-
-          if (!recalculateResponse.ok) {
-            throw new Error(
-              `Recalculation server failed: ${recalculateResponse.status}`
-            );
-          }
-
-          const recalculatedRouteJson = await recalculateResponse.json();
+          const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonForRecalc);
 
           await ManageRouteService.updateRouteMapbased({
             facilityid: selectedFacility,
@@ -2488,26 +2511,7 @@ const ManageRoute = () => {
 
       toastService.info("Sending data for recalculation...");
 
-      const recalculateResponse = await fetch(
-        "https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/recalculate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(inputJsonData),
-        }
-      );
-
-      if (!recalculateResponse.ok) {
-        const errorText = await recalculateResponse.text();
-        throw new Error(
-          `Recalculation server failed: ${recalculateResponse.status} ${errorText}`
-        );
-      }
-
-      const recalculatedRouteJson = await recalculateResponse.json();
+      const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
 
       await ManageRouteService.updateRouteMapbased({
         facilityid: selectedFacility,
@@ -2714,26 +2718,7 @@ const ManageRoute = () => {
 
       toastService.info("Sending data for recalculation...");
 
-      const recalculateResponse = await fetch(
-        "https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/recalculate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(inputJsonData),
-        }
-      );
-
-      if (!recalculateResponse.ok) {
-        const errorText = await recalculateResponse.text();
-        throw new Error(
-          `Recalculation server failed: ${recalculateResponse.status} ${errorText}`
-        );
-      }
-
-      const recalculatedRouteJson = await recalculateResponse.json();
+      const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
 
       await ManageRouteService.updateRouteMapbased({
         facilityid: selectedFacility,
@@ -3285,26 +3270,7 @@ const ManageRoute = () => {
         progress: 50,
       }));
 
-      const osrmResponse = await fetch(
-        "https://ftqbvxxmpm.ap-south-1.awsapprunner.com/api/route-generation/generate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Origin: "http://localhost:5173",
-          },
-          mode: "cors",
-          credentials: "omit",
-          body: JSON.stringify(routeInputData),
-        }
-      );
-      if (!osrmResponse.ok) {
-        throw new Error(
-          `Failed to generate route from OSRM server: ${osrmResponse.status} ${osrmResponse.statusText}`
-        );
-      }
-      const generatedRouteJson = await osrmResponse.json();
+      const generatedRouteJson = await ManageRouteService.generateRoutes(routeInputData);
       setProgressStatus((prev) => ({
         ...prev,
         step: 3,
@@ -3806,10 +3772,10 @@ const ManageRoute = () => {
         <ToastContainer position="top-right" autoClose={3000} />
         <div className="middle">
           <div className="row">
-            <div className="col-8">
+            <div className="col-12 col-lg-8 mb-3 mb-lg-0">
               <div className="card_tb p-3">
-                <div className="row">
-                  <div className="col">
+                <div className="row g-2 g-md-3">
+                  <div className="col-6 col-md">
                     <label htmlFor="shiftDate">Shift Date</label>
                     <div className="custom-calendar-wrapper">
                       <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
@@ -3831,7 +3797,7 @@ const ManageRoute = () => {
                       />
                     </div>
                   </div>
-                  <div className="col">
+                  <div className="col-6 col-md">
                     <label htmlFor="">Facility Name</label>
                     <Dropdown
                       id="facility"
@@ -3845,7 +3811,7 @@ const ManageRoute = () => {
                       optionValue="value"
                     />
                   </div>
-                  <div className="col">
+                  <div className="col-6 col-md">
                     <label htmlFor="tripType">Trip Type</label>
                     <Dropdown
                       id="tripType"
@@ -3857,7 +3823,7 @@ const ManageRoute = () => {
                       filter
                     />
                   </div>
-                  <div className="col">
+                  <div className="col-6 col-md">
                     <label htmlFor="shift">Shift</label>
                     <Dropdown
                       filter
@@ -3870,7 +3836,7 @@ const ManageRoute = () => {
                       className="w-full md:w-20rem w-100"
                     />
                   </div>
-                  <div className="col no-label">
+                  <div className="col-6 col-md no-label d-flex align-items-end">
                     <ReportButton
                       label="Search"
                       onClick={handleSubmit}
@@ -3880,7 +3846,7 @@ const ManageRoute = () => {
                 </div>
               </div>
             </div>
-            <div className="col-4">
+            <div className="col-12 col-lg-4">
               <div className="card_tb">
                 <div className="cardNew1 w-100">
                   <ul className="d-flex justify-content-between">
@@ -3948,8 +3914,8 @@ const ManageRoute = () => {
           {showButtons && (
             <div className={scrolled ? "buttonFix shadow" : "hidden"}>
               <div className="row mt-3">
-                <div className="col-12 d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center gap-3">
+                <div className="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                  <div className="d-flex flex-wrap align-items-center gap-2 mb-2 mb-lg-0">
                     <Button
                       label="Route Merge Mode"
                       icon="pi pi-share-alt"
@@ -3971,8 +3937,8 @@ const ManageRoute = () => {
                       const day = String(today.getDate()).padStart(2, "0");
                       const todayString = `${year}-${month}-${day}`;
                       
-                      // Check if the selected date is today or in the future
-                      const isDateCurrentOrFuture = shiftDate >= todayString;
+                      // Check if the SEARCHED date is today or in the future
+                      const isDateCurrentOrFuture = searchedShiftDate && searchedShiftDate >= todayString;
 
                       // The buttons will only render if the shift is locked AND the date is not in the past
                       if (isShiftLocked && isDateCurrentOrFuture) {
@@ -4000,11 +3966,13 @@ const ManageRoute = () => {
                             />
                             {isUnlockMode && routesToUnlock.size > 0 && (
                               <Button
-                                label={`Confirm Unlock (${routesToUnlock.size})`}
+                                label={`Confirm (${routesToUnlock.size})`}
                                 icon="pi pi-check"
-                                className="p-button-success ms-2"
+                                className="btn btn-success ms-2"
+                                severity="success"
                                 raised
                                 rounded
+                                size="small"
                                 onClick={handleUnlockSelectedRoutes}
                               />
                             )}
@@ -4016,11 +3984,11 @@ const ManageRoute = () => {
                   </div>
 
 
-                  <div>
+                  <div className="d-flex flex-wrap align-items-center gap-2">
                     <Button
                       label="Recalculate"
                       icon={isLoading ? "pi pi-spin pi-spinner" : "pi pi-sync"}
-                      className="btn btn-primary me-2"
+                      className="btn btn-primary"
                       severity="warning"
                       raised
                       rounded
@@ -4035,7 +4003,7 @@ const ManageRoute = () => {
                         isLoading ? "Allocating..." : "Auto Vendor Allocation"
                       }
                       icon="pi pi-cog"
-                      className="btn btn-primary me-2"
+                      className="btn btn-primary"
                       raised
                       rounded
                       onClick={handleAutoVendorAllocation}
@@ -4168,11 +4136,9 @@ const ManageRoute = () => {
                       style={{ width: "4rem" }}
                       body={(rowData) =>
                         rowData.isRouteFinalized === 1 ? (
-                          <input
-                            type="checkbox"
-                            checked={routesToUnlock.has(rowData.RouteID)}
+                          <Checkbox
+                            checked={rowData.isSelectedForUnlock === true}
                             onChange={() => handleSelectRouteToUnlock(rowData.RouteID)}
-                            className="form-check-input"
                             onClick={(e) => e.stopPropagation()}
                           />
                         ) : null

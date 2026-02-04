@@ -1,47 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { Cell, Pie, PieChart } from "recharts";
+import React, { useEffect, useState, useMemo } from "react";
 import { apiService } from "../../../services/api";
 import Loader from "../../common/Loader";
-
-const SAMPLE_PAYLOAD = {
-  deployedcount: 202,
-  OperationalVehicle: 778,
-  NotDeployedcount: 576,
-  totalroute: 2661,
-  Breakdowncount: 0,
-  VehicleEffPer: 25.96,
-};
-
-const renderNeedle = (value, cx, cy, outerRadius, color) => {
-  const degree = 180 - (Number(value) || 0) * 1.8;
-  const radian = (degree * Math.PI) / 180;
-  const length = outerRadius - 15;
-  const x = cx + length * Math.cos(radian);
-  const y = cy - length * Math.sin(radian);
-
-  return (
-    <>
-      <circle cx={cx} cy={cy} r={5} fill={color} />
-      <line
-        x1={cx}
-        y1={cy}
-        x2={x}
-        y2={y}
-        stroke={color}
-        strokeWidth={3}
-        strokeLinecap="round"
-      />
-    </>
-  );
-};
+import * as echarts from "echarts";
+import EChartsBase, {
+  ANIMATION_CONFIG,
+} from "../EChartsBase";
 
 const FleetEfficiency = ({ filter = {} }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [chartData, setChartData] = useState([
-    { name: "Operational Vehicle", value: 0, color: "#666666" },
-    { name: "Not Deployed Count", value: 0, color: "#e6a749" },
-    { name: "Breakdown Count", value: 0, color: "#84c1e9" },
+    { name: "Operational Vehicle", value: 0, color: "#6366f1" },
+    { name: "Not Deployed", value: 0, color: "#f59e0b" },
+    { name: "Breakdown", value: 0, color: "#ef4444" },
   ]);
   const [effPercent, setEffPercent] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -111,16 +82,16 @@ const FleetEfficiency = ({ filter = {} }) => {
         if (mounted) {
           setChartData([
             {
-              name: "Operational Vehicle",
+              name: "Operational",
               value: operational,
-              color: "#666666",
+              color: "#6366f1",
             },
             {
-              name: "Not Deployed Count",
+              name: "Not Deployed",
               value: notDeployed,
-              color: "#e6a749",
+              color: "#f59e0b",
             },
-            { name: "Breakdown Count", value: breakdown, color: "#84c1e9" },
+            { name: "Breakdown", value: breakdown, color: "#ef4444" },
           ]);
           setEffPercent(
             vehicleEffPer != null ? Number(vehicleEffPer) : null
@@ -142,17 +113,9 @@ const FleetEfficiency = ({ filter = {} }) => {
         } else {
           if (mounted) {
             setChartData([
-              {
-                name: "Operational Vehicle",
-                value: 0,
-                color: "#666666",
-              },
-              {
-                name: "Not Deployed Count",
-                value: 0,
-                color: "#e6a749",
-              },
-              { name: "Breakdown Count", value: 0, color: "#84c1e9" },
+              { name: "Operational", value: 0, color: "#6366f1" },
+              { name: "Not Deployed", value: 0, color: "#f59e0b" },
+              { name: "Breakdown", value: 0, color: "#ef4444" },
             ]);
             setEffPercent(null);
           }
@@ -167,6 +130,86 @@ const FleetEfficiency = ({ filter = {} }) => {
       mounted = false;
     };
   }, [sDate, eDate, locationid, facilityid, vendorid, triptype, retryCount]);
+
+  // Generate ECharts option for gauge chart
+  const chartOption = useMemo(() => {
+    const percent = effPercent ?? 0;
+
+    return {
+      ...ANIMATION_CONFIG,
+      series: [
+        {
+          type: "gauge",
+          startAngle: 180,
+          endAngle: 0,
+          min: 0,
+          max: 100,
+          radius: "100%",
+          center: ["50%", "70%"],
+          splitNumber: 5,
+          axisLine: {
+            lineStyle: {
+              width: 20,
+              color: [
+                [0.25, "#ef4444"],
+                [0.5, "#f59e0b"],
+                [0.75, "#10b981"],
+                [1, "#6366f1"],
+              ],
+            },
+          },
+          pointer: {
+            icon: "path://M12.8,0.7l12,40.1H0.7L12.8,0.7z",
+            length: "60%",
+            width: 10,
+            offsetCenter: [0, "-5%"],
+            itemStyle: {
+              color: "#374151",
+            },
+          },
+          axisTick: {
+            length: 8,
+            lineStyle: {
+              color: "auto",
+              width: 2,
+            },
+          },
+          splitLine: {
+            length: 15,
+            lineStyle: {
+              color: "auto",
+              width: 3,
+            },
+          },
+          axisLabel: {
+            color: "#6b7280",
+            fontSize: 11,
+            distance: -40,
+            formatter: (value) => `${value}`,
+          },
+          title: {
+            offsetCenter: [0, "20%"],
+            fontSize: 14,
+            color: "#6b7280",
+          },
+          detail: {
+            fontSize: 28,
+            offsetCenter: [0, "40%"],
+            valueAnimation: true,
+            formatter: (value) => `${value.toFixed(1)}%`,
+            color: "#1f2937",
+            fontWeight: "bold",
+          },
+          data: [
+            {
+              value: percent,
+              name: "Fleet Efficiency",
+            },
+          ],
+        },
+      ],
+    };
+  }, [effPercent]);
 
   if (error && retryCount >= maxRetries) {
     return (
@@ -218,61 +261,36 @@ const FleetEfficiency = ({ filter = {} }) => {
       <div className="text-center">
         {!loading && (
           <>
-            <div style={{ width: 300, height: 200, margin: "0 auto" }}>
-              <PieChart width={300} height={200}>
-                <Pie
-                  dataKey="value"
-                  startAngle={180}
-                  endAngle={0}
-                  data={chartData}
-                  cx={150}
-                  cy={150}
-                  innerRadius={50}
-                  outerRadius={100}
-                  stroke="none"
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.color}
-                    />
-                  ))}
-                </Pie>
-                {effPercent != null &&
-                  renderNeedle(effPercent, 150, 150, 100, "#374151")}
-              </PieChart>
-            </div>
+            <EChartsBase
+              option={chartOption}
+              height="200px"
+              loading={loading}
+            />
 
-            <div className="mt-3">
-              {effPercent != null && (
-                <>
-                  <h4 className="fw-bold text-primary">{effPercent}%</h4>
-                  <p className="text-muted mb-2">Current Efficiency</p>
-                </>
-              )}
-
-              <div className="d-flex justify-content-center gap-4 mt-3">
-                {chartData.map((item, index) => (
-                  <div key={index} className="d-flex flex-column align-items-center">
-                    <div
-                      style={{
-                        width: 36,
-                        height: 36,
-                        backgroundColor: item.color,
-                        borderRadius: 6,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#fff",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {item.value}
-                    </div>
-                    <small className="text-muted mt-2">{item.name}</small>
+            <div className="d-flex justify-content-center gap-3 mt-2">
+              {chartData.map((item, index) => (
+                <div key={index} className="d-flex flex-column align-items-center">
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      backgroundColor: item.color,
+                      borderRadius: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#fff",
+                      fontWeight: 600,
+                      fontSize: 14,
+                    }}
+                  >
+                    {item.value}
                   </div>
-                ))}
-              </div>
+                  <small className="text-muted mt-2" style={{ fontSize: 11 }}>
+                    {item.name}
+                  </small>
+                </div>
+              ))}
             </div>
           </>
         )}

@@ -1,18 +1,15 @@
-import {
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Cell,
-  Tooltip,
-  Legend,
-} from "recharts";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../services/api";
 import Loader from "../common/Loader";
 import React from "react";
+import * as echarts from "echarts";
+import EChartsBase, {
+  CHART_COLORS,
+  ANIMATION_CONFIG,
+} from "./EChartsBase";
 
 const VpVehicleDistribution = ({ filter }) => {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -35,16 +32,16 @@ const VpVehicleDistribution = ({ filter }) => {
 
         const result = await apiService.getchart_vehDist(params);
         const colorMap = [
-          "#3182bd",
-          "#e6550d",
-          "#31a354",
-          "#6baed6",
-          "#fd8d3c",
-          "#fdae6b",
-          "#74c476",
-          "#a1d99b",
-          "#FFD700",
-          "#FFA500",
+          "#6366f1",
+          "#ec4899",
+          "#14b8a6",
+          "#f59e0b",
+          "#8b5cf6",
+          "#06b6d4",
+          "#f97316",
+          "#84cc16",
+          "#ef4444",
+          "#3b82f6",
         ];
 
         let arr = result;
@@ -107,7 +104,7 @@ const VpVehicleDistribution = ({ filter }) => {
             setRetryCount((prev) => prev + 1);
           }, 2000);
         } else {
-          setData([]);
+          setData(null);
         }
       }
       setLoading(false);
@@ -115,6 +112,129 @@ const VpVehicleDistribution = ({ filter }) => {
 
     fetchData();
   }, [filter, retryCount]);
+
+  // Generate ECharts option for nested donut chart
+  const chartOption = useMemo(() => {
+    if (!data) return null;
+
+    const { vehicleTypeData, billingTypeData } = data;
+
+    return {
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        trigger: "item",
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        borderColor: "#e5e7eb",
+        borderWidth: 1,
+        textStyle: {
+          color: "#374151",
+          fontSize: 13,
+        },
+        padding: [10, 14],
+        extraCssText: "box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border-radius: 8px;",
+        formatter: (params) => {
+          const percent = params.percent ? params.percent.toFixed(1) : "0";
+          return `
+            <div style="font-weight: 600; margin-bottom: 6px;">${params.seriesName}</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:${params.color};"></span>
+              <span>${params.name}: <strong>${params.value}</strong> (${percent}%)</span>
+            </div>
+          `;
+        },
+      },
+      legend: {
+        type: "scroll",
+        orient: "horizontal",
+        bottom: 10,
+        left: "center",
+        icon: "circle",
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 15,
+        textStyle: {
+          color: "#6b7280",
+          fontSize: 11,
+        },
+        data: billingTypeData.map((item) => item.name),
+      },
+      series: [
+        {
+          name: "Vehicle Type",
+          type: "pie",
+          radius: ["50%", "70%"],
+          center: ["50%", "45%"],
+          avoidLabelOverlap: true,
+          label: {
+            show: true,
+            position: "outside",
+            formatter: "{b}: {c}",
+            fontSize: 11,
+            color: "#374151",
+          },
+          labelLine: {
+            show: true,
+            length: 10,
+            length2: 8,
+            lineStyle: {
+              color: "#d1d5db",
+            },
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 13,
+              fontWeight: "bold",
+            },
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: "rgba(0, 0, 0, 0.2)",
+            },
+          },
+          data: vehicleTypeData.map((item) => ({
+            value: item.value,
+            name: item.name,
+            itemStyle: {
+              color: item.color,
+            },
+          })),
+        },
+        {
+          name: "Billing Type",
+          type: "pie",
+          radius: ["20%", "40%"],
+          center: ["50%", "45%"],
+          avoidLabelOverlap: true,
+          label: {
+            show: false,
+          },
+          labelLine: {
+            show: false,
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 12,
+              fontWeight: "bold",
+            },
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: "rgba(0, 0, 0, 0.2)",
+            },
+          },
+          data: billingTypeData.map((item) => ({
+            value: item.value,
+            name: item.name,
+            itemStyle: {
+              color: item.color,
+            },
+          })),
+        },
+      ],
+    };
+  }, [data]);
 
   if (error && retryCount >= maxRetries) {
     return (
@@ -157,107 +277,22 @@ const VpVehicleDistribution = ({ filter }) => {
       <Loader isVisible={loading} fullScreen={false} />
       <h6>Vehicle Distribution</h6>
       <hr />
-      <style>{`
-        .recharts-legend-wrapper {
-          font-size: 11px !important;
-          font-weight: 500 !important;
-          padding-top: 10px !important;
-        }
-        .recharts-legend-item-text {
-          font-size: 11px !important;
-          color: #333 !important;
-        }
-      `}</style>
-      {!loading && data?.vehicleTypeData && data?.billingTypeData ? (
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={data.vehicleTypeData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              innerRadius={50}
-              startAngle={90}
-              endAngle={450}
-              label
-            >
-              {data.vehicleTypeData.map((entry, index) => (
-                <Cell
-                  key={`cell-outer-${index}`}
-                  fill={entry.color || "#3182bd"}
-                />
-              ))}
-            </Pie>
-            <Pie
-              data={data.billingTypeData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={45}
-              innerRadius={20}
-              startAngle={90}
-              endAngle={450}
-              label={false}
-            >
-              {data.billingTypeData.map((entry, index) => (
-                <Cell
-                  key={`cell-inner-${index}`}
-                  fill={entry.color || "#e6550d"}
-                />
-              ))}
-            </Pie>
-            <Tooltip
-              content={({ active, payload }) => {
-                if (!active || !payload || payload.length === 0) return null;
-                const p = payload[0];
-                return (
-                  <div
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #ccc",
-                      borderRadius: 3,
-                      padding: 8,
-                      fontSize: 12,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>
-                      {p.name || p.payload.name}
-                    </span>
-                    <br />
-                    <span>{p.value}</span>
-                  </div>
-                );
-              }}
-            />
-            <Legend
-              verticalAlign="bottom"
-              height={36}
-              iconType="circle"
-              payload={
-                (data.billingTypeData || []).map((entry, idx) => ({
-                  value: `${entry.name} (${entry.value})`,
-                  type: "circle",
-                  color: entry.color,
-                  id: `legend-billing-${idx}`,
-                })) || []
-              }
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      ) : (
-        !loading && (
-          <div className="text-center text-muted py-5">
-            <p style={{ fontSize: "16px", marginBottom: "8px" }}>
-              No data available
-            </p>
-            <p style={{ fontSize: "14px", color: "#999" }}>
-              Try adjusting your filters to see data
-            </p>
-          </div>
-        )
+      {!loading && chartOption && (
+        <EChartsBase
+          option={chartOption}
+          height="320px"
+          loading={loading}
+        />
+      )}
+      {!loading && !chartOption && (
+        <div className="text-center text-muted py-5">
+          <p style={{ fontSize: "16px", marginBottom: "8px" }}>
+            No data available
+          </p>
+          <p style={{ fontSize: "14px", color: "#999" }}>
+            Try adjusting your filters to see data
+          </p>
+        </div>
       )}
     </div>
   );

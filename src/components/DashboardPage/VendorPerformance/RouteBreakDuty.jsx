@@ -1,16 +1,15 @@
-import React, { useEffect, useState } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import React, { useEffect, useState, useMemo } from "react";
 import { apiService } from "../../../services/api";
 import Loader from "../../common/Loader";
+import * as echarts from "echarts";
+import EChartsBase, {
+  TOOLTIP_CONFIG,
+  LEGEND_CONFIG,
+  GRID_CONFIG,
+  X_AXIS_CONFIG,
+  Y_AXIS_CONFIG,
+  ANIMATION_CONFIG,
+} from "../EChartsBase";
 
 const RouteBreakDuty = ({ filter = {} }) => {
   const [data, setData] = useState([]);
@@ -83,6 +82,188 @@ const RouteBreakDuty = ({ filter = {} }) => {
     fetchData();
   }, [filter, retryCount]);
 
+  // Calculate totals
+  const totals = useMemo(() => {
+    return {
+      routes: data.reduce((a, b) => a + b.routes, 0),
+      breakdowns: data.reduce((a, b) => a + b.breakdowns, 0),
+      dutyHours: data.reduce((a, b) => a + b.dutyHours, 0),
+    };
+  }, [data]);
+
+  // Generate ECharts option
+  const chartOption = useMemo(() => {
+    if (!data || data.length === 0) return null;
+
+    const months = data.map((item) => item.month);
+    const routes = data.map((item) => item.routes);
+    const breakdowns = data.map((item) => item.breakdowns);
+    const dutyHours = data.map((item) => item.dutyHours);
+
+    return {
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        ...TOOLTIP_CONFIG,
+        trigger: "axis",
+        axisPointer: {
+          type: "cross",
+          crossStyle: {
+            color: "#999",
+          },
+        },
+        formatter: (params) => {
+          let result = `<div style="font-weight: 600; margin-bottom: 8px;">${params[0].axisValue}</div>`;
+          params.forEach((param) => {
+            const marker = `<span style="display:inline-block;margin-right:4px;border-radius:50%;width:10px;height:10px;background-color:${param.color};"></span>`;
+            let unit = "";
+            if (param.seriesName.includes("Duty")) unit = " hrs";
+            result += `<div style="margin: 4px 0;">${marker}${param.seriesName}: <strong>${param.value}${unit}</strong></div>`;
+          });
+          return result;
+        },
+      },
+      legend: {
+        ...LEGEND_CONFIG,
+        data: [
+          `Routes Completed (${totals.routes})`,
+          `Breakdowns (${totals.breakdowns})`,
+          `Duty Hours (${totals.dutyHours})`,
+        ],
+        bottom: 10,
+      },
+      grid: {
+        ...GRID_CONFIG,
+        top: 40,
+        bottom: 80,
+        left: 60,
+        right: 60,
+      },
+      xAxis: {
+        ...X_AXIS_CONFIG,
+        data: months,
+        axisLabel: {
+          ...X_AXIS_CONFIG.axisLabel,
+          rotate: months.length > 6 ? 30 : 0,
+        },
+      },
+      yAxis: [
+        {
+          ...Y_AXIS_CONFIG,
+          name: "Routes / Duty Hours",
+          nameLocation: "center",
+          nameGap: 45,
+          nameTextStyle: {
+            color: "#6b7280",
+            fontSize: 12,
+          },
+        },
+        {
+          ...Y_AXIS_CONFIG,
+          name: "Breakdowns",
+          nameLocation: "center",
+          nameGap: 45,
+          nameTextStyle: {
+            color: "#6b7280",
+            fontSize: 12,
+          },
+          position: "right",
+          splitLine: {
+            show: false,
+          },
+        },
+      ],
+      series: [
+        {
+          name: `Routes Completed (${totals.routes})`,
+          type: "line",
+          data: routes,
+          smooth: true,
+          symbol: "circle",
+          symbolSize: 8,
+          yAxisIndex: 0,
+          lineStyle: {
+            width: 3,
+            color: "#3b82f6",
+          },
+          itemStyle: {
+            color: "#3b82f6",
+            borderWidth: 2,
+            borderColor: "#fff",
+          },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "rgba(59, 130, 246, 0.25)" },
+              { offset: 1, color: "rgba(59, 130, 246, 0.02)" },
+            ]),
+          },
+          emphasis: {
+            focus: "series",
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(59, 130, 246, 0.5)",
+            },
+          },
+        },
+        {
+          name: `Breakdowns (${totals.breakdowns})`,
+          type: "line",
+          data: breakdowns,
+          smooth: true,
+          symbol: "circle",
+          symbolSize: 8,
+          yAxisIndex: 1,
+          lineStyle: {
+            width: 3,
+            color: "#ef4444",
+          },
+          itemStyle: {
+            color: "#ef4444",
+            borderWidth: 2,
+            borderColor: "#fff",
+          },
+          emphasis: {
+            focus: "series",
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(239, 68, 68, 0.5)",
+            },
+          },
+        },
+        {
+          name: `Duty Hours (${totals.dutyHours})`,
+          type: "line",
+          data: dutyHours,
+          smooth: true,
+          symbol: "circle",
+          symbolSize: 8,
+          yAxisIndex: 0,
+          lineStyle: {
+            width: 3,
+            color: "#10b981",
+          },
+          itemStyle: {
+            color: "#10b981",
+            borderWidth: 2,
+            borderColor: "#fff",
+          },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "rgba(16, 185, 129, 0.2)" },
+              { offset: 1, color: "rgba(16, 185, 129, 0.02)" },
+            ]),
+          },
+          emphasis: {
+            focus: "series",
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(16, 185, 129, 0.5)",
+            },
+          },
+        },
+      ],
+    };
+  }, [data, totals]);
+
   if (error && retryCount >= maxRetries) {
     return (
       <div className="cardx border-0 p-3">
@@ -124,117 +305,14 @@ const RouteBreakDuty = ({ filter = {} }) => {
       <Loader isVisible={loading} fullScreen={false} />
       <h6>Routes vs Breakdowns vs Duty Hours</h6>
       <hr />
-      {!loading && data.length > 0 && (
-        <ResponsiveContainer width="100%" height={320}>
-          <LineChart
-            data={data}
-            margin={{ top: 20, right: 60, left: 20, bottom: 50 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis
-              dataKey="month"
-              tick={{ fontSize: 12, fill: "#666" }}
-              axisLine={{ stroke: "#e0e0e0" }}
-            />
-
-            <YAxis
-              yAxisId="left"
-              tick={{ fontSize: 11, fill: "#666" }}
-              axisLine={{ stroke: "#e0e0e0" }}
-              label={{
-                value: "Routes / Duty Hours",
-                angle: -90,
-                position: "insideLeft",
-                style: { textAnchor: "middle" },
-              }}
-            />
-
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fontSize: 11, fill: "#666" }}
-              axisLine={{ stroke: "#e0e0e0" }}
-              label={{
-                value: "Breakdowns",
-                angle: 90,
-                position: "insideRight",
-                style: { textAnchor: "middle" },
-              }}
-            />
-
-            <Tooltip
-              formatter={(value, name) => {
-                if (name === "dutyHours")
-                  return [`${value} hrs`, "Duty Hours"];
-                if (name === "routes") return [value, "Routes Completed"];
-                if (name === "breakdowns") return [value, "Breakdowns"];
-                return [value, name];
-              }}
-            />
-
-            <Legend
-              verticalAlign="bottom"
-              align="center"
-              height={36}
-              wrapperStyle={{
-                fontSize: 12,
-                marginTop: 10,
-              }}
-              iconType="line"
-              formatter={(value, entry) => {
-                let count = 0;
-                if (entry && entry.dataKey) {
-                  count = data.reduce(
-                    (a, b) => a + (b[entry.dataKey] || 0),
-                    0
-                  );
-                }
-                return `${
-                  value === "routes"
-                    ? "Routes Completed"
-                    : value === "breakdowns"
-                    ? "Breakdowns"
-                    : value === "dutyHours"
-                    ? "Duty Hours"
-                    : value
-                } (${count})`;
-              }}
-            />
-
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="routes"
-              stroke="#3b82f6"
-              strokeWidth={3}
-              dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: "#3b82f6", strokeWidth: 2 }}
-              name="Routes Completed"
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="breakdowns"
-              stroke="#ef4444"
-              strokeWidth={3}
-              dot={{ fill: "#ef4444", strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: "#ef4444", strokeWidth: 2 }}
-              name="Breakdowns"
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="dutyHours"
-              stroke="#10b981"
-              strokeWidth={3}
-              dot={{ fill: "#10b981", strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: "#10b981", strokeWidth: 2 }}
-              name="Duty Hours"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      {!loading && chartOption && (
+        <EChartsBase
+          option={chartOption}
+          height="320px"
+          loading={loading}
+        />
       )}
-      {!loading && data.length === 0 && (
+      {!loading && !chartOption && (
         <div className="text-center text-muted py-5">
           <p>No data available.</p>
         </div>

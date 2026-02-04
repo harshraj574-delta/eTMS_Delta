@@ -1,16 +1,9 @@
-import React, { useState, useEffect } from "react";
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from "recharts";
+import React, { useState, useEffect, useMemo } from "react";
 import { apiService } from "../../../services/api.js";
 import Loader from "../../common/Loader";
+import EChartsBase, {
+  ANIMATION_CONFIG,
+} from "../EChartsBase";
 
 const VehicleFragmentation = ({ filter = {} }) => {
   const [vehicleData, setVehicleData] = useState([]);
@@ -60,8 +53,8 @@ const VehicleFragmentation = ({ filter = {} }) => {
           throw new Error("API did not return an array");
 
         const mapped = data.map((item) => ({
-          skill: item.Vehicletype,
-          current: Number(item.totalroute) || 0,
+          name: item.Vehicletype,
+          value: Number(item.totalroute) || 0,
           routePer:
             item.routePer !== undefined ? Number(item.routePer) : undefined,
         }));
@@ -98,27 +91,91 @@ const VehicleFragmentation = ({ filter = {} }) => {
     };
   }, [sDate, eDate, locationid, facilityid, vendorid, triptype, retryCount]);
 
-  const CustomTooltip = ({ active, payload }) => {
-    if (!active || !payload || !payload.length) return null;
-    const p = payload[0].payload || {};
-    return (
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid rgba(0,0,0,0.12)",
-          padding: 8,
-          borderRadius: 4,
-          minWidth: 140,
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>{p.skill}</div>
-        <div style={{ fontSize: 13 }}>{payload[0].value} routes</div>
-        {p.routePer !== undefined && (
-          <div style={{ fontSize: 12, color: "#666" }}>{p.routePer}%</div>
-        )}
-      </div>
-    );
-  };
+  // Generate ECharts option for radar chart
+  const chartOption = useMemo(() => {
+    if (!vehicleData || vehicleData.length === 0) return null;
+
+    const maxValue = Math.max(100, ...vehicleData.map((d) => d.value));
+    const indicators = vehicleData.map((d) => ({
+      name: d.name,
+      max: maxValue,
+    }));
+    const values = vehicleData.map((d) => d.value);
+
+    return {
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        trigger: "item",
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        borderColor: "#e5e7eb",
+        borderWidth: 1,
+        textStyle: {
+          color: "#374151",
+          fontSize: 13,
+        },
+        padding: [10, 14],
+        extraCssText: "box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border-radius: 8px;",
+        formatter: (params) => {
+          if (!params.value) return "";
+          let result = `<div style="font-weight: 600; margin-bottom: 8px;">${params.name}</div>`;
+          vehicleData.forEach((item, idx) => {
+            const percent = item.routePer !== undefined ? ` (${item.routePer}%)` : "";
+            result += `<div style="margin: 4px 0;">${item.name}: <strong>${params.value[idx]} routes</strong>${percent}</div>`;
+          });
+          return result;
+        },
+      },
+      radar: {
+        indicator: indicators,
+        shape: "polygon",
+        radius: "60%",
+        center: ["50%", "50%"],
+        axisName: {
+          color: "#6b7280",
+          fontSize: 10,
+        },
+        splitArea: {
+          areaStyle: {
+            color: ["rgba(99, 102, 241, 0.02)", "rgba(99, 102, 241, 0.04)"],
+          },
+        },
+        axisLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+      },
+      series: [
+        {
+          name: "Vehicle Types",
+          type: "radar",
+          data: [
+            {
+              value: values,
+              name: "Routes by Vehicle",
+              symbol: "circle",
+              symbolSize: 6,
+              lineStyle: {
+                color: "#3b82f6",
+                width: 2,
+              },
+              itemStyle: {
+                color: "#3b82f6",
+              },
+              areaStyle: {
+                color: "rgba(59, 130, 246, 0.2)",
+              },
+            },
+          ],
+        },
+      ],
+    };
+  }, [vehicleData]);
 
   if (error && retryCount >= maxRetries) {
     return (
@@ -166,50 +223,13 @@ const VehicleFragmentation = ({ filter = {} }) => {
       <Loader isVisible={loading} fullScreen={false} />
       <h6>Vehicle Fragmentation</h6>
       <hr />
-      {!loading && vehicleData.length > 0 && (
+      {!loading && chartOption && (
         <>
-          <div style={{ height: "240px" }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart
-                data={vehicleData}
-                margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-              >
-                <PolarGrid gridType="polygon" />
-                <PolarAngleAxis
-                  dataKey="skill"
-                  tick={{ fontSize: 11, fill: "#666", textAnchor: "middle" }}
-                  className="text-muted"
-                />
-                <PolarRadiusAxis
-                  angle={90}
-                  domain={[
-                    0,
-                    Math.max(
-                      100,
-                      ...(vehicleData.length
-                        ? vehicleData.map((d) => d.current)
-                        : [0])
-                    ),
-                  ]}
-                  tick={{ fontSize: 10, fill: "#999" }}
-                />
-                <Radar
-                  dataKey="current"
-                  stroke="#3b82f6"
-                  fill="#3b82f6"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  wrapperStyle={{ display: "none" }}
-                  verticalAlign="bottom"
-                  align="center"
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-
+          <EChartsBase
+            option={chartOption}
+            height="240px"
+            loading={loading}
+          />
           <div
             style={{
               display: "flex",
@@ -222,7 +242,7 @@ const VehicleFragmentation = ({ filter = {} }) => {
             {vehicleData.map((d, i) => (
               <div
                 key={i}
-                title={`${d.skill} - ${d.current} routes${
+                title={`${d.name} - ${d.value} routes${
                   d.routePer !== undefined ? ` - ${d.routePer}%` : ""
                 }`}
                 style={{
@@ -246,7 +266,7 @@ const VehicleFragmentation = ({ filter = {} }) => {
                   }}
                 />
                 <span style={{ whiteSpace: "nowrap" }}>
-                  {d.skill} — {Number(d.current || 0).toLocaleString()} routes
+                  {d.name} — {Number(d.value || 0).toLocaleString()} routes
                   {d.routePer !== undefined ? ` — ${d.routePer}%` : ""}
                 </span>
               </div>
@@ -254,7 +274,7 @@ const VehicleFragmentation = ({ filter = {} }) => {
           </div>
         </>
       )}
-      {!loading && vehicleData.length === 0 && (
+      {!loading && !chartOption && (
         <div className="text-center text-muted py-5">
           <p>No data available.</p>
         </div>

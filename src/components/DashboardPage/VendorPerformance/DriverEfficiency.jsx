@@ -1,25 +1,9 @@
 import React, { useEffect, useState, useMemo } from "react";
-import {
-  Chart as ChartJS,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { Radar } from "react-chartjs-2";
 import { apiService } from "../../../services/api.js";
 import Loader from "../../common/Loader";
-
-ChartJS.register(
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend
-);
+import EChartsBase, {
+  ANIMATION_CONFIG,
+} from "../EChartsBase";
 
 const DriverEfficiencyRadar = ({ filter = {} }) => {
   const [data, setData] = useState([]);
@@ -106,105 +90,90 @@ const DriverEfficiencyRadar = ({ filter = {} }) => {
     };
   }, [sDate, eDate, locationid, facilityid, vendorid, triptype, retryCount]);
 
-  const chartData = useMemo(() => {
-    const maxValue =
-      data.length > 0
-        ? Math.max(...data.map((d) => d.avgTrips || 0)) * 1.1
-        : 10;
+  // Generate ECharts option for radar chart
+  const chartOption = useMemo(() => {
+    if (!data || data.length === 0) return null;
+
+    const maxValue = Math.max(10, ...data.map((d) => d.avgTrips)) * 1.1;
+    const indicators = data.map((d) => ({
+      name: d.triptype,
+      max: maxValue,
+    }));
+    const values = data.map((d) => d.avgTrips);
 
     return {
-      labels: data.map((d) => d.triptype),
-      datasets: [
+      ...ANIMATION_CONFIG,
+      tooltip: {
+        trigger: "item",
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        borderColor: "#e5e7eb",
+        borderWidth: 1,
+        textStyle: {
+          color: "#374151",
+          fontSize: 13,
+        },
+        padding: [10, 14],
+        extraCssText: "box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border-radius: 8px;",
+        formatter: (params) => {
+          if (!params.value) return "";
+          let result = `<div style="font-weight: 600; margin-bottom: 8px;">Driver Trip Distribution</div>`;
+          data.forEach((item, idx) => {
+            result += `<div style="margin: 4px 0;">${item.triptype}: <strong>${params.value[idx].toFixed(2)} avg trips</strong></div>`;
+          });
+          return result;
+        },
+      },
+      radar: {
+        indicator: indicators,
+        shape: "polygon",
+        radius: "60%",
+        center: ["50%", "50%"],
+        axisName: {
+          color: "#6b7280",
+          fontSize: 11,
+        },
+        splitArea: {
+          areaStyle: {
+            color: ["rgba(54, 162, 235, 0.02)", "rgba(54, 162, 235, 0.05)"],
+          },
+        },
+        axisLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: "#e5e7eb",
+          },
+        },
+      },
+      series: [
         {
-          label: "Avg Trips/Driver",
-          data: data.map((d) => d.avgTrips),
-          backgroundColor: "rgba(54, 162, 235, 0.2)",
-          borderColor: "rgba(54, 162, 235, 1)",
-          borderWidth: 2,
-          pointBackgroundColor: "rgba(54, 162, 235, 1)",
-          pointBorderColor: "#fff",
-          pointHoverBackgroundColor: "#fff",
-          pointHoverBorderColor: "rgba(54, 162, 235, 1)",
-          pointRadius: 5,
-          pointHoverRadius: 7,
+          name: "Avg Trips/Driver",
+          type: "radar",
+          data: [
+            {
+              value: values,
+              name: "Avg Trips/Driver",
+              symbol: "circle",
+              symbolSize: 8,
+              lineStyle: {
+                color: "rgba(54, 162, 235, 1)",
+                width: 2,
+              },
+              itemStyle: {
+                color: "rgba(54, 162, 235, 1)",
+                borderColor: "#fff",
+                borderWidth: 2,
+              },
+              areaStyle: {
+                color: "rgba(54, 162, 235, 0.2)",
+              },
+            },
+          ],
         },
       ],
-    };
-  }, [data]);
-
-  const chartOptions = useMemo(() => {
-    const maxValue =
-      data.length > 0
-        ? Math.max(...data.map((d) => d.avgTrips || 0)) * 1.1
-        : 10;
-
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        r: {
-          angleLines: {
-            display: true,
-            color: "rgba(0, 0, 0, 0.1)",
-          },
-          grid: {
-            color: "rgba(0, 0, 0, 0.1)",
-          },
-          pointLabels: {
-            font: {
-              size: 11,
-              family: "'Segoe UI', sans-serif",
-            },
-            color: "#555",
-          },
-          ticks: {
-            backdropColor: "transparent",
-            color: "#888",
-            font: {
-              size: 10,
-            },
-            stepSize: maxValue / 5,
-            maxTicksLimit: 6,
-          },
-          min: 0,
-          max: maxValue,
-        },
-      },
-      plugins: {
-        legend: {
-          position: "bottom",
-          labels: {
-            font: {
-              size: 12,
-              family: "'Segoe UI', sans-serif",
-            },
-            padding: 20,
-            usePointStyle: true,
-          },
-        },
-        tooltip: {
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          titleColor: "#333",
-          bodyColor: "#333",
-          borderColor: "rgba(0, 0, 0, 0.1)",
-          borderWidth: 1,
-          padding: 12,
-          displayColors: false,
-          callbacks: {
-            title: function (context) {
-              return context[0].label;
-            },
-            label: function (context) {
-              return `Avg: ${context.raw.toFixed(2)} trips per driver`;
-            },
-          },
-        },
-      },
-      elements: {
-        line: {
-          tension: 0.1,
-        },
-      },
     };
   }, [data]);
 
@@ -250,11 +219,13 @@ const DriverEfficiencyRadar = ({ filter = {} }) => {
       <h6>Driver Trip Distribution (Average Trips per Driver)</h6>
       <hr />
 
-      {!loading && (
+      {!loading && chartOption && (
         <>
-          <div style={{ height: "260px", position: "relative" }}>
-            <Radar data={chartData} options={chartOptions} />
-          </div>
+          <EChartsBase
+            option={chartOption}
+            height="240px"
+            loading={loading}
+          />
 
           <div
             style={{
@@ -281,6 +252,11 @@ const DriverEfficiencyRadar = ({ filter = {} }) => {
             ))}
           </div>
         </>
+      )}
+      {!loading && !chartOption && (
+        <div className="text-center text-muted py-5">
+          <p>No data available.</p>
+        </div>
       )}
     </div>
   );
