@@ -13,6 +13,19 @@ import '../css/MobileSchedule.css';
  * - loading: boolean
  */
 
+// TripCarIcon component (mirrors MySchedule.jsx)
+const TripCarIcon = ({ title = "Trip Details" }) => {
+  return (
+    <span
+      className="trip-car-icon material-icons"
+      aria-hidden="true"
+      title={title}
+    >
+      directions_car
+    </span>
+  );
+};
+
 // Memoized Employee Card Component
 const EmployeeCard = memo(({ 
   employee, 
@@ -83,8 +96,9 @@ const EmployeeCard = memo(({
             className="trip-icon-btn"
             onClick={handleTripClick}
             title="View Trip Details"
+            style={{ background: 'transparent', border: 'none' }}
           >
-            <img src="images/icons/car.png" alt="Trip" />
+            <TripCarIcon />
           </button>
         </div>
       )}

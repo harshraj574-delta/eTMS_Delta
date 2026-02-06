@@ -380,11 +380,12 @@ const MyFeedback = () => {
     }
     // optional: resetFormValues();
   };
-  // Simple tab switching - no loading needed since it's client-side filtering
+  // Tab switching - Immediate UI update
   const handleFilterClick = (filter) => {
     setFeedbackFilter(filter);
   };
-  // search filter
+
+  // search filter - MEMOIZED
   const applyGlobalFilter = (data, search) => {
     if (!search || !search.trim()) return data;
 
@@ -398,30 +399,40 @@ const MyFeedback = () => {
       )
     );
   };
-  const filteredByStatus =
-    feedbackFilter === "total"
+
+  const deferredFeedbackFilter = React.useDeferredValue(feedbackFilter);
+  const isStale = feedbackFilter !== deferredFeedbackFilter;
+
+  const filteredByStatus = React.useMemo(() => {
+    return deferredFeedbackFilter === "total"
       ? feedbackData
-      : feedbackFilter === "open"
+      : deferredFeedbackFilter === "open"
         ? feedbackData.filter(
           (item) => item.Status && item.Status.toLowerCase() === "open"
         )
-        : feedbackFilter === "closed"
+        : deferredFeedbackFilter === "closed"
           ? feedbackData.filter(
             (item) => item.Status && item.Status.toLowerCase() === "closed"
           )
           : feedbackData;
+  }, [deferredFeedbackFilter, feedbackData]);
 
-  // Apply Advanced Filters
-  const filteredByAdvanced = filteredByStatus.filter((item) => {
-    return Object.keys(filters).every((key) => {
-      if (!filters[key] || filters[key].length === 0) return true;
-      return filters[key].includes(item[key]);
+  // Apply Advanced Filters - MEMOIZED
+  const filteredByAdvanced = React.useMemo(() => {
+    return filteredByStatus.filter((item) => {
+      return Object.keys(filters).every((key) => {
+        if (!filters[key] || filters[key].length === 0) return true;
+        return filters[key].includes(item[key]);
+      });
     });
-  });
+  }, [filteredByStatus, filters]);
 
-  const finalTableData = applyGlobalFilter(filteredByAdvanced, globalFilter);
+  const finalTableData = React.useMemo(() => {
+    return applyGlobalFilter(filteredByAdvanced, globalFilter);
+  }, [filteredByAdvanced, globalFilter]);
+
   // Refresh data function
-    const handleRefresh = () => {
+  const handleRefresh = () => {
     setLoading(true);
     fetchFeedbackCount({
       endDate: new Date().toISOString().split("T")[0],
@@ -537,7 +548,13 @@ const MyFeedback = () => {
         {/* Feedback Table */}
         <div className="row">
           <div className="col-12">
-            <div className="card_tb">
+            <div 
+              className="card_tb"
+              style={{
+                opacity: isStale ? 0.5 : 1,
+                transition: 'opacity 0.2s ease'
+              }}
+            >
               <div className="p-3">
                 <TableToolbar
                   showExport={false}

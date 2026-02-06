@@ -169,18 +169,61 @@
 }
 
 /* Responsive Styles */
+/* Responsive Styles */
+/* Enable horizontal scrolling for all screens where content overflows */
+.tab-switcher-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.25rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.tab-switcher-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.tab-switcher-container {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Ensure tabs don't shrink and stay in one line */
+.tab-switcher {
+  display: inline-flex;
+  /* content takes necessary width */
+  flex-wrap: nowrap;
+  width: max-content;
+  /* Force width to fit content */
+}
+
+.tab-item {
+  flex-shrink: 0 !important;
+  /* Prevent shrinking */
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .tab-switcher {
     gap: 4px;
     padding: 3px;
+    width: max-content;
   }
 
   .tab-item {
     font-size: 0.8125rem;
     height: 30px;
-    padding: 6px 8px;
-    width: 140px;
-    min-width: 140px;
+    padding: 6px 12px;
+    /* Adjusted padding */
+    width: auto;
+    /* Allow auto width based on content */
+    min-width: unset;
+    /* Remove fixed min-width to allow better flowing */
   }
 
   .tab-count {
@@ -191,39 +234,26 @@
 }
 
 @media (max-width: 576px) {
-  .tab-switcher-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.25rem;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    width: 100%;
-  }
-
-  .tab-switcher-container::-webkit-scrollbar {
-    display: none;
-  }
-
   .tab-switcher {
-    flex-wrap: nowrap;
     gap: 4px;
     padding: 3px;
   }
 
   .tab-item {
     font-size: 0.75rem;
-    padding: 6px 8px;
-    height: 28px;
-    width: 120px;
-    min-width: 120px;
+    padding: 6px 10px;
+    height: 32px;
+    /* Slight increase for touch targets */
+    width: auto;
+    min-width: auto;
   }
 
   .tab-count {
     min-width: 1rem;
     height: 1rem;
     font-size: 0.6rem;
-    padding: 0 0.25rem;
+    padding: 0 0.35rem;
+    /* Ensure padding for double digits */
   }
 }
 

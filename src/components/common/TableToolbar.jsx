@@ -3,7 +3,7 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import './TableToolbar.css';
-import btnsSet from '../../assets/btns-set.png';
+
 import crossIcon from '../../assets/cross.png';
 
 const TableToolbar = ({
@@ -24,6 +24,26 @@ const TableToolbar = ({
   showExport = true,
   className = ""
 }) => {
+
+  // Senior Dev Implementation: Defensive cleanup to prevent PrimeReact "hideOverlaysOnDocumentScrolling" crash
+  // This occurs when navigating away while an overlay context is active.
+  React.useEffect(() => {
+    return () => {
+      // Check if ref and current exist before attempting cleanup
+      if (overlayRef && overlayRef.current) {
+        try {
+          // Force hide triggers internal PrimeReact listener removal
+          // Checking specific internal method availability for extra safety
+          if (typeof overlayRef.current.hide === 'function') {
+             overlayRef.current.hide();
+          }
+        } catch (error) {
+          // swalllow error during unmount to prevent breaking navigation
+          console.warn('Safely handled OverlayPanel cleanup error:', error);
+        }
+      }
+    };
+  }, [overlayRef]); // Dependency ensures we track the correct ref instance
 
   const effectiveActiveFilters = React.useMemo(() => {
     if (activeFilters && activeFilters.length > 0) return activeFilters;
@@ -162,6 +182,7 @@ const TableToolbar = ({
           <div className="d-flex align-items-center">
             {showRefresh && (
               <Button
+                icon="pi pi-sync"
                 rounded
                 text
                 severity="secondary"
@@ -170,10 +191,8 @@ const TableToolbar = ({
                 tooltip="Refresh"
                 tooltipOptions={{ position: "top" }}
                 className="p-0 mr-1"
-                style={{ width: "2rem", height: "2rem" }}
-              >
-                <img src={btnsSet} alt="Refresh" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-              </Button>
+                style={{ width: "2rem", height: "2rem", backgroundColor: "#f1f5f9", color: "#64748b" }}
+              />
             )}
             {showExport && (
               <Button

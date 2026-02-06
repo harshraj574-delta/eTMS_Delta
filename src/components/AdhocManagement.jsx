@@ -566,16 +566,20 @@ const AdhocManagement = () => {
       setLoading(false);
     }
   };
+  // Tab selection handler - useDeferredValue for responsive UI
+  const deferredAdhocFilter = React.useDeferredValue(adhocFilter);
+  const isStale = adhocFilter !== deferredAdhocFilter;
+
   const filteredAdhocData = useMemo(() => {
     let filtered = adhocData;
 
-    // 1. Apply Status/Card Filters
-    if (adhocFilter !== "total") {
+    // 1. Apply Status/Card Filters - Use DEFERRED value
+    if (deferredAdhocFilter !== "total") {
       filtered = filtered.filter((item) => {
-        if (adhocFilter === "myRequests") {
+        if (deferredAdhocFilter === "myRequests") {
           return item.Status && item.Status.toLowerCase() === "myrequest";
         }
-        return item.Status && item.Status.toLowerCase() === adhocFilter;
+        return item.Status && item.Status.toLowerCase() === deferredAdhocFilter;
       });
     }
 
@@ -601,7 +605,11 @@ const AdhocManagement = () => {
     }
 
     return filtered;
-  }, [adhocData, globalFilter, adhocFilter, filters]);
+  }, [adhocData, globalFilter, deferredAdhocFilter, filters]);
+
+  const handleTabChange = (newTab) => {
+    setAdhocFilter(newTab);
+  };
   return (
     <>
       <style>
@@ -678,79 +686,34 @@ const AdhocManagement = () => {
             ></h6>
           </div>
         </div>
-        {/* <div className="row mt-3">
-          <div className="col">
-            <div className="cardNew p-4 bg-secondary text-white">
-              <h3>{totalAdhocs}</h3>
-              <span class="subtitle_sm text-white">Total Adhocs</span>
-            </div>
-          </div>
-          <div className="col">
-            <div className="cardNew p-4">
-              <h3>
-                <strong>{myRequests}</strong>
-              </h3>
-              <span class="subtitle_sm">My Requests</span>
-            </div>
-          </div>
-          <div className="col">
-            <div className="cardNew p-4">
-              <h3 className="text-warning">{pending}</h3>
-              <span class="subtitle_sm">Pendings</span>
-            </div>
-          </div>
-          <div className="col">
-            <div className="cardNew p-4">
-              <h3 className="text-success">{approved}</h3>
-              <span class="subtitle_sm">Approved</span>
-            </div>
-          </div>
-          <div className="col">
-            <div className="cardNew p-4">
-              <h3 className="text-danger">{rejected}</h3>
-              <span class="subtitle_sm">Rejected</span>
-            </div>
-          </div>
-          <div className="col">
-            <div className="cardNew p-4">
-              <h3 className="text-danger">{cancelled}</h3>
-              <span class="subtitle_sm">Cancelled</span>
-            </div>
-          </div>
-        </div> */}
-        <div className="row mt-3">
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
+        {/* KPI Cards */}
+        <div className="row g-3 h-100">
+          <div className="col-6 col-md-4 col-xl">
+            <div className="cardNew p-4 bg-white h-100">
               <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark"><AnimatedCounter value={totalAdhocs} /></h3>
-              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Total Adhocs</span>
+              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Total Adhoc</span>
             </div>
           </div>
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-dark"><AnimatedCounter value={myRequests} /></h3>
+          <div className="col-6 col-md-4 col-xl">
+            <div className="cardNew p-4 bg-white h-100">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-warning"><AnimatedCounter value={myRequests} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>My Requests</span>
             </div>
           </div>
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-warning"><AnimatedCounter value={pending} /></h3>
-              <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Pendings</span>
-            </div>
-          </div>
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-success"><AnimatedCounter value={approved} /></h3>
+          <div className="col-6 col-md-4 col-xl">
+            <div className="cardNew p-4 bg-white h-100">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-secondary"><AnimatedCounter value={approved} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Approved</span>
             </div>
           </div>
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-danger"><AnimatedCounter value={rejected} /></h3>
+          <div className="col-6 col-md-4 col-xl">
+            <div className="cardNew p-4 bg-white h-100">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-success"><AnimatedCounter value={rejected} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Rejected</span>
             </div>
           </div>
-          <div className="col">
-            <div className="cardNew p-4 bg-white">
+          <div className="col-6 col-md-4 col-xl">
+            <div className="cardNew p-4 bg-white h-100">
               <h3 style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '31px', lineHeight: '40px', letterSpacing: '-0.03em' }} className="text-danger"><AnimatedCounter value={cancelled} /></h3>
               <span style={{ fontFamily: 'Plus Jakarta Sans', fontWeight: 700, fontSize: '16px', lineHeight: '28px', letterSpacing: '-0.02em', verticalAlign: 'middle', color: '#545557' }}>Cancelled</span>
             </div>
@@ -762,7 +725,7 @@ const AdhocManagement = () => {
                 <TabSwitcher
                     tabs={tabs}
                     activeTab={adhocFilter}
-                    onTabChange={setAdhocFilter}
+                    onTabChange={handleTabChange}
                 />
             </div>
         </div>
@@ -770,7 +733,13 @@ const AdhocManagement = () => {
         <div className="row">
           {/* Table Start */}
           <div className="col-12">
-            <div className="card_tb p-3 mt-3">
+            <div 
+              className="card_tb p-3 mt-3"
+              style={{ 
+                opacity: isStale ? 0.5 : 1, 
+                transition: 'opacity 0.2s ease' 
+              }}
+            >
               <TableToolbar
                 search={globalFilter}
                 onSearch={(e) => setGlobalFilter(e.target.value)}

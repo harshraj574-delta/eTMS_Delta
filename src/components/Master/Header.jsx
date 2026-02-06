@@ -16,15 +16,20 @@ const Header = ({
   showNewButton = false, 
   onNewButtonClick 
 }) => {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    // Default to collapsed on mobile (< 768px)
+    return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+  });
   const [profileData, setProfileData] = useState(null);
   const navigate = useNavigate();
   const headerRef = useRef(null);
   const profileMenuRef = useRef(null);
   const logout = useSessionStore((state) => state.logout);
 
+  const prevWidth = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
+
   useEffect(() => {
-    const updateHeaderHeight = () => {
+    const handleResize = () => {
       if (headerRef.current) {
         const height = headerRef.current.offsetHeight;
         document.documentElement.style.setProperty(
@@ -32,12 +37,19 @@ const Header = ({
           `${height}px`
         );
       }
+      
+      const currWidth = window.innerWidth;
+      // Auto-collapse if transitioning from Desktop (>=768) to Mobile (<768)
+      if (currWidth < 768 && prevWidth.current >= 768) {
+        setIsSidebarCollapsed(true);
+      }
+      prevWidth.current = currWidth;
     };
 
-    updateHeaderHeight();
-    window.addEventListener('resize', updateHeaderHeight);
+    handleResize(); // Initial call
+    window.addEventListener('resize', handleResize);
 
-    return () => window.removeEventListener('resize', updateHeaderHeight);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {

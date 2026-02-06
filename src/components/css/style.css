@@ -22,20 +22,75 @@
     --primary-hover: #2f1bd5;
 }
 
+/* Global Scrollbar Handling - Premium "Senior Dev" Style */
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Chrome, Edge, Safari */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
-    margin-right: 4px;
 }
 
-::-webkit-scrollbar-track-piece {
-    background-color: var(--grey-2);
+::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-::-webkit-scrollbar-thumb:vertical {
+::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    /* Slate-300 equivalent for subtle visibility */
+    border-radius: 20px;
+    border: 2px solid transparent;
+    /* Creates padding effect if background-clip is used, or just rounds it nicely */
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+    /* Slate-400 equivalent */
+}
+
+/* Hide/Reset for Mobile to preserve native touch experience */
+@media (max-width: 768px) {
+    * {
+        scrollbar-width: auto;
+        /* Fallback to native on mobile */
+    }
+
+    ::-webkit-scrollbar {
+        width: 4px;
+        /* Thinner if visible */
+        height: 4px;
+    }
+}
+
+/* Sidebar Specific Scrollbar Override - Ensure it matches global style */
+.sidebar-menu-wrapper {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.sidebar-menu-wrapper::-webkit-scrollbar {
+    width: 6px;
     height: 6px;
-    background-color: var(--grey-3);
-    border-radius: 4px;
+}
+
+.sidebar-menu-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-menu-wrapper::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 20px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.sidebar-menu-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
 }
 
 body {

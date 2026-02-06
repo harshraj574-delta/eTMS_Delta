@@ -67,13 +67,13 @@ const Dashboard = () => {
   const [visibleCalendar, setVisibleCalendar] = useState(false);
   const calendarRef = useRef(null);
   const filterRef = useRef(null);
-  const sentinelRef = useRef(null); // Sentinel element for IntersectionObserver
+  const sentinelRef = useRef(null);
 
   const [selectedTripType, setSelectedTripType] = useState("");
   const [type, setType] = useState(1);
   const [checked, setChecked] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isSticky, setIsSticky] = useState(false); // Renamed from 'scrolled'
+  const [isSticky, setIsSticky] = useState(false);
 
   const [isInitializing, setIsInitializing] = useState(true);
   const [isLoadingFilters, setIsLoadingFilters] = useState(false);
@@ -106,6 +106,11 @@ const Dashboard = () => {
     { label: "Routing Insights" },
     { label: "Vendor Performance" },
     { label: "Facility Insights" },
+  ];
+
+  const mapTypeOptions = [
+    { label: "Employees", value: 1 },
+    { label: "Routes", value: 2 },
   ];
 
   const formatDateLocal = useCallback((date) => {
@@ -330,8 +335,8 @@ const Dashboard = () => {
     }
   }, []);
 
-  const handleChange = useCallback((e) => {
-    setType(e.target.value === "2" ? 2 : 1);
+  const handleMapTypeChange = useCallback((e) => {
+    setType(e.value);
   }, []);
 
   const handleVendorChange = useCallback((e) => {
@@ -399,19 +404,16 @@ const Dashboard = () => {
     setChecked(type === 2);
   }, [type]);
 
-  // ========== IMPROVED STICKY DETECTION WITH INTERSECTION OBSERVER ==========
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // When sentinel is NOT intersecting (scrolled past), filter becomes sticky
         setIsSticky(!entry.isIntersecting);
       },
       {
-        // Trigger when sentinel crosses the top of viewport (accounting for header)
-        rootMargin: "-60px 0px 0px 0px", // Negative top margin = header height
+        rootMargin: "-60px 0px 0px 0px",
         threshold: 0,
       }
     );
@@ -584,7 +586,7 @@ const Dashboard = () => {
   --radius-lg: 14px;
   --radius-xl: 18px;
   
-  /* Transitions - SMOOTH */
+  /* Transitions */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-fast: 150ms;
@@ -596,15 +598,15 @@ const Dashboard = () => {
 .dashboard-container {
   background: linear-gradient(180deg, var(--slate-50) 0%, var(--slate-100) 100%);
   min-height: 100vh;
-  overflow: visible !important; /* Ensure parents don't break sticky */
+  overflow: visible !important;
 }
 
 .middle {
   padding: calc(var(--header-height) + var(--space-lg)) var(--space-lg) var(--space-xl) !important;
-  overflow: visible !important; /* Ensure parents don't break sticky */
+  overflow: visible !important;
 }
 
-/* ===== SENTINEL ELEMENT FOR INTERSECTION OBSERVER ===== */
+/* ===== SENTINEL ELEMENT ===== */
 .sticky-sentinel {
   position: absolute;
   top: 0;
@@ -615,18 +617,11 @@ const Dashboard = () => {
   visibility: hidden;
 }
 
-/* ===== STICKY FILTER WRAPPER ===== */
-.filter-wrapper {
-  position: relative;
-}
-
-/* ===== FILTER SECTION - CSS STICKY (SMOOTH & PERFORMANT) ===== */
+/* ===== FILTER SECTION ===== */
 .filter-section {
   position: sticky;
   top: var(--header-height);
   z-index: 100;
-  
-  /* Visual Styling */
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -634,25 +629,16 @@ const Dashboard = () => {
   padding: var(--space-md) var(--space-lg);
   margin-bottom: var(--space-lg);
   border: 1px solid rgba(226, 232, 240, 0.6);
-  
-  /* Default shadow */
   box-shadow: var(--shadow-sm);
-  
-  /* SMOOTH TRANSITIONS for all visual changes */
   transition: 
     box-shadow var(--duration-slow) var(--ease-out),
     background var(--duration-slow) var(--ease-out),
     border-radius var(--duration-slow) var(--ease-out),
     padding var(--duration-base) var(--ease-out),
-    border-color var(--duration-base) var(--ease-out),
-    transform var(--duration-base) var(--ease-out);
-  
-  /* GPU acceleration for smooth animations */
+    border-color var(--duration-base) var(--ease-out);
   will-change: box-shadow, background, border-radius;
-  /* transform: translateZ(0); REMOVED to avoid sticky issues */
 }
 
-/* When sticky is active (detected by IntersectionObserver) */
 .filter-section.is-sticky {
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(24px);
@@ -664,7 +650,6 @@ const Dashboard = () => {
   padding: var(--space-sm) var(--space-lg);
 }
 
-/* Subtle scale effect when becoming sticky */
 .filter-section.is-sticky::before {
   content: '';
   position: absolute;
@@ -690,7 +675,7 @@ const Dashboard = () => {
   display: flex;
   align-items: center;
   gap: var(--space-lg);
-  flex-wrap: nowrap; /* Reverted to nowrap */
+  flex-wrap: nowrap;
   transition: gap var(--duration-base) var(--ease-out);
 }
 
@@ -703,19 +688,19 @@ const Dashboard = () => {
 }
 
 .filter-dropdowns-section {
-  flex: 1; /* Allow shrinking */
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-sm); /* Reduced gap */
-  min-width: 0; /* Allow shrinking below content size if needed */
+  gap: var(--space-sm);
+  min-width: 0;
 }
 
 .filter-item {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto; /* Allow shrinking */
-  min-width: 80px; /* Reduced min-width */
+  flex: 0 1 auto;
+  min-width: 80px;
   max-width: 160px;
   transition: all var(--duration-base) var(--ease-out);
 }
@@ -723,8 +708,8 @@ const Dashboard = () => {
 .filter-item-date {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto; /* Allow shrinking */
-  min-width: 110px; /* Reduced min-width */
+  flex: 0 1 auto;
+  min-width: 110px;
   position: relative;
   z-index: 101;
 }
@@ -740,13 +725,12 @@ const Dashboard = () => {
   transform-origin: left center;
 }
 
-/* Compact labels when sticky */
 .filter-section.is-sticky .filter-label {
   font-size: 0.6rem;
   margin-bottom: 2px;
 }
 
-/* ===== ENTERPRISE TAB MENU ===== */
+/* ===== TAB MENU ===== */
 .p-tabmenu {
   overflow: visible !important;
 }
@@ -797,7 +781,7 @@ const Dashboard = () => {
   box-shadow: var(--shadow-sm) !important;
 }
 
-/* ===== ENTERPRISE DROPDOWNS ===== */
+/* ===== DROPDOWNS ===== */
 .p-dropdown {
   width: 100% !important;
   height: 36px !important;
@@ -1061,7 +1045,6 @@ const Dashboard = () => {
   border: 1px solid var(--slate-200);
   transition: all var(--duration-base) var(--ease-out);
   overflow: hidden;
-  padding: var(--space-lg);
 }
 
 .cardx:hover {
@@ -1069,13 +1052,88 @@ const Dashboard = () => {
   border-color: var(--slate-300);
 }
 
+/* Map Card - Compact Header */
+.map-card {
+  position: relative;
+}
+
+.map-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--slate-100);
+  background: white;
+  flex-shrink: 0;
+  min-height: 48px;
+}
+
+.map-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-card-title h6 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--slate-800);
+  letter-spacing: -0.01em;
+}
+
+.map-card-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-type-selector {
+  position: relative;
+}
+
+.map-type-selector .p-dropdown {
+  min-width: 120px !important;
+  height: 32px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--slate-200) !important;
+  background: var(--slate-50) !important;
+}
+
+.map-type-selector .p-dropdown:hover {
+  border-color: var(--primary-400) !important;
+  background: white !important;
+}
+
+.map-type-selector .p-dropdown.p-focus {
+  border-color: var(--primary-500) !important;
+  box-shadow: 0 0 0 2px var(--primary-100) !important;
+}
+
+.map-type-selector .p-dropdown .p-dropdown-label {
+  padding: 6px 10px !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  color: var(--slate-700) !important;
+}
+
+.map-type-selector .p-dropdown .p-dropdown-trigger {
+  width: 24px !important;
+}
+
+.map-container-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* Generic Card Header */
 .cardx-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  padding-bottom: var(--space-md);
-  margin-bottom: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--slate-100);
   flex-shrink: 0;
 }
@@ -1088,6 +1146,14 @@ const Dashboard = () => {
   color: var(--slate-800);
   letter-spacing: -0.01em;
   line-height: 1.4;
+}
+
+.cardx-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
 }
 
 .cardx hr {
@@ -1117,9 +1183,9 @@ const Dashboard = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-md);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   border: 1px solid var(--slate-200);
   color: var(--slate-500);
   background: white;
@@ -1129,36 +1195,17 @@ const Dashboard = () => {
 
 .icon-btn:hover {
   background: var(--slate-50);
-  border-color: var(--slate-300);
+  border-color: var(--primary-300);
   color: var(--primary-600);
 }
 
 .icon-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
-/* Form Select */
-.form-select-map {
-  border: 1px solid var(--slate-200);
-  border-radius: var(--radius-md);
-  padding: 0.375rem 2rem 0.375rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  background: white;
-  color: var(--slate-700);
-  transition: all var(--duration-fast);
-  cursor: pointer;
-  height: 34px;
-}
-
-.form-select-map:hover {
-  border-color: var(--slate-300);
-}
-
-.form-select-map:focus {
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px var(--primary-100);
-  outline: none;
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ===== GRID SYSTEM ===== */
@@ -1185,12 +1232,6 @@ const Dashboard = () => {
 .card-xl { min-height: var(--card-height-xl); }
 
 .stats-section { margin-bottom: var(--space-lg); }
-
-.map-card { position: relative; }
-.map-card .chart-container {
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1399px) {
@@ -1258,7 +1299,6 @@ const Dashboard = () => {
   }
   
   .cardx {
-    padding: var(--space-md);
     border-radius: var(--radius-lg);
   }
   
@@ -1296,6 +1336,20 @@ const Dashboard = () => {
     justify-content: center;
     padding: 0.5rem 0.5rem !important;
     font-size: 0.75rem !important;
+  }
+  
+  .map-card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .map-card-title {
+    flex: 1 1 100%;
+  }
+  
+  .map-card-controls {
+    flex: 1 1 100%;
+    justify-content: space-between;
   }
 }
 
@@ -1335,171 +1389,169 @@ const Dashboard = () => {
         <Header pageTitle="Dashboard" />
         <Sidebar />
         <div className="middle">
-          {/* Filter Wrapper with Sentinel */}
-{/* Filter Wrapper removed to fix sticky behavior */}
-          {/* Sentinel element - triggers IntersectionObserver when scrolled past */}
+          {/* Sentinel element */}
           <div ref={sentinelRef} className="sticky-sentinel" />
 
-            {/* Filter Section - Pure CSS sticky with conditional class */}
-            <div
-              ref={filterRef}
-              className={`filter-section ${isSticky ? "is-sticky" : ""}`}
-            >
-              <div className="filter-main-row">
-                <div className="filter-tabs-section">
-                  <TabMenu
-                    model={tabItems}
-                    activeIndex={activeIndex}
-                    onTabChange={handleTabChange}
+          {/* Filter Section */}
+          <div
+            ref={filterRef}
+            className={`filter-section ${isSticky ? "is-sticky" : ""}`}
+          >
+            <div className="filter-main-row">
+              <div className="filter-tabs-section">
+                <TabMenu
+                  model={tabItems}
+                  activeIndex={activeIndex}
+                  onTabChange={handleTabChange}
+                />
+              </div>
+
+              <div className="filter-dropdowns-section">
+                <div className="filter-item-date">
+                  <label className="filter-label">Date Range</label>
+                  <div
+                    className="custom-select"
+                    onClick={handleCalendarToggle}
+                  >
+                    <BiCalendar />
+                    <span className="custom-select-text">
+                      {periodOptions1.find(
+                        (opt) => opt.value === selectedPeriod1
+                      )?.label || "Custom"}
+                    </span>
+                    <BiChevronDown className="chevron" />
+                  </div>
+                  {visibleCalendar &&
+                    ReactDOM.createPortal(
+                      <div
+                        className="custom-calender custom-calender-portal"
+                        ref={calendarRef}
+                      >
+                        <div className="row">
+                          <div className="col-12 col-lg-3">
+                            <ul className="time-filter-list">
+                              {periodOptions1.map(({ label, value }) => (
+                                <li
+                                  key={value}
+                                  className={`time-filter-item ${
+                                    pendingPeriod1 === value ? "active" : ""
+                                  }`}
+                                  onClick={() => setPendingPeriod1(value)}
+                                >
+                                  {label}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="col-12 col-lg">
+                            <label className="filter-label mb-2">From</label>
+                            <input
+                              type="text"
+                              className="form-control mb-3 form-control-sm"
+                              value={
+                                pendingDateFrom?.toLocaleDateString("en-GB", {
+                                  day: "2-digit",
+                                  month: "long",
+                                  year: "numeric",
+                                }) || ""
+                              }
+                              readOnly
+                            />
+                            <Calendar
+                              onChange={handleDateFromChange}
+                              value={pendingDateFrom}
+                            />
+                          </div>
+                          <div className="col-12 col-lg">
+                            <label className="filter-label mb-2">To</label>
+                            <input
+                              type="text"
+                              className="form-control mb-3 form-control-sm"
+                              value={
+                                pendingDateTo?.toLocaleDateString("en-GB", {
+                                  day: "2-digit",
+                                  month: "long",
+                                  year: "numeric",
+                                }) || ""
+                              }
+                              readOnly
+                            />
+                            <Calendar
+                              onChange={handleDateToChange}
+                              value={pendingDateTo}
+                            />
+                          </div>
+                          <div className="col-12 mt-3 text-end">
+                            <button
+                              className="btn btn-secondary btn-sm me-2"
+                              onClick={handleCalendarClose}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={handleCalendarApply}
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        </div>
+                      </div>,
+                      document.body
+                    )}
+                </div>
+
+                <div className="filter-item">
+                  <label className="filter-label">City</label>
+                  <Dropdown
+                    value={selCity}
+                    optionLabel="name"
+                    optionValue="value"
+                    onChange={handleCityChange}
+                    options={cities}
+                    placeholder="Select City"
+                    showClear={false}
                   />
                 </div>
 
-                <div className="filter-dropdowns-section">
-                  <div className="filter-item-date">
-                    <label className="filter-label">Date Range</label>
-                    <div
-                      className="custom-select"
-                      onClick={handleCalendarToggle}
-                    >
-                      <BiCalendar />
-                      <span className="custom-select-text">
-                        {periodOptions1.find(
-                          (opt) => opt.value === selectedPeriod1
-                        )?.label || "Custom"}
-                      </span>
-                      <BiChevronDown className="chevron" />
-                    </div>
-                    {visibleCalendar &&
-                      ReactDOM.createPortal(
-                        <div
-                          className="custom-calender custom-calender-portal"
-                          ref={calendarRef}
-                        >
-                          <div className="row">
-                            <div className="col-12 col-lg-3">
-                              <ul className="time-filter-list">
-                                {periodOptions1.map(({ label, value }) => (
-                                  <li
-                                    key={value}
-                                    className={`time-filter-item ${
-                                      pendingPeriod1 === value ? "active" : ""
-                                    }`}
-                                    onClick={() => setPendingPeriod1(value)}
-                                  >
-                                    {label}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                            <div className="col-12 col-lg">
-                              <label className="filter-label mb-2">From</label>
-                              <input
-                                type="text"
-                                className="form-control mb-3 form-control-sm"
-                                value={
-                                  pendingDateFrom?.toLocaleDateString("en-GB", {
-                                    day: "2-digit",
-                                    month: "long",
-                                    year: "numeric",
-                                  }) || ""
-                                }
-                                readOnly
-                              />
-                              <Calendar
-                                onChange={handleDateFromChange}
-                                value={pendingDateFrom}
-                              />
-                            </div>
-                            <div className="col-12 col-lg">
-                              <label className="filter-label mb-2">To</label>
-                              <input
-                                type="text"
-                                className="form-control mb-3 form-control-sm"
-                                value={
-                                  pendingDateTo?.toLocaleDateString("en-GB", {
-                                    day: "2-digit",
-                                    month: "long",
-                                    year: "numeric",
-                                  }) || ""
-                                }
-                                readOnly
-                              />
-                              <Calendar
-                                onChange={handleDateToChange}
-                                value={pendingDateTo}
-                              />
-                            </div>
-                            <div className="col-12 mt-3 text-end">
-                              <button
-                                className="btn btn-secondary btn-sm me-2 d-inline-flex align-items-center justify-content-center"
-                                onClick={handleCalendarClose}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                className="btn btn-primary btn-sm d-inline-flex align-items-center justify-content-center"
-                                onClick={handleCalendarApply}
-                              >
-                                Apply
-                              </button>
-                            </div>
-                          </div>
-                        </div>,
-                        document.body
-                      )}
-                  </div>
+                <div className="filter-item">
+                  <label className="filter-label">Facility</label>
+                  <Dropdown
+                    value={selFacility}
+                    optionLabel="facilityName"
+                    optionValue="Id"
+                    onChange={handleFacilityChange}
+                    options={filteredFacilities}
+                    placeholder="Select Facility"
+                  />
+                </div>
 
-                  <div className="filter-item">
-                    <label className="filter-label">City</label>
-                    <Dropdown
-                      value={selCity}
-                      optionLabel="name"
-                      optionValue="value"
-                      onChange={handleCityChange}
-                      options={cities}
-                      placeholder="Select City"
-                      showClear={false}
-                    />
-                  </div>
+                <div className="filter-item">
+                  <label className="filter-label">Trip Type</label>
+                  <Dropdown
+                    value={selectedTripType}
+                    options={tripTypeOptions}
+                    onChange={handleTripTypeChange}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Type"
+                  />
+                </div>
 
-                  <div className="filter-item">
-                    <label className="filter-label">Facility</label>
-                    <Dropdown
-                      value={selFacility}
-                      optionLabel="facilityName"
-                      optionValue="Id"
-                      onChange={handleFacilityChange}
-                      options={filteredFacilities}
-                      placeholder="Select Facility"
-                    />
-                  </div>
-
-                  <div className="filter-item">
-                    <label className="filter-label">Trip Type</label>
-                    <Dropdown
-                      value={selectedTripType}
-                      options={tripTypeOptions}
-                      onChange={handleTripTypeChange}
-                      optionLabel="label"
-                      optionValue="value"
-                      placeholder="Select Type"
-                    />
-                  </div>
-
-                  <div className="filter-item">
-                    <label className="filter-label">Vendor</label>
-                    <Dropdown
-                      value={selVendor}
-                      onChange={handleVendorChange}
-                      options={venders}
-                      optionLabel="vendorName"
-                      placeholder="Select Vendor"
-                      filter
-                    />
-                  </div>
-                  </div>
+                <div className="filter-item">
+                  <label className="filter-label">Vendor</label>
+                  <Dropdown
+                    value={selVendor}
+                    onChange={handleVendorChange}
+                    options={venders}
+                    optionLabel="vendorName"
+                    placeholder="Select Vendor"
+                    filter
+                  />
                 </div>
               </div>
+            </div>
+          </div>
 
           {/* Main Content */}
           <div className="content-area">
@@ -1516,32 +1568,36 @@ const Dashboard = () => {
 
                       <div className="chart-grid grid-55-45">
                         <div className="cardx map-card card-xl">
-                          <div className="cardx-header">
-                            <h6>{checked ? "Routes" : "Employees"} Density</h6>
-                            <div className="cardx-controls">
-                              <select
-                                className="form-select form-select-map"
-                                value={type}
-                                onChange={handleChange}
-                              >
-                                <option value="1">Employees</option>
-                                <option value="2">Routes</option>
-                              </select>
+                          <div className="map-card-header">
+                            <div className="map-card-title">
+                              <h6>{type === 2 ? "Routes" : "Employees"} Density</h6>
+                            </div>
+                            <div className="map-card-controls">
+                              <div className="map-type-selector">
+                                <Dropdown
+                                  value={type}
+                                  options={mapTypeOptions}
+                                  onChange={handleMapTypeChange}
+                                  optionLabel="label"
+                                  optionValue="value"
+                                />
+                              </div>
                               <Tooltip
                                 target="#expand-heatmap"
                                 content="Expand Map"
                                 position="top"
                               />
-                              <span
+                              <button
                                 id="expand-heatmap"
                                 className="icon-btn"
                                 onClick={handleDialogShow}
+                                aria-label="Expand map to fullscreen"
                               >
                                 <BiExpand />
-                              </span>
+                              </button>
                             </div>
                           </div>
-                          <div className="chart-container">
+                          <div className="map-container-wrapper">
                             <LeafletHeatMap filter={filter} type={type} />
                           </div>
                         </div>
@@ -1613,7 +1669,7 @@ const Dashboard = () => {
                         <div className="cardx-header">
                           <h6>Facility Location</h6>
                         </div>
-                        <div className="chart-container">
+                        <div className="chart-container" style={{ padding: 0 }}>
                           <iframe
                             title="Google Map"
                             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d28069.195720471515!2d77.01584120702411!3d28.42983216765682!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d190d4d1ab7f9%3A0x9edd43ec9fba1ce9!2sAccenture%20DDC7x!5e0!3m2!1sen!2sin!4v1748521289659!5m2!1sen!2sin"
@@ -1621,7 +1677,7 @@ const Dashboard = () => {
                             height="100%"
                             style={{
                               border: 0,
-                              borderRadius: "var(--radius-lg)",
+                              borderRadius: "0 0 var(--radius-xl) var(--radius-xl)",
                               minHeight: "400px",
                             }}
                             allowFullScreen
@@ -1644,17 +1700,20 @@ const Dashboard = () => {
       <EnterpriseDialog
         visible={dialogVisible}
         onHide={handleDialogHide}
-        title={`${checked ? "Routes" : "Employees"} Density Map`}
+        title={`${type === 2 ? "Routes" : "Employees"} Density Map`}
+        headerExtra={
+          <div className="map-type-selector">
+            <Dropdown
+              value={type}
+              options={mapTypeOptions}
+              onChange={handleMapTypeChange}
+              optionLabel="label"
+              optionValue="value"
+            />
+          </div>
+        }
       >
-        <div
-          style={{
-            height: "100%",
-            borderRadius: "var(--radius-lg)",
-            overflow: "hidden",
-          }}
-        >
-          <LeafletHeatMap filter={filter} type={type} />
-        </div>
+        <LeafletHeatMap filter={filter} type={type} isFullscreen={true} />
       </EnterpriseDialog>
     </ErrorBoundary>
   );

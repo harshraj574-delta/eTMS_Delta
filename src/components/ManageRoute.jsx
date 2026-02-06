@@ -945,6 +945,7 @@ const ManageRoute = () => {
   const [sortField, setSortField] = useState("");
   const [sortOrder, setSortOrder] = useState(1);
   const [expandedRows, setExpandedRows] = useState(null);
+  const [isAllExpanded, setIsAllExpanded] = useState(false); // New state for expand all toggle
   const [facilities, setFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [selectedTripType, setSelectedTripType] = useState("P");
@@ -1882,6 +1883,21 @@ const ManageRoute = () => {
     return `${formattedHours}:${formattedMinutes}`;
   }, []);
 
+  // Handle Expand/Collapse All
+  const handleExpandCollapseAll = useCallback(() => {
+    if (isAllExpanded) {
+      setExpandedRows(null);
+      setIsAllExpanded(false);
+    } else {
+      const _expandedRows = {};
+      if (memoizedTableData) {
+        memoizedTableData.forEach((r) => (_expandedRows[r.RouteID] = true));
+      }
+      setExpandedRows(_expandedRows);
+      setIsAllExpanded(true);
+    }
+  }, [isAllExpanded, memoizedTableData]);
+
   // [MODIFIED] rowExpansionTemplate now uses a DIV/flexbox layout
   const rowExpansionTemplate = useCallback(
     (rowData) => {
@@ -2115,8 +2131,6 @@ const ManageRoute = () => {
                 in this route
               </div>
             </div>
-
-            <Tooltip target="[data-pr-tooltip]" />
           </div>
         </div>
       );
@@ -4066,7 +4080,16 @@ const ManageRoute = () => {
                   <>
 
                 <div className="row">
-                  <div className="col-12 text-end d-flex justify-content-end">
+                  <div className="col-12 text-end d-flex justify-content-end align-items-center">
+                    <a
+                        href="#!"
+                        className="me-3 mt-3 d-block text-dark mb-1"
+                        onClick={handleExpandCollapseAll}
+                        data-pr-tooltip={isAllExpanded ? "Collapse All" : "Expand All"}
+                        data-pr-position="left"
+                    >
+                         <i className={`pi ${isAllExpanded ? "pi-angle-double-up" : "pi-angle-double-down"}`} style={{ fontSize: "1.5rem" }}></i>
+                    </a>
                     <a
                       href="#!"
                       className="me-3 mt-3 d-block text-dark mb-1"
