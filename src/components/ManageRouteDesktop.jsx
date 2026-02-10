@@ -1215,7 +1215,8 @@ const ManageRouteDesktop = ({
   // const [isLoading, setIsLoading] = useState(false); // Removed, comes from props
   const [showGenerateRouteDialog, setShowGenerateRouteDialog] = useState(false);
   // Initialize based on routes data (in case switching back from mobile view)
-  const [showButtons, setShowButtons] = useState(routes?.length > 0);
+  // Derived state for buttons visibility
+  const showButtons = routes?.length > 0;
   const [showAutoVendorAllocationDialog, setShowAutoVendorAllocationDialog] = useState(false);
   const [vendorAllocated, setVendorAllocated] = useState(false);
   // vendorSummary state removed (using prop `vendorSummary`)
@@ -1301,6 +1302,13 @@ const ManageRouteDesktop = ({
       window.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  // Sync state with parent logic
+  useEffect(() => {
+    if (logic?.state?.ui?.showGenerateDialog !== undefined) {
+      setShowGenerateRouteDialog(logic.state.ui.showGenerateDialog);
+    }
+  }, [logic?.state?.ui?.showGenerateDialog]);
 
   // Date state
   // ShiftDate state removed (mapped to props)
@@ -1777,8 +1785,6 @@ const ManageRouteDesktop = ({
       // Clear all cached route details when performing a new search
       queryClient.removeQueries({ queryKey: ['manageRoute', 'routeDetails'] });
 
-      setShowButtons(true); // Assuming we want to show buttons if search is active
-      
       // Trigger Search via Container
       onSearch();
       
@@ -2490,7 +2496,7 @@ const ManageRouteDesktop = ({
         toastService.success(
           "Route finalization  completed successfully."
         );
-        await handleSubmit();
+        await onSearch();
       } else {
         toastService.warn("No route data available to finalize.");
       }
@@ -2554,7 +2560,7 @@ const ManageRouteDesktop = ({
         "Routes recalculated successfully! Now finalizing..."
       );
 
-      await handleSubmit();
+      await onSearch();
       await proceedWithFinalization();
     } catch (error) {
       console.error("Error during recalculation before finalize:", error);
@@ -2619,7 +2625,7 @@ const ManageRouteDesktop = ({
       const response = await ManageRouteService.AutoVendorAllocationNew(params);
       toastService.success("Vendor allocation process completed successfully.");
       setVendorAllocated(true);
-      await handleSubmit();
+      await onSearch();
     } catch (error) {
       console.error("Error during auto vendor allocation:", error);
       toastService.error("Vendor allocation process failed to complete.");
@@ -3036,7 +3042,13 @@ const ManageRouteDesktop = ({
 
   const handleGenerateRoute = async () => {
     try {
-      setShowGenerateRouteDialog(false);
+      // Sync close state
+      if (logic && logic.actions && logic.actions.setUiState) {
+        logic.actions.setUiState({ showGenerateDialog: false });
+      } else {
+        setShowGenerateRouteDialog(false);
+      }
+      
       setShowProgressDialog(true);
       setProgressStatus({
         step: 1,
@@ -3090,6 +3102,7 @@ const ManageRouteDesktop = ({
         updatedBy: 0,
         IsNewAdded: 0,
       });
+
       setProgressStatus((prev) => ({
         ...prev,
         step: 4,
@@ -3097,74 +3110,21 @@ const ManageRouteDesktop = ({
         progress: 100,
       }));
 
-      const response = await ManageRouteService.GetRoutesByOrder({
-        sDate: shiftDate,
-        eDate: shiftDate,
-        FacilityID: selectedFacility,
-        TripType: selectedTripType,
-        Shifttimes: selectedShifts,
-        OrderBy: "Routeno",
-        Direction: "ASC",
-        Routeid: "",
-        occ_seater: -2,
-      });
-
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      setTableData(parsedResponse || []);
-      setHasSearched(true);
-
-      const params = {
-        sdate: shiftDate,
-        edate: shiftDate,
-        triptype: selectedTripType,
-        facilityid: selectedFacility,
-        shifttime: selectedShifts,
-      };
-      let vendorData = await ManageRouteService.getvehtypeCountVendorwise(
-        params
-      );
-      if (typeof vendorData === "string") {
-        try {
-          vendorData = JSON.parse(vendorData);
-        } catch {
-          vendorData = [];
-        }
-      }
-      if (!Array.isArray(vendorData)) {
-        vendorData = [];
-      }
-      setVendorSummary(vendorData);
-
-      const statsResponse = await ManageRouteService.GetRoutesStatistics({
-        sdate: shiftDate,
-        edate: shiftDate,
-        triptype: selectedTripType,
-        facilityid: selectedFacility,
-        shifttime: selectedShifts,
-      });
-
-      const parsedStatsResponse =
-        typeof statsResponse === "string"
-          ? JSON.parse(statsResponse)
-          : statsResponse;
-      setStatsDetails(parsedStatsResponse);
-      if (parsedStatsResponse && parsedStatsResponse.length > 0) {
-        setRouteStats({
-          TotalEmps: parsedStatsResponse[0].TotalEmps || 0,
-          TotalRoutes: parsedStatsResponse[0].TotalRoutes || 0,
-          AvgOccupancy: parsedStatsResponse[0].AvgOccupancy || 0,
-        });
-      } else {
-        setRouteStats({ TotalEmps: 0, TotalRoutes: 0, AvgOccupancy: 0 });
-      }
+      // REFACTOR: Instead of manually fetching and setting state (which fails), 
+      // call onSearch to trigger re-validation and data refetch via the hook.
+      await onSearch();
 
       setProgressStatus((prev) => ({
         ...prev,
         message: "Routes generated successfully!",
         progress: 100,
       }));
-      setShowButtons(true);
+      setProgressStatus((prev) => ({
+        ...prev,
+        message: "Routes generated successfully!",
+        progress: 100,
+      }));
+      // showButtons is now derived, so no need to set it manually
       setTimeout(() => {
         setShowProgressDialog(false);
         toastService.success(
@@ -4169,7 +4129,6 @@ const ManageRouteDesktop = ({
         />
 
         <OffcanvasRouteDetails
-          key={offcanvasRefreshKey}
           show={showOffcanvas}
           onClose={() => setShowOffcanvas(false)}
           routeId={selectedRouteId}
@@ -4215,13 +4174,25 @@ const ManageRouteDesktop = ({
 
         <PrimeDialog
           visible={showGenerateRouteDialog}
-          onHide={() => setShowGenerateRouteDialog(false)}
+          onHide={() => {
+            if (logic && logic.actions && logic.actions.setUiState) {
+              logic.actions.setUiState({ showGenerateDialog: false });
+            } else {
+              setShowGenerateRouteDialog(false);
+            }
+          }}
           header="Are you sure?"
           footer={
             <div className="d-flex gap-2 justify-content-end">
               <Button
                 label="No"
-                onClick={() => setShowGenerateRouteDialog(false)}
+                onClick={() => {
+                  if (logic && logic.actions && logic.actions.setUiState) {
+                    logic.actions.setUiState({ showGenerateDialog: false });
+                  } else {
+                    setShowGenerateRouteDialog(false);
+                  }
+                }}
                 className="btn btn-outline-dark"
               />
               <Button

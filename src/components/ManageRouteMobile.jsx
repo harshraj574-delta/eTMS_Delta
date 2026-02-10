@@ -71,6 +71,24 @@ const mobileStyles = `
     padding: 0 6px;
     font-size: 0.75rem;
 }
+.custom-calendar-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.custom-calendar-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    z-index: 2;
+    pointer-events: none;
+}
+.custom-calendar-input .p-inputtext {
+    padding-left: 36px !important;
+}
 `;
 
 // Inject styles once on module load
@@ -202,7 +220,7 @@ const FilterSidebar = React.memo(({
                             <button
                                 key={t.value}
                                 type="button"
-                                className={`btn btn-sm flex-grow-1 ${
+                                className={`btn btn-sm flex-grow-1 d-flex align-items-center justify-content-center ${
                                     filters.tripType === t.value 
                                         ? 'btn-primary' 
                                         : 'btn-outline-secondary'

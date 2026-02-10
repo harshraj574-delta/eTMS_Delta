@@ -334,8 +334,8 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
     };
   }, [show, routeId, queryParams]);
 
-  if (!show) return null;
-
+  // Removed early return to allow animation
+  
   let mapCenter = [22.5937, 78.9629];
   if (route && route.stops && route.stops.length) {
     const lat = parseFloat(route.stops[0].locationY);
@@ -360,11 +360,12 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
         zIndex: 2000,
         boxShadow: "-2px 0 16px rgba(0,0,0,0.15)",
         padding: 0,
-        transition: "transform 0.3s",
+        transition: "transform 0.3s ease-in-out",
         transform: show ? "translateX(0)" : "translateX(100%)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "row",
+        pointerEvents: show ? "auto" : "none",
       }}
       className="blur_shadow"
     >
