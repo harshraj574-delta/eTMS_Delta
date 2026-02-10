@@ -8,7 +8,7 @@ import { InputText } from "primereact/inputtext";
 import { ToastContainer } from "react-toastify";
 import PlaceIcon from "@mui/icons-material/Place";
 
-import MapGeocodingService from "../services/compliance/mapgeocodingService";
+import MapGeocodingService from "../services/compliance/MapGeocodingService";
 import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
 

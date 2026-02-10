@@ -67,7 +67,7 @@ class ManageRouteService {
     }
   }
 
- 
+
   async GetRoutesByOrder(params) {
     try {
       const response = await api.post("/GetRoutesByOrder", {
@@ -119,11 +119,11 @@ class ManageRouteService {
   async GetRoutesStatistics(params) {
     try {
       const response = await api.post("/GetRoutesStatistics", {
-        sdate: params.sdate,
-        edate: params.edate,
-        triptype: params.triptype,
-        facilityid: params.facilityid,
-        shifttime: params.shifttime,
+        sdate: params.sdate || params.sDate,
+        edate: params.edate || params.eDate,
+        triptype: params.triptype || params.TripType,
+        facilityid: params.facilityid || params.FacilityID,
+        shifttime: params.shifttime || params.Shifttimes,
       });
       return response.data;
     } catch (error) {
@@ -244,11 +244,11 @@ class ManageRouteService {
   async getvehtypeCountVendorwise(params) {
     try {
       const response = await api.post("/getvehtypeCountVendorwise", {
-        sdate: params.sdate,
-        edate: params.edate,
-        triptype: params.triptype,
-        facilityid: params.facilityid,
-        shifttime: params.shifttime,
+        sdate: params.sdate || params.sDate,
+        edate: params.edate || params.eDate,
+        triptype: params.triptype || params.TripType,
+        facilityid: params.facilityid || params.FacilityID,
+        shifttime: params.shifttime || params.Shifttimes,
       });
       return response.data;
     } catch (error) {
