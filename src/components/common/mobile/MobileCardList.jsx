@@ -61,7 +61,7 @@ const MobileCardList = ({
     }
 
     return (
-        <div className="mobile-card-list pb-5">
+        <div className="mobile-card-list pb-3">
             {/* Optional Title / Header Row */}
             {(title || onRefresh) && (
                 <div className="d-flex justify-content-between align-items-center px-3 py-2 mb-2">
@@ -105,7 +105,7 @@ const MobileCardList = ({
             )}
             
             {/* Bottom spacer for FABs or bottom nav */}
-            <div style={{ height: '80px' }}></div>
+            <div style={{ height: '20px' }}></div>
 
             <style>{`
                 .fade-in-up {

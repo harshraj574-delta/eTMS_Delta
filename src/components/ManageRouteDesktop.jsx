@@ -1348,6 +1348,7 @@ const ManageRouteDesktop = ({
   const [selectedFile, setSelectedFile] = useState(null);
   const [offcanvasRefreshKey, setOffcanvasRefreshKey] = useState(0);
   const [showRecalcBeforeFinalizeDialog, setShowRecalcBeforeFinalizeDialog] = useState(false);
+  const [showFinalizeConfirmDialog, setShowFinalizeConfirmDialog] = useState(false);
   const [isRecalcBeforeFinalize, setIsRecalcBeforeFinalize] = useState(false);
   // Memoized values
   const queryParams = useMemo(() => {
@@ -2495,7 +2496,7 @@ const ManageRouteDesktop = ({
       return;
     }
 
-    await proceedWithFinalization();
+    setShowFinalizeConfirmDialog(true);
   }, [checkIfRecalculationNeeded]);
 
   const proceedWithFinalization = useCallback(async () => {
@@ -4386,7 +4387,17 @@ const ManageRouteDesktop = ({
         <PrimeDialog
           visible={showRouteMergeDialog}
           onHide={cancelMergeOperation}
-          header="Confirm Route Merge"
+          header={
+            <div className="d-flex align-items-center">
+              <i
+                className="material-icons me-2"
+                style={{ color: "#2196F3", fontSize: "20px" }}
+              >
+                alt_route
+              </i>
+              <span style={{ fontSize: "16px", fontWeight: "600" }}>Confirm Route Merge</span>
+            </div>
+          }
           modal
           footer={
             <>
@@ -4399,118 +4410,25 @@ const ManageRouteDesktop = ({
                 label="Confirm Merge"
                 onClick={confirmMergeOperation}
                 disabled={isLoading}
-                className="btn btn-dark ms-3"
+                className="btn btn-primary ms-3"
               />
             </>
           }
-          style={{ width: "692px" }}
+          style={{ width: "450px" }}
           className="route-merge-dialog"
         >
           {pendingMergeOperation && (
-            <div className="p-0">
-              <div className="alert alert-warning mb-3">
-                <strong>Warning:</strong> This action cannot be undone!
-              </div>
-
-              <p className="mb-3">
-                You are about to merge{" "}
-                <strong>{pendingMergeOperation.sourceRoutes.length}</strong>{" "}
-                route(s) into Route{" "}
-                <strong className="text-primary">
-                  {pendingMergeOperation.targetRoute}
-                </strong>{" "}
-                <span className="badge bg-success ms-2">FIRST SELECTED</span>.
+            <div className="d-flex flex-column" style={{ fontSize: "14px" }}>
+              <p className="mb-2">
+                Are you sure you want to merge <strong>{pendingMergeOperation.sourceRoutes.length}</strong> route(s) into Route <strong className="text-primary">{pendingMergeOperation.targetRoute}</strong>?
               </p>
-
-              <div className="row">
-                <div className="col-6">
-                  <div className="card border-primary">
-                    <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                      <strong className="mb-0">
-                        Target Route (Preserved):
-                      </strong>
-                      <span
-                        className="badge bg-light text-primary"
-                        style={{ fontSize: "10px" }}
-                      >
-                        FIRST
-                      </span>
-                    </div>
-                    <div className="card-body bg-primary-subtle">
-                      <div className="d-flex align-items-center">
-                        <span className="badge bg-primary me-2">KEEP</span>
-                        <strong>
-                          Route {pendingMergeOperation.targetRoute}
-                        </strong>
-                      </div>
-                      <small className="d-block mt-2">
-                        <strong>First selected route</strong> - will receive all
-                        employees from other routes
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-6">
-                  <div className="card border-danger">
-                    <div className="card-header bg-danger text-white">
-                      <strong className="mb-0">
-                        Source Routes (To Be Deleted):
-                      </strong>
-                    </div>
-                    <div
-                      className="card-body bg-danger-subtle"
-                    >
-                      {pendingMergeOperation.sourceRoutes.map(
-                        (routeId, index) => (
-                          <div key={routeId} className="  rounded">
-                            <div className="">
-                              <div>
-                                <span className="badge bg-danger me-2">
-                                  DELETE
-                                </span>
-                                <strong>Route {routeId}</strong>
-                              </div>
-                              <small className="mt-2 d-block">
-                                {index + 2}
-                                {getOrdinalSuffix(index + 2)} selected
-                              </small>
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* <div className="mt-3 rounded">
-                <strong className="mb-3 d-block">Merge Process:</strong>
-                <ol className="m-0">
-                  <li>
-                    All employees from source routes will be moved to{" "}
-                    <strong>Route {pendingMergeOperation.targetRoute}</strong>.
-                  </li>
-                  <li className="py-2">
-                    Source routes (
-                    {pendingMergeOperation.sourceRoutes.join(", ")}) will be
-                    permanently deleted.
-                  </li>
-                  <li>
-                    Route {pendingMergeOperation.targetRoute} will be updated
-                    with the new employee list.
-                  </li>
-                </ol>
-              </div> */}
-
-              <div className="alert alert-light mt-3">
-                <small>
-                  <strong>Rule:</strong> The{" "}
-                  <span className="text-primary fw-bold">
-                    first selected route
-                  </span>{" "}
-                  becomes the target route that receives all employees.
-                </small>
+              <div className="bg-light p-3 rounded mb-0 mt-2">
+                <h6 className="fw-bold mb-2">Warning:</h6>
+                <ul className="mb-0 ps-3 text-muted" style={{ fontSize: "13px" }}>
+                  <li><strong>Route {pendingMergeOperation.targetRoute}</strong> will receive all employees.</li>
+                  <li>Source routes ({pendingMergeOperation.sourceRoutes.join(", ")}) will be deleted.</li>
+                  <li className="text-danger">This action cannot be undone.</li>
+                </ul>
               </div>
             </div>
           )}
@@ -5312,6 +5230,51 @@ const ManageRouteDesktop = ({
                 This process may take a few moments depending on the number of
                 routes.
               </small>
+            </p>
+          </div>
+        </PrimeDialog>
+
+        {/* Finalize Confirmation Dialog (No Recalculation Needed) */}
+        <PrimeDialog
+          visible={showFinalizeConfirmDialog}
+          onHide={() => setShowFinalizeConfirmDialog(false)}
+          header={
+            <div className="d-flex align-items-center">
+              <i
+                className="material-icons me-2"
+                style={{ color: "#2196F3", fontSize: "20px" }}
+              >
+                check_circle
+              </i>
+              <span style={{ fontSize: "16px", fontWeight: "600" }}>Confirm Finalization</span>
+            </div>
+          }
+          modal
+          footer={
+            <>
+              <Button
+                label="Cancel"
+                onClick={() => setShowFinalizeConfirmDialog(false)}
+                className="btn btn-outline-dark"
+                disabled={isFinalizing}
+              />
+              <Button
+                label={isFinalizing ? "Finalizing..." : "Finalize Routes"}
+                onClick={() => {
+                  setShowFinalizeConfirmDialog(false);
+                  proceedWithFinalization();
+                }}
+                className="btn btn-primary ms-3"
+                disabled={isFinalizing}
+              />
+            </>
+          }
+          style={{ width: "400px" }}
+        >
+          <div className="d-flex flex-column" style={{ fontSize: "14px" }}>
+            <p className="mb-2">Are you sure you want to finalize the current routes?</p>
+            <p className="text-muted mb-0" style={{ fontSize: "13px" }}>
+              Note: This will commit all current routes. Finalized routes are locked against further changes unless unlocked.
             </p>
           </div>
         </PrimeDialog>

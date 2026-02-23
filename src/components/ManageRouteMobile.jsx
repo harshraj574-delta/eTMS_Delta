@@ -5,6 +5,7 @@ import { useRouteDetailsQuery, manageRouteKeys } from '../hooks/compliance/useMa
 // PrimeReact Components
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
+import { Checkbox } from 'primereact/checkbox';
 import { Calendar } from 'primereact/calendar';
 import { Badge } from 'primereact/badge';
 import { Dialog } from 'primereact/dialog';
@@ -455,7 +456,10 @@ const RouteCard = React.memo(({
     isRecalculating,
 
     onEmployeeLongPress,
-    activeDragId
+    activeDragId,
+    isSelectMode,
+    isSelected,
+    onSelect
 }) => {
     const isFinalized = route.IsRouteGenerated === 1 || !!route.isRouteFinalized;
     // Drop target for the route
@@ -477,7 +481,7 @@ const RouteCard = React.memo(({
     return (
         <div 
             ref={setNodeRef}
-            className="bg-white rounded-3 overflow-hidden mb-3"
+            className="bg-white rounded-3 overflow-hidden mb-2"
             style={{ 
                 border: isOver ? '2px dashed #3b82f6' : '1px solid #e5e7eb',
                 boxShadow: isExpanded ? '0 8px 25px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.06)',
@@ -497,6 +501,22 @@ const RouteCard = React.memo(({
                 {/* Top Row: RouteID + Chevron */}
                 <div className="d-flex justify-content-between align-items-center mb-1">
                     <div className="d-flex align-items-center gap-2">
+                        {isSelectMode && (
+                            <div 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                }} 
+                                className="d-flex align-items-center me-2"
+                                style={{ zIndex: 10, position: 'relative' }}
+                            >
+                                <Checkbox 
+                                    checked={isSelected} 
+                                    onChange={(e) => {
+                                        onSelect(route.RouteID);
+                                    }} 
+                                />
+                            </div>
+                        )}
                         <span className="fw-bold" style={{ fontSize: '1rem', color: '#1e293b' }}>
                             {route.RouteID}
                         </span>
@@ -760,6 +780,8 @@ const ManageRouteMobile = ({
     const [routesToUnlock, setRoutesToUnlock] = useState(new Set());
     const [showUnlockConfirmDialog, setShowUnlockConfirmDialog] = useState(false);
     const [pendingUnlock, setPendingUnlock] = useState(null);
+    const [showRouteMergeDialog, setShowRouteMergeDialog] = useState(false);
+    const [pendingMergeOperation, setPendingMergeOperation] = useState(null);
     const [isRecalculating, setIsRecalculating] = useState(false);
     const [isAllocating, setIsAllocating] = useState(false);
     const [isFinalizing, setIsFinalizing] = useState(false);
@@ -811,6 +833,68 @@ const ManageRouteMobile = ({
         setRouteSelectionOrder([]);
         setIsRouteSelectMode(false);
     }, []);
+
+    const handleSelectRouteToMerge = useCallback((routeId) => {
+        setSelectedRoutes((prev) => {
+            const newSelection = new Set(prev);
+            if (newSelection.has(routeId)) {
+                newSelection.delete(routeId);
+                setRouteSelectionOrder((order) => order.filter((id) => id !== routeId));
+            } else {
+                newSelection.add(routeId);
+                setRouteSelectionOrder((order) => [...order, routeId]);
+            }
+            return newSelection;
+        });
+    }, []);
+
+    const handleMergeRoutes = useCallback(() => {
+        if (selectedRoutes.size < 2) {
+            toastService.warn("Please select at least 2 routes to merge");
+            return;
+        }
+
+        const routeArray = Array.from(routeSelectionOrder);
+        const targetRoute = routeArray[0];
+        const sourceRoutes = routeArray.slice(1);
+
+        setPendingMergeOperation({
+            sourceRoutes,
+            targetRoute,
+            routeArray,
+        });
+
+        setShowRouteMergeDialog(true);
+    }, [routeSelectionOrder, selectedRoutes.size]);
+
+    const confirmMergeOperation = useCallback(async () => {
+        if (!pendingMergeOperation) return;
+
+        try {
+            setShowRouteMergeDialog(false);
+            setIsSubmitting(true);
+
+            const requestPayload = {
+                RouteIDs: pendingMergeOperation.routeArray.join(","),
+                userid: Number(parseInt(userID) || 0),
+            };
+
+            await ManageRouteService.MergeRoute(requestPayload);
+
+            toastService.success(
+                `Routes merged successfully! All routes merged into Route ${pendingMergeOperation.targetRoute}`
+            );
+
+            handleClearRouteSelection();
+            if (onSearch) await onSearch();
+        } catch (error) {
+            console.error("Error merging routes:", error);
+            toastService.error(`Failed to merge routes: ${error.message}`);
+        } finally {
+            setIsSubmitting(false);
+            setPendingMergeOperation(null);
+        }
+    }, [pendingMergeOperation, userID, handleClearRouteSelection, onSearch]);
 
     const handleUnlockShift = useCallback(() => {
         const finalizedRoutes = routes
@@ -1199,8 +1283,16 @@ const ManageRouteMobile = ({
             isRecalculating={recalculatingRouteId === route.RouteID}
             onEmployeeLongPress={handleEmployeeLongPress}
             activeDragId={activeDragId} // Pass activeDragId
+            isSelectMode={isRouteSelectMode}
+            isSelected={selectedRoutes.has(route.RouteID)}
+            onSelect={handleSelectRouteToMerge}
         />
-    ), [expandedRoutes, handleToggleExpand, handleDeleteRequest, handleViewMap, handleAssignEmployees, handleRecalculate, recalculatingRouteId, handleEmployeeLongPress, activeDragId]);
+    ), [
+        expandedRoutes, handleToggleExpand, handleDeleteRequest, 
+        handleViewMap, handleAssignEmployees, handleRecalculate, 
+        recalculatingRouteId, handleEmployeeLongPress, activeDragId,
+        isRouteSelectMode, selectedRoutes, handleSelectRouteToMerge
+    ]);
 
     // Handle Drag End with Confirmation
     const handleDragEnd = useCallback(async (event) => {
@@ -1325,7 +1417,7 @@ const ManageRouteMobile = ({
                     showNewButton={false}
                 />
                 
-                <div style={{ paddingBottom: '80px' }}> {/* Bottom padding for floating elements */}
+                <div style={{ paddingBottom: '20px' }}> {/* Bottom padding */}
             <Sidebar />
             <ToastContainer position="top-right" autoClose={3000} />
             <Toast ref={toast} position="top-center" />
@@ -1377,16 +1469,30 @@ const ManageRouteMobile = ({
                                 msOverflowStyle: 'none' 
                             }}
                         >
-                            <Button
-                                label="Merge Mode"
-                                icon="pi pi-share-alt"
-                                className={`p-button-sm rounded-pill flex-shrink-0 ${isRouteSelectMode ? 'p-button-warning' : 'p-button-outlined p-button-secondary'}`}
-                                onClick={() => {
-                                    setIsRouteSelectMode(!isRouteSelectMode);
-                                    if (isRouteSelectMode) handleClearRouteSelection();
-                                    setIsUnlockMode(false);
-                                }}
-                            />
+                                <div className="d-flex gap-2 flex-shrink-0">
+                                    {isRouteSelectMode && selectedRoutes.size > 1 && (
+                                        <Button
+                                            label={`Merge (${selectedRoutes.size})`}
+                                            icon="pi pi-check"
+                                            className="p-button-sm p-button-success rounded-pill flex-shrink-0"
+                                            onClick={handleMergeRoutes}
+                                        />
+                                    )}
+                                    <Button
+                                        label={isRouteSelectMode ? "Cancel Merge" : "Merge Mode"}
+                                        icon={isRouteSelectMode ? "pi pi-times" : "pi pi-share-alt"}
+                                        className={`p-button-sm rounded-pill flex-shrink-0 ${isRouteSelectMode ? 'p-button-danger' : 'p-button-outlined p-button-secondary'}`}
+                                        onClick={() => {
+                                            setIsRouteSelectMode(!isRouteSelectMode);
+                                            if (isRouteSelectMode) {
+                                                handleClearRouteSelection();
+                                            } else {
+                                                setIsUnlockMode(false);
+                                                setRoutesToUnlock(new Set());
+                                            }
+                                        }}
+                                    />
+                                </div>
 
                             {(() => {
                                 const isDateCurrentOrFuture = (() => {
@@ -1568,6 +1674,24 @@ const ManageRouteMobile = ({
                 <p className="m-0">
                     Are you sure you want to remove <strong>{deleteDialog.employee?.empName}</strong> from route <strong>{deleteDialog.routeId}</strong>?
                 </p>
+            </Dialog>
+
+            {/* Merge Route Confirmation Dialog */}
+            <Dialog
+                visible={showRouteMergeDialog}
+                onHide={() => setShowRouteMergeDialog(false)}
+                header="Confirm Merge"
+                footer={
+                    <div className="d-flex gap-2 justify-content-end">
+                        <Button label="Cancel" outlined onClick={() => setShowRouteMergeDialog(false)} disabled={isSubmitting} />
+                        <Button label="Merge" onClick={confirmMergeOperation} disabled={isSubmitting} />
+                    </div>
+                }
+                style={{ width: '90vw', maxWidth: '400px' }}
+            >
+                <div>
+                    Are you sure you want to merge <strong>{pendingMergeOperation?.routeArray?.length || 0}</strong> routes into Route <strong>{pendingMergeOperation?.targetRoute}</strong>?
+                </div>
             </Dialog>
 
             {/* Auto Vendor Confirmation Dialog */}
