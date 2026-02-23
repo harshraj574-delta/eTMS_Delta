@@ -36,7 +36,6 @@ const PerEmployeeBilling = () => {
 
   const [globalFilter, setGlobalFilter] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
-  const [filteredData, setFilteredData] = useState([]);
   const [filters, setFilters] = useState({
     ProcessName: null,
     VendorName: null,
@@ -59,13 +58,8 @@ const PerEmployeeBilling = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-run grouping and filtering whenever rawData, filters, or globalFilter changes
-  useEffect(() => {
-    if (rawData.length === 0) {
-      setFilteredData([]);
-      setNestedReportData([]);
-      return;
-    }
+  const filteredData = React.useMemo(() => {
+    if (rawData.length === 0) return [];
 
     let filtered = [...rawData];
 
@@ -77,26 +71,36 @@ const PerEmployeeBilling = () => {
       }
     });
 
-    // Apply Global Search
+    // Apply Global Search optimally
     if (globalFilter && globalFilter.trim() !== "") {
       const searchLower = globalFilter.toLowerCase();
-      filtered = filtered.filter((item) =>
-        Object.values(item).some(
+      filtered = filtered.filter((item) => {
+        const valuesToSearch = [
+          item.ProcessName, item.VendorName, item.ShiftDate, item.TripType,
+          item.RouteId, item.EmployeeId, item.EmployeeName, item.FacilityName, item.Gender, item.ManagerName
+        ];
+        return valuesToSearch.some(
           (val) =>
             val !== null &&
             val !== undefined &&
             String(val).toLowerCase().includes(searchLower)
-        )
-      );
+        );
+      });
     }
 
-    setFilteredData(filtered);
+    return filtered;
+  }, [rawData, filters, globalFilter]);
 
-    if (currentReportType === "processwise") {
-      const grouped = groupProcessData(filtered);
-      setNestedReportData(grouped);
+  const memoizedNestedReportData = React.useMemo(() => {
+    if (currentReportType === "processwise" && filteredData.length > 0) {
+      return groupProcessData(filteredData);
     }
-  }, [rawData, filters, globalFilter, currentReportType]);
+    return [];
+  }, [filteredData, currentReportType]);
+
+  useEffect(() => {
+    setNestedReportData(memoizedNestedReportData);
+  }, [memoizedNestedReportData]);
 
   const fetchFacilities = async () => {
     try {

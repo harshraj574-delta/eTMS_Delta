@@ -20,6 +20,8 @@ import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 import "./common/CustomDataTable.css";
 import AutoAllocationService from "../services/compliance/AutoAllocationService";
+import ManageRouteService from "../services/compliance/ManageRouteService";
+
 
 const ReplicationException = () => {
   // Form state
@@ -317,7 +319,7 @@ const ReplicationException = () => {
         const generatedRoutes = await AutoAllocationService.callGenerateApi(inputJson);
 
         // Save new routes
-        await ReplicationExceptionService.Save_AutoAllocationRoute({
+        await ManageRouteService.save_routesMapBasedNew({
           facilityid: selectedFacility,
           sDate: formatApiDate(selectedDate),
           triptype: tripType,
@@ -424,7 +426,7 @@ const ReplicationException = () => {
         console.log("[AutoAllocation] Generated routes:", generatedRoutes);
 
         // Save new routes
-        await ReplicationExceptionService.Save_AutoAllocationRoute({
+        await ManageRouteService.save_routesMapBasedNew({
           facilityid: selectedFacility,
           sDate: formatApiDate(selectedDate),
           triptype: tripType,

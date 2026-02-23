@@ -29,7 +29,6 @@ const OTAReport = () => {
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [reportData, setReportData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const [detailedData, setDetailedData] = useState([]);
   const [rawShiftData, setRawShiftData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,12 +66,7 @@ const OTAReport = () => {
     }
   }, [selectedFacility]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      applyFiltersAndSearch();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [reportData, filters, globalFilter]);
+  // Debouncing is now handled by TableToolbar onSearch so we don't need setTimeout here.
 
   const fetchFacilities = async () => {
     try {
@@ -210,7 +204,7 @@ const OTAReport = () => {
     });
   };
 
-  const applyFiltersAndSearch = () => {
+  const filteredData = React.useMemo(() => {
     let filtered = [...reportData];
 
     if (currentReportType === "detailed") {
@@ -226,33 +220,41 @@ const OTAReport = () => {
       const searchLower = globalFilter.toLowerCase();
       filtered = filtered.filter((item) => {
         if (currentReportType === "detailed") {
-          return Object.values(item).some((val) =>
-            String(val).toLowerCase().includes(searchLower)
+          const valuesToSearch = [
+            item.Unit, item.TripDate, item.Shift, item.RouteID, item.Vendor, item.OTA_Category,
+            item.vendorName, item.driverName, item.vehicleNo, item.tripType
+          ];
+          return valuesToSearch.some((val) =>
+            val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
           );
         } else {
-          const mainRowMatch = Object.values(item).some((val) =>
-            String(val).toLowerCase().includes(searchLower)
+          // For aggregated date / vendor views
+          const mainRowMatch = [item.shiftDate, item.vendorName, item.TotalCabs, item.Arrived].some((val) =>
+            val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
           );
+          
+          if (mainRowMatch) return true;
+
           const nestedMatch =
             (item.shifts &&
               item.shifts.some((shift) =>
-                Object.values(shift).some((val) =>
-                  String(val).toLowerCase().includes(searchLower)
+                [shift.shiftTime, shift.TotalCabs, shift.Arrived].some((val) =>
+                  val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
                 )
               )) ||
             (item.dailyData &&
               item.dailyData.some((day) =>
-                Object.values(day).some((val) =>
-                  String(val).toLowerCase().includes(searchLower)
+                [day.shiftDate, day.TotalCabs, day.Arrived].some((val) =>
+                  val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
                 )
               ));
-          return mainRowMatch || nestedMatch;
+          return nestedMatch;
         }
       });
     }
 
-    setFilteredData(filtered);
-  };
+    return filtered;
+  }, [reportData, filters, globalFilter, currentReportType]);
 
   const handleSearch = async () => {
     if (!selectedReportType) {

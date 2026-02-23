@@ -32,7 +32,6 @@ const TrackingReport = () => {
   const filterButtonRef = useRef(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
-  const [filteredData, setFilteredData] = useState([]);
   const [filters, setFilters] = useState({
     shiftTime: null,
     Gender: null,
@@ -117,7 +116,6 @@ const TrackingReport = () => {
       setLoading(false);
       setIsSubmitting(false);
       setHasSearched(true);
-      setFilteredData(validatedData);
 
       setTimeout(() => {
         if (validatedData.length > 0) {
@@ -159,7 +157,9 @@ const TrackingReport = () => {
     return [...new Set(values)].map((val) => ({ label: val, value: val }));
   };
 
-  const applyFiltersAndSearch = () => {
+  const filteredData = React.useMemo(() => {
+    if (!hasSearched) return [];
+    
     let filtered = [...reportData];
 
     // Apply advanced filters
@@ -170,11 +170,14 @@ const TrackingReport = () => {
       }
     });
 
-    // Apply global search
+    // Apply global search optimally
     if (globalFilter && globalFilter.trim() !== "") {
       const searchLower = globalFilter.toLowerCase();
       filtered = filtered.filter((item) => {
-        return Object.values(item).some(
+        const valuesToSearch = [
+            item.Employeeid, item.EmpName, item.Gender, item.RouteId, item.shiftTime, item.shiftDate, item.facilityName, item.tripType, item.trackingStatus
+        ];
+        return valuesToSearch.some(
           (val) =>
             val !== null &&
             val !== undefined &&
@@ -183,14 +186,8 @@ const TrackingReport = () => {
       });
     }
 
-    setFilteredData(filtered);
-  };
-
-  useEffect(() => {
-    if (hasSearched) {
-      applyFiltersAndSearch();
-    }
-  }, [filters, globalFilter, hasSearched, reportData]);
+    return filtered;
+  }, [reportData, filters, globalFilter, hasSearched]);
 
   const exportExcel = () => {
     if (reportData.length === 0) {

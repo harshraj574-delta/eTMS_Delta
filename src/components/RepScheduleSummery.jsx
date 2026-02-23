@@ -46,7 +46,6 @@ const RepScheduleSummery = () => {
   const [vendorChildData, setVendorChildData] = useState({});
 
   const [globalFilter, setGlobalFilter] = useState("");
-  const [filteredData, setFilteredData] = useState([]);
   const [filters, setFilters] = useState({
     ShiftDate: null,
     PlanVendorName: null,
@@ -59,11 +58,7 @@ const RepScheduleSummery = () => {
   const filterButtonRef = useRef(null);
   const dt = useRef(null);
 
-  useEffect(() => {
-    applyFiltersAndSearch();
-  }, [data, globalFilter, filters]);
-
-  const applyFiltersAndSearch = () => {
+  const filteredData = useMemo(() => {
     let filtered = [...data];
 
     // Apply advanced filters
@@ -76,17 +71,22 @@ const RepScheduleSummery = () => {
       });
     }
 
-    // Apply global search
+    // Apply global search optimally
     if (globalFilter && globalFilter.trim() !== "") {
       const searchLower = globalFilter.toLowerCase();
       filtered = filtered.filter((item) => {
-        return Object.values(item).some((val) =>
+        // Fast path for relevant fields instead of parsing entire object
+        const valuesToSearch = [
+          item.ActVendorName, item.VendorName, item.PlanVendorName, item.vendorName,
+          item.vid, item.VendorID, item.RouteId, item.VehicleNo, item.Location, item.BillingVehicleType, item.VehicleType, item.TripType
+        ];
+        return valuesToSearch.some(val => 
           val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
         );
       });
     }
-    setFilteredData(filtered);
-  };
+    return filtered;
+  }, [data, globalFilter, filters, appliedReportType]);
 
   const getUniqueValues = (field) => {
     const values = data.map((item) => item[field]).filter(Boolean);
@@ -512,11 +512,6 @@ const RepScheduleSummery = () => {
     setExpandedRows(newExpandedRows);
   };
 
-  const onInputChangeHideTable = (setter) => (e) => {
-    setter(e.target ? e.target.value : e.value);
-    setShowTable(false);
-  };
-
   return (
     <div>
       <Loader isVisible={loading} fullScreen={true} />
@@ -622,10 +617,7 @@ const RepScheduleSummery = () => {
                 />
                 <Calendar
                   value={fromDate}
-                  onChange={(e) => {
-                    setFromDate(e.value);
-                    setShowTable(false);
-                  }}
+                  onChange={(e) => setFromDate(e.value)}
                   dateFormat="mm/dd/yy"
                   className="w-100 custom-calendar-input"
                 />
@@ -643,10 +635,7 @@ const RepScheduleSummery = () => {
                 />
                 <Calendar
                   value={toDate}
-                  onChange={(e) => {
-                    setToDate(e.value);
-                    setShowTable(false);
-                  }}
+                  onChange={(e) => setToDate(e.value)}
                   dateFormat="mm/dd/yy"
                   className="w-100 custom-calendar-input"
                 />
@@ -659,10 +648,7 @@ const RepScheduleSummery = () => {
               <Dropdown
                 options={reportTypeOptions}
                 value={selectedReportType}
-                onChange={(e) => {
-                  setSelectedReportType(e.value);
-                  setShowTable(false);
-                }}
+                onChange={(e) => setSelectedReportType(e.value)}
                 optionLabel="label"
                 placeholder="Select Report Type"
                 className="w-100"
@@ -676,7 +662,7 @@ const RepScheduleSummery = () => {
               <Dropdown
                 options={facilities}
                 value={selFacility}
-                onChange={onInputChangeHideTable(setSelFacility)}
+                onChange={(e) => setSelFacility(e.target ? e.target.value : e.value)}
                 optionLabel="label"
                 placeholder="Select Facility"
                 className="w-100"

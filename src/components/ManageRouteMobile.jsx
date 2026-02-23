@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouteDetailsQuery, manageRouteKeys } from '../hooks/compliance/useManageRouteQueries';
 
@@ -801,6 +801,23 @@ const ManageRouteMobile = ({
     const [draggedItem, setDraggedItem] = useState(null);
     const [pendingDragOperation, setPendingDragOperation] = useState(null);
     
+    // Action Buttons State
+    const [isRouteSelectMode, setIsRouteSelectMode] = useState(false);
+    const [selectedRoutes, setSelectedRoutes] = useState(new Set());
+    const [routeSelectionOrder, setRouteSelectionOrder] = useState([]);
+    const [isUnlockMode, setIsUnlockMode] = useState(false);
+    const [routesToUnlock, setRoutesToUnlock] = useState(new Set());
+    const [showUnlockConfirmDialog, setShowUnlockConfirmDialog] = useState(false);
+    const [pendingUnlock, setPendingUnlock] = useState(null);
+    const [isRecalculating, setIsRecalculating] = useState(false);
+    const [isAllocating, setIsAllocating] = useState(false);
+    const [isFinalizing, setIsFinalizing] = useState(false);
+    const [showRecalcBeforeFinalizeDialog, setShowRecalcBeforeFinalizeDialog] = useState(false);
+    const [isRecalcBeforeFinalize, setIsRecalcBeforeFinalize] = useState(false);
+    const [showAutoVendorAllocationDialog, setShowAutoVendorAllocationDialog] = useState(false);
+    const [isShiftLocked, setIsShiftLocked] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
     // Configure sensors
     const sensors = useSensors(
         useSensor(TouchSensor, {
@@ -822,7 +839,279 @@ const ManageRouteMobile = ({
     const queryClient = useQueryClient();
     const userID = sessionStorage.getItem('ID');
 
+    // Effect for checking if shift is locked
+    useEffect(() => {
+        if (routes && routes.length > 0) {
+            const hasFinalizedRoutes = routes.some((route) => route.isRouteFinalized === 1);
+            setIsShiftLocked(hasFinalizedRoutes);
+
+            if (!hasFinalizedRoutes && isUnlockMode) {
+                setIsUnlockMode(false);
+                setRoutesToUnlock(new Set());
+            }
+        } else {
+            setIsShiftLocked(false);
+        }
+    }, [routes, isUnlockMode]);
+
     // Handlers
+    const handleClearRouteSelection = useCallback(() => {
+        setSelectedRoutes(new Set());
+        setRouteSelectionOrder([]);
+        setIsRouteSelectMode(false);
+    }, []);
+
+    const handleUnlockShift = useCallback(() => {
+        const finalizedRoutes = routes
+            .filter((route) => route.isRouteFinalized === 1)
+            .map((route) => route.RouteID);
+
+        if (finalizedRoutes.length === 0) {
+            toastService.info("No finalized routes to unlock in this shift.");
+            return;
+        }
+
+        setPendingUnlock({
+            routeIds: finalizedRoutes,
+            type: "shift",
+        });
+        setShowUnlockConfirmDialog(true);
+    }, [routes]);
+
+    const handleUnlockSelectedRoutes = useCallback(() => {
+        if (routesToUnlock.size === 0) {
+            toastService.warn("Please select routes to unlock.");
+            return;
+        }
+        setPendingUnlock({
+            routeIds: Array.from(routesToUnlock),
+            type: "routes",
+        });
+        setShowUnlockConfirmDialog(true);
+    }, [routesToUnlock]);
+
+    const confirmUnlockOperation = useCallback(async () => {
+        if (!pendingUnlock) return;
+
+        setIsSubmitting(true);
+        setShowUnlockConfirmDialog(false);
+
+        try {
+            const response = await ManageRouteService.BlockTransport({
+                RouteIDs: pendingUnlock.routeIds.join(","),
+                userid: userID,
+            });
+
+            const parsedResponse =
+                typeof response === "string" ? JSON.parse(response) : response;
+            if (parsedResponse && parsedResponse.length > 0 && parsedResponse[0].res) {
+                toastService.success(parsedResponse[0].res);
+            } else {
+                toastService.success("Routes unlocked successfully!");
+            }
+
+            setRoutesToUnlock(new Set());
+            setIsUnlockMode(false);
+            if(onSearch) await onSearch(); // Refresh the list
+        } catch (error) {
+            console.error("Error unlocking routes:", error);
+            toastService.error("Failed to unlock routes.");
+        } finally {
+            setIsSubmitting(false);
+            setPendingUnlock(null);
+        }
+    }, [pendingUnlock, userID, onSearch]);
+
+    const checkIfRecalculationNeeded = useCallback(async () => {
+        try {
+            const inputJsonResponse = await ManageRouteService.GetInputJsonRecalculate({
+                shiftdate: filters.sDate,
+                shifttime: filters.shifts,
+                facilityid: filters.facilityId,
+                triptype: filters.tripType,
+            });
+
+            const inputJsonData =
+                typeof inputJsonResponse === "string"
+                    ? JSON.parse(inputJsonResponse)
+                    : inputJsonResponse;
+
+            return !!(
+                inputJsonData &&
+                inputJsonData.routes &&
+                inputJsonData.routes.length > 0
+            );
+        } catch (error) {
+            console.error("Error checking recalculation status:", error);
+            return true;
+        }
+    }, [filters]);
+
+    const proceedWithFinalization = useCallback(async () => {
+        setIsSubmitting(true);
+        setIsFinalizing(true);
+        try {
+            const params = {
+                sDate: filters.sDate,
+                eDate: filters.sDate,
+                facilityid: filters.facilityId,
+                triptype: filters.tripType,
+                shifttimes: filters.shifts,
+            };
+
+            const bulkRouteData = await ManageRouteService.PushRouteToDashbaord(params);
+
+            if (bulkRouteData && bulkRouteData.length > 0) {
+                toastService.success("Route finalization completed successfully.");
+                if(onSearch) await onSearch();
+            } else {
+                toastService.warn("No route data available to finalize.");
+            }
+        } catch (error) {
+            console.error("Error finalizing routes:", error);
+            toastService.error("Finalization failed. Please try again.");
+        } finally {
+            setIsFinalizing(false);
+            setIsSubmitting(false);
+        }
+    }, [filters, onSearch]);
+
+    const handleFinalizeRoute = useCallback(async () => {
+        const needsRecalculation = await checkIfRecalculationNeeded();
+        if (needsRecalculation) {
+            setShowRecalcBeforeFinalizeDialog(true);
+            return;
+        }
+        await proceedWithFinalization();
+    }, [checkIfRecalculationNeeded, proceedWithFinalization]);
+
+    const handleRecalculateAndFinalize = useCallback(async () => {
+        setIsRecalcBeforeFinalize(true);
+        setShowRecalcBeforeFinalizeDialog(false);
+
+        try {
+            toastService.info("Recalculating routes before finalization...");
+
+            const inputJsonResponse = await ManageRouteService.GetInputJsonRecalculate({
+                shiftdate: filters.sDate,
+                shifttime: filters.shifts,
+                facilityid: filters.facilityId,
+                triptype: filters.tripType,
+            });
+
+            const inputJsonData =
+                typeof inputJsonResponse === "string"
+                    ? JSON.parse(inputJsonResponse)
+                    : inputJsonResponse;
+
+            if (!inputJsonData || !inputJsonData.routes || inputJsonData.routes.length === 0) {
+                toastService.info("No routes need recalculation. Proceeding with finalization...");
+                await proceedWithFinalization();
+                return;
+            }
+
+            const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
+
+            await ManageRouteService.updateRouteMapbased({
+                facilityid: filters.facilityId,
+                sDate: filters.sDate,
+                triptype: filters.tripType,
+                shifttime: filters.shifts,
+                jsonstring: JSON.stringify(recalculatedRouteJson),
+                updatedBy: userID,
+            });
+
+            toastService.success("Routes recalculated successfully! Now finalizing...");
+            if(onSearch) await onSearch();
+            await proceedWithFinalization();
+        } catch (error) {
+            console.error("Error during recalculation before finalize:", error);
+            toastService.error(`Failed to recalculate routes: ${error.message}`);
+        } finally {
+            setIsRecalcBeforeFinalize(false);
+        }
+    }, [filters, userID, onSearch, proceedWithFinalization]);
+
+    const handleAutoVendorAllocation = useCallback(() => {
+        setShowAutoVendorAllocationDialog(true);
+    }, []);
+
+    const confirmAutoVendorAllocation = useCallback(async () => {
+        setIsSubmitting(true);
+        setIsAllocating(true);
+        try {
+            setShowAutoVendorAllocationDialog(false);
+
+            const params = {
+                facid: filters.facilityId,
+                sDate: filters.sDate,
+                uname: userID,
+                triptype: filters.tripType,
+                shifttime: filters.shifts,
+            };
+
+            await ManageRouteService.AutoVendorAllocationNew(params);
+            toastService.success("Vendor allocation process completed successfully.");
+            if(onSearch) await onSearch();
+        } catch (error) {
+            console.error("Error during auto vendor allocation:", error);
+            toastService.error("Vendor allocation process failed to complete.");
+        } finally {
+            setIsSubmitting(false);
+            setIsAllocating(false);
+        }
+    }, [filters, userID, onSearch]);
+
+    const handleRecalculateModifiedRoutes = useCallback(async () => {
+        setIsSubmitting(true);
+        setIsRecalculating(true);
+        toastService.info("Fetching data for all modified routes...");
+
+        try {
+            const inputJsonResponse = await ManageRouteService.GetInputJsonRecalculate({
+                shiftdate: filters.sDate,
+                shifttime: filters.shifts,
+                facilityid: filters.facilityId,
+                triptype: filters.tripType,
+            });
+
+            const inputJsonData =
+                typeof inputJsonResponse === "string"
+                    ? JSON.parse(inputJsonResponse)
+                    : inputJsonResponse;
+
+            if (!inputJsonData || !inputJsonData.routes || inputJsonData.routes.length === 0) {
+                toastService.info("No routes to be recalculated.");
+                setIsSubmitting(false);
+                setIsRecalculating(false);
+                return;
+            }
+
+            toastService.info("Sending data for recalculation...");
+
+            const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
+            await ManageRouteService.updateRouteMapbased({
+                facilityid: filters.facilityId,
+                sDate: filters.sDate,
+                triptype: filters.tripType,
+                shifttime: filters.shifts,
+                jsonstring: JSON.stringify(recalculatedRouteJson),
+                updatedBy: userID,
+            });
+
+            toastService.success("Modified routes recalculated successfully!");
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routes(filters) });
+            if(onSearch) await onSearch();
+        } catch (error) {
+            console.error("Error recalculating routes:", error);
+            toastService.error(`Recalculation failed: ${error.message}`);
+        } finally {
+            setIsRecalculating(false);
+            setIsSubmitting(false);
+        }
+    }, [filters, userID, queryClient, onSearch]);
+
+    // Original Handlers
     const handleToggleExpand = useCallback((routeId) => {
         setExpandedRoutes(prev => {
             const next = new Set(prev);
@@ -900,12 +1189,9 @@ const ManageRouteMobile = ({
         
         setRecalculatingRouteId(route.RouteID);
         try {
-            // Get recalculation input JSON
-            const inputJson = await ManageRouteService.GetInputJsonRecalculate({
-                shiftdate: filters.sDate,
-                shifttime: route.shiftTime || filters.shifts,
-                facilityid: filters.facilityId,
-                triptype: filters.tripType
+            // Get recalculation input JSON using RouteID directly
+            const inputJson = await ManageRouteService.getInputJsonByrouteids({
+                routeids: route.RouteID
             });
 
             // Parse and call recalculate
@@ -913,11 +1199,21 @@ const ManageRouteMobile = ({
             if (typeof parsedInput === 'string') parsedInput = JSON.parse(parsedInput);
 
             // Call recalculate API
-            await ManageRouteService.recalculateRoutes(parsedInput);
+            const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(parsedInput);
             
+            // Save recalculated ETAs back to backend
+            await ManageRouteService.updateRouteMapbased({
+                facilityid: filters.facilityId,
+                sDate: filters.sDate,
+                triptype: filters.tripType,
+                shifttime: route.shiftTime || filters.shifts,
+                jsonstring: JSON.stringify(recalculatedRouteJson),
+                updatedBy: userID,
+            });
+
             // Refresh routes data
-            queryClient.invalidateQueries({ queryKey: ['routes'] });
-            queryClient.invalidateQueries({ queryKey: ['routeDetails', route.RouteID] });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routes(filters) });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routeDetails(route.RouteID) });
             
             toastService.success(`Route ${route.RouteID} recalculated successfully!`);
         } catch (error) {
@@ -926,7 +1222,7 @@ const ManageRouteMobile = ({
         } finally {
             setRecalculatingRouteId(null);
         }
-    }, [recalculatingRouteId, filters, queryClient]);
+    }, [recalculatingRouteId, filters, queryClient, userID]);
 
     // Handle employee long-press for move/remove actions
     const handleEmployeeLongPress = useCallback((employee, routeId) => {
@@ -937,8 +1233,7 @@ const ManageRouteMobile = ({
 
     // Handle action sheet success (move/remove)
     const handleActionSheetSuccess = useCallback(() => {
-        queryClient.invalidateQueries({ queryKey: ['routes'] });
-        queryClient.invalidateQueries({ queryKey: ['routeDetails'] });
+        queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
     }, [queryClient]);
 
     const routeItemTemplate = useCallback((route) => (
@@ -1003,23 +1298,20 @@ const ManageRouteMobile = ({
 
         try {
             const sNo = employee.stopNo || 0; 
-            const empid = employee.empId || employee.EmpID;
-            // const userID = sessionStorage.getItem('ID'); // Already available in scope
+            const empid = employee.empId || employee.EmpID || employee.id;
 
             await ManageRouteService.UpdateCutPaste({
-                empid: empid,
-                sNo: sNo,
-                fromRouteId: sourceRouteId,
-                toRouteId: targetRouteId,
-                toStopNo: targetPosition,
-                updatedby: userID
+                oldemployeeid: empid,
+                OldRouteid: sourceRouteId,
+                newrouteid: targetRouteId,
+                stopno: targetPosition,
+                userid: userID
             });
 
             toastService.success(`Moved ${employee.empName} to Route ${targetRouteId} at pos ${targetPosition}`);
             
-            // Refresh data
-            queryClient.invalidateQueries({ queryKey: ['routes'] });
-            queryClient.invalidateQueries({ queryKey: ['routeDetails'] }); 
+            // Refresh data correctly using query factory manager
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
 
         } catch (error) {
             console.error('Drag end error:', error);
@@ -1126,6 +1418,103 @@ const ManageRouteMobile = ({
                 {/* Stats Bar */}
                 {routes.length > 0 && <StatsBar stats={stats} />}
 
+                {/* Mobile Action Bar */}
+                {routes.length > 0 && (
+                    <div className="px-3 py-2 bg-white border-bottom shadow-sm">
+                        <div 
+                            className="d-flex gap-2 overflow-auto" 
+                            style={{ 
+                                paddingBottom: '8px', 
+                                scrollbarWidth: 'none', 
+                                msOverflowStyle: 'none' 
+                            }}
+                        >
+                            <Button
+                                label="Merge Mode"
+                                icon="pi pi-share-alt"
+                                className={`p-button-sm rounded-pill flex-shrink-0 ${isRouteSelectMode ? 'p-button-warning' : 'p-button-outlined p-button-secondary'}`}
+                                onClick={() => {
+                                    setIsRouteSelectMode(!isRouteSelectMode);
+                                    if (isRouteSelectMode) handleClearRouteSelection();
+                                    setIsUnlockMode(false);
+                                }}
+                            />
+
+                            {(() => {
+                                const isDateCurrentOrFuture = (() => {
+                                    if (!filters.sDate) return false;
+                                    const searchDate = new Date(filters.sDate);
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    if (isNaN(searchDate.getTime())) return false;
+                                    return searchDate >= today;
+                                })();
+
+                                if (isShiftLocked && isDateCurrentOrFuture) {
+                                    return (
+                                        <>
+                                            <Button
+                                                label="Unlock Shift"
+                                                icon="pi pi-lock-open"
+                                                className="p-button-sm p-button-danger rounded-pill flex-shrink-0"
+                                                onClick={handleUnlockShift}
+                                            />
+                                            <Button
+                                                label={isUnlockMode ? "Cancel Unlock" : "Unlock Routes"}
+                                                icon="pi pi-key"
+                                                className="p-button-sm p-button-danger rounded-pill flex-shrink-0"
+                                                onClick={() => {
+                                                    setIsUnlockMode(!isUnlockMode);
+                                                    if (isUnlockMode) setRoutesToUnlock(new Set());
+                                                    setIsRouteSelectMode(false);
+                                                }}
+                                            />
+                                            {isUnlockMode && routesToUnlock.size > 0 && (
+                                                <Button
+                                                    label={`Confirm (${routesToUnlock.size})`}
+                                                    icon="pi pi-check"
+                                                    className="p-button-sm p-button-success rounded-pill flex-shrink-0"
+                                                    onClick={handleUnlockSelectedRoutes}
+                                                />
+                                            )}
+                                        </>
+                                    );
+                                }
+                                return null;
+                            })()}
+
+                            <Button
+                                label={isRecalculating ? "Recalculating..." : "Recalculate"}
+                                icon={isRecalculating ? "pi pi-spin pi-spinner" : "pi pi-sync"}
+                                className="p-button-sm p-button-warning rounded-pill flex-shrink-0"
+                                onClick={handleRecalculateModifiedRoutes}
+                                disabled={isRecalculating || isSubmitting}
+                            />
+
+                            <Button
+                                label={isAllocating ? "Allocating..." : "Auto Vendor"}
+                                icon={isAllocating ? "pi pi-spin pi-spinner" : "pi pi-cog"}
+                                className="p-button-sm p-button-info rounded-pill flex-shrink-0"
+                                onClick={handleAutoVendorAllocation}
+                                disabled={isAllocating || isSubmitting}
+                            />
+
+                            <Button
+                                label={
+                                    isRecalcBeforeFinalize ? "Wait..." : 
+                                    isFinalizing ? "Finalizing..." : "Finalize"
+                                }
+                                icon={
+                                    isRecalcBeforeFinalize || isFinalizing ? "pi pi-spin pi-spinner" : "pi pi-check"
+                                }
+                                className="p-button-sm p-button-success rounded-pill flex-shrink-0"
+                                onClick={handleFinalizeRoute}
+                                disabled={isFinalizing || isRecalcBeforeFinalize || isSubmitting}
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {/* Main Content */}
                 <div className="mt-3">
                     {!hasSearchCriteria ? (
@@ -1231,6 +1620,62 @@ const ManageRouteMobile = ({
                 <p className="m-0">
                     Are you sure you want to remove <strong>{deleteDialog.employee?.empName}</strong> from route <strong>{deleteDialog.routeId}</strong>?
                 </p>
+            </Dialog>
+
+            {/* Auto Vendor Confirmation Dialog */}
+            <Dialog
+                visible={showAutoVendorAllocationDialog}
+                onHide={() => setShowAutoVendorAllocationDialog(false)}
+                header="Confirm Auto Vendor Allocation"
+                footer={
+                    <div className="d-flex gap-2 justify-content-end">
+                        <Button label="No" outlined onClick={() => setShowAutoVendorAllocationDialog(false)} disabled={isSubmitting} />
+                        <Button label="Yes" onClick={confirmAutoVendorAllocation} disabled={isSubmitting} />
+                    </div>
+                }
+                style={{ width: '90vw', maxWidth: '400px' }}
+            >
+                <div>Are you sure you want to perform Auto Vendor Allocation?</div>
+            </Dialog>
+
+            {/* Recalculate Before Finalize Dialog */}
+            <Dialog
+                visible={showRecalcBeforeFinalizeDialog}
+                onHide={() => setShowRecalcBeforeFinalizeDialog(false)}
+                header="Finalize Route"
+                footer={
+                    <div className="d-flex gap-2 justify-content-end mt-3 flex-wrap">
+                        <Button label="No, Finalize Directly" outlined onClick={() => {
+                            setShowRecalcBeforeFinalizeDialog(false);
+                            proceedWithFinalization();
+                        }} disabled={isSubmitting} style={{ fontSize: '0.8rem' }} />
+                        <Button label="Yes, Recalculate" onClick={handleRecalculateAndFinalize} disabled={isSubmitting} style={{ fontSize: '0.8rem' }} />
+                    </div>
+                }
+                style={{ width: '90vw', maxWidth: '400px' }}
+            >
+                <div className="mb-3 d-flex align-items-start">
+                    <i className="pi pi-exclamation-triangle" style={{ color: 'orange', fontSize: '1.5rem', marginRight: '10px' }}></i>
+                    <div>Routes have been modified. It is highly recommended to recalculate routes before finalization to update ETA and distance.</div>
+                </div>
+                <div>Do you want to recalculate before finalizing?</div>
+            </Dialog>
+
+            {/* Unlock Confirmation Dialog */}
+            <Dialog
+                visible={showUnlockConfirmDialog}
+                onHide={() => setShowUnlockConfirmDialog(false)}
+                header="Confirm Unlock"
+                footer={
+                    <div className="d-flex gap-2 justify-content-end">
+                        <Button label="Cancel" outlined onClick={() => setShowUnlockConfirmDialog(false)} disabled={isSubmitting} />
+                        <Button label="Unlock" severity="danger" onClick={confirmUnlockOperation} disabled={isSubmitting} />
+                    </div>
+                }
+                style={{ width: '90vw', maxWidth: '400px' }}
+            >
+                <p>Are you sure you want to unlock {pendingUnlock?.type === 'shift' ? 'all finalized routes in this shift' : `${pendingUnlock?.routeIds?.length || 0} selected routes`}?</p>
+                <p className="text-muted small">Unlocked routes can be modified and must be finalized again.</p>
             </Dialog>
 
             {/* Drag Drop Confirmation Dialog */}

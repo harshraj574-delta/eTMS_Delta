@@ -54,6 +54,7 @@ import {
 import SwipeToDeleteBackground from "./SwipeToDeleteBackground";
 import Draggable from 'react-draggable';
 import ReportButton from "./common/ReportButton";
+import CustomPaginator from "./common/CustomPaginator";
 
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 const getOrdinalSuffix = (num) => {
@@ -1286,6 +1287,15 @@ const ManageRouteDesktop = ({
   // Track the date that was actually searched (for unlock buttons visibility)
   const [searchedShiftDate, setSearchedShiftDate] = useState(routes?.length > 0 ? shiftDate : null);
 
+  // Pagination state
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+  
+  const onPageChange = (event) => {
+      setFirst(event.first);
+      setRows(event.rows);
+  };
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1772,6 +1782,17 @@ const ManageRouteDesktop = ({
   // Main submit handler
   // Main submit handler (Simplified)
   const handleSubmit = useCallback(() => {
+      // Validation Logic
+      if (!selectedFacility) {
+        toastService.warn("Please select Facility");
+        return;
+      }
+
+      if (!selectedShifts || (Array.isArray(selectedShifts) && selectedShifts.length === 0)) {
+        toastService.warn("Please select Shift");
+        return;
+      }
+
       // Basic UI cleanup
       setHasSearched(true);
       setSearchedShiftDate(shiftDate);
@@ -1788,7 +1809,7 @@ const ManageRouteDesktop = ({
       // Trigger Search via Container
       onSearch();
       
-  }, [onSearch, shiftDate, queryClient]);
+  }, [onSearch, shiftDate, queryClient, selectedFacility, selectedShifts]);
 
   // Route click handler
   const handleRouteIdClick = useCallback(
@@ -2129,7 +2150,7 @@ const ManageRouteDesktop = ({
       // Clear selections
       handleClearSelection();
 
-      // Refresh affected routes
+      // Refresh affected routes AND entire table without collapsing state
       const affectedRoutes = [
         ...new Set([...routeIds, pendingDragOperation.targetRouteId]),
       ];
@@ -2137,7 +2158,9 @@ const ManageRouteDesktop = ({
         await refreshRouteDetails(routeId);
       }
 
-      await handleSubmit();
+      // Invalidate the routes query so the main table reflects the new counts without resetting expansion state
+      queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
+
     } catch (error) {
       console.error("Error moving employees:", error);
       toastService.error(`Failed to move employees: ${error.message}`);
@@ -3539,7 +3562,7 @@ const ManageRouteDesktop = ({
               <div className="card_tb p-3">
                 <div className="row g-2 g-md-3">
                   <div className="col-6 col-md">
-                    <label htmlFor="shiftDate">Shift Date</label>
+                    <label htmlFor="shiftDate" className="form-label">Shift Date <span className="text-danger">*</span></label>
                     <div className="custom-calendar-wrapper">
                       <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
                       <Calendar
@@ -3561,7 +3584,7 @@ const ManageRouteDesktop = ({
                     </div>
                   </div>
                   <div className="col-6 col-md">
-                    <label htmlFor="">Facility Name</label>
+                    <label htmlFor="facility" className="form-label">Facility Name <span className="text-danger">*</span></label>
                     <Dropdown
                       id="facility"
                       placeholder="Select"
@@ -3575,7 +3598,7 @@ const ManageRouteDesktop = ({
                     />
                   </div>
                   <div className="col-6 col-md">
-                    <label htmlFor="tripType">Trip Type</label>
+                    <label htmlFor="tripType" className="form-label">Trip Type <span className="text-danger">*</span></label>
                     <Dropdown
                       id="tripType"
                       value={selectedTripType || "P"}
@@ -3587,7 +3610,7 @@ const ManageRouteDesktop = ({
                     />
                   </div>
                   <div className="col-6 col-md">
-                    <label htmlFor="shift">Shift</label>
+                    <label htmlFor="shift" className="form-label">Shift <span className="text-danger">*</span></label>
                     <Dropdown
                       filter
                       id="shift"
@@ -3858,7 +3881,7 @@ const ManageRouteDesktop = ({
                 </div>
                 <Toast ref={toast} />
                 <DataTable
-                  value={memoizedTableData}
+                  value={memoizedTableData.slice(first, first + rows)}
                   expandedRows={expandedRows}
                   onRowToggle={(e) => setExpandedRows(e.data)}
                   rowExpansionTemplate={rowExpansionTemplate}
@@ -3877,9 +3900,6 @@ const ManageRouteDesktop = ({
                   onRowMouseEnter={handleRouteRowEnter}
                   onRowMouseLeave={handleRouteRowLeave}
                   emptyMessage="No Record Found."
-                  paginator
-                  rows={50}
-                  rowsPerPageOptions={[50, 100, 150, 200, 250]}
                   sortField={sortField}
                   sortOrder={sortOrder}
                   onSort={handleSort}
@@ -4097,6 +4117,13 @@ const ManageRouteDesktop = ({
                     )}
                   />
                 </DataTable>
+                <CustomPaginator
+                    first={first}
+                    rows={rows}
+                    totalRecords={memoizedTableData.length}
+                    onPageChange={onPageChange}
+                    rowsPerPageOptions={[50, 100, 150, 200, 250]}
+                />
                 <Tooltip target="[data-pr-tooltip]" />
                 </>
                 )}

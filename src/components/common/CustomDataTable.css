@@ -94,3 +94,17 @@
 .custom-sort-icon.active {
     color: #545557 !important;
 }
+
+/* FacilityMaster-like clean expansion overrides */
+.clean-expansion-table .p-datatable-row-expansion {
+    background-color: transparent !important;
+}
+
+.clean-expansion-table .p-datatable-tbody>tr.p-datatable-row-expansion>td {
+    padding: 0 !important;
+}
+
+.clean-expansion-table .p-datatable-tbody>tr.p-highlight {
+    background-color: transparent !important;
+    color: inherit !important;
+}

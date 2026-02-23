@@ -5,6 +5,7 @@ import {
   useMap,
   CircleMarker,
   Popup,
+  ZoomControl,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet.heat";
@@ -652,8 +653,9 @@ const LeafletHeatMap = ({ filter, type = 1, height = "100%", isFullscreen = fals
             }
             zoom={defaultZoom}
             style={{ height: "100%", width: "100%" }}
-            zoomControl={true}
+            zoomControl={false}
           >
+            <ZoomControl position="topright" />
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'

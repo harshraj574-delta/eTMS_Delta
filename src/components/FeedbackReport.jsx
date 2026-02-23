@@ -443,25 +443,33 @@ const FeedbackReport = () => {
     return [...new Set(values)].map((val) => ({ label: val, value: val }));
   };
 
-  const filteredData = reportData.filter((item) => {
-    // Apply advanced filters
-    const matchesFilters = Object.keys(filters).every((key) => {
-      const val = filters[key];
-      if (Array.isArray(val) && val.length > 0) {
-        return val.includes(item[key]);
-      }
-      return true;
+  const filteredData = React.useMemo(() => {
+    if (!hasSearched) return [];
+    return reportData.filter((item) => {
+      // Apply advanced filters
+      const matchesFilters = Object.keys(filters).every((key) => {
+        const val = filters[key];
+        if (Array.isArray(val) && val.length > 0) {
+          return val.includes(item[key]);
+        }
+        return true;
+      });
+
+      if (!matchesFilters) return false;
+
+      // Apply global search
+      if (!globalFilter) return true;
+      const searchTerm = globalFilter.toLowerCase();
+      const valuesToSearch = [
+        item.TicketNo, item.empName, item.empCode, item.facilityname, 
+        item.Shiftdate, item.Desrp, item.Status
+      ];
+      
+      return valuesToSearch.some(
+        (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(searchTerm)
+      );
     });
-
-    if (!matchesFilters) return false;
-
-    // Apply global search
-    if (!globalFilter) return true;
-    const searchTerm = globalFilter.toLowerCase();
-    return Object.values(item).some(
-      (val) => val && val.toString().toLowerCase().includes(searchTerm)
-    );
-  });
+  }, [reportData, filters, globalFilter, hasSearched]);
 
   return (
     <>

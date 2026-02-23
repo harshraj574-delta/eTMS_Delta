@@ -7,6 +7,10 @@ import { apiService } from "../services/api";
 import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
 import { result } from "lodash";
+import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
+import { Column } from "primereact/column";
+import { ToastContainer } from 'react-toastify';
 // const addDay = (dateString, days) => {
 //   if (!dateString) return "";
 //   const date = new Date(dateString);
@@ -88,7 +92,52 @@ const ReplicateSchedule = () => {
   // const [message, setMessage] = useState('');
   const [lockPickTime, setLockPickTime] = useState(null);
   const [maxDays, setMaxDays] = useState(0);
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
   const empid = sessionManager.getUserSession().ID;
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
+  const checkboxHeaderTemplate = () => (
+    <input
+      type="checkbox"
+      className="form-check-input"
+      checked={selectAll}
+      onChange={handleSelectAll}
+    />
+  );
+
+  const checkboxBodyTemplate = (employee) => (
+    <div className="d-flex align-items-center">
+      <input
+        type="checkbox"
+        className="form-check-input m-0 me-2"
+        checked={employee.isChecked || false}
+        onChange={() => handleSingleCheck(employee.EmployeeID)}
+      />
+      {employee.geoCode !== "Y" && (
+        <span className="material-icons md-18 text-danger mx-1" title="NoGeocode">location_off</span>
+      )}
+      {employee.tptReq !== "Y" && (
+        <span className="material-icons md-18 text-danger mx-1" title="NoTransport">no_transfer</span>
+      )}
+    </div>
+  );
+
+  const dateBodyTemplate = (employee, dayIndex) => {
+    if (!employee[`SETime${dayIndex}`]) return null;
+    const parts = employee[`SETime${dayIndex}`].split("!")[0].split("<BR>");
+    return (
+      <>
+        {parts[0]}
+        {parts.length > 1 && <br />}
+        {parts[1] && parts[1]}
+      </>
+    );
+  };
   useEffect(() => {
     fetchManagers();
     fetchMgrSchedule(empid);
@@ -310,10 +359,11 @@ const ReplicateSchedule = () => {
     <div className="container-fluid p-0">
       <Header pageTitle="ReplicateSchedule" />
       <SidebarMenu />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">
-            <div className="col-2">
+            <div className="col-12 col-md-6 col-lg-4">
               <label htmlFor="">Manager</label>
               <Dropdown
                 value={selectedManager}
@@ -334,12 +384,12 @@ const ReplicateSchedule = () => {
             <h6 className="pageTitle">Replicate Schedule</h6>
           </div> */}
           <div className="col-12">
-            <div class="card_tb p-3">
-              <div class="row mb-3">
-                <div class="col-5">
-                  <div class="">
-                    <h6 class="fs-16 mb-3 fw-bold titleStrip">From Week</h6>
-                    <form class="row row-cols-lg-auto justify-content-start" onSubmit={(e) => e.preventDefault()}>
+            <div className="card_tb p-3">
+              <div className="row mb-3">
+                <div className="col-12 col-xl-5 mb-4 mb-xl-0">
+                  <div className="">
+                    <h6 className="fs-16 mb-3 fw-bold titleStrip">From Week</h6>
+                    <div className="row align-items-center gx-2">
                       <div className="col-auto">
                         <button
                           className="btn btn-link p-0"
@@ -352,26 +402,26 @@ const ReplicateSchedule = () => {
                           <span className="material-icons">chevron_left</span>
                         </button>
                       </div>
-                      <div class="col-12">
-                        <label class="form-label">Start Date</label>
-                        <h6>{fromStartDate.toLocaleDateString('en-US', {
+                      <div className="col">
+                        <label className="form-label mb-1">Start Date</label>
+                        <h6 className="mb-0 fs-14">{fromStartDate.toLocaleDateString('en-US', {
                           weekday: 'short',
                           day: '2-digit',
                           month: 'long',
                           year: 'numeric'
                         })}</h6>
                       </div>
-                      <div class="col-12">
-                        <label class="form-label">End Date</label>
-                        <h6>{fromEndDate.toLocaleDateString('en-US', {
+                      <div className="col">
+                        <label className="form-label mb-1">End Date</label>
+                        <h6 className="mb-0 fs-14">{fromEndDate.toLocaleDateString('en-US', {
                           weekday: 'short',
                           day: '2-digit',
                           month: 'long',
                           year: 'numeric'
                         })}</h6>
                       </div>
-                      {!isDefaultWeek && (
-                        <div className="col-auto">
+                      <div className="col-auto" style={{ minWidth: '32px' }}>
+                        {!isDefaultWeek && (
                           <button
                             className="btn btn-link p-0"
                             onClick={(e) => {
@@ -382,19 +432,18 @@ const ReplicateSchedule = () => {
                           >
                             <span className="material-icons">chevron_right</span>
                           </button>
-                        </div>
-                      )}
-                    </form>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div class="col-5">
-                  <h6 class="fs-16 mb-3 fw-bold titleStrip">To Week</h6>
-                  <div class="">
-                    <form class="row row-cols-lg-auto justify-content-start"
-                      onSubmit={(e) => e.preventDefault()}>
-                      {!isToDefaultWeek && (
-                        <div className="col-auto">
+                <div className="col-12 col-xl-5 mb-4 mb-xl-0">
+                  <h6 className="fs-16 mb-3 fw-bold titleStrip">To Week</h6>
+                  <div className="">
+                    <div className="row align-items-center gx-2">
+                      <div className="col-auto" style={{ minWidth: '32px' }}>
+                        {!isToDefaultWeek && (
                           <button
                             type="button"
                             className="btn btn-link p-0"
@@ -403,20 +452,20 @@ const ReplicateSchedule = () => {
                           >
                             <span className="material-icons">chevron_left</span>
                           </button>
-                        </div>
-                      )}
-                      <div class="col-12">
-                        <label class="form-label">Start Date</label>
-                        <h6>{toStartDate.toLocaleDateString('en-US', {
+                        )}
+                      </div>
+                      <div className="col">
+                        <label className="form-label mb-1">Start Date</label>
+                        <h6 className="mb-0 fs-14">{toStartDate.toLocaleDateString('en-US', {
                           weekday: 'short',
                           day: '2-digit',
                           month: 'long',
                           year: 'numeric'
                         })}</h6>
                       </div>
-                      <div class="col-12">
-                        <label class="form-label">End Date</label>
-                        <h6>{toEndDate.toLocaleDateString('en-US', {
+                      <div className="col">
+                        <label className="form-label mb-1">End Date</label>
+                        <h6 className="mb-0 fs-14">{toEndDate.toLocaleDateString('en-US', {
                           weekday: 'short',
                           day: '2-digit',
                           month: 'long',
@@ -433,110 +482,53 @@ const ReplicateSchedule = () => {
                           <span className="material-icons">chevron_right</span>
                         </button>
                       </div>
-                    </form>
+                    </div>
                   </div>
                 </div>
-                <div class="col-auto d-flex align-items-end">
-                  <div class="">
-                    <>
-                      {/* {message && <div
-                        className="alert alert-info">{message}</div>} */}
-                      <button type="button" class="btn btn-primary"
-                        onClick={handleReplicate}
-                        // disabled={loading || !mgrscheduledata.some(item => item.isChecked===true)}
-                        >
-                        {/* {" "} */}
-                        <span class="material-icons">swap_horiz</span> Replicate
-                        Schedule
-                      </button>
-                    </>
-
+                <div className="col-12 col-xl-2 d-flex align-items-end justify-content-start justify-content-xl-end mt-2 mt-xl-0" style={{ paddingBottom: '0.2rem' }}>
+                  <div className="">
+                    <button type="button" className="btn btn-primary" onClick={handleReplicate}>
+                      <span className="material-icons">swap_horiz</span> Replicate Schedule
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="col-12">
-            <div class="card_tb">
-              <table class="table mb-0">
-                <thead>
-                  <tr>
-                    <th> <input
-                      type="checkbox"
-                      className="form-check-input"
-                      checked={selectAll}
-                      onChange={handleSelectAll}
+            <div className="card_tb p-3">
+              {loading ? (
+                <div className="text-center p-4">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="table-responsive">
+                    <CustomDataTable value={mgrscheduledata.slice(first, first + rows)}>
+                      <Column header={checkboxHeaderTemplate} body={checkboxBodyTemplate} style={{ width: '8%', minWidth: '100px' }} />
+                      <Column field="EmpName" header="Employee Name" style={{ width: '15%', minWidth: '150px' }} />
+                      {weekDays.map((day, index) => (
+                        <Column
+                          key={index}
+                          header={`${day.day} ${day.date}`}
+                          body={(rowData) => dateBodyTemplate(rowData, index)}
+                          style={{ width: '11%', minWidth: '110px' }}
+                        />
+                      ))}
+                    </CustomDataTable>
+                  </div>
+                  {mgrscheduledata.length > 0 && (
+                    <CustomPaginator
+                      first={first}
+                      rows={rows}
+                      totalRecords={mgrscheduledata.length}
+                      onPageChange={onPageChange}
                     />
-                    </th>
-                    <th>Employee Name</th>
-                    {weekDays.map((day, index) => (
-                      <th key={index}>
-                        {day.day} {day.date}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={9} className="text-center">
-                        <div className="spinner-border" role="status">
-                          <span className="visually-hidden">Loading...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    mgrscheduledata.map((employee, index) => (
-                      <tr key={employee.EmployeeID}>
-                        {/*                        
-                      // key={index}
-                      // className={`${index > 0 ? "column" : ""} ${ */}
-                        {/* //   employee.geoCode !== "Y" || employee.tptReq !== "Y"
-                      //     ? "disabled-row"
-                      //     : ""
-                      // }`} */}
-
-                        <td>
-                          <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={employee.isChecked || false}
-                            onChange={() => handleSingleCheck(employee.EmployeeID)}
-                          />
-                          {employee.geoCode !== "Y" && (
-                            <span
-                              className="material-icons md-18 text-danger mx-2"
-                              title="NoGeocode"
-                            >
-                              location_off
-                            </span>
-                          )}
-                          {employee.tptReq !== "Y" && (
-                            <span
-                              className="material-icons md-18 text-danger"
-                              title="NoTransport"
-                            >
-                              no_transfer
-                            </span>
-                          )}
-                        </td>
-                        <td>{employee.EmpName}</td>
-                        {[0, 1, 2, 3, 4, 5, 6].map((day) => (
-                          <td key={day}>
-                            {employee[`SETime${day}`] && (
-                              <>
-                                {employee[`SETime${day}`].split("!")[0].split("<BR>")[0]}
-                                <br />
-                                {employee[`SETime${day}`].split("!")[0].split("<BR>")[1]}
-                              </>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
                   )}
-                </tbody>
-              </table>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -621,7 +621,7 @@ const Dashboard = () => {
 .filter-section {
   position: sticky;
   top: var(--header-height);
-  z-index: 100;
+  z-index: 1100;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -973,33 +973,52 @@ const Dashboard = () => {
 }
 
 /* Calendar Buttons */
-.custom-calender .btn-secondary {
-  background: var(--slate-100);
-  border: 1px solid var(--slate-200);
-  color: var(--slate-700);
+.custom-calender .calendar-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--slate-100);
+  margin-top: var(--space-sm);
+}
+
+.custom-calender .btn-cal-cancel {
+  background: white;
+  border: 1.5px solid var(--slate-300);
+  color: var(--slate-600);
   font-weight: 600;
-  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  padding: 0.5rem 1.25rem;
   border-radius: var(--radius-md);
-  transition: all var(--duration-fast);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  letter-spacing: 0.01em;
 }
 
-.custom-calender .btn-secondary:hover {
-  background: var(--slate-200);
+.custom-calender .btn-cal-cancel:hover {
+  background: var(--slate-50);
+  border-color: var(--slate-400);
+  color: var(--slate-800);
 }
 
-.custom-calender .btn-primary {
+.custom-calender .btn-cal-apply {
   background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
   border: none;
   color: white;
   font-weight: 600;
-  padding: 0.5rem 1.25rem;
+  font-size: 0.8125rem;
+  padding: 0.5rem 1.5rem;
   border-radius: var(--radius-md);
+  cursor: pointer;
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
-  transition: all var(--duration-fast);
+  transition: all var(--duration-fast) var(--ease-out);
+  letter-spacing: 0.01em;
 }
 
-.custom-calender .btn-primary:hover {
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+.custom-calender .btn-cal-apply:hover {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
   transform: translateY(-1px);
 }
 
@@ -1481,15 +1500,15 @@ const Dashboard = () => {
                               value={pendingDateTo}
                             />
                           </div>
-                          <div className="col-12 mt-3 text-end">
+                          <div className="col-12 calendar-footer">
                             <button
-                              className="btn btn-secondary btn-sm me-2"
+                              className="btn-cal-cancel"
                               onClick={handleCalendarClose}
                             >
                               Cancel
                             </button>
                             <button
-                              className="btn btn-primary btn-sm"
+                              className="btn-cal-apply"
                               onClick={handleCalendarApply}
                             >
                               Apply

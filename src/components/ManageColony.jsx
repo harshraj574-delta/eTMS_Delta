@@ -9,6 +9,7 @@ import { toastService } from "../services/toastService";
 import ManageColonyService from "../services/compliance/ManageColonyService";
 import noReportImage from "../assets/no_report.png";
 import { Column } from "primereact/column";
+import { DataTable } from "primereact/datatable";
 import CustomPaginator from "./common/CustomPaginator";
 import { CustomDataTable } from "./common/CustomDataTable";
 
@@ -97,17 +98,16 @@ const ManageColony = () => {
         return (
             <a
                 href="#!"
-                className="cursor-pointer p-1"
+                className="cursor-pointer"
                 onClick={(e) => handleToggle(e, rowData)}
                 title={isExpanded ? "Collapse" : "Expand"}
             >
-                <span className={`material-icons ${isExpanded ? 'text-danger' : 'text-primary'}`}>
+                <span className="material-icons text-primary" style={{ fontSize: '20px' }}>
                     {isExpanded ? 'remove_circle' : 'add_circle'}
                 </span>
             </a>
         );
     };
-
 
     const expandedRowTemplate = (rowData) => {
         const rowId = rowData.RouteID;
@@ -116,34 +116,40 @@ const ManageColony = () => {
             : [];
 
         return (
-            <div className="p-3" style={{ backgroundColor: "#f8f9fa" }}>
-                {loadingDetails ? (
-                    <div className="text-center py-4">
-                        <span className="spinner-border spinner-border-sm me-2" />
-                        Loading details...
+            <div className="leftStrip p-2">
+                <div className="expanded-content">
+                    <div className="table-responsive">
+                        {loadingDetails ? (
+                            <div className="text-center py-4">
+                                <span className="spinner-border spinner-border-sm me-2" />
+                                Loading details...
+                            </div>
+                        ) : details.length > 0 ? (
+                            <DataTable
+                                value={details}     // ✅ ALWAYS ARRAY
+                                paginator={false}
+                                responsiveLayout="scroll"
+                                size="small"
+                                emptyMessage="No sequence details"
+                                className="w-100"
+                            >
+                                <Column field="SeqId" header="SeqID" />
+                                <Column field="ZoneName" header="Zone" />
+                                <Column field="City" header="City" />
+                                <Column field="Colony" header="Area" />
+                                {/* <Column field="Location" header="Area" /> */}
+                                <Column field="SubColony" header="Landmark" />
+                                <Column field="Metro" header="Metro" />
+                                <Column field="travelTime" header="Time" />
+                                <Column field="travelKm" header="Km" />
+                            </DataTable>
+                        ) : (
+                            <div className="text-center text-muted p-3">
+                                No route sequence details available
+                            </div>
+                        )}
                     </div>
-                ) : details.length > 0 ? (
-                    <CustomDataTable
-                        value={details}     // ✅ ALWAYS ARRAY
-                        paginator={false}
-                        responsiveLayout="scroll"
-                        emptyMessage="No sequence details"
-                    >
-                        <Column field="SeqId" header="SeqID" />
-                        <Column field="ZoneName" header="Zone" />
-                        <Column field="City" header="City" />
-                        <Column field="Colony" header="Area" />
-                        {/* <Column field="Location" header="Area" /> */}
-                        <Column field="SubColony" header="Landmark" />
-                        <Column field="Metro" header="Metro" />
-                        <Column field="travelTime" header="Time" />
-                        <Column field="travelKm" header="Km" />
-                    </CustomDataTable>
-                ) : (
-                    <div className="text-center text-muted p-3">
-                        No route sequence details available
-                    </div>
-                )}
+                </div>
             </div>
         );
     };
@@ -303,7 +309,7 @@ const ManageColony = () => {
                             {hasSearched && routeSeqData.length > 0 && (
                                 <div className="p-3">
                                     <CustomDataTable
-                                        className="p-datatable-sm"
+                                        className="p-datatable-sm clean-expansion-table"
                                         emptyMessage="No route data"
                                         value={routeSeqData}
                                         dataKey="RouteID"

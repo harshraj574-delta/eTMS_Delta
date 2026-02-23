@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import './TableToolbar.css';
 
 import crossIcon from '../../assets/cross.png';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const TableToolbar = ({
   search,
@@ -24,6 +25,24 @@ const TableToolbar = ({
   showExport = true,
   className = ""
 }) => {
+  const [localSearch, setLocalSearch] = useState(search || "");
+  const debouncedSearch = useDebounce(localSearch, 300);
+
+  useEffect(() => {
+    // Only call onSearch when debounced value changes and it is a controlled input
+    if (onSearch && debouncedSearch !== search) {
+       // emulate an event object for the parent
+       onSearch({ target: { value: debouncedSearch } });
+    }
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    // Sync external search changes (like clears) to local state
+    if (search !== localSearch && search !== debouncedSearch) {
+       setLocalSearch(search || "");
+    }
+  }, [search]);
+
 
   // Senior Dev Implementation: Defensive cleanup to prevent PrimeReact "hideOverlaysOnDocumentScrolling" crash
   // This occurs when navigating away while an overlay context is active.
@@ -163,8 +182,8 @@ const TableToolbar = ({
                 placeholder="Search"
                 className="p-inputtext-sm"
                 style={{ paddingRight: "2.5rem", width: "250px" }}
-                value={search}
-                onChange={onSearch}
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
               />
               <i
                 className="pi pi-search"

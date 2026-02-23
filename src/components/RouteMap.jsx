@@ -27,7 +27,8 @@ function MapLibreLayer({ onTilesLoaded }) {
   const glMapRef = useRef(null);
   const tilesLoadedRef = useRef(false);
   const onTilesLoadedRef = useRef(onTilesLoaded);
-  
+  const checkIntervalRef = useRef(null);
+
   useEffect(() => {
     onTilesLoadedRef.current = onTilesLoaded;
   }, [onTilesLoaded]);
@@ -35,7 +36,7 @@ function MapLibreLayer({ onTilesLoaded }) {
   useEffect(() => {
     if (layerRef.current) return;
     if (!map) return;
-    
+
     if (!window.maplibregl) {
       window.maplibregl = maplibregl;
     }
@@ -55,26 +56,40 @@ function MapLibreLayer({ onTilesLoaded }) {
           antialias: true,
         }
       });
-      
+
       maplibreLayer.addTo(map);
       layerRef.current = maplibreLayer;
 
-      setTimeout(() => {
+      // Force tiles loaded after 3 seconds as a safety net
+      const safetyTimeout = setTimeout(() => {
+        if (!tilesLoadedRef.current) {
+          console.warn('MapLibre layer load timed out - forcing ready state');
+          tilesLoadedRef.current = true;
+          if (onTilesLoadedRef.current) {
+            onTilesLoadedRef.current();
+          }
+        }
+      }, 3000);
+
+      const checkMapReady = () => {
         if (maplibreLayer.getMaplibreMap) {
           const glMap = maplibreLayer.getMaplibreMap();
-          glMapRef.current = glMap;
           
           if (glMap) {
-            glMap.on('load', () => {
-              const style = glMap.getStyle();
-              if (style && style.sources) {
-                Object.keys(style.sources).forEach(sourceId => {
-                  const source = glMap.getSource(sourceId);
-                  if (source && source.setTiles) {
-                    // Source is loaded
+            glMapRef.current = glMap;
+            
+            // If map is already loaded, trigger callback
+            if (glMap.loaded()) {
+               if (!tilesLoadedRef.current) {
+                  tilesLoadedRef.current = true;
+                  if (onTilesLoadedRef.current) {
+                    onTilesLoadedRef.current();
                   }
-                });
-              }
+               }
+            }
+
+            glMap.on('load', () => {
+               // Map loaded
             });
 
             glMap.on('idle', () => {
@@ -84,15 +99,39 @@ function MapLibreLayer({ onTilesLoaded }) {
                   onTilesLoadedRef.current();
                 }
               }
-              
-              const currentZoom = glMap.getZoom();
-              if (currentZoom < 18) {
-                glMap.triggerRepaint();
-              }
             });
+
+            // Clear the interval once we found the map
+            if (checkIntervalRef.current) {
+              clearInterval(checkIntervalRef.current);
+              checkIntervalRef.current = null;
+            }
           }
         }
-      }, 500);
+      };
+
+      // Check immediately and then periodically
+      checkMapReady();
+      checkIntervalRef.current = setInterval(checkMapReady, 100);
+
+      return () => {
+        clearTimeout(safetyTimeout);
+        if (checkIntervalRef.current) {
+          clearInterval(checkIntervalRef.current);
+        }
+        
+        if (glMapRef.current) {
+          glMapRef.current = null;
+        }
+        if (layerRef.current && map) {
+            try {
+               map.removeLayer(layerRef.current);
+            } catch (e) {
+               // ignore
+            }
+            layerRef.current = null;
+        }
+      };
 
     } catch (err) {
       console.error('Failed to initialize MapLibre GL layer:', err);
@@ -102,26 +141,20 @@ function MapLibreLayer({ onTilesLoaded }) {
       );
       fallbackLayer.addTo(map);
       layerRef.current = fallbackLayer;
-      
+
       if (onTilesLoadedRef.current && !tilesLoadedRef.current) {
         tilesLoadedRef.current = true;
         setTimeout(() => onTilesLoadedRef.current(), 1000);
       }
+      return () => {
+         if (layerRef.current && map) {
+            try {
+               map.removeLayer(layerRef.current);
+            } catch(e) {}
+            layerRef.current = null;
+         }
+      }
     }
-
-    return () => {
-      if (glMapRef.current) {
-        glMapRef.current = null;
-      }
-      if (layerRef.current && map) {
-        try {
-          map.removeLayer(layerRef.current);
-          layerRef.current = null;
-        } catch (e) {
-          // Layer might already be removed
-        }
-      }
-    };
   }, [map]);
 
   return null;
@@ -620,6 +653,18 @@ export default function RouteMap() {
     };
     
     fetchInitialData();
+
+    // Safety timeout to prevent infinite loader
+    const safetyTimeout = setTimeout(() => {
+       if (loading || isRouteLoading || (isMapReady && !mapTilesLoaded)) {
+          console.warn("Forcing loader dismissal due to timeout");
+          setLoading(false);
+          setIsRouteLoading(false);
+          setMapTilesLoaded(true);
+       }
+    }, 10000);
+
+    return () => clearTimeout(safetyTimeout);
   }, [queryParams, fetchRouteDetailsAndGeometry]);
 
   const displayRoutes = useMemo(() => {

@@ -188,11 +188,11 @@ const RiDropSafeChart = ({ filter }) => {
         },
         grid: {
           ...GRID_CONFIG,
-          top: isFullscreen ? 50 : 40,
-          bottom: isFullscreen ? 90 : 70,
-          left: isFullscreen ? 70 : 55,
-          right: isFullscreen ? 30 : 20,
-          containLabel: false,
+          top: isFullscreen ? "15%" : "20%",
+          bottom: isFullscreen ? "15%" : "20%",
+          left: isFullscreen ? "5%" : "8%",
+          right: isFullscreen ? "5%" : "5%",
+          containLabel: true,
         },
         xAxis: {
           ...X_AXIS_CONFIG,

@@ -21,7 +21,6 @@ const VehicleUtilizationReport = () => {
   const [selectedTripType, setSelectedTripType] = useState("P");
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
-  const [reportData, setReportData] = useState([]);
   const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -39,11 +38,9 @@ const VehicleUtilizationReport = () => {
   const op = useRef(null);
   const filterButtonRef = useRef(null);
 
-  // Re-run grouping and filtering whenever rawData, filters, or globalFilter changes
-  useEffect(() => {
+  const reportData = React.useMemo(() => {
     if (rawData.length === 0) {
-      setReportData([]);
-      return;
+      return [];
     }
 
     let filtered = [...rawData];
@@ -53,18 +50,20 @@ const VehicleUtilizationReport = () => {
       filtered = filtered.filter(item => filters.Vendor.includes(item.Vendor));
     }
 
-    // Apply Global Search
+    // Apply Global Search optimally
     if (globalFilter && globalFilter.trim() !== "") {
       const searchLower = globalFilter.toLowerCase();
-      filtered = filtered.filter(item =>
-        Object.values(item).some(val =>
+      filtered = filtered.filter(item => {
+        const valuesToSearch = [
+            item.shiftDate, item.shiftTime, item.Vendor, item.TotalRoutes, item.TotalCapacity
+        ];
+        return valuesToSearch.some(val =>
           val !== null && val !== undefined && String(val).toLowerCase().includes(searchLower)
-        )
-      );
+        );
+      });
     }
 
-    const grouped = groupDataByDateVendorVehicle(filtered);
-    setReportData(grouped);
+    return groupDataByDateVendorVehicle(filtered);
   }, [rawData, filters, globalFilter]);
 
   const getUniqueValues = (field) => {
@@ -116,7 +115,7 @@ const VehicleUtilizationReport = () => {
     return `${month}/${day}/${year}`;
   };
 
-  const groupDataByDateVendorVehicle = (data) => {
+  function groupDataByDateVendorVehicle(data) {
     const groupedByDate = {};
 
     data.forEach((item) => {
