@@ -104,55 +104,6 @@ if (typeof document !== 'undefined' && !document.getElementById('manage-route-mo
 // ============================================================================
 
 /**
- * StatsBar - Horizontal scrollable stats display
- */
-const StatsBar = React.memo(({ stats }) => {
-    const safeStats = stats?.[0] || {};
-    
-    return (
-        <div 
-            className="d-flex gap-2 px-3 py-2 overflow-auto align-items-center"
-            style={{ 
-                background: '#fff',
-                whiteSpace: 'nowrap',
-                borderBottom: '1px solid #f1f5f9'
-            }}
-        >
-            <div className="d-flex align-items-center gap-3 px-3 py-2 rounded-3 border flex-fill" style={{ background: '#f8fafc', borderColor: '#e2e8f0', minWidth: '110px' }}>
-                <div className="d-flex align-items-center justify-content-center rounded-circle" style={{ width: '36px', height: '36px', background: '#eff6ff' }}>
-                    <i className="pi pi-map-marker text-primary" style={{ fontSize: '1rem' }} />
-                </div>
-                <div>
-                    <div className="fw-bold text-dark" style={{ fontSize: '1rem' }}>{safeStats.TotalRoutes || 0}</div>
-                    <small className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>Routes</small>
-                </div>
-            </div>
-            
-            <div className="d-flex align-items-center gap-3 px-3 py-2 rounded-3 border flex-fill" style={{ background: '#f8fafc', borderColor: '#e2e8f0', minWidth: '130px' }}>
-                <div className="d-flex align-items-center justify-content-center rounded-circle" style={{ width: '36px', height: '36px', background: '#f0fdf4' }}>
-                    <i className="pi pi-users text-success" style={{ fontSize: '1rem' }} />
-                </div>
-                <div>
-                    <div className="fw-bold text-dark" style={{ fontSize: '1rem' }}>{safeStats.TotalEmps || 0}</div>
-                    <small className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>Employees</small>
-                </div>
-            </div>
-            
-            <div className="d-flex align-items-center gap-3 px-3 py-2 rounded-3 border flex-fill" style={{ background: '#f8fafc', borderColor: '#e2e8f0', minWidth: '140px' }}>
-                <div className="d-flex align-items-center justify-content-center rounded-circle" style={{ width: '36px', height: '36px', background: '#fff7ed' }}>
-                    <i className="pi pi-chart-pie text-warning" style={{ fontSize: '1rem' }} />
-                </div>
-                <div>
-                    <div className="fw-bold text-dark" style={{ fontSize: '1rem' }}>{safeStats.AvgOccupancy?.toFixed(1) || 0}</div>
-                    <small className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>Avg Occupancy</small>
-                </div>
-            </div>
-        </div>
-    );
-});
-StatsBar.displayName = 'StatsBar';
-
-/**
  * FilterSidebar - Slide-in filter panel
  */
 const FilterSidebar = React.memo(({ 
@@ -1414,9 +1365,6 @@ const ManageRouteMobile = ({
                         </Button>
                     </div>
                 </div>
-
-                {/* Stats Bar */}
-                {routes.length > 0 && <StatsBar stats={stats} />}
 
                 {/* Mobile Action Bar */}
                 {routes.length > 0 && (
