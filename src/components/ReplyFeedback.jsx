@@ -273,8 +273,8 @@ const ReplyFeedback = () => {
             <div className="middle">
                 <div className="card_tb p-3">
                     <div className="row">
-                        <div className="field col-2 mb-3">
-                            <label className="form-label fw-bold">From Date <span className="text-danger">*</span></label>
+                        <div className="field col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                            <label className="form-label">From Date <span className="text-danger">*</span></label>
                             <div className="custom-calendar-wrapper">
                                 <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
                                 <Calendar
@@ -288,8 +288,8 @@ const ReplyFeedback = () => {
                                 />
                             </div>
                         </div>
-                        <div className="field col-2 mb-3">
-                            <label className="form-label fw-bold">To Date <span className="text-danger">*</span></label>
+                        <div className="field col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                            <label className="form-label">To Date <span className="text-danger">*</span></label>
                             <div className="custom-calendar-wrapper">
                                 <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
                                 <Calendar
@@ -310,8 +310,8 @@ const ReplyFeedback = () => {
                                 />
                             </div>
                         </div>
-                        <div className="field col-2 mb-3">
-                            <label className="form-label fw-bold">Facility <span className="text-danger">*</span></label>
+                        <div className="field col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                            <label className="form-label">Facility <span className="text-danger">*</span></label>
                             <Dropdown
                                 value={selectedFacility}
                                 options={facilities}
@@ -322,8 +322,8 @@ const ReplyFeedback = () => {
                                 className="w-100"
                             />
                         </div>
-                        <div className="field col-2 mb-3">
-                            <label className="form-label fw-bold">Status<span className="text-danger">*</span></label>
+                        <div className="field col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                            <label className="form-label">Status <span className="text-danger">*</span></label>
                             <Dropdown
                                 value={selectedStatus}
                                 options={statusOptions}
@@ -334,7 +334,7 @@ const ReplyFeedback = () => {
                                 filter
                             />
                         </div>
-                        <div className="field col-2 mb-3 no-label">
+                        <div className="field col-12 col-sm-6 col-md-4 col-lg-2 mb-3 no-label">
                             <ReportButton
                                 label="Submit"
                                 onClick={handleSubmit}

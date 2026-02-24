@@ -103,6 +103,25 @@ const VendorAllocation = () => {
   const handleShowData = async () => {
     setIsSubmitting(true);
     // setIsDataShown(true); // Moved to success block
+    
+    if (!selectdate) {
+      toastService.warn("Please select a shift date.");
+      setIsSubmitting(false);
+      setIsDataShown(false);
+      return;
+    }
+    if (!selectedFacility) {
+      toastService.warn("Please select a facility name.");
+      setIsSubmitting(false);
+      setIsDataShown(false);
+      return;
+    }
+    if (!selectedTripType) {
+      toastService.warn("Please select a trip type.");
+      setIsSubmitting(false);
+      setIsDataShown(false);
+      return;
+    }
     if (!selectedShiftTime) {
       toastService.warn("Please select a shift time.");
       setIsSubmitting(false);
@@ -323,7 +342,7 @@ const VendorAllocation = () => {
         <div className="card_tb p-3">
           <div className="row">
             <div className="field col-12 col-md-6 col-lg-2 mb-3">
-              <label>Shift Date</label>
+              <label htmlFor="shiftDate" className="form-label">Shift Date <span className="text-danger">*</span></label>
               <div className="custom-calendar-wrapper">
                 <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
                 <Calendar
@@ -338,7 +357,7 @@ const VendorAllocation = () => {
             </div>
 
             <div className="field col-12 col-md-6 col-lg-2 mb-3">
-              <label>Facility Name</label>
+              <label htmlFor="facility" className="form-label">Facility Name <span className="text-danger">*</span></label>
               <Dropdown
                 options={facilities}
                 placeholder="Select Facility"
@@ -353,7 +372,7 @@ const VendorAllocation = () => {
               />
             </div>
             <div className="field col-12 col-md-6 col-lg-2 mb-3">
-              <label>Trip Type</label>
+              <label htmlFor="tripType" className="form-label">Trip Type <span className="text-danger">*</span></label>
               <Dropdown
                 options={tripType}
                 value={selectedTripType}
@@ -364,7 +383,7 @@ const VendorAllocation = () => {
               />
             </div>
             <div className="field col-12 col-md-6 col-lg-2 mb-3">
-              <label>Shift Time</label>
+              <label htmlFor="shift" className="form-label">Shift Time <span className="text-danger">*</span></label>
               <Dropdown
                 options={shiftTimeOptions}
                 optionLabel="name" // Assuming shiftTime is the field you want to display

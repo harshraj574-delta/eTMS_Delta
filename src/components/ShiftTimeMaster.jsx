@@ -514,8 +514,8 @@ const ShiftTimeMaster = () => {
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">
-            <div className="field col-2 mb-3">
-              <label>Facility</label>
+            <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+              <label className="form-label">Facility <span className="text-danger">*</span></label>
               <Dropdown
                 id="facility"
                 placeholder="Select Facility"
@@ -531,8 +531,8 @@ const ShiftTimeMaster = () => {
                 }}
               />
             </div>
-            <div className="field col-2 mb-3">
-              <label>Process</label>
+            <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+              <label className="form-label">Process <span className="text-danger">*</span></label>
               <Dropdown
                 id="process"
                 placeholder="Select Process"
@@ -543,8 +543,8 @@ const ShiftTimeMaster = () => {
                 onChange={(e) => setSelectedProcess(e.value)}
               />
             </div>
-            <div className="field col-2 mb-3">
-              <label>Trip Type</label>
+            <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+              <label className="form-label">Trip Type <span className="text-danger">*</span></label>
               <Dropdown
                 placeholder="Select"
                 className="w-100"
@@ -553,8 +553,8 @@ const ShiftTimeMaster = () => {
                 onChange={(e) => setTripTypeValue(e.value)}
               />
             </div>
-            <div className="field col-2 mb-3">
-              <label>Day Type</label>
+            <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+              <label className="form-label">Day Type <span className="text-danger">*</span></label>
               <Dropdown
                 placeholder="Select"
                 className="w-100"

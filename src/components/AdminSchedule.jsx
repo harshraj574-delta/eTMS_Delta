@@ -18,6 +18,7 @@ import { toastService } from "../services/toastService";
 import { apiService } from "../services/api";
 import calendarIcon from "../assets/calendar.png";
 import ReportButton from "./common/ReportButton";
+import { ToastContainer } from "react-toastify";
 
 // Helper to get 7 days from selectedDate
 // const month = date.toLocaleString("default", { month: "long" });
@@ -145,9 +146,15 @@ const AdminSchedule = () => {
   const handleUpdateVendor = async () => {
     setIsSubmitting(true); // Show loader
 
-    const effectiveDate = selectedDate || new Date();
+    if (!selectedDate) {
+      toastService.warn("Please select From Date");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const effectiveDate = selectedDate;
     if (!employeeIds) {
-      console.error("Employee IDs are required");
+      toastService.warn("Please enter Employee ID's");
       setIsSubmitting(false);
       return;
     }
@@ -492,11 +499,12 @@ const AdminSchedule = () => {
         onNewButtonClick={() => setAddNewCost(false)}
       />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">
             <div className="field col-2 mb-3">
-              <label>From Date</label>
+              <label htmlFor="shiftDate" className="form-label">From Date <span className="text-danger">*</span></label>
               <div className="custom-calendar-wrapper">
                 <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
                 <Calendar
@@ -523,7 +531,7 @@ const AdminSchedule = () => {
             </div>
              */}
             <div className="field col-6 mb-3">
-              <label>Employee ID's</label>
+              <label htmlFor="employeeIds" className="form-label">Employee ID's <span className="text-danger">*</span></label>
               <InputTextarea
                 value={employeeIds}
                 onChange={(e) => setEmployeeIds(e.target.value)}

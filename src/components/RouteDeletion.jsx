@@ -101,12 +101,20 @@ const RouteDeletion = () => {
     //   toastService.error("Date must be greater than the current date");
     //   return;
     // }
+    if (!date) {
+      toastService.warn("Please select Date");
+      return;
+    }
     if (!selFacility) {
       toastService.warn("Please select Facility");
       return;
     }
-    if (selectedShifts.length === 0) {
-      toastService.warn("Please select Shifts");
+    if (!type) {
+      toastService.warn("Please select Type");
+      return;
+    }
+    if (!selectedShifts || selectedShifts.length === 0) {
+      toastService.warn("Please select Shift");
       return;
     }
     confirmDialog({
@@ -177,7 +185,7 @@ const RouteDeletion = () => {
         <div className="card_tb p-3">
           <div className="row">
             <div className="field col-2 mb-3">
-              <label>Date</label>
+              <label htmlFor="date" className="form-label">Date <span className="text-danger">*</span></label>
               <div className="custom-calendar-wrapper">
                 <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
                 <Calendar
@@ -190,7 +198,7 @@ const RouteDeletion = () => {
               </div>
             </div>
             <div className="field col-2 mb-3">
-              <label>Facility Name</label>
+              <label htmlFor="facility" className="form-label">Facility Name <span className="text-danger">*</span></label>
               <Dropdown placeholder="Select Facility" optionLabel="name"
                 value={selFacility} options={facility}
                 onChange={(e) => setSelFacility(e.value)}
@@ -198,14 +206,14 @@ const RouteDeletion = () => {
               />
             </div>
             <div className="field col-2 mb-3">
-              <label>Type</label>
+              <label htmlFor="type" className="form-label">Type <span className="text-danger">*</span></label>
               <Dropdown placeholder="Select Type"
                 value={type} options={TypeOptions} onChange={(e) => setType(e.value)}
                 className="w-100"
               />
             </div>
             <div className="field col-2 mb-3">
-              <label>Shift</label>
+              <label htmlFor="shift" className="form-label">Shift <span className="text-danger">*</span></label>
               <Dropdown placeholder="Select Shift"
                 value={selectedShifts}
                 options={shiftOptions}

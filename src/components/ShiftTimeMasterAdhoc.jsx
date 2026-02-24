@@ -14,6 +14,7 @@ import { Checkbox } from "primereact/checkbox";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import ShiftTimeMasterAdhocService from "../services/compliance/ShiftTimeMasterAdhocService";
 import { toastService } from "../services/toastService";
+import ReportButton from "./common/ReportButton";
 
 const ShiftTimeMasterAdhoc = () => {
   const [addAdhocSidebar, setAddAdhocSidebar] = useState(false);
@@ -281,24 +282,24 @@ const ShiftTimeMasterAdhoc = () => {
         {/* Filter Section */}
         <div className="card_tb p-3 mb-3">
           <div className="row">
-            <div className="field col-2 mb-3">
-              <label>Facility Name</label>
+            <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+              <label className="form-label">Facility Name <span className="text-danger">*</span></label>
               <Dropdown className="w-100" placeholder="Select Facility" options={facility} value={selFacility} optionLabel="name"
                 onChange={(e) => setSelFacility(e.value)} />
             </div>
 
-            <div className="field col-2 mb-3">
-              <label>Trip Type</label>
+            <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+              <label className="form-label">Trip Type <span className="text-danger">*</span></label>
               <Dropdown className="w-100" placeholder="Select Type" options={TypeOptions} value={type}
                 optionLabel="label" onChange={(e) => { setType(e.value) }} />
             </div>
-            <div className="field col-2 mb-3">
-              <label>Shift Category</label>
+            <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+              <label className="form-label">Shift Category <span className="text-danger">*</span></label>
               <Dropdown className="w-100" placeholder="Select Category" optionLabel="label" options={ShiftCategoryOptions} value={shiftCategory} onChange={(e) => setShiftCategory(e.value)}
               />
             </div>
-            <div className="field col-2 mb-3">
-              <button className="btn btn-primary no-label" onClick={fetchGetAdhocShiftTime}>Submit</button>
+            <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3 no-label">
+              <ReportButton label="Submit" onClick={fetchGetAdhocShiftTime} />
             </div>
           </div>
         </div>

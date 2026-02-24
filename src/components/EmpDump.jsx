@@ -10,6 +10,7 @@ import * as XLSX from "xlsx";
 import ExcelJS from 'exceljs';
 import { toastService } from "../services/toastService";
 import ReportButton from "./common/ReportButton";
+import { ToastContainer } from "react-toastify";
 
 const EmpDump = () => {
     const userID = sessionStorage.getItem("ID")
@@ -158,11 +159,12 @@ const EmpDump = () => {
             )}
             <Header pageTitle={"Employee Dump"} />
             <Sidebar />
+            <ToastContainer position="top-right" autoClose={3000} />
             <div className="middle">
                 <div className="card_tb p-3">
                     <div className="row">
-                        <div className="field col-2 mb-3">
-                            <label>Facility</label>
+                        <div className="field col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                            <label htmlFor="facility" className="form-label">Facility <span className="text-danger">*</span></label>
                             <Dropdown
                                 id="facility"
                                 placeholder="Select Facility"
@@ -203,7 +205,7 @@ const EmpDump = () => {
 
                             />
                         </div> */}
-                        <div className="field col-2 mb-3">
+                        <div className="field col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
                             {/* <div className="form-check">
                                 <input type="radio" className="form-check-input" name="status" id="active" value="Active" />
                                 <label htmlFor="active" className="form-check-label">Active</label>
@@ -216,9 +218,10 @@ const EmpDump = () => {
                                 <input type="radio" className="form-check-input" name="status" id="both" value="Both" />
                                 <label htmlFor="both" className="form-check-label">Both</label>
                             </div> */}
-                            <label className="d-block mb-2">Status</label>
+                            <label htmlFor="status" className="form-label d-block mb-2">Status <span className="text-danger">*</span></label>
 
                             <select
+                                id="status"
                                 className="form-select w-100"
                                 value={status}
                                 onChange={(e) => setStatus(e.target.value)}
@@ -231,7 +234,7 @@ const EmpDump = () => {
                             {/* Export Button */}
                             {/* <button className="btn btn-primary w-100">Export Employee Dump</button> */}
                         </div>
-                        <div className="field col-3 mb-3 no-label">
+                        <div className="field col-12 col-sm-6 col-md-4 col-lg-3 mb-3 no-label">
                             <ReportButton
                                 label="Export Employee Dump"
                                 onClick={handleExport}

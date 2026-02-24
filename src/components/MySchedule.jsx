@@ -685,7 +685,12 @@ const MySchedule = () => {
 
     try {
         await updateEmpScheduleMutation.mutateAsync(params);
-        setIsEmployeeShiftOpen(false);
+        const el = document.getElementById("Employee_Shift");
+        if (el) {
+          const bsOffcanvas = Offcanvas.getInstance(el);
+          if (bsOffcanvas) bsOffcanvas.hide();
+        }
+        setTimeout(() => setIsEmployeeShiftOpen(false), 400);
         // Note: mutation onSuccess handles invalidation.
         // Also original code reset fromDate to today?
         // "const fromDateInput = document.getElementById("fromDate"); ... fromDateInput.value = today; setFromDate(today);"
@@ -775,6 +780,13 @@ const MySchedule = () => {
 
     // 5. Open Modal
     setIsEmployeeShiftOpen(true);
+    setTimeout(() => {
+      const el = document.getElementById("Employee_Shift");
+      if (el) {
+        const bsOffcanvas = Offcanvas.getInstance(el) || new Offcanvas(el);
+        bsOffcanvas.show();
+      }
+    }, 10);
     
     // 6. Reset Lock status to "Loading/Calculating" or optimistic?
     // The useEffect will handle strict locking logic once data arrives
@@ -957,7 +969,7 @@ const MySchedule = () => {
         // Close canvas
         const canvas = document.getElementById("New_Schedule");
         if (canvas) {
-            const bsCanvas = window.bootstrap.Offcanvas.getInstance(canvas);
+            const bsCanvas = Offcanvas.getInstance(canvas);
             bsCanvas?.hide();
         }
         resetFormValues();
@@ -1487,7 +1499,7 @@ const MySchedule = () => {
 
       {/* <!-- Employee Shift Detail --> */}
       <div
-        className={`offcanvas offcanvas-end ${isEmployeeShiftOpen ? "show" : ""}`}
+        className="offcanvas offcanvas-end"
         tabIndex="-1"
         id="Employee_Shift"
         aria-labelledby="offcanvasRightLabel"
@@ -1505,7 +1517,7 @@ const MySchedule = () => {
             className="btn-close btn-close-white"
             data-bs-dismiss="offcanvas"
             aria-label="Close"
-            onClick={() => setIsEmployeeShiftOpen(false)}
+            onClick={() => setTimeout(() => setIsEmployeeShiftOpen(false), 400)}
           ></button>
         </div>
         <div className="offcanvas-body px-4">
@@ -1710,7 +1722,7 @@ const MySchedule = () => {
           <button
             className="btn btn-outline-secondary"
             data-bs-dismiss="offcanvas"
-            onClick={() => setIsEmployeeShiftOpen(false)}
+            onClick={() => setTimeout(() => setIsEmployeeShiftOpen(false), 400)}
           >
             Cancel
           </button>
@@ -1727,7 +1739,7 @@ const MySchedule = () => {
       {/* {<!-- Employee Shift Detail  -->} */}
       {/* <!-- Trips Detail --> */}
       <div
-        className={`offcanvas offcanvas-end ${isTripsModalOpen ? "show" : ""}`}
+        className="offcanvas offcanvas-end"
         tabIndex="-1"
         id="trips"
         aria-labelledby="offcanvasRightLabel"
@@ -1746,8 +1758,10 @@ const MySchedule = () => {
             data-bs-dismiss="offcanvas"
             aria-label="Close"
             onClick={() => {
-              setIsTripsModalOpen(false);
-              setSelectedRouteId(null);
+              setTimeout(() => {
+                setIsTripsModalOpen(false);
+                setSelectedRouteId(null);
+              }, 400);
             }}
           ></button>
         </div>
