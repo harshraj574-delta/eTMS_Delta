@@ -65,6 +65,13 @@ const mobileStyles = `
         transform: translateY(0);
     }
 }
+.route-employee-row {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease;
+}
+.route-employee-row:active {
+    background-color: #f8fafc;
+}
 .p-badge {
     min-width: 1.5rem;
     height: 1.5rem;
@@ -272,7 +279,7 @@ const EmployeeRow = React.memo(({ employee, routeId, onDelete, isEditable, index
         <div 
             ref={setNodeRef}
             style={style}
-            className="d-flex align-items-center py-3 px-3 border-bottom"
+            className="d-flex align-items-center py-3 px-3 border-bottom route-employee-row"
         >
             {/* Drag Handle - Only editable rows can be dragged */}
             {isEditable ? (
@@ -481,12 +488,12 @@ const RouteCard = React.memo(({
     return (
         <div 
             ref={setNodeRef}
-            className="bg-white rounded-3 overflow-hidden mb-2"
+            className="bg-white rounded-3 overflow-hidden mb-3 mx-2"
             style={{ 
-                border: isOver ? '2px dashed #3b82f6' : '1px solid #e5e7eb',
-                boxShadow: isExpanded ? '0 8px 25px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.06)',
+                border: isOver ? '2px dashed #3b82f6' : '1px solid #e2e8f0',
+                boxShadow: isExpanded ? '0 12px 24px -6px rgba(0,0,0,0.12)' : '0 4px 6px -1px rgba(0,0,0,0.08)',
                 transition: 'all 0.25s ease',
-                background: isOver ? '#eff6ff' : '#fff'
+                background: isOver ? '#eff6ff' : '#ffffff'
             }}
         >
             {/* Collapsed Header - Entire area clickable */}
@@ -568,12 +575,12 @@ const RouteCard = React.memo(({
             {isExpanded && (
                 <div 
                     style={{ 
-                        borderTop: '1px solid #e5e7eb',
+                        borderTop: '1px solid #e2e8f0',
                         animation: 'slideDown 0.2s ease-out'
                     }}
                 >
                     {/* Route Details with Emoji Icons */}
-                    <div className="px-3 py-3" style={{ background: '#fafbfc' }}>
+                    <div className="px-3 py-3" style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
                         <div className="d-flex flex-column gap-2" style={{ fontSize: '0.88rem' }}>
                             <div className="d-flex align-items-center gap-2">
                                 <span style={{ width: '20px', textAlign: 'center' }}>📍</span>
@@ -684,10 +691,10 @@ const RouteCard = React.memo(({
                     </div>
 
                     {/* Employee List */}
-                    <div style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <div style={{ borderTop: '1px solid #e2e8f0' }}>
                         <div 
                             className="px-3 py-2 d-flex align-items-center justify-content-between"
-                            style={{ background: '#f1f5f9' }}
+                            style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}
                         >
                             <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>
                                 EMPLOYEES
@@ -1417,14 +1424,14 @@ const ManageRouteMobile = ({
                     showNewButton={false}
                 />
                 
-                <div style={{ paddingBottom: '20px' }}> {/* Bottom padding */}
+                <div style={{ paddingBottom: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh' }}> {/* Bottom padding */}
             <Sidebar />
             <ToastContainer position="top-right" autoClose={3000} />
             <Toast ref={toast} position="top-center" />
             
             <div className="middle">
                 {/* Mobile Filter Bar */}
-                <div className="card_tb p-3 mb-3">
+                <div className="card_tb p-3 mb-2 shadow-sm" style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff', zIndex: 10 }}>
                     <div className="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 className="mb-1 fw-bold">Manage Routes</h6>
@@ -1460,7 +1467,7 @@ const ManageRouteMobile = ({
 
                 {/* Mobile Action Bar */}
                 {routes.length > 0 && (
-                    <div className="px-3 py-2 bg-white border-bottom shadow-sm">
+                    <div className="px-3 py-2 bg-white shadow-sm mb-3" style={{ borderBottom: '1px solid #e2e8f0', zIndex: 10 }}>
                         <div 
                             className="d-flex gap-2 overflow-auto" 
                             style={{ 
