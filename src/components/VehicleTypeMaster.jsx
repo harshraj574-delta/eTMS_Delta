@@ -8,10 +8,11 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import { Sidebar as PrimeSidebar } from "primereact/sidebar"; // Renamed to avoid conflict with your Sidebar component
-import { Col } from 'react-bootstrap';
+import MasterSidebar from "./Master/MasterSidebar";
 import { toastService } from "../services/toastService";
 import { InputNumber } from 'primereact/inputnumber';
+import CustomPaginator from "./common/CustomPaginator";
+import Loader from "./common/Loader";
 
 const VehicleTypeMaster = () => {
     const [selectedVendor, setSelectedVendor] = useState(0);
@@ -27,16 +28,20 @@ const VehicleTypeMaster = () => {
     const [EditVendorScheme, setEditVendorScheme] = useState(null);
     const [vehicleType, setVehicleType] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const [first, setFirst] = useState(0);
+    const [rows, setRows] = useState(50);
+
+    const onPageChange = (event) => {
+        setFirst(event.first);
+        setRows(event.rows);
+    };
+
     // const userFacilityId = sessionManager.getUserSession().FacilityID;
     // const userFacility = facilityList.find(f => f.Id === userFacilityId);
     // Update the useEffect to properly initialize newVendor
     useEffect(() => {
         BindFacilityDDL();
-        //BindFacilityDDLAdd();
-        const currentFacilityId = sessionManager.getUserSession().FacilityID;
-        setSelectedfacility(currentFacilityId);
-        BindVendorDropdownlist(currentFacilityId);
-        BindVehicleTypeList(0, currentFacilityId);
     }, []);
 
     // Open sidebar with employee data
@@ -60,50 +65,30 @@ const VehicleTypeMaster = () => {
     };
     //Bind facility dropdown List from API
     const BindFacilityDDL = async () => {
-
         try {
             const response = await apiService.SelectFacility({
                 Userid: sessionManager.getUserSession().ID,
             });
-            //console.log("FacilityData",response);
             setfacilityList(response);
+
             const userFacilityId = sessionManager.getUserSession().FacilityID;
+            let resolvedFacilityId = null;
+
             if (response && response.some(f => f.Id === userFacilityId)) {
-                setSelectedfacility(userFacilityId);
-                //BindVendorGrid(userFacilityId);
+                resolvedFacilityId = userFacilityId;
             } else if (response && response.length > 0) {
-                setSelectedfacility(response[0].Id);
-                //BindVendorGrid(response[0].Id);
+                resolvedFacilityId = response[0].Id;
             }
-            // setfacilityListNew(response);
-        }
-        catch (error) {
+
+            if (resolvedFacilityId) {
+                setSelectedfacility(resolvedFacilityId);
+                await BindVendorDropdownlist(resolvedFacilityId);
+                await BindVehicleTypeList(0, resolvedFacilityId);
+            }
+        } catch (error) {
             console.error("Error fetching locationlist:", error);
         }
     };
-    // const BindFacilityDDLAdd = async () => {
-
-    //     try {
-    //         const response = await apiService.SelectFacility({
-    //             Userid: sessionManager.getUserSession().ID,
-    //         });
-    //         //console.log("FacilityData",response);
-    //         setfacilityListAdd(response);
-    //         // const userFacilityId = sessionManager.getUserSession().FacilityID;
-    //         // if (response && response.some(f => f.Id === userFacilityId)) {
-    //         //     setSelectedfacility(userFacilityId);
-    //         //     //BindVendorGrid(userFacilityId);
-    //         // } else if (response && response.length > 0) {
-    //         //     setSelectedfacility(response[0].Id);
-    //         //     //BindVendorGrid(response[0].Id);
-
-    //         // }
-    //         // setfacilityListNew(response);
-    //     }
-    //     catch (error) {
-    //         console.error("Error fetching locationlist:", error);
-    //     }
-    // };
 
     const BindVendorDropdownlist = async (facilityid) => {
         try {
@@ -133,6 +118,7 @@ const VehicleTypeMaster = () => {
             })
             //console.log("VehicleTypeData",response);
             setVehicleTypeList(response);
+            setFirst(0); // Reset pagination on data fetch
         }
         catch (error) {
             console.error("Error fetching locationlist:", error);
@@ -265,30 +251,7 @@ const VehicleTypeMaster = () => {
 
     return (
         <>
-            {isSubmitting && (
-                <div
-                    style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        width: "100vw",
-                        height: "100vh",
-                        background: "rgba(255,255,255,0.7)",
-                        zIndex: 9999,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    <div
-                        className="spinner-border text-primary"
-                        style={{ width: 60, height: 60, fontSize: 32 }}
-                        role="status"
-                    >
-                        <span className="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            )}
+            <Loader isVisible={isSubmitting} fullScreen={true} />
             <Header pageTitle="Vehicle Master" showNewButton={true} onNewButtonClick={setVehicleType} />
             <Sidebar />
             <div className="middle">
@@ -353,8 +316,7 @@ const VehicleTypeMaster = () => {
                     {/* Table Start */}
                     <div className="col-12">
                         <div className="card_tb">
-                            <DataTable value={VehicleTypeList} paginator rows={50}
-                                rowsPerPageOptions={[50, 100, 150, 200, 250]} emptyMessage="No Vehicle Type Found">
+                            <DataTable value={[...VehicleTypeList].slice(first, first + rows)} emptyMessage="No Vehicle Type Found">
                                 <Column sortable field="Id" header="Vehicle" body={(rowData) => (
                                     <a href="#" onClick={(e) => {
                                         e.preventDefault();
@@ -372,262 +334,235 @@ const VehicleTypeMaster = () => {
                                 {/* <Column field="updatedBy" header="Updated By"></Column> */}
                                 <Column sortable field="updatedAt" header="Last Updated"></Column>
                             </DataTable>
+                            <CustomPaginator
+                                first={first}
+                                rows={rows}
+                                totalRecords={VehicleTypeList.length}
+                                onPageChange={onPageChange}
+                                rowsPerPageOptions={[50, 100, 150, 200, 250]}
+                            />
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    {/* Prime Sidebar */}
-                    <PrimeSidebar visible={visibleLeft} position="right" onHide={() => setVisibleLeft(false)} showCloseIcon={false} dismissable={false} style={{ width: '25%' }}>
-                        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-                            <h6 className="sidebarTitle">{selectedVehicletype?.vehicle}</h6>
-                            <Button icon="pi pi-times" className="p-button-rounded p-button-text" onClick={() => setVisibleLeft(false)} />
+            {/* Edit Vehicle Type Sidebar */}
+            <MasterSidebar
+                show={visibleLeft}
+                onClose={() => setVisibleLeft(false)}
+                title={selectedVehicletype?.vehicle || "Edit Vehicle Type"}
+                width="25%"
+                footerButtons={[
+                    {
+                        label: "Cancel",
+                        className: "btn btn-outline-secondary",
+                        onClick: () => setVisibleLeft(false),
+                    },
+                    {
+                        label: "Update",
+                        className: "btn btn-success",
+                        onClick: handleUpdateVehicleType,
+                        loading: isSubmitting,
+                    },
+                ]}
+            >
+                <div className="p-3 bg-white">
+                    <div className="row">
+                        <div className="field col-12 mb-3">
+                            <label>Vehicle <span>*</span></label>
+                            <InputText
+                                className="form-control"
+                                placeholder="Vehicle"
+                                value={selectedVehicletype?.vehicle || ''}
+                                onChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, vehicle: e.target.value })}
+                            />
                         </div>
-
-                        <div className="sidebarBody">
-                            <div className="row">
-                                {/* <div className="col-12 mb-3">
-                                    <h6 className="sidebarSubTitle">Vehicle Details</h6>
-                                </div> */}
-                                <div className="field col-12 mb-3">
-                                    <label>Vehicle <span>*</span></label>
-                                    <InputText
-                                        className="form-control"
-                                        placeholder="Vehicle"
-                                        value={selectedVehicletype?.vehicle || ''}
-                                        onChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, vehicle: e.target.value })}
-                                    />
-                                </div>
-                                <div className="field col-12 mb-3">
-                                    <label>Vendor  <span>*</span></label>
-                                    <Dropdown
-                                        placeholder="Vendor"
-                                        className="w-100"
-                                        filter
-                                        value={selectedVehicletype?.vendorId}
-                                        options={VendorList}
-                                        optionLabel="vendorName"
-                                        optionValue="Id"
-                                        onChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, vendorId: e.value }, BindEditVendorScheme(e.value))}
-                                    />
-                                </div>
-                                <div className="field col-12 mb-3">
-                                    <label>Cost AC</label>
-                                    <InputText
-                                        className="form-control"
-                                        placeholder="Cost AC"
-                                        value={selectedVehicletype?.cost_ac || ''}
-                                        onChange={e => setSelectedVehicletype(prev => ({
-                                            ...(prev || {}),
-                                            cost_ac: e.target.value
-                                        }))}
-                                    />
-                                </div>
-                                <div className="field col-12 mb-3">
-                                    <label>Cost Non AC</label>
-                                    <InputText
-                                        className="form-control"
-                                        placeholder="Cost Non AC"
-                                        value={selectedVehicletype?.cost_nonac || ''}
-                                        onChange={e => setSelectedVehicletype(prev => ({
-                                            ...(prev || {}),
-                                            cost_nonac: e.target.value
-                                        }))}
-                                    />
-                                </div>
-
-                                <div className="field col-12 mb-3">
-                                    <label>Occupancy</label>
-                                    <InputNumber
-                                        className="w-100"
-                                        placeholder="Occupancy"
-                                        value={selectedVehicletype?.occupancy || null}
-                                        onValueChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, occupancy: e.value })}
-                                        min={0}
-                                        max={100}
-                                        useGrouping={false}
-                                    />
-                                </div>
-
-                                <div className="field col-12 mb-3">
-                                    <label>Scheme</label>
-                                    <InputText disabled={true}
-                                        className="form-control"
-                                        placeholder="Scheme"
-                                        value={selectedVehicletype?.vendorType || ''}
-                                        onChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, vendorType: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                        <div className="field col-12 mb-3">
+                            <label>Vendor <span>*</span></label>
+                            <Dropdown
+                                placeholder="Vendor"
+                                className="w-100"
+                                filter
+                                value={selectedVehicletype?.vendorId}
+                                options={VendorList}
+                                optionLabel="vendorName"
+                                optionValue="Id"
+                                onChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, vendorId: e.value }, BindEditVendorScheme(e.value))}
+                            />
                         </div>
-                        {/* Fixed button container at bottom of sidebar */}
-                        <div className="sidebar-fixed-bottom position-absolute pe-3">
-                            <div className="d-flex gap-3 justify-content-end">
-                                <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setVisibleLeft(false)} />
-                                <Button label="Update" className="btn btn-success" onClick={() => handleUpdateVehicleType()} />
-                            </div>
+                        <div className="field col-12 mb-3">
+                            <label>Cost AC</label>
+                            <InputText
+                                className="form-control"
+                                placeholder="Cost AC"
+                                value={selectedVehicletype?.cost_ac || ''}
+                                onChange={e => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    cost_ac: e.target.value
+                                }))}
+                            />
                         </div>
-                    </PrimeSidebar>
+                        <div className="field col-12 mb-3">
+                            <label>Cost Non AC</label>
+                            <InputText
+                                className="form-control"
+                                placeholder="Cost Non AC"
+                                value={selectedVehicletype?.cost_nonac || ''}
+                                onChange={e => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    cost_nonac: e.target.value
+                                }))}
+                            />
+                        </div>
+                        <div className="field col-12 mb-3">
+                            <label>Occupancy</label>
+                            <InputNumber
+                                className="w-100"
+                                placeholder="Occupancy"
+                                value={selectedVehicletype?.occupancy || null}
+                                onValueChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, occupancy: e.value })}
+                                min={0}
+                                max={100}
+                                useGrouping={false}
+                            />
+                        </div>
+                        <div className="field col-12 mb-3">
+                            <label>Scheme</label>
+                            <InputText disabled={true}
+                                className="form-control"
+                                placeholder="Scheme"
+                                value={selectedVehicletype?.vendorType || ''}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </MasterSidebar>
 
-                    <PrimeSidebar
-                        visible={vehicleType}
-                        position="right"
-                        onHide={() => {
+            {/* Add Vehicle Type Sidebar */}
+            <MasterSidebar
+                show={vehicleType}
+                onClose={() => {
+                    setVehicleType(false);
+                    setSelectedVehicletype(null);
+                }}
+                title="Add Vehicle Type"
+                width="25%"
+                footerButtons={[
+                    {
+                        label: "Cancel",
+                        className: "btn btn-outline-secondary",
+                        onClick: () => {
                             setVehicleType(false);
-                            setSelectedVehicletype(null); // Reset form on close
-                        }}
-                        showCloseIcon={false}
-                        dismissable={false}
-                        style={{ width: '25%' }}
-                    >
-                        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-                            <h6 className="sidebarTitle">Add Vehicle Type</h6>
-                            <Button
-                                icon="pi pi-times"
-                                className="p-button-rounded p-button-text"
-                                onClick={() => {
-                                    setVehicleType(false);
-                                    setSelectedVehicletype(null); // Reset form on close
+                            setSelectedVehicletype(null);
+                        },
+                    },
+                    {
+                        label: "Save",
+                        className: "btn btn-success",
+                        onClick: handleSaveVehicleType,
+                        loading: isSubmitting,
+                        disabled: !selectedVehicletype?.vendorId || !selectedVehicletype?.vehicle,
+                    },
+                ]}
+            >
+                <div className="p-3 bg-white">
+                    <div className="row">
+                        <div className="field col-12 mb-3">
+                            <label>Facility<span className="text-danger">*</span></label>
+                            <Dropdown
+                                value={selectedFacility}
+                                options={facilityList}
+                                optionLabel="facilityName"
+                                optionValue="Id"
+                                placeholder="Select Facility"
+                                className="w-100"
+                                disabled={true}
+                                id="ddlfacilityAdd"
+                            />
+                        </div>
+                        <div className="field col-12 mb-3">
+                            <label>Vehicle </label>
+                            <InputText
+                                className="form-control"
+                                placeholder="Enter Vehicle Name"
+                                value={selectedVehicletype?.vehicle || ''}
+                                onChange={(e) => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    vehicle: e.target.value
+                                }))}
+                            />
+                        </div>
+                        <div className="field col-12 mb-3">
+                            <label>Cost_Ac</label>
+                            <InputText
+                                className="form-control"
+                                value={selectedVehicletype?.cost_ac || ''}
+                                onChange={(e) => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    cost_ac: e.target.value
+                                }))}
+                            />
+                        </div>
+                        <div className="field col-12 mb-3">
+                            <label>Cost Non_Ac</label>
+                            <InputText
+                                className="form-control"
+                                value={selectedVehicletype?.cost_nonac || ''}
+                                onChange={(e) => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    cost_nonac: e.target.value
+                                }))}
+                            />
+                        </div>
+                        <div className="field col-12 mb-3">
+                            <label>Vendor <span className="text-danger">*</span></label>
+                            <Dropdown
+                                placeholder="Select Vendor"
+                                className="w-100"
+                                filter
+                                value={selectedVehicletype?.vendorId || ''}
+                                options={VendorList}
+                                optionLabel="vendorName"
+                                optionValue="Id"
+                                onChange={(e) => {
+                                    setSelectedVehicletype(prev => ({
+                                        ...(prev || {}),
+                                        vendorId: e.value,
+                                        vendorType: '',
+                                    }));
+                                    if (e.value) {
+                                        BindEditVendorScheme(e.value);
+                                    }
                                 }}
                             />
                         </div>
-
-                        <div className="sidebarBody">
-                            <div className="row">
-                                <div className="field col-12 mb-3">
-                                    <label>Facility<span className="text-danger">*</span></label>
-
-                                    <Dropdown
-                                        value={selectedFacility}
-                                        options={facilityList}
-                                        optionLabel="facilityName"
-                                        optionValue="Id"
-                                        placeholder="Select Facility"
-                                        className="w-100"
-                                        disabled={true}
-                                        id="ddlfacilityAdd"
-                                    />
-                                </div>
-                                <div className="field col-12 mb-3">
-                                    <label>Vehicle </label>
-                                    <InputText
-                                        className="form-control"
-                                        placeholder="Enter Vehicle Name"
-                                        value={selectedVehicletype?.vehicle || ''}
-                                        onChange={(e) => setSelectedVehicletype(prev => ({
-                                            ...(prev || {}),
-                                            vehicle: e.target.value
-                                        }))}
-                                    />
-                                </div>
-                                <div className="field col-12 mb-3">
-                                    <label>Cost_Ac</label>
-                                    <InputText
-                                        className="form-control"
-                                        value={selectedVehicletype?.cost_ac || ''}
-                                        onChange={(e) => setSelectedVehicletype(prev => ({
-                                            ...(prev || {}),
-                                            cost_ac: e.target.value
-                                        }))}
-                                    />
-                                </div>
-                                <div className="field col-12 mb-3">
-                                    <label>Cost Non_Ac</label>
-                                    <InputText
-                                        className="form-control"
-                                        value={selectedVehicletype?.cost_nonac || ''}
-                                        onChange={(e) => setSelectedVehicletype(prev => ({
-                                            ...(prev || {}),
-                                            cost_nonac: e.target.value
-                                        }))}
-                                    />
-                                </div>
-                                <div className="field col-12 mb-3">
-                                    <label>Vendor <span className="text-danger">*</span></label>
-                                    <Dropdown
-                                        placeholder="Select Vendor"
-                                        className="w-100"
-                                        filter
-                                        value={selectedVehicletype?.vendorId || ''}
-                                        options={VendorList}
-                                        optionLabel="vendorName"
-                                        optionValue="Id"
-                                        onChange={(e) => {
-                                            setSelectedVehicletype(prev => ({
-                                                ...(prev || {}),
-                                                vendorId: e.value,
-                                                vendorType: '', // Reset scheme when vendor changes
-                                            }));
-                                            if (e.value) {
-                                                BindEditVendorScheme(e.value);
-                                            }
-                                        }}
-                                    />
-                                </div>
-
-                                <div className="field col-12 mb-3">
-                                    <label>Occupancy</label>
-                                    <InputNumber
-                                        className="w-100"
-                                        placeholder="Enter Occupancy"
-                                        value={selectedVehicletype?.occupancy || null}
-                                        onValueChange={(e) => setSelectedVehicletype(prev => ({
-                                            ...(prev || {}),
-                                            occupancy: e.value
-                                        }))}
-                                        min={0}
-                                        max={100}
-                                        useGrouping={false}
-                                    />
-                                </div>
-
-                                <div className="field col-12 mb-3">
-                                    <label>Scheme</label>
-                                    <InputText
-                                        className="form-control"
-                                        placeholder="Scheme"
-                                        disabled={true}
-                                        value={selectedVehicletype?.vendorType || ''}
-                                    />
-                                </div>
-                            </div>
+                        <div className="field col-12 mb-3">
+                            <label>Occupancy</label>
+                            <InputNumber
+                                className="w-100"
+                                placeholder="Enter Occupancy"
+                                value={selectedVehicletype?.occupancy || null}
+                                onValueChange={(e) => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    occupancy: e.value
+                                }))}
+                                min={0}
+                                max={100}
+                                useGrouping={false}
+                            />
                         </div>
-                        <div className="sidebar-fixed-bottom position-absolute pe-3">
-                            <div className="d-flex gap-3 justify-content-end">
-                                <Button
-                                    label="Cancel"
-                                    className="btn btn-outline-secondary"
-                                    onClick={() => {
-                                        setVehicleType(false);
-                                        setSelectedVehicletype(null);
-                                    }}
-                                />
-                                <Button
-                                    label="Save"
-                                    className="btn btn-success"
-                                    onClick={handleSaveVehicleType}
-                                    disabled={!selectedVehicletype?.vendorId || !selectedVehicletype?.vehicle}
-                                />
-                            </div>
+                        <div className="field col-12 mb-3">
+                            <label>Scheme</label>
+                            <InputText
+                                className="form-control"
+                                placeholder="Scheme"
+                                disabled={true}
+                                value={selectedVehicletype?.vendorType || ''}
+                            />
                         </div>
-                    </PrimeSidebar>
-
-
-                    {/* Offcanvas Component */}
-                    {/* <div 
-                            tabIndex="-1" 
-                            className="offcanvas offcanvas-end"
-                            id="raise_Feedback"
-                            aria-labelledby="offcanvasRightLabel">
-                            <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-                            <h5 className="subtitle fw-normal">Add New Vehicle Type</h5>          
-                            <button type="button" className="btn-close btn-close-white" onClick={() => setShowOffcanvas(false)} data-bs-dismiss="offcanvas" aria-label="Close"></button>
-                            </div>
-                            <div className="offcanvas-body">
-                             
+                    </div>
                 </div>
-                
-            </div>            */}
-                </div>
-            </div>
+            </MasterSidebar>
         </>
     )
 }

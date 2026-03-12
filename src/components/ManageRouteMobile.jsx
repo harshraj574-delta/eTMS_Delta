@@ -1640,6 +1640,7 @@ const ManageRouteMobile = ({
                 show={showOffcanvas}
                 onClose={() => setShowOffcanvas(false)}
                 routeId={selectedRouteId}
+                width="100vw"
             />
 
             {/* Add Employee Modal */}

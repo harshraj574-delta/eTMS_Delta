@@ -7,6 +7,7 @@ import { apiService } from "../../services/api";
 import sessionManager from "../../utils/SessionManager.js";
 import { toastService } from '../../services/toastService';
 import { CustomDataTable } from "../common/CustomDataTable";
+import CustomPaginator from "../common/CustomPaginator";
 import { Column } from "primereact/column";
 import { Button } from 'primereact/button';
 import MasterSidebar from "../Master/MasterSidebar";
@@ -22,6 +23,14 @@ const Location = () => {
   const [editLocation, setEditLocation] = useState(false);
   const [addLocation, setAddLocation] = useState(false);
 
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
   useEffect(() => {
     fetchLocationData();
   }, []);
@@ -33,6 +42,7 @@ const Location = () => {
         Userid: sessionManager.getUserSession().Userid,
       });
       setLocationData(locationData);
+      setFirst(0); // Reset pagination
     } catch (error) {
       console.error("Error fetching locations:", error);
       toastService.error("Failed to load locations");
@@ -111,7 +121,7 @@ const Location = () => {
           </div>
           <div className="col-lg-12">
             <div className="card_tb">
-              <CustomDataTable value={locationData} paginator rows={10} rowsPerPageOptions={[5, 10, 25]}> 
+              <CustomDataTable value={locationData.slice(first, first + rows)}> 
                   <Column field="Id" header="ID"></Column>
                   <Column header="Location Name" body={(location) => (
                     <a
@@ -129,6 +139,13 @@ const Location = () => {
                     </a>
                   )}></Column>
                 </CustomDataTable>
+                <CustomPaginator
+                  first={first}
+                  rows={rows}
+                  totalRecords={locationData.length}
+                  onPageChange={onPageChange}
+                  rowsPerPageOptions={[5, 10, 25]}
+                />
             </div>
           </div>
         </div>

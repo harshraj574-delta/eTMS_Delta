@@ -6,6 +6,7 @@ import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import RepNoShowService from "../services/compliance/RepNoShowService";
 import { toastService } from "../services/toastService";
@@ -37,6 +38,14 @@ const RepNoShow = () => {
   const dt = useRef(null);
   const op = useRef(null);
   const filterButtonRef = useRef(null);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
 
   useEffect(() => {
     fetchFacilities();
@@ -81,6 +90,7 @@ const RepNoShow = () => {
     setLoading(true);
     setError(null);
     setGlobalFilter("");
+    setFirst(0); // Reset pagination
     setHasSearched(true);
 
     try {
@@ -387,10 +397,8 @@ const RepNoShow = () => {
 
                   <div className="table-responsive">
                     <CustomDataTable
-                      value={filteredData}
+                      value={filteredData.slice(first, first + rows)}
                       ref={dt}
-                      paginator
-                      rows={50}
                       tableStyle={{ minWidth: "50rem" }}
                       size="small"
                       loading={loading}
@@ -398,7 +406,6 @@ const RepNoShow = () => {
                         error ? `Error: ${error}` : "No records found"
                       }
                       stripedRows
-                      rowsPerPageOptions={[50, 100, 200, 300]}
                       globalFilter={globalFilter}
                     >
                       <Column field="facilityName" header="Facility" sortable />
@@ -417,6 +424,13 @@ const RepNoShow = () => {
                         sortable
                       />
                     </CustomDataTable>
+                    <CustomPaginator
+                      first={first}
+                      rows={rows}
+                      totalRecords={filteredData.length}
+                      onPageChange={onPageChange}
+                      rowsPerPageOptions={[50, 100, 200, 300]}
+                    />
                   </div>
                 </div>
               )}

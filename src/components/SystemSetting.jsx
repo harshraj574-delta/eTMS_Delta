@@ -7,6 +7,7 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import CostMasterService from "../services/compliance/CostMasterService";
 import SystemSettingService from "../services/compliance/SystemSettingService";
@@ -57,6 +58,14 @@ const SystemSetting = () => {
     description: null,
     CreatedBy: null
   });
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
 
   const op = useRef(null);
   const filterButtonRef = useRef(null);
@@ -179,6 +188,7 @@ const SystemSetting = () => {
         typeof response === "string" ? JSON.parse(response) : response;
       setConfigData(parsedResponse);
       setFilteredData(parsedResponse);
+      setFirst(0); // Reset pagination on data load
     } catch (error) {
       console.error("Error fetching configuration data:", error);
     } finally {
@@ -235,8 +245,8 @@ const SystemSetting = () => {
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">
-            <div className="col-2">
-              <label htmlFor="facility">Facility</label>
+            <div className="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+              <label htmlFor="facility" className="form-label">Facility</label>
               <Dropdown
                 id="facility"
                 placeholder="Select Facility"
@@ -360,10 +370,7 @@ const SystemSetting = () => {
                 </TableToolbar>
                 <div className="table-responsive">
                   <CustomDataTable
-                    paginator
-                    rows={50}
-                    rowsPerPageOptions={[50, 100, 150, 200]}
-                    value={filteredData}
+                    value={filteredData.slice(first, first + rows)}
                     className="p-datatable-sm"
                     responsiveLayout="scroll"
                   >
@@ -383,6 +390,13 @@ const SystemSetting = () => {
                       style={{ minWidth: "120px" }}
                     />
                   </CustomDataTable>
+                  <CustomPaginator
+                    first={first}
+                    rows={rows}
+                    totalRecords={filteredData.length}
+                    onPageChange={onPageChange}
+                    rowsPerPageOptions={[50, 100, 150, 200]}
+                  />
                 </div>
               </div>
             </div>

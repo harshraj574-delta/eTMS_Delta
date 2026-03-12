@@ -6,6 +6,7 @@ import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import PerEmployeeBillingService from "../services/compliance/PerEmployeeBillingService";
 import { toastService } from "../services/toastService";
@@ -47,6 +48,14 @@ const PerEmployeeBilling = () => {
   const [expandedProcesses, setExpandedProcesses] = useState([]);
   const [expandedTripTypes, setExpandedTripTypes] = useState({});
   const [expandedDates, setExpandedDates] = useState({});
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+      setFirst(event.first);
+      setRows(event.rows);
+  };
 
   const reportTypes = [
     { label: "Detailed", value: "detailed" },
@@ -91,6 +100,80 @@ const PerEmployeeBilling = () => {
     return filtered;
   }, [rawData, filters, globalFilter]);
 
+
+
+  const groupProcessData = (data) => {
+    const processes = {};
+
+    data.forEach((item) => {
+      const process = item.ProcessName || "Unknown";
+      if (!processes[process]) {
+        processes[process] = {
+          ProcessName: process,
+          Cost: 0,
+          GuardCost: 0,
+          TotalCost: 0,
+          Employees: 0,
+          tripTypes: {},
+        };
+      }
+
+      const empCount =
+        item.TotalCost && item.PerEmpTotalCost
+          ? Math.round(item.TotalCost / item.PerEmpTotalCost)
+          : 0;
+
+      processes[process].Cost += item.Cost || 0;
+      processes[process].GuardCost += item.GuardCost || 0;
+      processes[process].TotalCost += item.TotalCost || 0;
+      processes[process].Employees += empCount;
+
+      const tripType = item.TripType || "Unknown";
+      if (!processes[process].tripTypes[tripType]) {
+        processes[process].tripTypes[tripType] = {
+          TripType: tripType,
+          Cost: 0,
+          GuardCost: 0,
+          TotalCost: 0,
+          Employees: 0,
+          dates: {},
+        };
+      }
+
+      processes[process].tripTypes[tripType].Cost += item.Cost || 0;
+      processes[process].tripTypes[tripType].GuardCost += item.GuardCost || 0;
+      processes[process].tripTypes[tripType].TotalCost += item.TotalCost || 0;
+      processes[process].tripTypes[tripType].Employees += empCount;
+
+      const date = item.ShiftDate || "Unknown";
+      if (!processes[process].tripTypes[tripType].dates[date]) {
+        processes[process].tripTypes[tripType].dates[date] = {
+          ShiftDate: date,
+          Cost: 0,
+          GuardCost: 0,
+          TotalCost: 0,
+          Employees: 0,
+          rows: [],
+        };
+      }
+
+      processes[process].tripTypes[tripType].dates[date].Cost += item.Cost || 0;
+      processes[process].tripTypes[tripType].dates[date].GuardCost +=
+        item.GuardCost || 0;
+      processes[process].tripTypes[tripType].dates[date].TotalCost +=
+        item.TotalCost || 0;
+      processes[process].tripTypes[tripType].dates[date].Employees += empCount;
+      processes[process].tripTypes[tripType].dates[date].rows.push(item);
+    });
+
+    return Object.values(processes).map((p) => ({
+      ...p,
+      tripTypes: Object.values(p.tripTypes).map((t) => ({
+        ...t,
+        dates: Object.values(t.dates),
+      })),
+    }));
+  };
   const memoizedNestedReportData = React.useMemo(() => {
     if (currentReportType === "processwise" && filteredData.length > 0) {
       return groupProcessData(filteredData);
@@ -186,6 +269,9 @@ const PerEmployeeBilling = () => {
       setExpandedTripTypes({});
       setExpandedDates({});
 
+      // Reset Pagination
+      setFirst(0);
+
       setLoading(false);
       setIsSubmitting(false);
       setHasSearched(true);
@@ -225,79 +311,6 @@ const PerEmployeeBilling = () => {
   const getUniqueValues = (field) => {
     const values = rawData.map((item) => item[field]).filter(Boolean);
     return [...new Set(values)].map((val) => ({ label: val, value: val }));
-  };
-
-  const groupProcessData = (data) => {
-    const processes = {};
-
-    data.forEach((item) => {
-      const process = item.ProcessName || "Unknown";
-      if (!processes[process]) {
-        processes[process] = {
-          ProcessName: process,
-          Cost: 0,
-          GuardCost: 0,
-          TotalCost: 0,
-          Employees: 0,
-          tripTypes: {},
-        };
-      }
-
-      const empCount =
-        item.TotalCost && item.PerEmpTotalCost
-          ? Math.round(item.TotalCost / item.PerEmpTotalCost)
-          : 0;
-
-      processes[process].Cost += item.Cost || 0;
-      processes[process].GuardCost += item.GuardCost || 0;
-      processes[process].TotalCost += item.TotalCost || 0;
-      processes[process].Employees += empCount;
-
-      const tripType = item.TripType || "Unknown";
-      if (!processes[process].tripTypes[tripType]) {
-        processes[process].tripTypes[tripType] = {
-          TripType: tripType,
-          Cost: 0,
-          GuardCost: 0,
-          TotalCost: 0,
-          Employees: 0,
-          dates: {},
-        };
-      }
-
-      processes[process].tripTypes[tripType].Cost += item.Cost || 0;
-      processes[process].tripTypes[tripType].GuardCost += item.GuardCost || 0;
-      processes[process].tripTypes[tripType].TotalCost += item.TotalCost || 0;
-      processes[process].tripTypes[tripType].Employees += empCount;
-
-      const date = item.ShiftDate || "Unknown";
-      if (!processes[process].tripTypes[tripType].dates[date]) {
-        processes[process].tripTypes[tripType].dates[date] = {
-          ShiftDate: date,
-          Cost: 0,
-          GuardCost: 0,
-          TotalCost: 0,
-          Employees: 0,
-          rows: [],
-        };
-      }
-
-      processes[process].tripTypes[tripType].dates[date].Cost += item.Cost || 0;
-      processes[process].tripTypes[tripType].dates[date].GuardCost +=
-        item.GuardCost || 0;
-      processes[process].tripTypes[tripType].dates[date].TotalCost +=
-        item.TotalCost || 0;
-      processes[process].tripTypes[tripType].dates[date].Employees += empCount;
-      processes[process].tripTypes[tripType].dates[date].rows.push(item);
-    });
-
-    return Object.values(processes).map((p) => ({
-      ...p,
-      tripTypes: Object.values(p.tripTypes).map((t) => ({
-        ...t,
-        dates: Object.values(t.dates),
-      })),
-    }));
   };
 
   const toggleProcessExpansion = (processIndex) => {
@@ -367,11 +380,17 @@ const PerEmployeeBilling = () => {
   };
 
   const exportExcel = () => {
-    if (currentReportType === "detailed" && dt.current) {
-      const fileName = `employee_billing_${currentReportType}_${new Date()
-        .toISOString()
-        .slice(0, 10)}`;
-      dt.current.exportCSV({ fileName });
+    if (currentReportType === "detailed") {
+      if (filteredData.length > 0) {
+        exportToCSV(
+          filteredData,
+          `employee_billing_${currentReportType}_${new Date()
+            .toISOString()
+            .slice(0, 10)}`
+        );
+      } else {
+        toastService.error("No data to export");
+      }
       return;
     }
 
@@ -749,17 +768,14 @@ const PerEmployeeBilling = () => {
                   {currentReportType === "detailed" && (
                     <div className="table-responsive">
                       <CustomDataTable
-                        value={filteredData}
+                        value={filteredData.slice(first, first + rows)}
                         ref={dt}
-                        paginator
-                        rows={50}
                         tableStyle={{ minWidth: "50rem" }}
                         size="small"
                         loading={loading}
                         emptyMessage={error ? `Error: ${error}` : "No records found"}
                         stripedRows
                         globalFilter={globalFilter}
-                        rowsPerPageOptions={[50, 100, 200, 300]}
                       >
                         <Column field="FacilityName" header="Facility" sortable />
                         <Column field="ShiftDate" header="Shift Date" sortable />
@@ -815,6 +831,13 @@ const PerEmployeeBilling = () => {
                         />
                         <Column field="SchPax" header="Sch Pax" sortable />
                       </CustomDataTable>
+                      <CustomPaginator
+                          first={first}
+                          rows={rows}
+                          totalRecords={filteredData.length}
+                          onPageChange={onPageChange}
+                          rowsPerPageOptions={[50, 100, 200, 300]}
+                      />
                     </div>
                   )}
 

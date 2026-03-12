@@ -8,8 +8,9 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
-import { Sidebar as PrimeSidebar } from "primereact/sidebar";
+import MasterSidebar from "./Master/MasterSidebar";
 import { Checkbox } from "primereact/checkbox";
 import { Badge } from "primereact/badge";
 import { Toast } from "primereact/toast";
@@ -18,6 +19,7 @@ import { ToastContainer } from "react-toastify";
 import sessionManager from "../utils/SessionManager";
 import driverMasterService from "../services/compliance/DriverMasterService";
 import ReportButton from "./common/ReportButton";
+import Loader from "./common/Loader";
 
 const DriverMaster = () => {
   const toastRef = React.useRef(null);
@@ -54,6 +56,14 @@ const DriverMaster = () => {
   // Form state
   const [formData, setFormData] = useState(getInitialFormData());
   const [editingDriverId, setEditingDriverId] = useState(null);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
 
   function getInitialFormData() {
     return {
@@ -147,6 +157,7 @@ const DriverMaster = () => {
       );
       const respData = JSON.parse(response.data);
       setDriverDetails(respData);
+      setFirst(0); // Reset pagination on data fetch
     } catch (error) {
       console.log("Error", error);
       showError("Failed to load driver details");
@@ -335,6 +346,7 @@ const DriverMaster = () => {
 
   return (
     <>
+      <Loader isVisible={loading} fullScreen={true} />
       <Toast ref={toastRef} />
       <Header
         pageTitle="Driver Master"
@@ -402,17 +414,13 @@ const DriverMaster = () => {
           <div className="col-12">
             <div className="card_tb">
               <DataTable
-                value={driverDetails}
+                value={driverDetails.slice(first, first + rows)}
                 scrollable
                 sortField={sortField}
                 sortOrder={sortOrder}
                 onSort={onSort}
                 sortMode="single"
                 removableSort
-                paginator
-                rows={10}
-                rowsPerPageOptions={[5, 10, 25, 50]}
-                loading={loading}
                 pt={customSortStyle}
               >
                 <Column
@@ -452,29 +460,39 @@ const DriverMaster = () => {
                   body={LicenceExp}
                 ></Column>
               </DataTable>
-            </div>
-          </div>
-
-          {/* Edit Driver Master */}
-          <PrimeSidebar
-            visible={visibleLeft}
-            position="right"
-            onHide={() => setVisibleLeft(false)}
-            width="50%"
-            showCloseIcon={false}
-            dismissable={false}
-            style={{ width: "70%", backdropFilter: "blur(8px)" }}
-          >
-            <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-              <h6 className="sidebarTitle">Edit Driver Details</h6>
-              <Button
-                icon="pi pi-times"
-                className="p-button-rounded p-button-text"
-                style={{ backgroundColor: "black" }}
-                onClick={() => setVisibleLeft(false)}
+              <CustomPaginator
+                first={first}
+                rows={rows}
+                totalRecords={driverDetails.length}
+                onPageChange={onPageChange}
+                rowsPerPageOptions={[5, 10, 25, 50]}
               />
             </div>
-            <div className="sidebarBody" style={{ backgroundColor: "white" }} >
+          </div>
+        </div>
+      </div>
+
+          {/* Edit Driver Master */}
+          <MasterSidebar
+            show={visibleLeft}
+            onClose={() => setVisibleLeft(false)}
+            title="Edit Driver Details"
+            width="50%"
+            footerButtons={[
+              {
+                label: "Cancel",
+                className: "btn btn-outline-secondary",
+                onClick: () => setVisibleLeft(false),
+              },
+              {
+                label: "Save Changes",
+                className: "btn btn-success",
+                onClick: handleSaveDriver,
+                loading: loading,
+              },
+            ]}
+          >
+            <div className="p-3 bg-white" >
               <div className="row" >
                 <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Personal Details</h6>
@@ -779,45 +797,31 @@ const DriverMaster = () => {
                     </label>
                   </div>
                 </div>
-              </div>
-              {/* Fixed button container at bottom of sidebar */}
-              <div className="sidebar-fixed-bottom">
-                <div className="d-flex gap-3 justify-content-end">
-                  <Button
-                    label="Cancel"
-                    className="btn btn-outline-secondary"
-                    onClick={() => setVisibleLeft(false)}
-                  />
-                  <Button
-                    label="Save Changes"
-                    className="btn btn-success"
-                    onClick={handleSaveDriver}
-                    loading={loading}
-                  />
                 </div>
               </div>
-            </div>
-          </PrimeSidebar>
+          </MasterSidebar>
 
           {/* Add Driver Master */}
-          <PrimeSidebar
-            visible={addDriverMaster}
-            position="right"
-            onHide={() => setAddDriverMaster(false)}
-            showCloseIcon={false}
-            dismissable={false}
-            style={{ width: "70%" }}
+          <MasterSidebar
+            show={addDriverMaster}
+            onClose={() => setAddDriverMaster(false)}
+            title="Add Driver Details"
+            width="50%"
+            footerButtons={[
+              {
+                label: "Cancel",
+                className: "btn btn-outline-secondary",
+                onClick: () => setAddDriverMaster(false),
+              },
+              {
+                label: "Save Changes",
+                className: "btn btn-success",
+                onClick: handleSaveDriver,
+                loading: loading,
+              },
+            ]}
           >
-            <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-              <h6 className="sidebarTitle">Add Driver Details</h6>
-              <Button
-                icon="pi pi-times"
-                className="p-button-rounded p-button-text"
-                style={{ backgroundColor: "black" }}
-                onClick={() => setAddDriverMaster(false)}
-              />
-            </div>
-            <div className="sidebarBody" style={{ backgroundColor: "white" }}>
+            <div className="p-3 bg-white">
               <div className="row">
                 <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Personal Details</h6>
@@ -1121,28 +1125,10 @@ const DriverMaster = () => {
                       Induction Form
                     </label>
                   </div>
-                </div>
               </div>
-              {/* Fixed button container at bottom of sidebar */}
-              <div className="sidebar-fixed-bottom">
-                <div className="d-flex gap-3 justify-content-end">
-                  <Button
-                    label="Cancel"
-                    className="btn btn-outline-secondary"
-                    onClick={() => setAddDriverMaster(false)}
-                  />
-                  <Button
-                    label="Save Changes"
-                    className="btn btn-success"
-                    onClick={handleSaveDriver}
-                    loading={loading}
-                  />
-                </div>
               </div>
             </div>
-          </PrimeSidebar>
-        </div>
-      </div>
+          </MasterSidebar>
     </>
   );
 };

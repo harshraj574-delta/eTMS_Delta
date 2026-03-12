@@ -10,7 +10,7 @@ import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Sidebar as PrimeSidebar } from "primereact/sidebar"; // Renamed to avoid conflict with your Sidebar component
+import MasterSidebar from "./Master/MasterSidebar";
 import sessionManager from "../utils/SessionManager.js";
 import { apiService } from "../services/api";
 import { RadioButton } from "primereact/radiobutton";
@@ -20,6 +20,8 @@ import { InputNumber } from "primereact/inputnumber";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import { ToastContainer } from "react-toastify";
+import CustomPaginator from "./common/CustomPaginator";
+import Loader from "./common/Loader";
 
 const VendorMaster = () => {
   const [selectedFacility, setSelectedfacility] = useState(null);
@@ -44,24 +46,16 @@ const VendorMaster = () => {
     attrited: 0,
   });
 
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
   useEffect(() => {
     BindFacilityDDL();
-    const currentFacilityId = sessionManager.getUserSession().FacilityID;
-    setSelectedfacility(currentFacilityId);
-    BindVendorGrid(currentFacilityId);
-    // Initialize newVendor with current facility
-    setNewVendor({
-      vendorName: "",
-      vendorStrength: null,
-      vendorStrength2: null,
-      vendorStrength3: null,
-      vendorContact: "",
-      vendorInfo: "",
-      EmailId: "",
-      facilityId: currentFacilityId,
-      vendorType: "route",
-      attrited: 0,
-    });
   }, []);
 
   //Bind facility dropdown List from API
@@ -73,12 +67,19 @@ const VendorMaster = () => {
       setfacilityList(response);
 
       const userFacilityId = sessionManager.getUserSession().FacilityID;
+      let resolvedFacilityId = null;
+
       if (response && response.some(f => f.Id === userFacilityId)) {
-        setSelectedfacility(userFacilityId);
-        BindVendorGrid(userFacilityId);
+        resolvedFacilityId = userFacilityId;
       } else if (response && response.length > 0) {
-        setSelectedfacility(response[0].Id);
-        BindVendorGrid(response[0].Id);
+        resolvedFacilityId = response[0].Id;
+      }
+
+      if (resolvedFacilityId) {
+        setSelectedfacility(resolvedFacilityId);
+        await BindVendorGrid(resolvedFacilityId);
+        // Initialize newVendor with resolved facility
+        setNewVendor(prev => ({ ...prev, facilityId: resolvedFacilityId }));
       }
     } catch (error) {
       console.error("Error fetching locationlist:", error);
@@ -93,6 +94,7 @@ const VendorMaster = () => {
       });
       //console.log("VendorList", response);
       setVendorList(response);
+      setFirst(0); // Reset pagination on data fetch
     } catch (error) {
       console.error("Error fetching locationlist:", error);
     }
@@ -302,30 +304,7 @@ const VendorMaster = () => {
 
   return (
     <>
-      {isSubmitting && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(255,255,255,0.7)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            className="spinner-border text-primary"
-            style={{ width: 60, height: 60, fontSize: 32 }}
-            role="status"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      )}
+      <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header
         pageTitle="Vendor Master"
         showNewButton={true}
@@ -369,10 +348,7 @@ const VendorMaster = () => {
           <div className="col-12">
             <div className="card_tb">
               <DataTable
-                value={VendorList}
-                paginator
-                rows={50}
-                rowsPerPageOptions={[50, 100, 150, 200]}
+                value={[...VendorList].slice(first, first + rows)}
                 rowClassName={(rowData) => {
                   //console.log("row data", rowData);
                   // return rowData[0].attrited === "1" ? 'bg-danger-subtle' : '';
@@ -413,31 +389,45 @@ const VendorMaster = () => {
 
                 <Column field="UpdatedBy" header="Updated by" />
               </DataTable>
+              <CustomPaginator
+                first={first}
+                rows={rows}
+                totalRecords={VendorList.length}
+                onPageChange={onPageChange}
+                rowsPerPageOptions={[50, 100, 150, 200]}
+              />
             </div>
           </div>
-          {/* Add Vendor */}
-          <PrimeSidebar
-            visible={visibleLeftAdd}
-            position="right"
-            onHide={() => setVisibleLeftAdd(false)}
-            style={{ width: "50%" }}
-            showCloseIcon={false}
-            dismissable={false}
-          >
-            <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-              <h6 className="sidebarTitle">Add Vendor</h6>
-              <span className="d-flex align-items-center">
-                <p className="text-warning">{newVendor.attrited == 1 ? "Attrited" : ""}</p>
-                <Button
-                  icon="pi pi-times"
-                  className="p-button-rounded p-button-text"
-                  style={{ backgroundColor: "black" }}
-                  onClick={() => setVisibleLeftAdd(false)}
-                />
-              </span>
-            </div>
-            <div className="sidebarBody" style={{ backgroundColor: "white" }}>
-              <div className="row">
+        </div>
+      </div>
+
+      {/* Add Vendor */}
+      <MasterSidebar
+        show={visibleLeftAdd}
+        onClose={() => setVisibleLeftAdd(false)}
+        title={
+          <div className="w-100 d-flex justify-content-between align-items-center pe-4">
+            <span>Add Vendor</span>
+            {newVendor.attrited == 1 && <span className="text-warning fs-6">Attrited</span>}
+          </div>
+        }
+        width="50%"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => setVisibleLeftAdd(false),
+          },
+          {
+            label: "Save Changes",
+            className: "btn btn-success",
+            onClick: handleSaveVendor,
+            loading: isSubmitting,
+          },
+        ]}
+      >
+        <div className="p-3 bg-white">
+          <div className="row">
                 <div className="col-12">
                   <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center mb-3 pe-3">
                     <h6 className="sidebarSubTitle">Basic Details</h6>
@@ -474,7 +464,6 @@ const VendorMaster = () => {
                         ...newVendor,
                         facilityId: e.value,
                       })
-
                     }
                     options={facilityList}
                     optionLabel="facilityName"
@@ -641,55 +630,38 @@ const VendorMaster = () => {
                     </label>
                   </div>
                 </div>
-              </div>
-              {/* Fixed button container at bottom of sidebar */}
-              <div className="sidebar-fixed-bottom position-absolute pe-3">
-                <div className="d-flex gap-3 justify-content-end me-3">
-                  <Button
-                    label="Cancel"
-                    className="btn btn-outline-secondary"
-                    onClick={() => setVisibleLeftAdd(false)}
-                  />
-                  <Button
-                    label="Save Changes"
-                    className="btn btn-success"
-                    onClick={handleSaveVendor}
-                  />
-                </div>
-              </div>
-            </div>
-          </PrimeSidebar>
+          </div>
+        </div>
+      </MasterSidebar>
 
-          {/* Edit Prime Sidebar */}
-          <PrimeSidebar
-            visible={visibleLeft}
-            position="right"
-            onHide={() => setVisibleLeft(false)}
-            style={{ width: "50%" }}
-            showCloseIcon={false}
-            dismissable={false}
-          >
-            <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-              <h6 className="sidebarTitle">
-                {selectedVendor ? selectedVendor.vendorName : ""}
-              </h6>
-              <span className="d-flex align-items-center">
-                <p className="text-warning">{selectedVendor?.attrited == 1 ? 'Attrited' : ''}</p>
-                <Button
-                  icon="pi pi-times"
-                  className="p-button-rounded p-button-text"
-                  style={{ backgroundColor: "black" }}
-                  onClick={() => setVisibleLeft(false)}
-                />
-              </span>
-            </div>
-            <div className="sidebarBody" style={{ backgroundColor: "white" }}>
+      {/* Edit Vendor Sidebar */}
+      <MasterSidebar
+        show={visibleLeft}
+        onClose={() => setVisibleLeft(false)}
+        title={
+          <div className="w-100 d-flex justify-content-between align-items-center pe-4">
+            <span>{selectedVendor ? selectedVendor.vendorName : ""}</span>
+            {selectedVendor?.attrited == 1 && <span className="text-warning fs-6">Attrited</span>}
+          </div>
+        }
+        width="50%"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => setVisibleLeft(false),
+          },
+          {
+            label: "Save",
+            className: "btn btn-success",
+            onClick: handleUpdateVendor,
+            loading: isSubmitting,
+          },
+        ]}
+      >
+        <div className="p-3 bg-white">
               {selectedVendor && (
                 <div className="row">
-                  {/* <div className="col-12 mb-3">
-                                    <h6 className="sidebarSubTitle">Add New Vendor</h6>
-                                </div> */}
-
                   <div className="col-12">
                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center mb-3 pe-3">
                       <h6 className="sidebarSubTitle">Basic Details</h6>
@@ -776,7 +748,6 @@ const VendorMaster = () => {
                       value={selectedVendor.vendorContact}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // Allow only numeric input and limit to 15 characters
                         if (/^\d*$/.test(value) && value.length <= 15) {
                           setSelectedVendor({
                             ...selectedVendor,
@@ -785,14 +756,6 @@ const VendorMaster = () => {
                         }
                       }}
                       maxLength={15}
-                    //   onChange={(e) =>
-                    //     setSelectedVendor({
-                    //       ...selectedVendor,
-                    //       vendorContact: e.target.value,
-                    //     })
-                    //   }
-                    //   maxLength={10}
-                    //   minLength={10}
                     />
                   </div>
                   <div className="field col-4 mb-3">
@@ -941,24 +904,8 @@ const VendorMaster = () => {
                   </div>
                 </div>
               )}
-            </div>
-            <div className="sidebar-fixed-bottom position-absolute pe-3">
-              <div className="d-flex gap-3 justify-content-end me-3">
-                <Button
-                  label="Cancel"
-                  className="btn btn-outline-secondary"
-                  onClick={() => setVisibleLeft(false)}
-                />
-                <Button
-                  label="Save"
-                  className="btn btn-success"
-                  onClick={() => handleUpdateVendor()}
-                />
-              </div>
-            </div>
-          </PrimeSidebar>
         </div>
-      </div>
+      </MasterSidebar>
     </>
   );
 };

@@ -6,6 +6,7 @@ import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
 import { MultiSelect } from "primereact/multiselect";
@@ -49,6 +50,14 @@ const OTAReport = () => {
   const dt = useRef(null);
   const op = useRef(null);
   const filterButtonRef = useRef(null);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
 
   const reportTypes = [
     { label: "Detailed", value: "detailed" },
@@ -277,6 +286,7 @@ const OTAReport = () => {
     setError(null);
     setExpandedRows([]);
     setGlobalFilter("");
+    setFirst(0); // Reset pagination
     setFilters({
       Unit: null,
       TripDate: null,
@@ -850,10 +860,8 @@ const OTAReport = () => {
                   {currentReportType === "detailed" && (
                     <div className="table-responsive">
                       <CustomDataTable
-                        value={filteredData}
+                        value={filteredData.slice(first, first + rows)}
                         ref={dt}
-                        paginator
-                        rows={50}
                         tableStyle={{ minWidth: "50rem" }}
                         size="small"
                         loading={loading}
@@ -861,7 +869,6 @@ const OTAReport = () => {
                           error ? `Error: ${error}` : "No records found"
                         }
                         stripedRows
-                        rowsPerPageOptions={[50, 100, 200, 300]}
                       >
                         <Column field="Unit" header="Facility" sortable />
                         <Column field="TripDate" header="Trip Date" sortable />
@@ -906,6 +913,13 @@ const OTAReport = () => {
                           sortable
                         />
                       </CustomDataTable>
+                      <CustomPaginator
+                        first={first}
+                        rows={rows}
+                        totalRecords={filteredData.length}
+                        onPageChange={onPageChange}
+                        rowsPerPageOptions={[50, 100, 200, 300]}
+                      />
                     </div>
                   )}
 

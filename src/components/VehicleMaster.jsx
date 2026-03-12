@@ -10,11 +10,13 @@ import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { Sidebar as PrimeSidebar } from "primereact/sidebar";
+import MasterSidebar from "./Master/MasterSidebar";
 import VehicleMasterService from "../services/compliance/VehicleMasterService";
 import sessionManager from "../utils/SessionManager.js";
 import { toastService } from "../services/toastService.js";
 import ReportButton from "./common/ReportButton";
+import Loader from "./common/Loader";
+import CustomPaginator from "./common/CustomPaginator";
 import { ToastContainer } from "react-toastify";
 
 const VehicleMaster = () => {
@@ -48,6 +50,14 @@ const VehicleMaster = () => {
     const [editFuelType, setEditFuelType] = useState([]);
     const [documentDetails, setDocumentDetails] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
+
+    const [first, setFirst] = useState(0);
+    const [rows, setRows] = useState(50);
+
+    const onPageChange = (event) => {
+        setFirst(event.first);
+        setRows(event.rows);
+    };
 
     // Initial form data
     const initialFormData = {
@@ -340,6 +350,7 @@ const VehicleMaster = () => {
             });
             const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
             setVehicleDetails(parsedData);
+            setFirst(0); // Reset pagination on data fetch
             setShowTable(true);
         } catch (error) {
             console.error("Error while fetching vehicle details:", error);
@@ -661,30 +672,7 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
     // ========== JSX RETURN ==========
     return (
         <>
-            {isSubmitting && (
-                <div
-                    style={{
-                        position: "fixed",
-                        top: 0,
-                        left: 0,
-                        width: "100vw",
-                        height: "100vh",
-                        background: "rgba(255,255,255,0.7)",
-                        zIndex: 9999,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    <div
-                        className="spinner-border text-primary"
-                        style={{ width: 60, height: 60, fontSize: 32 }}
-                        role="status"
-                    >
-                        <span className="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            )}
+            <Loader isVisible={isSubmitting} fullScreen={true} />
             <Header pageTitle="Vehicle Master" showNewButton={true} onNewButtonClick={() => {
                 setVehicleFormData(initialFormData);
                 setIsAttrited(false);
@@ -737,8 +725,7 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                     {showTable && (
                         <div className="col-12">
                             <div className="card_tb">
-                                <DataTable value={[...vehicleDetails]} paginator rows={50} emptyMessage="No Records Found"
-                                    rowsPerPageOptions={[50, 100, 150, 200]}>
+                                <DataTable value={[...vehicleDetails].slice(first, first + rows)} emptyMessage="No Records Found">
                                          <Tooltip target=".id-link" content="Click to Edit Details" />
                                     <Column sortable field="Id" header="ID" body={(rowData) => (
                                         <a href="#" className="id-link"
@@ -876,21 +863,50 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                     <Column field="PUCExpiryDate" header="PUC Expiry Date" body={rowData => formatDate(rowData.PUCExpiryDate)}></Column>
                                     <Column field="Attrited" header="Attrited"></Column>
                                 </DataTable>
+                                <CustomPaginator
+                                    first={first}
+                                    rows={rows}
+                                    totalRecords={vehicleDetails.length}
+                                    onPageChange={onPageChange}
+                                    rowsPerPageOptions={[50, 100, 150, 200]}
+                                />
                             </div>
                         </div>
                     )}
+                </div>
+            </div>
 
-                    {/* Add Vehicle Master */}
-                    <PrimeSidebar visible={addVehicle} position="right" onHide={() => setAddVehicle(false)} showCloseIcon={false} dismissable={false} style={{ width: '50%' }}>
-                        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-                            <h6 className="sidebarTitle">Add Vehicle Master</h6>
-                            <span className="d-flex align-items-center">
-                                {isAttrited && <p className="text-warning mb-0 me-2">Attrited</p>}
-                                <Button icon="pi pi-times" className="p-button-rounded p-button-text" style={{ backgroundColor: "black" }} onClick={() => setAddVehicle(false)} />
-                            </span>
-                        </div>
-                        <div className="sidebarBody" style={{ backgroundColor: "white" }}>
-                            <div className="row">
+            {/* Add Vehicle Master */}
+            <MasterSidebar
+                show={addVehicle}
+                onClose={() => setAddVehicle(false)}
+                title={
+                    <div className="w-100 d-flex justify-content-between align-items-center pe-4">
+                        <span>Add Vehicle Master</span>
+                        {isAttrited && <span className="text-warning fs-6">Attrited</span>}
+                    </div>
+                }
+                width="50%"
+                footerButtons={[
+                    {
+                        label: "Cancel",
+                        className: "btn btn-outline-secondary",
+                        onClick: () => {
+                            setAddVehicle(false);
+                            setVehicleFormData(initialFormData);
+                            setIsAttrited(false);
+                        }
+                    },
+                    {
+                        label: "Save Changes",
+                        className: "btn btn-success",
+                        onClick: InsertAddVehicle,
+                        loading: isSubmitting
+                    }
+                ]}
+            >
+                <div className="p-3 bg-white">
+                    <div className="row">
                                 <div className="col-12 mb-3">
                                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
                                         <h6 className="sidebarSubTitle">Vehicle Details</h6>
@@ -1079,33 +1095,37 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                     </div>
                                 </div>
 
-                                {/* Fixed button container at bottom of sidebar */}
-                                <div className="sidebar-fixed-bottom">
-                                    <div className="d-flex gap-3 justify-content-end">
-                                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => {
-                                            setAddVehicle(false);
-                                            setVehicleFormData(initialFormData);
-                                            setIsAttrited(false);
-                                        }} />
-                                        <Button label="Save Changes" className="btn btn-success" onClick={InsertAddVehicle} />
-                                    </div>
-                                </div>
-
                             </div>
                         </div>
-                    </PrimeSidebar>
+            </MasterSidebar>
 
-                    {/* Edit Vehicle Master */}
-                    <PrimeSidebar visible={updateVehicle} position="right" onHide={() => setUpdateVehicle(false)} showCloseIcon={false} dismissable={false} style={{ width: '50%' }}>
-                        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-                            <h6 className="sidebarTitle">Edit Vehicle Master</h6>
-                            <span className="d-flex align-items-center">
-                                {editAttrited && <p className="text-warning mb-0 me-2">Attrited</p>}
-                                <Button icon="pi pi-times" className="p-button-rounded p-button-text" style={{ backgroundColor: "black" }} onClick={() => setUpdateVehicle(false)} />
-                            </span>
-                        </div>
-                        <div className="sidebarBody" style={{ backgroundColor: "white" }}>
-                            <div className="row">
+            {/* Edit Vehicle Master */}
+            <MasterSidebar
+                show={updateVehicle}
+                onClose={() => setUpdateVehicle(false)}
+                title={
+                    <div className="w-100 d-flex justify-content-between align-items-center pe-4">
+                        <span>Edit Vehicle Master</span>
+                        {editAttrited && <span className="text-warning fs-6">Attrited</span>}
+                    </div>
+                }
+                width="50%"
+                footerButtons={[
+                    {
+                        label: "Cancel",
+                        className: "btn btn-outline-secondary",
+                        onClick: () => setUpdateVehicle(false)
+                    },
+                    {
+                        label: "Update Data",
+                        className: "btn btn-success",
+                        onClick: UpdateVehicle,
+                        loading: isSubmitting
+                    }
+                ]}
+            >
+                <div className="p-3 bg-white">
+                    <div className="row">
                                 <div className="col-12 mb-3">
                                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
                                         <h6 className="sidebarSubTitle">Vehicle Details</h6>
@@ -1426,20 +1446,9 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                     </div>
                                 </div>
 
-                                {/* Fixed button container at bottom of sidebar */}
-                                <div className="sidebar-fixed-bottom">
-                                    <div className="d-flex gap-3 justify-content-end">
-                                        <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setUpdateVehicle(false)} />
-                                        <Button label="Update Data" className="btn btn-success" onClick={UpdateVehicle} />
-                                    </div>
-                                </div>
-
                             </div>
                         </div>
-                    </PrimeSidebar>
-
-                </div >
-            </div >
+            </MasterSidebar>
         </>
     )
 }

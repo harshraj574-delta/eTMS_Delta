@@ -18,6 +18,9 @@ import { InputNumber } from "primereact/inputnumber";
 import { toastService } from "../services/toastService";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import CustomPaginator from "./common/CustomPaginator";
+import Loader from "./common/Loader";
+
 const GuardMaster = () => {
   const [addGuardMaster, setAddGuardMaster] = useState(false);
   const [visibleLeft, setVisibleLeft] = useState(false);
@@ -32,6 +35,15 @@ const GuardMaster = () => {
   const [selFacility, setSelFacility] = useState(null);
   const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
   // Open sidebar with employee data
   const openEditSidebar = (guardData) => {
     setSelectedGuard(guardData); // Set the selected guard data
@@ -93,6 +105,7 @@ const exportToExcel = () => {
         // console.log('respData',respData);
 
         setGuardDetails(Array.isArray(respData) ? respData : []);
+        setFirst(0); // Reset pagination on data fetch
       } catch (parseError) {
         console.error("Error parsing guard details:", parseError);
         setGuardDetails([]);
@@ -298,30 +311,7 @@ const exportToExcel = () => {
   };
   return (
     <>
-      {isSubmitting && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(255,255,255,0.7)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            className="spinner-border text-primary"
-            style={{ width: 60, height: 60, fontSize: 32 }}
-            role="status"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      )}
+      <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header
         pageTitle="Vehicle Master"
         showNewButton={true}
@@ -375,10 +365,7 @@ const exportToExcel = () => {
           <div className="col-12">
             <div className="card_tb">
               <DataTable
-                value={GuardDetails}
-                paginator
-                rows={50}
-                rowsPerPageOptions={[50, 100, 150, 200, 250]}
+                value={[...GuardDetails].slice(first, first + rows)}
                 emptyMessage="No guard data available"
                 rowClassName={(rowData) => {
                   // return rowData[0].status === "Y" ? "bg-danger-subtle" : "";
@@ -422,6 +409,13 @@ const exportToExcel = () => {
                 <Column sortable field="AadharNo" header="Aadhar No." />
                 <Column sortable field="PVCStatus" header="PVC Status" />
               </DataTable>
+              <CustomPaginator
+                first={first}
+                rows={rows}
+                totalRecords={GuardDetails.length}
+                onPageChange={onPageChange}
+                rowsPerPageOptions={[50, 100, 150, 200, 250]}
+              />
             </div>
           </div>
 

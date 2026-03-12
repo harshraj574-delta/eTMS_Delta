@@ -235,7 +235,7 @@ const MasterSidebar = ({
           ></button>
         </div>
 
-        <div className={`offcanvas-body p-0 ${bodyClassName}`} style={bodyStyle}>
+        <div className={`offcanvas-body px-0 pt-0 ${bodyClassName}`} style={bodyStyle}>
           {children}
         </div>
 

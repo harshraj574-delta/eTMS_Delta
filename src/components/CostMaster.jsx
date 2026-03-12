@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
+import Loader from "./common/Loader";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
+import MasterSidebar from "./Master/MasterSidebar";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -13,6 +15,7 @@ import CostMasterService from "../services/compliance/CostMasterService";
 import { toastService } from "../services/toastService";
 import { set } from "lodash";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import TableToolbar from "./common/TableToolbar";
 import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
@@ -44,6 +47,14 @@ const CostMaster = () => {
   const op = useRef(null);
   const filterButtonRef = useRef(null);
   const [showTable, setShowTable] = useState(false);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
 
   const validateAcCost = (value) => {
     if (!value) {
@@ -354,6 +365,7 @@ const CostMaster = () => {
         ? parsedData
         : [parsedData];
       setCostData(validatedData);
+      setFirst(0); // Reset pagination on new data fetch
       setLoading(false);
       setShowTable(true);
 
@@ -429,30 +441,7 @@ const CostMaster = () => {
 
   return (
     <>
-      {isSubmitting && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(255,255,255,0.7)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            className="spinner-border text-primary"
-            style={{ width: 60, height: 60, fontSize: 32 }}
-            role="status"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      )}
+      <Loader isVisible={isSubmitting || loading} fullScreen={true} />
       <Header
         pageTitle="Cost Master"
         showNewButton={true}
@@ -613,13 +602,10 @@ const CostMaster = () => {
                     </div>
                   </TableToolbar>
                   <CustomDataTable
-                    value={costData}
+                    value={costData.slice(first, first + rows)}
                     ref={dt}
-                    paginator
-                    rows={50}
                     tableStyle={{ minWidth: "50rem" }}
                     size="small"
-                    loading={loading}
                     emptyMessage={error ? `Error: ${error}` : "No records found"}
                     stripedRows
                     // currentPageReportTemplate="Showing {first} to {last} of {totalRecords} employees"
@@ -627,9 +613,7 @@ const CostMaster = () => {
                     // paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                     // paginatorLeft={paginatorLeft}
                     // paginatorRight={paginatorRight}
-                    globalFilter={globalFilter}
                     header={null}
-                    rowsPerPageOptions={[50, 100, 200, 300]}
                   >
                     <Column
                       field="vendorname"
@@ -700,6 +684,13 @@ const CostMaster = () => {
                       }}
                     />
                   </CustomDataTable>
+                  <CustomPaginator
+                    first={first}
+                    rows={rows}
+                    totalRecords={costData.length}
+                    onPageChange={onPageChange}
+                    rowsPerPageOptions={[50, 100, 200, 300]}
+                  />
                 </div>
               )}
             </div>
@@ -708,26 +699,60 @@ const CostMaster = () => {
       </div>
 
       {/* Add New Cost sidebar */}
-      <PrimeSidebar
-        visible={AddNewCost}
-        position="right"
-        showCloseIcon={false}
-        dismissable={false}
-        style={{ width: "40%" }}
-      >
-        {/* Sidebar content */}
-        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-          <h6 className="sidebarTitle">Add New Cost</h6>
-          <Button
-            icon="pi pi-times"
-            className="p-button-rounded p-button-text"
-            style={{ backgroundColor: "black" }}
-            onClick={() => {
+      <MasterSidebar
+        show={AddNewCost}
+        onClose={() => {
+          setAddNewCost(false);
+          // Reset all fields when closing the sidebar
+          setAcCost("");
+          setNonAcCost("");
+          setFuelRate("");
+          setGuardRate("");
+          setSelectedDate(new Date());
+          setSelectedVendorNew(null);
+          setSelectedVehicleTypeNew(null);
+          setSelectedZoneNew(null);
+          setSelectedRouteTypeNew(null);
+        }}
+        title="Add New Cost"
+        width="40%"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => {
               setAddNewCost(false);
-            }}
-          />
-        </div>
-        <div className="sidebarBody" style={{ backgroundColor: "white" }}>
+              // Reset all fields when closing the sidebar
+              setAcCost("");
+              setNonAcCost("");
+              setFuelRate("");
+              setGuardRate("");
+              setSelectedDate(new Date());
+              setSelectedVendorNew(null);
+              setSelectedVehicleTypeNew(null);
+              setSelectedZoneNew(null);
+              setSelectedRouteTypeNew(null);
+            },
+          },
+          {
+            label: "Save",
+            className: "btn btn-success",
+            onClick: () => {
+              setAcCost("");
+              setNonAcCost("");
+              setFuelRate("");
+              setGuardRate("");
+              setSelectedDate(new Date());
+              setSelectedVendorNew(null);
+              setSelectedVehicleTypeNew(null);
+              setSelectedZoneNew(null);
+              setSelectedRouteTypeNew(null);
+              AddNewCostHandler();
+            },
+          },
+        ]}
+      >
+        <div className="p-3 bg-white">
           <div className="row">
             <div className="col-6 mb-3">
               <label>
@@ -879,67 +904,28 @@ const CostMaster = () => {
             </div>
           </div>
         </div>
-        <div className="sidebar-fixed-bottom position-absolute pe-3">
-          <div className="d-flex gap-3 justify-content-end">
-            <Button
-              label="Cancel"
-              className="btn btn-outline-secondary"
-              onClick={() => {
-                setAddNewCost(false);
-                // Reset all fields when closing the sidebar
-                setAcCost("");
-                setNonAcCost("");
-                setFuelRate("");
-                setGuardRate("");
-                setSelectedDate(new Date());
-                setSelectedVendorNew(null);
-                setSelectedVehicleTypeNew(null);
-                setSelectedZoneNew(null);
-                setSelectedRouteTypeNew(null);
-              }}
-            />
-            <Button
-              label="Save"
-              className="btn btn-success"
-              onClick={() => {
-                //setAddNewCost(false);
-                // Reset all fields when closing the sidebar
-                setAcCost("");
-                setNonAcCost("");
-                setFuelRate("");
-                setGuardRate("");
-                setSelectedDate(new Date());
-                setSelectedVendorNew(null);
-                setSelectedVehicleTypeNew(null);
-                setSelectedZoneNew(null);
-                setSelectedRouteTypeNew(null);
-                AddNewCostHandler();
-              }}
-            />
-          </div>
-        </div>
-      </PrimeSidebar>
+      </MasterSidebar>
 
       {/* Edit New Cost sidebar */}
-      <PrimeSidebar
-        visible={EditNewCost}
-        position="right"
-        showCloseIcon={false}
-        dismissable={false}
-        style={{ width: "40%" }}
+      <MasterSidebar
+        show={EditNewCost}
+        onClose={() => setEditNewCost(false)}
+        title={editRowData?.vendorname || ""}
+        width="40%"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => setEditNewCost(false),
+          },
+          {
+            label: "Save",
+            className: "btn btn-success",
+            onClick: handleUpdateCost,
+          },
+        ]}
       >
-        {/* Sidebar content */}
-        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-          <h6 className="sidebarTitle">{editRowData?.vendorname || ""}</h6>
-          <Button
-            icon="pi pi-times"
-            className="p-button-rounded p-button-text"
-            onClick={() => {
-              setEditNewCost(false);
-            }}
-          />
-        </div>
-        <div className="sidebarBody">
+        <div className="p-3">
           <div className="row">
             <div className="col-6 mb-3" style={{ display: "none" }}>
               <label>
@@ -1049,23 +1035,7 @@ const CostMaster = () => {
             </div>
           </div>
         </div>
-        <div className="sidebar-fixed-bottom position-absolute pe-3">
-          <div className="d-flex gap-3 justify-content-end">
-            <Button
-              label="Cancel"
-              className="btn btn-outline-secondary"
-              onClick={() => {
-                setEditNewCost(false);
-              }}
-            />
-            <Button
-              label="Save"
-              className="btn btn-success"
-              onClick={handleUpdateCost}
-            />
-          </div>
-        </div>
-      </PrimeSidebar>
+      </MasterSidebar>
     </>
   );
 };

@@ -14,6 +14,7 @@ import { IconButton } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
@@ -44,6 +45,14 @@ const FeedbackMaster = () => {
   const [showEditComplaintSidebar, setShowEditComplaintSidebar] =
     useState(false);
   const [editingComplaint, setEditingComplaint] = useState(null);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
 
   const facilityId = sessionManager.getUserSession().FacilityID;
 
@@ -135,6 +144,7 @@ const FeedbackMaster = () => {
       const complaintData = Array.isArray(data) ? data : [];
       setComplaintTypes(complaintData);
       setFilteredData(complaintData);
+      setFirst(0); // Reset pagination on new search
     } catch (error) {
       toast.error("Error fetching complaint types");
       console.error(error);
@@ -381,11 +391,8 @@ const FeedbackMaster = () => {
               </div>
               <div className="table-responsive">
                 <CustomDataTable
-                  value={filteredData}
+                  value={filteredData.slice(first, first + rows)}
                   loading={loading}
-                  paginator
-                  rows={10}
-                  rowsPerPageOptions={[5, 10, 20]}
                   dataKey="Id"
                   className="p-datatable-sm"
                   emptyMessage="No complaint types found"
@@ -416,6 +423,13 @@ const FeedbackMaster = () => {
                     className="col-action"
                   />
                 </CustomDataTable>
+                <CustomPaginator
+                  first={first}
+                  rows={rows}
+                  totalRecords={filteredData.length}
+                  onPageChange={onPageChange}
+                  rowsPerPageOptions={[5, 10, 20]}
+                />
               </div>
             </div>
           </div>

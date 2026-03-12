@@ -9,8 +9,8 @@ import sessionManager from '../utils/SessionManager';
 import TableToolbar from "./common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
-
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -28,6 +28,24 @@ const ProcessMaster = () => {
   const [editingProcess, setEditingProcess] = useState(null);
   const [editingSubProcess, setEditingSubProcess] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Pagination State for Main Table
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
+  // Pagination State for Sub-Processes Table
+  const [subFirst, setSubFirst] = useState(0);
+  const [subRows, setSubRows] = useState(10);
+
+  const onSubPageChange = (event) => {
+    setSubFirst(event.first);
+    setSubRows(event.rows);
+  };
 
   // Toolbar State
   const [globalFilter, setGlobalFilter] = useState("");
@@ -88,6 +106,7 @@ const ProcessMaster = () => {
       const procesData = Array.isArray(data) ? data : [];
       setProcesses(procesData);
       setFilteredData(procesData);
+      setFirst(0); // Reset pagination on fetch
     } catch (error) {
       toast.error('Error fetching processes');
       console.error(error);
@@ -193,6 +212,7 @@ const ProcessMaster = () => {
       const data = await ProcessMasterService.getSubProcess(processId);
       setSubProcesses(Array.isArray(data) ? data : []);
       setSelectedProcess({ id: processId, name: processName });
+      setSubFirst(0); // Reset pagination on fetch
       setShowSubProcessesSidebar(true);
     } catch (error) {
       toast.error('Error fetching sub-processes');
@@ -397,11 +417,8 @@ const ProcessMaster = () => {
               </div>
               <div className="table-responsive">
                 <CustomDataTable
-                  value={filteredData}
+                  value={filteredData.slice(first, first + rows)}
                   loading={loading}
-                  paginator
-                  rows={10}
-                  rowsPerPageOptions={[5, 10, 20]}
                   dataKey="Id"
                   className="p-datatable-sm"
                   emptyMessage="No processes found"
@@ -466,6 +483,13 @@ const ProcessMaster = () => {
                     className="col-action"
                   />
                 </CustomDataTable>
+                <CustomPaginator
+                  first={first}
+                  rows={rows}
+                  totalRecords={filteredData.length}
+                  onPageChange={onPageChange}
+                  rowsPerPageOptions={[5, 10, 20]}
+                />
               </div>
             </div>
           </div>
@@ -579,11 +603,8 @@ const ProcessMaster = () => {
           </button>
           <div className="table-responsive">
             <CustomDataTable
-              value={subProcesses}
+              value={subProcesses.slice(subFirst, subFirst + subRows)}
               loading={loading}
-              paginator
-              rows={10}
-              rowsPerPageOptions={[5, 10, 20]}
               dataKey="Id"
               className="p-datatable-gridlines process-datatable"
               emptyMessage="No sub-processes found"
@@ -604,6 +625,13 @@ const ProcessMaster = () => {
                 className="col-action"
               />
             </CustomDataTable>
+            <CustomPaginator
+              first={subFirst}
+              rows={subRows}
+              totalRecords={subProcesses.length}
+              onPageChange={onSubPageChange}
+              rowsPerPageOptions={[5, 10, 20]}
+            />
           </div>
       </MasterSidebar>
 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
+import Loader from "./common/Loader";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
+import MasterSidebar from "./Master/MasterSidebar";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -13,6 +15,7 @@ import CostMasterPackageService from "../services/compliance/CostMasterPackageSe
 import { toastService } from "../services/toastService";
 import { set } from "lodash";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import TableToolbar from "./common/TableToolbar";
 import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
@@ -54,6 +57,14 @@ const CostMasterPackage = () => {
   const [error, setError] = useState(null);
 
   const [costData, setCostData] = useState([]);
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
   const [vehicleTypes] = useState([
     { label: "-All-", value: 0 },
     { label: "4 Seater", value: 1 },
@@ -234,6 +245,7 @@ const CostMasterPackage = () => {
         validatedData = [];
       }
       setCostData(validatedData);
+      setFirst(0); // Reset pagination on data fetch
       setLoading(false);
       setShowTable(true);
 
@@ -392,30 +404,7 @@ const CostMasterPackage = () => {
 
   return (
     <>
-      {isSubmitting && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(255,255,255,0.7)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            className="spinner-border text-primary"
-            style={{ width: 60, height: 60, fontSize: 32 }}
-            role="status"
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      )}
+      <Loader isVisible={isSubmitting || loading} fullScreen={true} />
       <Header
         pageTitle="Cost Master"
         showNewButton={true}
@@ -555,12 +544,9 @@ const CostMasterPackage = () => {
                   </TableToolbar>
                   <CustomDataTable
                     ref={dt}
-                    value={costData}
-                    paginator
-                    rows={50}
+                    value={costData.slice(first, first + rows)}
                     tableStyle={{ minWidth: "50rem" }}
                     size="small"
-                    loading={loading}
                     emptyMessage={error ? `Error: ${error}` : "No records found"}
                     stripedRows
                     // currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
@@ -568,9 +554,7 @@ const CostMasterPackage = () => {
                     // paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                     // paginatorLeft={paginatorLeft}
                     // paginatorRight={paginatorRight}
-                    globalFilter={globalFilter}
                     header={null}
-                    rowsPerPageOptions={[50, 100, 200, 300]}
                   >
                     <Column
                       field="vendorname"
@@ -649,6 +633,13 @@ const CostMasterPackage = () => {
                       }}
                     />
                   </CustomDataTable>
+                  <CustomPaginator
+                    first={first}
+                    rows={rows}
+                    totalRecords={costData.length}
+                    onPageChange={onPageChange}
+                    rowsPerPageOptions={[50, 100, 200, 300]}
+                  />
                 </div>
               )}
             </div>
@@ -656,27 +647,58 @@ const CostMasterPackage = () => {
         </div>
       </div>
 
-      {/* Add New Cost sidebar */}
-      <PrimeSidebar
-        visible={AddNewCost}
-        position="right"
-        showCloseIcon={false}
-        dismissable={false}
-        style={{ width: "40%" }}
-      >
-        {/* Sidebar content */}
-        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-          <h6 className="sidebarTitle">Add New Cost</h6>
-          <Button
-            icon="pi pi-times"
-            className="p-button-rounded p-button-text"
-            style={{ backgroundColor: "black" }}
-            onClick={() => {
+      <MasterSidebar
+        show={AddNewCost}
+        onClose={() => {
+          setAddNewCost(false);
+          setAcCost("");
+          setNonAcCost("");
+          setFuelRate("");
+          setGuardRate("");
+          setKm("");
+          setHrs("");
+          setSelectedDate(new Date());
+          setSelectedVendorNew(null);
+          setSelectedVehicleTypeNew(null);
+        }}
+        title="Add New Cost"
+        width="40%"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => {
               setAddNewCost(false);
-            }}
-          />
-        </div>
-        <div className="sidebarBody" style={{ backgroundColor: "white" }}>
+              setAcCost("");
+              setNonAcCost("");
+              setFuelRate("");
+              setGuardRate("");
+              setKm("");
+              setHrs("");
+              setSelectedDate(new Date());
+              setSelectedVendorNew(null);
+              setSelectedVehicleTypeNew(null);
+            },
+          },
+          {
+            label: "Save",
+            className: "btn btn-success",
+            onClick: () => {
+              setAcCost("");
+              setNonAcCost("");
+              setFuelRate("");
+              setGuardRate("");
+              setKm("");
+              setHrs("");
+              setSelectedDate(new Date());
+              setSelectedVendorNew(null);
+              setSelectedVehicleTypeNew(null);
+              AddNewCostPackageHandler();
+            },
+          },
+        ]}
+      >
+        <div className="p-3 bg-white">
           <div className="row">
             <div className="col-6 mb-3">
               <label>
@@ -841,66 +863,27 @@ const CostMasterPackage = () => {
             </div>
           </div>
         </div>
-        <div className="sidebar-fixed-bottom position-absolute pe-3">
-          <div className="d-flex gap-3 justify-content-end">
-            <Button
-              label="Cancel"
-              className="btn btn-outline-secondary"
-              onClick={() => {
-                setAddNewCost(false);
-                // Reset all fields when closing the sidebar
-                setAcCost("");
-                setNonAcCost("");
-                setFuelRate("");
-                setGuardRate("");
-                setKm("");
-                setHrs("");
-                setSelectedDate(new Date());
-                setSelectedVendorNew(null);
-                setSelectedVehicleTypeNew(null);
-              }}
-            />
-            <Button
-              label="Save"
-              className="btn btn-success"
-              onClick={() => {
-                //setAddNewCost(false);
-                // Reset all fields when closing the sidebar
-                setAcCost("");
-                setNonAcCost("");
-                setFuelRate("");
-                setGuardRate("");
-                setKm("");
-                setHrs("");
-                setSelectedDate(new Date());
-                setSelectedVendorNew(null);
-                setSelectedVehicleTypeNew(null);
-                AddNewCostPackageHandler();
-              }}
-            />
-          </div>
-        </div>
-      </PrimeSidebar>
+      </MasterSidebar>
       {/* Edit Cost sidebar */}
-      <PrimeSidebar
-        visible={EditNewCost}
-        position="right"
-        showCloseIcon={false}
-        dismissable={false}
-        style={{ width: "40%" }}
+      <MasterSidebar
+        show={EditNewCost}
+        onClose={() => setEditNewCost(false)}
+        title={editRowData?.vendorname || ""}
+        width="40%"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => setEditNewCost(false),
+          },
+          {
+            label: "Save",
+            className: "btn btn-success",
+            onClick: handleUpdateCost,
+          },
+        ]}
       >
-        {/* Sidebar content */}
-        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-          <h6 className="sidebarTitle">{editRowData?.vendorname || ""}</h6>
-          <Button
-            icon="pi pi-times"
-            className="p-button-rounded p-button-text"
-            onClick={() => {
-              setEditNewCost(false);
-            }}
-          />
-        </div>
-        <div className="sidebarBody">
+        <div className="p-3">
           <div className="row">
             <div className="col-6 mb-3" style={{ display: "none" }}>
               <label>
@@ -1010,23 +993,7 @@ const CostMasterPackage = () => {
             </div>
           </div>
         </div>
-        <div className="sidebar-fixed-bottom position-absolute pe-3">
-          <div className="d-flex gap-3 justify-content-end">
-            <Button
-              label="Cancel"
-              className="btn btn-outline-secondary"
-              onClick={() => {
-                setEditNewCost(false);
-              }}
-            />
-            <Button
-              label="Save"
-              className="btn btn-success"
-              onClick={handleUpdateCost}
-            />
-          </div>
-        </div>
-      </PrimeSidebar>
+      </MasterSidebar>
     </>
   );
 };

@@ -1,7 +1,7 @@
 import React, { use, useEffect, useState } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
-import { Sidebar as PrimeSidebar } from "primereact/sidebar";
+import MasterSidebar from "./Master/MasterSidebar";
 import { Button } from "primereact/button";
 import { Calendar } from "primereact/calendar";
 import { DataTable } from "primereact/datatable";
@@ -12,9 +12,11 @@ import { Dropdown } from "primereact/dropdown";
 import { FileUpload } from "primereact/fileupload";
 import { Checkbox } from "primereact/checkbox";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import CustomPaginator from "./common/CustomPaginator";
 import ShiftTimeMasterAdhocService from "../services/compliance/ShiftTimeMasterAdhocService";
 import { toastService } from "../services/toastService";
 import ReportButton from "./common/ReportButton";
+import { ToastContainer } from "react-toastify";
 
 const ShiftTimeMasterAdhoc = () => {
   const [addAdhocSidebar, setAddAdhocSidebar] = useState(false);
@@ -30,23 +32,9 @@ const ShiftTimeMasterAdhoc = () => {
     { label: "Pick", value: "P" },
     { label: "Drop", value: "D" }
   ];
-  const TypeOptionsAdd = [
-    { label: "Both", value: "B" },
-    { label: "Pick", value: "P" },
-    { label: "Drop", value: "D" }
-  ];
-  const TypeOptionsEdit = [
-    { label: "Both", value: "B" },
-    { label: "Pick", value: "P" },
-    { label: "Drop", value: "D" }
-  ];
   const [typeAdd, setTypeAdd] = useState("");
   const [type, setType] = useState("");
   const ShiftCategoryOptions = [
-    { label: "Adhoc", value: "Adhoc" },
-    { label: "Emergency", value: "Emergency" },
-  ];
-  const ShiftCategoryOptionsAdd = [
     { label: "Adhoc", value: "Adhoc" },
     { label: "Emergency", value: "Emergency" },
   ];
@@ -56,7 +44,6 @@ const ShiftTimeMasterAdhoc = () => {
   const [shiftTime, setShiftTime] = useState("");
   useEffect(() => {
     fetchFacilities();
-    fetchFacilitiesAdd();
   }, [])
   const fetchFacilities = async () => {
     try {
@@ -71,19 +58,7 @@ const ShiftTimeMasterAdhoc = () => {
       console.error("Error fetching facilities:", error);
     }
   }
-  const fetchFacilitiesAdd = async () => {
-    try {
-      const response = await ShiftTimeMasterAdhocService.SelectFacility({ Userid: UserId });
-      const parsedData = typeof response === 'string' ? JSON.parse(response) : response;
-      const formatted = parsedData.map(item => ({
-        name: item.facilityName,
-        value: item.Id,
-      }));
-      setFacilityAdd(formatted);
-    } catch (error) {
-      console.error("Error fetching facilities:", error);
-    }
-  }
+
   const DeleteShiftTime = async (shiftTimeId) => {
     try {
       const response = await ShiftTimeMasterAdhocService.DeleteShiftTime({
@@ -134,6 +109,15 @@ const ShiftTimeMasterAdhoc = () => {
     setSortOrder(e.sortOrder);
   };
   const [shiftData, setShiftData] = useState([]);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
   const fetchGetAdhocShiftTime = async () => {
     setIsSubmitting(true);
     if (!selFacility) {
@@ -165,6 +149,7 @@ const ShiftTimeMasterAdhoc = () => {
         return;
       }
       setShiftData(parsedData);
+      setFirst(0); // Reset pagination on new search
     } catch (error) {
       console.error("Error fetching Adhoc Shift Time:", error);
     } finally {
@@ -217,16 +202,69 @@ const ShiftTimeMasterAdhoc = () => {
     }
   }
   const handleEditClick = (rowData) => {
-  const selected = {
-    ...rowData,
-   Type: rowData.Type?.trim().toUpperCase() || "", // ensure no extra spaces
-    Shifttype: rowData.Shifttype?.trim() || "Adhoc"
+    let mappedType = "";
+    const lowerType = rowData.Type?.toLowerCase().trim() || "";
+    if (lowerType === "pick" || lowerType === "p") mappedType = "P";
+    else if (lowerType === "drop" || lowerType === "d") mappedType = "D";
+    else if (lowerType === "both" || lowerType === "b") mappedType = "B";
+    else mappedType = rowData.Type;
+
+    const selected = {
+      ...rowData,
+      Type: mappedType,
+      Shifttype: rowData.Shifttype?.trim() || "Adhoc"
+    };
+    
+    console.log("Selected row data for edit:", selected);
+    setSelectedShift(selected);
+    setEditAdhocSidebar(true);
   };
-  
-  console.log("Selected row data for edit:", selected); // <-- this logs the exact object
-  setSelectedShift(selected);
-  setEditAdhocSidebar(true);
-};
+
+  const handleUpdateShiftTime = async () => {
+    setIsSubmitting(true);
+    if (!selectedShift?.shiftTime) {
+      toastService.warn("Please enter Shift Time");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!selectedShift?.Type) {
+      toastService.warn("Please select Shift Type");
+      setIsSubmitting(false);
+      return;
+    }
+    try {
+      const response = await ShiftTimeMasterAdhocService.UpdateShiftTime({
+        shiftTime: selectedShift.shiftTime,
+        facilityId: selectedShift.FacilityId || selectedShift.facilityId || selFacility,
+        shiftType: selectedShift.Shifttype || "Adhoc",
+        Day: "0",
+        ID: selectedShift.Id,
+        buffer: 0,
+        type: selectedShift.Type,
+        DayLight: 0,
+        WeekEndType: 0,
+        ProcessIds: "0",
+        UpdatedBy: Number(UserId),
+        Zone: "",
+      });
+      console.log("UpdateShiftTime response:", response);
+      if (response === 1) {
+        toastService.success("Shift Time updated successfully");
+        setEditAdhocSidebar(false);
+        fetchGetAdhocShiftTime();
+      } else if (response === 0) {
+        toastService.warn("ShiftTime Update Failed or Already Exists!");
+      } else {
+        toastService.success("Shift Time updated successfully");
+        setEditAdhocSidebar(false);
+        fetchGetAdhocShiftTime();
+      }
+    } catch (error) {
+      console.error("Error updating Adhoc Shift Time:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   const actionTemplate = (rowData, options) => {
     return (
       <>
@@ -277,6 +315,7 @@ const ShiftTimeMasterAdhoc = () => {
         onNewButtonClick={setAddAdhocSidebar}
       />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <ConfirmDialog />
       <div className="middle">
         {/* Filter Section */}
@@ -307,36 +346,51 @@ const ShiftTimeMasterAdhoc = () => {
         {/* DataTable Section */}
         {shiftData.length > 0 && (
           <div className="card_tb">
-            <DataTable value={shiftData}
+            <DataTable value={shiftData.slice(first, first + rows)}
               scrollable
               sortField={sortField}
               sortOrder={sortOrder}
               onSort={onSort}
               sortMode="single"
               removableSort
-              paginator
-              rows={50}
               emptyMessage="No records found"
-              rowsPerPageOptions={[50, 100, 150, 200]} pt={customSortStyle}>
+              pt={customSortStyle}>
               <Column field="shiftTime" header="Shift Time"></Column>
               <Column field="Type" header="Shift Type"></Column>
               <Column field="facilityName" header="Facility Name"></Column>
               <Column field="Active" header="Active"></Column>
               <Column body={actionTemplate} header="Actions"></Column>
             </DataTable>
+            <CustomPaginator
+              first={first}
+              rows={rows}
+              totalRecords={shiftData.length}
+              onPageChange={onPageChange}
+              rowsPerPageOptions={[50, 100, 150, 200]}
+            />
           </div>
         )}
 
       </div>
-      <PrimeSidebar visible={addAdhocSidebar} position="right" onHide={() => setVisibleLeft(false)} width="50%" showCloseIcon={false} dismissable={false} style={{ width: '30%', backdropFilter: 'blur(8px)' }}>
-        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-          <h6 className="sidebarTitle">Add Shift Time Master</h6>
-          <Button
-            icon="pi pi-times"
-            className="p-button-rounded p-button-text"
-            onClick={() => setAddAdhocSidebar(false)} />
-        </div>
-        <div className="sidebarBody">
+      <MasterSidebar
+        show={addAdhocSidebar}
+        onClose={() => setAddAdhocSidebar(false)}
+        title="Add Shift Time Master"
+        width="30%"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => setAddAdhocSidebar(false),
+          },
+          {
+            label: "Add",
+            className: "btn btn-success",
+            onClick: handleAddShiftTime,
+          },
+        ]}
+      >
+        <div className="p-3">
           <div className="row">
             <div className="field col-12 mb-3">
               <label>Shift Time</label>
@@ -354,36 +408,39 @@ const ShiftTimeMasterAdhoc = () => {
             </div>
             <div className="field col-12 mb-3">
               <label>Shift Type</label>
-              <Dropdown className="w-100" name="" placeholder="Shift Type" options={TypeOptionsAdd} value={typeAdd} onChange={(e) => setTypeAdd(e.value)} />
+              <Dropdown className="w-100" name="" placeholder="Shift Type" options={TypeOptions} value={typeAdd} onChange={(e) => setTypeAdd(e.value)} />
             </div>
 
             <div className="field col-12 mb-3">
               <label>Shift Category</label>
-              <Dropdown optionLabel="label" placeholder="Select Shift Category" className="w-100" filter options={ShiftCategoryOptionsAdd} value={shiftCategoryAdd} onChange={(e) => setShiftCategoryAdd(e.value)} />
+              <Dropdown optionLabel="label" placeholder="Select Shift Category" className="w-100" filter options={ShiftCategoryOptions} value={shiftCategoryAdd} onChange={(e) => setShiftCategoryAdd(e.value)} />
             </div>
             <div className="field col-12 mb-3">
               <label>Facility Name</label>
-              <Dropdown optionLabel="name" placeholder="Select Facility Name" className="w-100" filter options={facilityAdd} value={selFacilityAdd} onChange={(e) => setSelFacilityAdd(e.value)} />
-            </div>
-          </div>
-          {/* Fixed button container at bottom of sidebar */}
-          <div className="sidebar-fixed-bottom">
-            <div className="d-flex gap-3 justify-content-end">
-              <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setAddAdhocSidebar(false)} />
-              <Button label="Add" className="btn btn-success" onClick={handleAddShiftTime} />
+              <Dropdown optionLabel="name" placeholder="Select Facility Name" className="w-100" filter options={facility} value={selFacilityAdd} onChange={(e) => setSelFacilityAdd(e.value)} />
             </div>
           </div>
         </div>
-      </PrimeSidebar>
-      <PrimeSidebar visible={EditAdhocSidebar} position="right" onHide={() => setVisibleLeft(false)} width="50%" showCloseIcon={false} dismissable={false} style={{ width: '30%', backdropFilter: 'blur(8px)' }}>
-        <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-          <h6 className="sidebarTitle">Edit Shift Time Master</h6>
-          <Button
-            icon="pi pi-times"
-            className="p-button-rounded p-button-text"
-            onClick={() => setEditAdhocSidebar(false)} />
-        </div>
-        <div className="sidebarBody">
+      </MasterSidebar>
+      <MasterSidebar
+        show={EditAdhocSidebar}
+        onClose={() => setEditAdhocSidebar(false)}
+        title="Edit Shift Time Master"
+        width="30%"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => setEditAdhocSidebar(false),
+          },
+          {
+            label: "Update",
+            className: "btn btn-success",
+            onClick: handleUpdateShiftTime,
+          },
+        ]}
+      >
+        <div className="p-3">
           {selectedShift && (
             <div className="row">
               <div className="field col-12 mb-3">
@@ -397,7 +454,7 @@ const ShiftTimeMasterAdhoc = () => {
                 <label>Shift Type</label>
                 <Dropdown
                   className="w-100"
-                  options={TypeOptionsEdit} 
+                  options={TypeOptions} 
                   optionLabel="label"
                   optionValue="value"
                   value={selectedShift?.Type}
@@ -428,15 +485,8 @@ const ShiftTimeMasterAdhoc = () => {
               </div>
             </div>
           )}
-          {/* Fixed button container at bottom of sidebar */}
-          <div className="sidebar-fixed-bottom">
-            <div className="d-flex gap-3 justify-content-end">
-              <Button label="Cancel" className="btn btn-outline-secondary" onClick={() => setEditAdhocSidebar(false)} />
-              <Button label="Update" className="btn btn-success" />
-            </div>
-          </div>
         </div>
-      </PrimeSidebar>
+      </MasterSidebar>
     </div>
   );
 };

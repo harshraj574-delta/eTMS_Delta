@@ -8,6 +8,7 @@ import { Button } from "primereact/button";
 import RepScheduleSummeryService from "../services/compliance/RepScheduleSummeryService";
 import sessionManager from "../utils/SessionManager";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import "./common/CustomDataTable.css";
 import { Column } from "primereact/column";
 import { MultiSelect } from "primereact/multiselect";
@@ -57,6 +58,14 @@ const RepScheduleSummery = () => {
   const op = useRef(null);
   const filterButtonRef = useRef(null);
   const dt = useRef(null);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(100);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
 
   const filteredData = useMemo(() => {
     let filtered = [...data];
@@ -425,6 +434,7 @@ const RepScheduleSummery = () => {
     setShowTable(true);
     setExpandedRows([]);
     setVendorChildData({});
+    setFirst(0); // Reset pagination
     setGlobalFilter(""); // Reset search on new run
     setFilters({
       ShiftDate: null,
@@ -882,23 +892,29 @@ const RepScheduleSummery = () => {
                       </table>
                     </div>
                   ) : (
-                    <CustomDataTable
-                      value={filteredData}
-                      ref={dt}
-                      paginator
-                      rows={100}
-                      tableStyle={{ minWidth: "50rem" }}
-                      size="small"
-                      loading={loading}
-                      emptyMessage={
-                        error ? `Error: ${error}` : "No records found"
-                      }
-                      stripedRows
-                      className="p-datatable process-datatable"
-                      rowsPerPageOptions={[50, 100, 200, 300]}
-                    >
-                      {renderDetailedColumns()}
-                    </CustomDataTable>
+                    <div>
+                      <CustomDataTable
+                        value={filteredData.slice(first, first + rows)}
+                        ref={dt}
+                        tableStyle={{ minWidth: "50rem" }}
+                        size="small"
+                        loading={loading}
+                        emptyMessage={
+                          error ? `Error: ${error}` : "No records found"
+                        }
+                        stripedRows
+                        className="p-datatable process-datatable"
+                      >
+                        {renderDetailedColumns()}
+                      </CustomDataTable>
+                      <CustomPaginator
+                        first={first}
+                        rows={rows}
+                        totalRecords={filteredData.length}
+                        onPageChange={onPageChange}
+                        rowsPerPageOptions={[50, 100, 200, 300]}
+                      />
+                    </div>
                   )}
                 </div>
               </div>

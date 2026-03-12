@@ -5,6 +5,7 @@ import Loader from "./common/Loader";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import ShiftTimeMasterService from "../services/compliance/ShiftTimeMaster";
 import sessionManager from "../utils/SessionManager";
@@ -53,6 +54,14 @@ const ShiftTimeMaster = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedShift, setSelectedShift] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const [first, setFirst] = useState(0);
+  const [pageRows, setPageRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setPageRows(event.rows);
+  };
 
   // Responsive Sidebar Width
   const getOffcanvasWidth = () => {
@@ -275,6 +284,7 @@ const ShiftTimeMaster = () => {
         ? [parsedData]
         : [];
       setShiftData(validateData);
+      setFirst(0); // Reset pagination on data fetch
     } catch (error) {
       console.error("Failed to fetch shift data:", error);
       setShiftData([]);
@@ -572,10 +582,7 @@ const ShiftTimeMaster = () => {
                 {renderToolbar()}
               </div>
               <CustomDataTable
-                rows={50}
-                rowsPerPageOptions={[50, 100, 150, 200]}
-                value={filteredShiftData}
-                paginator
+                value={filteredShiftData.slice(first, first + pageRows)}
                 responsiveLayout="scroll"
                 selection={selectedRows}
                 onSelectionChange={(e) => setSelectedRows(e.value)}
@@ -590,6 +597,13 @@ const ShiftTimeMaster = () => {
                   body={statusBodyTemplate}
                 />
               </CustomDataTable>
+              <CustomPaginator
+                first={first}
+                rows={pageRows}
+                totalRecords={filteredShiftData.length}
+                onPageChange={onPageChange}
+                rowsPerPageOptions={[50, 100, 150, 200]}
+              />
             </div>
           </div>
         </div>

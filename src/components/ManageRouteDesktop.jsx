@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
+import MasterSidebar from "./Master/MasterSidebar";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
@@ -4521,25 +4522,12 @@ const ManageRouteDesktop = ({
           )}
         </PrimeDialog>
 
-        <PrimeSidebar
-          visible={showDetailsSidebar}
-          position="right"
-          width="50%"
-          onHide={() => setShowDetailsSidebar(false)}
-          showCloseIcon={false}
-          dismissable={false}
-          style={{ width: "30%", backdropFilter: "blur(8px)" }}
+        <MasterSidebar
+          show={showDetailsSidebar}
+          onClose={() => setShowDetailsSidebar(false)}
+          title="Route Statistics"
+          width="30%"
         >
-          <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-            <h6 className="sidebarTitle">Route Statistics</h6>
-            <span
-              className="material-icons me-3"
-              style={{ cursor: "pointer" }}
-              onClick={() => setShowDetailsSidebar(false)}
-            >
-              close
-            </span>
-          </div>
           <div className="sidebarBody p-3">
             <div className="statistics-container">
               <div className="row">
@@ -4784,7 +4772,7 @@ const ManageRouteDesktop = ({
               </div>
             </div>
           </div>
-        </PrimeSidebar>
+        </MasterSidebar>
 
         <PrimeDialog
           visible={showAutoVendorAllocationDialog}

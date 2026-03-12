@@ -14,6 +14,7 @@ import ManageRouteService from "../services/compliance/ManageRouteService";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "@maplibre/maplibre-gl-leaflet";
+import MasterSidebar from "./Master/MasterSidebar";
 
 function MapLibreLayer() {
   const map = useMap();
@@ -229,7 +230,7 @@ const LoadingSpinner = () => (
   </div>
 );
 
-export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
+export default function OffcanvasRouteDetails({ show, onClose, routeId, width = "50vw" }) {
   const [route, setRoute] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -349,25 +350,13 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
   const routeColorRgb = hexToRgb(routeColor);
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        right: 0,
-        width: "50vw",
-        height: "100vh",
-        background: "#fff",
-        zIndex: 2000,
-        boxShadow: "-2px 0 16px rgba(0,0,0,0.15)",
-        padding: 0,
-        transition: "transform 0.3s ease-in-out",
-        transform: show ? "translateX(0)" : "translateX(100%)",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "row",
-        pointerEvents: show ? "auto" : "none",
-      }}
-      className="blur_shadow"
+    <MasterSidebar
+      show={show}
+      onClose={onClose}
+      title="Route Map"
+      width={width}
+      bodyStyle={{ height: "100%", position: "relative" }}
+      bodyClassName="p-0"
     >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
@@ -540,25 +529,6 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
           zIndex: 1,
         }}
       >
-        <div
-          className="d-flex justify-content-between"
-          style={{
-            position: "absolute",
-            top: "0",
-            zIndex: "9999",
-            background: "#000",
-            width: "100%",
-            padding: "26px 27px",
-            fontSize: "16px",
-            fontWeight: "bold",
-            color: "#fff",
-          }}
-        >
-          <div>Route Map</div>
-          <a href="#!" className="text-white" onClick={onClose}>
-            <span className="material-icons">close</span>
-          </a>
-        </div>
         <MapContainer
           center={mapCenter}
           zoom={12}
@@ -730,7 +700,7 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
         <div
           style={{
             position: "absolute",
-            top: 91,
+            top: 15,
             left: 15,
             zIndex: 3,
             background: "#fff",
@@ -903,6 +873,6 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId }) {
           </div>
         </div>
       )}
-    </div>
+    </MasterSidebar>
   );
 }

@@ -6,6 +6,7 @@ import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { CustomDataTable } from "./common/CustomDataTable";
+import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import TrackingReportService from "../services/compliance/TrackingReportService";
 import { toastService } from "../services/toastService";
@@ -32,6 +33,15 @@ const TrackingReport = () => {
   const filterButtonRef = useRef(null);
   const [globalFilter, setGlobalFilter] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(50);
+
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
   const [filters, setFilters] = useState({
     shiftTime: null,
     Gender: null,
@@ -116,6 +126,7 @@ const TrackingReport = () => {
       setLoading(false);
       setIsSubmitting(false);
       setHasSearched(true);
+      setFirst(0); // Reset pagination
 
       setTimeout(() => {
         if (validatedData.length > 0) {
@@ -419,17 +430,14 @@ const TrackingReport = () => {
 
                   <div className="table-responsive">
                     <CustomDataTable
-                      value={filteredData}
+                      value={filteredData.slice(first, first + rows)}
                       ref={dt}
-                      paginator
-                      rows={50}
                       tableStyle={{ minWidth: "50rem" }}
                       size="small"
                       loading={loading}
                       emptyMessage={error ? `Error: ${error}` : "No records found"}
                       stripedRows
                       globalFilter={globalFilter}
-                      rowsPerPageOptions={[50, 100, 200, 300]}
                     >
                       <Column field="Employeeid" header="Employee ID" sortable />
                       <Column field="EmpName" header="Employee Name" sortable />
@@ -458,6 +466,13 @@ const TrackingReport = () => {
                         sortable
                       />
                     </CustomDataTable>
+                    <CustomPaginator
+                      first={first}
+                      rows={rows}
+                      totalRecords={filteredData.length}
+                      onPageChange={onPageChange}
+                      rowsPerPageOptions={[50, 100, 200, 300]}
+                    />
                   </div>
                 </div>
               )}
