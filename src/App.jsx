@@ -65,6 +65,8 @@ import ReplicateRoster from "./components/ReplicateRoster";
 import ReplicationException from "./components/ReplicationException";
 import ReplyFeedback from "./components/ReplyFeedback";
 import ManageColony from "./components/ManageColony";
+import FemaleTrack from "./components/FemaleTrack";
+import DummyTripSheet from "./components/DummyTripSheet";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -148,6 +150,8 @@ function App() {
         <Route path="/ReplicationException" element={<PrivateRoute element={<ReplicationException />} />} />
         <Route path="/ReplyFeedback" element={<PrivateRoute element={<ReplyFeedback />} />} />
         <Route path="/ManageColony" element={<PrivateRoute element={<ManageColony />} />} />
+        <Route path="/FemaleTrack" element={<PrivateRoute element={<FemaleTrack />} />} />
+        <Route path="/DummyTripsheetGen" element={<PrivateRoute element={<DummyTripSheet />} />} />
 
 
 

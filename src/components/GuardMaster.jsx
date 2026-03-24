@@ -327,8 +327,10 @@ const exportToExcel = () => {
           <div className="col-12">
             <div className="card_tb p-3">
               <div className="row">
-                <div className="col-2">
-                  <label htmlFor="">Facility</label>
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                  <label htmlFor="" className="form-label">
+                    Facility <span className="text-danger">*</span>
+                  </label>
                   <Dropdown
                     value={selFacility}
                     onChange={async (e) => {
@@ -344,7 +346,7 @@ const exportToExcel = () => {
                     filter
                   />
                 </div>
-                <div className="col offset-8">
+                <div className="col-12 col-md-12 col-lg-10 mb-3">
                   <div className="d-flex justify-content-end d-none">
                     <Button
                     label="Export Excel"

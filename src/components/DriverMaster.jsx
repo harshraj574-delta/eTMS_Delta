@@ -20,6 +20,7 @@ import sessionManager from "../utils/SessionManager";
 import driverMasterService from "../services/compliance/DriverMasterService";
 import ReportButton from "./common/ReportButton";
 import Loader from "./common/Loader";
+import { toastService } from "../services/toastService";
 
 const DriverMaster = () => {
   const toastRef = React.useRef(null);
@@ -144,6 +145,15 @@ const DriverMaster = () => {
 
   // Fetch driver details from API
   const fetchDriverDetails = async () => {
+    // Validate dropdowns before calling API
+    if (!selFacility) {
+      toastService.error("Please select Facility");
+      return;
+    }
+    if (!selVendor) {
+      toastService.error("Please select Vendor");
+      return;
+    }
     const params = {
       facilityid: selFacility?.Id || 0,
       vendorid: selVendor?.Id || 0,
@@ -364,8 +374,10 @@ const DriverMaster = () => {
           <div className="col-12">
             <div className="card_tb p-3">
               <div className="row">
-                <div className="col-2">
-                  <label htmlFor="">Facility</label>
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                  <label htmlFor="" className="form-label">
+                    Facility <span className="text-danger">*</span>
+                  </label>
                   <Dropdown
                     value={selFacility}
                     onChange={(e) => setSelFacility(e.value)}
@@ -376,8 +388,10 @@ const DriverMaster = () => {
                     filter
                   />
                 </div>
-                <div className="col-2">
-                  <label htmlFor="">Vendor</label>
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                  <label htmlFor="" className="form-label">
+                    Vendor <span className="text-danger">*</span>
+                  </label>
                   <Dropdown
                     value={selVendor}
                     onChange={(e) => setSelVendor(e.value)}
@@ -388,14 +402,14 @@ const DriverMaster = () => {
                     filter
                   />
                 </div>
-                <div className="col-2 no-label">
+                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 no-label">
                   <ReportButton
                     label="Submit"
                     disabled={!selFacility && !selVendor}
                     onClick={fetchDriverDetails}
                   />
                 </div>
-                <div className="col-2 offset-4">
+                <div className="col-12 col-md-12 col-lg-3 ms-auto mb-3">
                   <label htmlFor="" className="d-block">
                     Search Any
                   </label>

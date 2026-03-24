@@ -1,0 +1,52 @@
+.card_tb {
+    background-color: var(--surface-card);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.pageTitle {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.fs-13 {
+    font-size: 13px;
+}
+.fs-14 {
+    font-size: 14px;
+}
+.fs-15 {
+    font-size: 15px;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Enhancing prime react table for responsive internal margins */
+.p-datatable-sm .p-datatable-thead > tr > th {
+    padding: 0.5rem;
+    font-size: 13px;
+}
+.p-datatable-sm .p-datatable-tbody > tr > td {
+    padding: 0.5rem;
+    font-size: 13px;
+}
+
+.custom-calendar-wrapper {
+    position: relative;
+    width: 100%;
+}
+.custom-calendar-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    z-index: 2;
+    pointer-events: none;
+}
+.custom-calendar-input .p-inputtext {
+    padding-left: 35px !important;
+}

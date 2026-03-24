@@ -341,6 +341,15 @@ const VehicleMaster = () => {
     }
 
     const VehiclesDetailsData = async () => {
+        // Validate dropdowns before calling API
+        if (!selectedCity) {
+            toastService.error("Please select Facility");
+            return;
+        }
+        if (!selectedVendor) {
+            toastService.error("Please select Vendor");
+            return;
+        }
         setIsSubmitting(true);
         try {
             const response = await VehicleMasterService.SPR_VehiclesDetails({
@@ -692,13 +701,17 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                     <div className="col-12">
                         <div className="card_tb p-3">
                             <div className="row">
-                                <div className="col-2">
-                                    <label htmlFor="">Facility</label>
+                                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                                    <label htmlFor="" className="form-label">
+                                        Facility <span className="text-danger">*</span>
+                                    </label>
                                     <Dropdown value={selectedCity} onChange={(e) => setSelectedCity(e.value)} options={facility} optionLabel="name" optionValue="value"
                                         placeholder="Select Facility" className="w-100" />
                                 </div>
-                                <div className="col-2">
-                                    <label htmlFor="">Vendor</label>
+                                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                                    <label htmlFor="" className="form-label">
+                                        Vendor <span className="text-danger">*</span>
+                                    </label>
                                     <Dropdown value={selectedVendor}
                                         onChange={(e) => {
                                             setSelectedVendor(e.value);
@@ -707,14 +720,14 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                                         placeholder="Select Vendor" className="w-100" filter />
                                 </div>
 
-                                <div className="col-2 no-label">
+                                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 no-label">
                                     <ReportButton
                                         label="Submit"
                                         onClick={VehiclesDetailsData}
                                         disabled={isSubmitting}
                                     />
                                 </div>
-                                <div className="col-2 offset-4 d-none">
+                                <div className="col-12 col-md-12 col-lg-3 ms-auto mb-3 d-none">
                                     <label htmlFor="">Search Any</label>
                                     <InputText placeholder="Search Any Value" className="w-100" />
                                 </div>

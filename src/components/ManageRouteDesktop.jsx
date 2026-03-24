@@ -295,7 +295,7 @@ const FloatingSelectionPanel = React.memo(
           left: `${position.x}px`,
           width: "520px",
           height: "30vh", // 👈 fixed height
-          zIndex: 1101,
+          zIndex: 1201,
           borderRadius: "12px",
           overflow: "hidden",
           display: "flex",
@@ -444,7 +444,7 @@ const FloatingRouteSelectionPanel = React.memo(
           left: `${position.x}px`,
           width: "520px",
           height: "30vh", // 👈 fixed height same as FloatingSelectionPanel
-          zIndex: 1101,
+          zIndex: 1201,
           borderRadius: "12px",
           overflow: "hidden",
           display: "flex",
@@ -522,7 +522,7 @@ const FloatingRouteSelectionPanel = React.memo(
   }
 );
 
-// Enhanced Drop Zone Component for cross-page drops
+// Enhanced Drop Zone Component for cross-page drops (Enterprise Styling)
 const CrossPageDropZone = React.memo(
   ({ routeId, position, isActive, onDrop, selectedEmployees }) => {
     const [isHovered, setIsHovered] = useState(false);
@@ -538,24 +538,30 @@ const CrossPageDropZone = React.memo(
 
     const style = useMemo(
       () => ({
-        height: isHovered ? "50px" : "12px",
+        height: isHovered ? "44px" : "10px",
         backgroundColor: isActive
           ? isHovered
-            ? "#bbdefb"
-            : "#e3f2fd"
+            ? "rgba(13, 110, 253, 0.12)" // Slightly deeper blue on hover
+            : "rgba(13, 110, 253, 0.04)" // Very subtle blue when idle
           : "transparent",
-        border: isActive ? "3px dashed #2196F3" : "2px dashed transparent",
+        border: isActive
+          ? isHovered
+            ? "2px dashed #0d6efd" // Primary blue border on hover
+            : "2px dashed rgba(13, 110, 253, 0.3)" // Soft dashed border when idle
+          : "2px dashed transparent",
         borderRadius: "6px",
         margin: "4px 0",
-        transition: "all 0.2s ease",
+        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: "12px",
-        color: "#2196F3",
-        fontWeight: "bold",
+        fontSize: "13px",
+        color: "#0d6efd",
+        letterSpacing: "0.2px",
+        fontWeight: "600",
         cursor: isActive ? "pointer" : "default",
-        animation: isActive ? "pulseGlow 1.5s ease-in-out infinite" : "none",
+        boxShadow: isHovered ? "0 2px 6px rgba(13, 110, 253, 0.1)" : "none",
+        overflow: "hidden",
       }),
       [isActive, isHovered]
     );
@@ -570,13 +576,16 @@ const CrossPageDropZone = React.memo(
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
       >
-        {isHovered &&
-          `Click to drop ${selectedEmployees?.size || 0
-          } employee(s) at position ${position}`}
+        <div style={{ opacity: isHovered ? 1 : 0, transition: "opacity 0.2s", display: "flex", alignItems: "center" }}>
+          <i className="material-icons me-2" style={{ fontSize: "18px" }}>arrow_downward</i>
+          Drop {selectedEmployees?.size || 0} employee(s) here
+        </div>
       </div>
     );
   }
 );
+
+
 
 // Optimized Drop Zone Indicator Component
 const DropZoneIndicator = React.memo(({ routeId, position, isOver }) => {
@@ -591,20 +600,21 @@ const DropZoneIndicator = React.memo(({ routeId, position, isOver }) => {
 
   const style = useMemo(
     () => ({
-      height: isOver ? "40px" : "8px",
-      backgroundColor: isOver ? "#e3f2fd" : "transparent",
-      border: isOver ? "2px dashed #2196F3" : "2px dashed transparent",
-      borderRadius: "4px",
-      margin: "2px 0",
-      transition: "all 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+      height: isOver ? "44px" : "8px",
+      backgroundColor: isOver ? "rgba(13, 110, 253, 0.12)" : "transparent",
+      border: isOver ? "2px dashed #0d6efd" : "2px dashed transparent",
+      borderRadius: "6px",
+      margin: "4px 0",
+      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      fontSize: "12px",
-      color: "#2196F3",
-      fontWeight: "bold",
+      fontSize: "13px",
+      color: "#0d6efd",
+      fontWeight: "600",
       willChange: "height, background-color, border-color",
       transform: "translateZ(0)",
+      overflow: "hidden",
     }),
     [isOver]
   );
@@ -615,7 +625,10 @@ const DropZoneIndicator = React.memo(({ routeId, position, isOver }) => {
       className={`drop-zone ${isOver ? "drop-zone-active" : ""}`}
       style={style}
     >
-      {isOver && `Drop here at position ${position}`}
+      <div style={{ opacity: isOver ? 1 : 0, transition: "opacity 0.2s", display: "flex", alignItems: "center" }}>
+        <i className="material-icons me-2" style={{ fontSize: "18px" }}>move_to_inbox</i>
+        Drop here
+      </div>
     </div>
   );
 });
@@ -1538,7 +1551,7 @@ const ManageRouteDesktop = ({
     }
 
     // Check if trying to split all employees
-    const routeEmployees = routeDetails[routeId] || [];
+    const routeEmployees = queryClient.getQueryData(manageRouteKeys.routeDetails(routeId)) || [];
     if (selectedEmployees.size >= routeEmployees.length) {
       toastService.warn(
         "Cannot split all employees. At least one employee must remain in the original route."
@@ -3327,17 +3340,6 @@ const ManageRouteDesktop = ({
 
           .cross-page-drop-zone {
             position: relative;
-          }
-
-          @keyframes pulseGlow {
-            0%, 100% {
-              box-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
-              background-color: #e3f2fd;
-            }
-            50% {
-              box-shadow: 0 0 15px rgba(33, 150, 243, 0.8);
-              background-color: #bbdefb;
-            }
           }
 
           .cross-page-mode .p-datatable-tbody tr {

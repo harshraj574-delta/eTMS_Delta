@@ -213,6 +213,15 @@ const CostMasterPackage = () => {
     }
   };
   const handleSearch = async () => {
+    // Validate all dropdowns before calling API
+    if (selectedVendor === null || selectedVendor === undefined) {
+      toastService.error("Please select Vendor");
+      return;
+    }
+    if (selectedVehicleType === null || selectedVehicleType === undefined) {
+      toastService.error("Please select Vehicle Type");
+      return;
+    }
     setIsSubmitting(true);
     setLoading(true);
     const params = {
@@ -358,7 +367,7 @@ const CostMasterPackage = () => {
         kms: kmEdit,
         hrs: hrsEdit,
       };
-      const res = await CostMasterPackageService.sprUpdatePackageCost(params);
+      let res = await CostMasterPackageService.sprUpdatePackageCost(params);
       //console.log("Update Cost Response:", res);
       if (typeof res === "string") {
         try {
@@ -423,7 +432,9 @@ const CostMasterPackage = () => {
             <div className="card_tb p-3">
               <div className="row">
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-2">
-                  <label htmlFor="facility">Facility</label>
+                  <label htmlFor="facility" className="form-label">
+                    Facility <span className="text-danger">*</span>
+                  </label>
                   <Dropdown
                     id="facility"
                     placeholder="Select Facility"
@@ -438,7 +449,9 @@ const CostMasterPackage = () => {
                   />
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-2">
-                  <label htmlFor="vendor">Vendor</label>
+                  <label htmlFor="vendor" className="form-label">
+                    Vendor <span className="text-danger">*</span>
+                  </label>
                   <Dropdown
                     id="vendor"
                     value={selectedVendor}
@@ -449,7 +462,9 @@ const CostMasterPackage = () => {
                   />
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-2">
-                  <label htmlFor="vehicleType">Vehicle Type</label>
+                  <label htmlFor="vehicleType" className="form-label">
+                    Vehicle Type <span className="text-danger">*</span>
+                  </label>
                   <Dropdown
                     id="vehicleType"
                     value={selectedVehicleType}

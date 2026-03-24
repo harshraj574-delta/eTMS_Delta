@@ -266,8 +266,10 @@ const VehicleTypeMaster = () => {
                     <div className="col-12">
                         <div className="card_tb p-3">
                             <div className="row">
-                                <div className="col-2">
-                                    <label htmlFor="">Facility</label>
+                                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                                    <label htmlFor="" className="form-label">
+                                        Facility <span className="text-danger">*</span>
+                                    </label>
                                     <Dropdown
                                         value={selectedFacility}
                                         onChange={async (e) => {
@@ -286,8 +288,10 @@ const VehicleTypeMaster = () => {
                                         id="ddlfacility"
                                     />
                                 </div>
-                                <div className="col-2">
-                                    <label htmlFor="">Vendor </label>
+                                <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
+                                    <label htmlFor="" className="form-label">
+                                        Vendor <span className="text-danger">*</span>
+                                    </label>
                                     <Dropdown
                                         value={selectedVendor}
                                         placeholder="All Vendor"

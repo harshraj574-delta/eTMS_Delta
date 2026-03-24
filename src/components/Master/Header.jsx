@@ -112,7 +112,7 @@ const Header = ({
     <div className="header" ref={headerRef}>
       <style>{`
         .header {
-          overflow: hidden;
+          overflow: visible;
         }
         
         @media (max-width: 767px) {
@@ -266,6 +266,7 @@ const Header = ({
                 border: 1px solid #e5e7eb !important;
                 padding: 0 !important;
                 min-width: 280px;
+                z-index: 1300 !important;
               }
               .profile-dropdown::before,
               .profile-dropdown::after {
@@ -356,7 +357,7 @@ const Header = ({
             </a>
             
             {/* Profile Dropdown Menu */}
-            <OverlayPanel ref={profileMenuRef} className="profile-dropdown" dismissable>
+            <OverlayPanel ref={profileMenuRef} className="profile-dropdown" dismissable appendTo={document.body}>
               <div className="profile-dropdown-header">
                 <Avatar 
                   label={employeeName ? employeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
