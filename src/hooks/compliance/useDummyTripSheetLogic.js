@@ -9,7 +9,9 @@ import {
     useGetEmployeeMutation,
     useGetEmpByRouteMutation,
     useGetRoutesDummyMatchMutation,
-    useGetTransactionIdMutation
+    useGetTransactionIdMutation,
+    useGenerateDummySheetsMutation,
+    useGetDummyRoutesDetailsMutation
 } from './useDummyTripSheetQueries';
 
 export const useDummyTripSheetLogic = () => {
@@ -73,16 +75,17 @@ export const useDummyTripSheetLogic = () => {
     const getEmpRouteMutation = useGetEmpByRouteMutation();
     const dummyMatchMutation = useGetRoutesDummyMatchMutation();
     const transIdMutation = useGetTransactionIdMutation();
+    const generateSheetsMutation = useGenerateDummySheetsMutation();
+    const getDummyRouteDetailsMutation = useGetDummyRoutesDetailsMutation();
 
     // 3. Handlers
     
     // Search by Name or ID
     const handleSearchEmployee = async () => {
         if (!searchQuery.trim()) {
-            setErrors({ searchQuery: 'Required' });
+            toastService.warn("Please enter Employee Name or ID to search.");
             return;
         }
-        setErrors({});
         const userLocation = sessionManager.getUserSession()?.locationId || 0;
         
         try {
@@ -132,10 +135,9 @@ export const useDummyTripSheetLogic = () => {
 
     const handleSearchRouteId = async () => {
         if (!routeIdQuery.trim()) {
-            setErrors({ routeIdQuery: 'Required' });
+            toastService.warn("Please enter Route ID to search.");
             return;
         }
-        setErrors({});
         
         try {
             const finalRouteId = routeIdQuery.length > 3 ? routeIdQuery : constructRouteId();
@@ -155,39 +157,95 @@ export const useDummyTripSheetLogic = () => {
     };
 
     // Adding an Employee to the active "Dummy Sheet" array
-    const handleAddEmployee = async (empData) => {
-        const _id = empData.Id || empData.employeeId;
+    // const handleAddEmployee = async (empData) => {
+    //     const _id = empData.Id || empData.employeeId;
         
-        const isExists = addedEmployees.some(emp => emp.ID === _id);
-        if (isExists) {
-            toastService.warn("Employee already exists.");
+    //     const isExists = addedEmployees.some(emp => emp.ID === _id);
+    //     if (isExists) {
+    //         toastService.warn("Employee already exists.");
+    //         return;
+    //     }
+
+    //     try {
+    //         const response = await getEmpMutation.mutateAsync(_id);
+    //         const data = Array.isArray(response) ? response : (response?.data || []);
+            
+    //         if (data && data.length > 0) {
+    //             const result = data[0];
+    //             const newEmp = {
+    //                 stopNo: addedEmployees.length + 1,
+    //                 ID: _id,
+    //                 empCode: result.empCode,
+    //                 empName: result.empName,
+    //                 Gender: result.Gender || empData.Gender,
+    //                 Address: result.address || empData.Address || empData.address || "Adhoc Pickup",
+    //                 ETA: '' // Add default blank ETA like c#
+    //             };
+    //             setAddedEmployees(prev => [...prev, newEmp]);
+    //             // clear search grid visually matching original behaviour
+    //             setSearchedEmployees([]);
+    //             setSearchQuery('');
+    //         }
+    //     } catch (e) {
+    //         toastService.error("Failed to add employee.");
+    //     }
+    // };
+
+    const handleAddEmployee = async (empData) => {
+    const empId =
+        empData?.Id ??
+        empData?.ID ??
+        empData?.id ??
+        empData?.employeeId;
+
+    if (!empId) {
+        console.error("Employee ID missing in row data:", empData);
+        toastService.error("Could not identify selected employee.");
+        return;
+    }
+
+    const isExists = addedEmployees.some(
+        (emp) => String(emp.ID) === String(empId)
+    );
+
+    if (isExists) {
+        toastService.warn("Employee already exists.");
+        return;
+    }
+
+    try {
+        const response = await getEmpMutation.mutateAsync(empId);
+        const result = Array.isArray(response) ? response[0] : response;
+
+        if (!result) {
+            console.error("GetEmployee returned empty:", response);
+            toastService.warn("Employee details not found.");
             return;
         }
 
-        try {
-            const response = await getEmpMutation.mutateAsync(_id);
-            const data = Array.isArray(response) ? response : (response?.data || []);
-            
-            if (data && data.length > 0) {
-                const result = data[0];
-                const newEmp = {
-                    stopNo: addedEmployees.length + 1,
-                    ID: _id,
-                    empCode: result.empCode,
-                    empName: result.empName,
-                    Gender: result.Gender || empData.Gender,
-                    Address: result.address || empData.Address || empData.address || "Adhoc Pickup",
-                    ETA: '' // Add default blank ETA like c#
-                };
-                setAddedEmployees(prev => [...prev, newEmp]);
-                // clear search grid visually matching original behaviour
-                setSearchedEmployees([]);
-                setSearchQuery('');
-            }
-        } catch (e) {
-            toastService.error("Failed to add employee.");
-        }
-    };
+        const newEmp = {
+            stopNo: addedEmployees.length + 1,
+            ID: empId,
+            empCode: result.empCode,
+            empName: result.empName,
+            Gender: result.Gender || empData.Gender || "",
+            Address:
+                result.address ||
+                result.Address ||
+                empData.Address ||
+                empData.address ||
+                "Adhoc Pickup",
+            ETA: ""
+        };
+
+        setAddedEmployees((prev) => [...prev, newEmp]);
+        setSearchedEmployees([]);
+        setSearchQuery("");
+    } catch (e) {
+        console.error("handleAddEmployee error:", e);
+        toastService.error("Failed to add employee.");
+    }
+};
 
     const handleBulkAddEmployees = async (selectedEmps) => {
         if (!selectedEmps || selectedEmps.length === 0) {
@@ -280,23 +338,45 @@ export const useDummyTripSheetLogic = () => {
         if (actionType === 'Blank') {
             try {
                 const transId = await transIdMutation.mutateAsync();
+                const formatForApi = `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}-${String(startDate.getDate()).padStart(2,'0')}`;
                 
-                // Formulate data
-                const genericData = {
-                    date: startDate,
-                    facility: selectedFacility,
-                    tripType: tripType,
-                    shift: selectedShift,
-                    action: actionType,
-                    cabType: selectedCabType,
-                    noOfSheets: parseInt(noOfSheets),
-                    transId: transId,
-                    employees: []
-                };
+                // 1. Generate Dummy Sheets from DB
+                const generationResponse = await generateSheetsMutation.mutateAsync({
+                    sDate: formatForApi,
+                    FacilityID: selectedFacility,
+                    TripType: tripType,
+                    Shift: selectedShift,
+                    Action: actionType,
+                    NoOfSheets: parseInt(noOfSheets),
+                    GeneratedBy: userId,
+                    CabType: selectedCabType,
+                    EmpIDs: "",
+                    transactionid: transId
+                });
 
-                setPdfData(genericData);
+                const routeData = Array.isArray(generationResponse) ? generationResponse : (generationResponse?.data || []);
+                
+                if (routeData.length === 0) {
+                     toastService.warn("Dummy sheet count reached to Maximum limit (1000) for selected date and facility, or no routes available.");
+                     return;
+                }
+
+                // 2. We don't need to fetch employees for entirely Blank, but for consistency with NonBlank and the ASPX code structure:
+                const sheetsResponses = routeData.map(route => ({
+                    RouteID: route.RouteID,
+                    facilityName: route.facilityName || facilities.find(f => f.Id == selectedFacility)?.facilityName,
+                    workingDate: route.workingDate || formatForApi,
+                    shiftDate: route.shiftDate || formatForApi,
+                    Shift: route.Shift || selectedShift,
+                    CabType: route.CabType || selectedCabType,
+                    TripType: route.TripType || tripType,
+                    employees: []
+                }));
+
+                setPdfData(sheetsResponses);
                 setIsPdfModalVisible(true);
             } catch (e) {
+                console.error(e);
                 toastService.error("Generation failed");
             }
         }
@@ -323,34 +403,62 @@ export const useDummyTripSheetLogic = () => {
                 FacId: selectedFacility
             });
 
-            // If matchRes == 0, not matching, but ASPX says:
-            // if res == 0 && routeids != "", then ShowMessage("Entered trip details is not matching...")
-            // Then logic proceeds via Else
             if (routeIdQuery && matchRes === 0) {
                toastService.warn("Entered trip details is not matching with dummy trip details.");
                return;
             }
 
             const transId = await transIdMutation.mutateAsync();
+            const empIdsCsv = addedEmployees.map(e => e.ID).join(',');
 
-            const genericData = {
-                date: startDate,
-                facility: selectedFacility,
-                tripType: tripType,
-                shift: selectedShift,
-                action: actionType,
-                cabType: selectedCabType,
-                noOfSheets: 1, // Only 1 sheet with the selected employees generated
-                transId: transId,
-                employees: addedEmployees
-            };
+            // 1. Generate NonBlank dummy sheet
+            const generationResponse = await generateSheetsMutation.mutateAsync({
+                sDate: formatForApi,
+                FacilityID: selectedFacility,
+                TripType: tripType,
+                Shift: selectedShift,
+                Action: actionType,
+                NoOfSheets: 1,
+                GeneratedBy: userId,
+                CabType: selectedCabType,
+                EmpIDs: empIdsCsv,
+                transactionid: transId
+            });
 
-            setPdfData(genericData);
+            const routeData = Array.isArray(generationResponse) ? generationResponse : (generationResponse?.data || []);
+
+            if (routeData.length === 0) {
+                 toastService.warn("No route data generated.");
+                 return;
+            }
+
+            // 2. Fetch details for each route
+            const sheetsResponses = [];
+            for(let route of routeData) {
+                const finalRouteId = String(route.RouteID || '').replace(/\*/g, '');
+                
+                const empsRes = await getDummyRouteDetailsMutation.mutateAsync(finalRouteId);
+                const emps = Array.isArray(empsRes) ? empsRes : (empsRes?.data || []);
+
+                sheetsResponses.push({
+                    RouteID: route.RouteID,
+                    facilityName: route.facilityName || facilities.find(f => f.Id == selectedFacility)?.facilityName,
+                    workingDate: route.workingDate || formatForApi,
+                    shiftDate: route.shiftDate || formatForApi,
+                    Shift: route.Shift || selectedShift,
+                    CabType: route.CabType || selectedCabType,
+                    TripType: route.TripType || tripType,
+                    employees: emps
+                });
+            }
+
+            setPdfData(sheetsResponses);
             setIsPdfModalVisible(true);
             
             // Clean up state
             setAddedEmployees([]);
         } catch (error) {
+            console.error(error);
             toastService.error("Generation failed");
         }
     };

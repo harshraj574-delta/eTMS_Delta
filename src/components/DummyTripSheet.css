@@ -1,7 +1,9 @@
 .card_tb {
     background-color: var(--surface-card);
     border-radius: 8px;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    box-shadow:
+        0 4px 6px -1px rgb(0 0 0 / 0.1),
+        0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
 .pageTitle {
@@ -12,9 +14,11 @@
 .fs-13 {
     font-size: 13px;
 }
+
 .fs-14 {
     font-size: 14px;
 }
+
 .fs-15 {
     font-size: 15px;
 }
@@ -23,20 +27,23 @@
     cursor: pointer;
 }
 
-/* Enhancing prime react table for responsive internal margins */
+/* PrimeReact compact table helpers where still used */
 .p-datatable-sm .p-datatable-thead > tr > th {
     padding: 0.5rem;
     font-size: 13px;
 }
+
 .p-datatable-sm .p-datatable-tbody > tr > td {
     padding: 0.5rem;
     font-size: 13px;
 }
 
+/* Calendar */
 .custom-calendar-wrapper {
     position: relative;
     width: 100%;
 }
+
 .custom-calendar-icon {
     position: absolute;
     left: 10px;
@@ -47,6 +54,82 @@
     z-index: 2;
     pointer-events: none;
 }
+
 .custom-calendar-input .p-inputtext {
     padding-left: 35px !important;
+}
+
+/* Dummy Trip Sheet custom table spacing
+   Header taller, body rows slightly tighter like Adhoc Management */
+.dummy-trip-custom-table .p-datatable-thead > tr > th {
+    padding: 1rem 1.1rem !important;
+    vertical-align: middle;
+}
+
+.dummy-trip-custom-table .p-datatable-tbody > tr > td {
+    padding: 0.55rem 1.1rem !important;
+    vertical-align: middle;
+}
+
+/* Optional: keeps action column content centered nicely */
+.dummy-trip-custom-table .p-button.p-button-text {
+    padding: 0.25rem 0.5rem;
+}
+
+/* Mobile-only safe tweaks */
+@media (max-width: 576px) {
+    .dummy-mobile-input {
+        height: 40px !important;
+        min-height: 40px !important;
+        font-size: 14px !important;
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    .compact-mobile-calendar .p-inputtext {
+        height: 40px !important;
+        min-height: 40px !important;
+        font-size: 14px !important;
+        padding-left: 32px !important;
+    }
+
+    .compact-mobile-dropdown.p-dropdown {
+        height: 40px !important;
+        min-height: 40px !important;
+    }
+
+    .compact-mobile-dropdown .p-dropdown-label {
+        font-size: 14px !important;
+        padding: 0.5rem 0.75rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .compact-mobile-dropdown .p-dropdown-trigger {
+        width: 2.25rem !important;
+    }
+
+    .dummy-mobile-search-row {
+        gap: 0.5rem !important;
+    }
+
+    .dummy-mobile-search-btn-wrap {
+        width: 86px;
+        min-width: 86px;
+    }
+
+    .dummy-mobile-search-btn,
+    .dummy-mobile-search-btn .p-button,
+    .dummy-mobile-search-btn button {
+        width: 100% !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        font-size: 13px !important;
+        padding: 0.4rem 0.55rem !important;
+        white-space: nowrap !important;
+    }
+
+    .custom-calendar-icon {
+        width: 18px;
+        height: 18px;
+        left: 10px;
+    }
 }

@@ -18,180 +18,169 @@ const styles = StyleSheet.create({
     page: {
         flexDirection: 'column',
         backgroundColor: '#FFFFFF',
-        padding: 20,
+        padding: 24,
         fontFamily: 'Helvetica',
         fontSize: 10,
     },
-    headerWrapper: {
-        border: '1px solid #000',
-        marginBottom: 10,
-    },
-    headerRow: {
+    topHeaderTable: {
         flexDirection: 'row',
-        borderBottom: '1px solid #000',
-        minHeight: 30,
+        border: '1px solid #000',
+        marginBottom: 4,
     },
-    headerCol1: {
-        width: '40%',
+    topHeaderCol1: {
+        width: '28%',
         borderRight: '1px solid #000',
         justifyContent: 'center',
         alignItems: 'center',
+        padding: 4
     },
-    headerCol2: {
+    topHeaderCol2: {
+        width: '22%',
+        borderRight: '1px solid #000',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 4
+    },
+    topHeaderCol3: {
+        width: '30%',
+        borderRight: '1px solid #000',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 4
+    },
+    topHeaderCol4: {
         width: '20%',
-        borderRight: '1px solid #000',
-        justifyContent: 'center',
-        alignItems: 'center',
+        padding: 4
     },
-    headerCol3: {
-        width: '40%',
-        padding: 5,
-        justifyContent: 'center'
-    },
-    routeText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        fontFamily: 'Helvetica-Bold'
-    },
-    subText: {
-        fontSize: 8,
-        marginTop: 4,
-    },
-    tableHeaderRow: {
+    innerGridRow: {
         flexDirection: 'row',
-        backgroundColor: '#f3f3f3',
-        borderBottom: '1px solid #000',
-        fontWeight: 'bold',
-        fontFamily: 'Helvetica-Bold'
+        width: '100%',
+        alignItems: 'center'
     },
-    tableRow: {
-        flexDirection: 'row',
-        borderBottom: '1px solid #000',
-        minHeight: 25,
-        alignItems: 'center',
+    barcodeText: {
+        fontFamily: 'Helvetica-Bold',
+        fontSize: 24,
+        marginBottom: 4
     },
-    colSno: { width: '5%', borderRight: '1px solid #000', textAlign: 'center', paddingVertical: 4 },
-    colEmpId: { width: '15%', borderRight: '1px solid #000', paddingLeft: 4, paddingVertical: 4 },
-    colName: { width: '25%', borderRight: '1px solid #000', paddingLeft: 4, paddingVertical: 4 },
-    colGender: { width: '5%', borderRight: '1px solid #000', textAlign: 'center', paddingVertical: 4 },
-    colAddress: { width: '35%', borderRight: '1px solid #000', paddingLeft: 4, paddingVertical: 4 },
-    colTime: { width: '8%', borderRight: '1px solid #000', textAlign: 'center', paddingVertical: 4 },
-    colSig: { width: '7%', textAlign: 'center', paddingVertical: 4 },
-    footerWrapper: {
+    dataGridTable: {
+        width: '100%',
         border: '1px solid #000',
+        borderBottom: 'none',
+        marginBottom: 5,
+    },
+    dataGridHeaderRow: {
         flexDirection: 'row',
-        marginTop: 10,
+        borderBottom: '1px solid #000',
+        backgroundColor: '#f3f3f3',
+        minHeight: 20,
+        alignItems: 'center'
     },
-    footerLeft: {
-        width: '30%',
-        borderRight: '1px solid #000',
-    },
-    footerMiddle: {
-        width: '30%',
-        borderRight: '1px solid #000',
-    },
-    footerRight: {
-        width: '40%',
-        padding: 5,
-    },
-    footerRow: {
+    dataGridRow: {
         flexDirection: 'row',
         borderBottom: '1px solid #000',
         minHeight: 20,
+        alignItems: 'center'
     },
-    footerLabel: {
-        width: '40%',
-        borderRight: '1px solid #000',
-        paddingLeft: 4,
-        paddingTop: 4,
-    },
-    footerVal: {
-        width: '60%',
-        paddingLeft: 4,
-        paddingTop: 4,
-    },
-    remarksHeader: {
-        fontWeight: 'bold',
-        fontFamily: 'Helvetica-Bold',
-        marginBottom: 20,
-    },
-    approvalRow: {
+    colSno: { width: '4%', borderRight: '1px solid #000', textAlign: 'center', padding: 2, minHeight: 20 },
+    colEmpId: { width: '15%', borderRight: '1px solid #000', padding: 2, minHeight: 20 },
+    colName: { width: '25%', borderRight: '1px solid #000', padding: 2, minHeight: 20 },
+    colGender: { width: '4%', borderRight: '1px solid #000', textAlign: 'center', padding: 2, minHeight: 20 },
+    colAddress: { width: '38%', borderRight: '1px solid #000', padding: 2, minHeight: 20, fontSize: 8 },
+    colTime: { width: '6%', borderRight: '1px solid #000', textAlign: 'center', padding: 2, minHeight: 20 },
+    colSig: { width: '8%', padding: 2, minHeight: 20 },
+    
+    footerTableContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 'auto',
+        width: '100%'
+    },
+    footerBlockCol1: {
+        width: '30%',
+        border: '1px solid #000',
+        borderRight: 'none'
+    },
+    footerBlockCol2: {
+        width: '30%',
+        border: '1px solid #000',
+        borderRight: 'none'
+    },
+    footerBlockCol3: {
+        width: '40%',
+        border: '1px solid #000',
+    },
+    footerInnerRow: {
+        flexDirection: 'row',
+        borderBottom: '1px solid #000',
+        padding: 4,
+        minHeight: 22,
+        alignItems: 'center'
+    },
+    footerLabelCol: { width: '40%', paddingLeft: 2 },
+    footerValCol: { width: '60%' },
+    footerBold: { fontFamily: 'Helvetica-Bold' },
+    declarationLabel: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        marginTop: 15,
+        lineHeight: 1.5,
     }
 });
 
-const formatDate = (dateObj) => {
-    if (!dateObj) return '';
-    const d = new Date(dateObj);
-    return `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
-};
-
-/**
- * Creates the PDF rendering for dummy trip sheets. 
- * Replicates the ASPX HTML layout natively in PDF format.
- * 
- * data format: {
- *   date: Date, facility: Number, tripType: string, shift: string, action: string, cabType: string, noOfSheets: number, transId: string, 
- *   employees: []
- * }
- */
 const TripSheetPdfDocument = ({ data }) => {
     if (!data) return null;
 
-    // Based on whether there's an employee list, we figure out rows.
-    // Standard ASPX prints a 12 row table even if empty.
-    const emptyRows = Array.from({ length: 12 });
-    
-    // Construct exactly the requested number of identical sheets for 'Blank' runs or 1 sheet for 'NonBlank' actual list
-    const sheetsToGenerate = Array.from({ length: data.noOfSheets || 1 }).map((_, sheetIndex) => {
+    // Support single object fallback or array of sheets.
+    const sheetsData = Array.isArray(data) ? data : [data];
+
+    const generatePage = (sheet, sheetIndex) => {
+        // Standard ASPX 12 rows
+        const maxRows = Math.max(12, (sheet.employees || []).length);
+        const rowsToRender = [];
         
-        let rowData = [...emptyRows];
-        if (data.employees && data.employees.length > 0) {
-            rowData = data.employees.concat(emptyRows).slice(0, 12);
+        for (let i = 0; i < maxRows; i++) {
+            rowsToRender.push(sheet.employees?.[i] || null);
         }
 
-        const dateStr = formatDate(data.date);
-        
-        // Mock route calculation for display based on ASPX logic: FacId + daysDiff + 'R' + counter + TripType
-        // E.g *015926R00DR2* or *015926Blank*
-        const displayRouteId = `${String(data.facility).padStart(2,'0')} - ${data.action === 'Blank' ? 'Blank' : 'Adhoc'} ${data.tripType === 'P' ? 'Pick' : 'Drop'}`;
+        const isDrop = sheet.TripType && sheet.TripType.toUpperCase().includes('DROP') || sheet.TripType === 'Drop';
 
         return (
             <Page size="A4" orientation="landscape" style={styles.page} key={sheetIndex}>
-                {/* Header */}
-                <View style={styles.headerWrapper}>
-                    <View style={styles.headerRow}>
-                        <View style={styles.headerCol1}>
-                            <Text style={styles.routeText}>*{data.transId || 'DUMMYROUTE'}*</Text>
-                            <Text style={styles.subText}>RouteID - {data.transId || 'DUMMYROUTE'}</Text>
-                        </View>
-                        <View style={styles.headerCol2}>
-                            <Text style={{ textAlign: 'center', marginBottom: 4, fontFamily: 'Helvetica-Bold' }}>Facility: {data.facility}</Text>
-                        </View>
-                        <View style={styles.headerCol3}>
-                            <Text>Vendor Name: </Text>
+                {/* Legacy Top Header Section */}
+                <View style={styles.topHeaderTable}>
+                    {/* Col 1 */}
+                    <View style={styles.topHeaderCol1}>
+                        <Text style={styles.barcodeText}>*{sheet.RouteID}*</Text>
+                        <Text style={{ fontFamily: 'Helvetica-Bold' }}>RouteID - {sheet.RouteID}</Text>
+                        <View style={{ flexDirection: 'row', marginTop: 15 }}>
+                            <Text style={styles.footerBold}>{sheet.CabType}  </Text>
+                            <Text>{sheet.TripType}</Text>
                         </View>
                     </View>
-                    <View style={[styles.headerRow, { borderBottom: 'none' }]}>
-                        <View style={styles.headerCol1}>
-                            <Text style={{ marginTop: 8 }}>{data.tripType === 'P' ? 'Adhoc PickUP' : 'Adhoc Drop'}</Text>
-                        </View>
-                        <View style={styles.headerCol2}>
-                            <Text style={{ textAlign: 'center', fontSize: 9 }}>Working Date: {dateStr}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 9, marginTop: 4 }}>Date: {dateStr}   Shift: {data.shift}</Text>
-                        </View>
-                        <View style={styles.headerCol3}>
-                            <Text>CabID: </Text>
-                        </View>
+                    
+                    {/* Col 2 */}
+                    <View style={styles.topHeaderCol2}>
+                        <Text style={{ fontFamily: 'Helvetica-Bold', marginBottom: 6 }}>mphasis</Text>
+                        <Text style={{ marginBottom: 6 }}>{sheet.facilityName}</Text>
+                        <Text style={{ marginTop: 6 }}></Text>
+                    </View>
+                    
+                    {/* Col 3 */}
+                    <View style={styles.topHeaderCol3}>
+                        <Text style={{ marginBottom: 6 }}>Working Date: <Text style={styles.footerBold}>{sheet.workingDate}</Text></Text>
+                        <View style={{ borderBottom: '1px solid #ccc', width: '100%', marginBottom: 6 }} />
+                        <Text>Date: {sheet.shiftDate}   Shift: <Text style={styles.footerBold}>{sheet.Shift}</Text></Text>
+                    </View>
+
+                    {/* Col 4 */}
+                    <View style={styles.topHeaderCol4}>
+                        <Text style={styles.footerBold}>Vendor Name: </Text>
+                        <Text style={{ marginTop: 20 }}>CabID: </Text>
                     </View>
                 </View>
 
-                {/* Table Header */}
-                <View style={[styles.headerWrapper, { marginBottom: 0 }]}>
-                    <View style={styles.tableHeaderRow}>
-                        <Text style={styles.colSno}></Text>
+                {/* Main Employee Grid */}
+                <View style={styles.dataGridTable}>
+                    <View style={styles.dataGridHeaderRow}>
+                        <Text style={styles.colSno}>SN</Text>
                         <Text style={styles.colEmpId}>Employee ID</Text>
                         <Text style={styles.colName}>Employee Name</Text>
                         <Text style={styles.colGender}>G</Text>
@@ -199,68 +188,92 @@ const TripSheetPdfDocument = ({ data }) => {
                         <Text style={styles.colTime}>Time</Text>
                         <Text style={styles.colSig}>Signature</Text>
                     </View>
-
-                    {/* Table Rows */}
-                    {rowData.map((emp, i) => (
-                        <View style={[styles.tableRow, i === 11 ? { borderBottom: 'none' } : {}]} key={i}>
+                    
+                    {rowsToRender.map((emp, i) => (
+                        <View style={styles.dataGridRow} key={`row-${i}`}>
                             <Text style={styles.colSno}>{i + 1}</Text>
-                            <Text style={styles.colEmpId}>{emp ? emp.empCode : ''}</Text>
-                            <Text style={styles.colName}>{emp ? emp.empName : ''}</Text>
+                            <Text style={styles.colEmpId}>{emp ? emp.empCode || emp.empcode : ''}</Text>
+                            <Text style={styles.colName}>{emp ? emp.EmpName || emp.empName : ''}</Text>
                             <Text style={styles.colGender}>{emp ? emp.Gender : ''}</Text>
-                            <Text style={styles.colAddress}>{emp ? emp.Address : ''}</Text>
-                            <Text style={styles.colTime}>{emp ? emp.ETA : ''}</Text>
+                            <Text style={styles.colAddress}>{emp ? (emp.Address || emp.address) : ''}</Text>
+                            <Text style={styles.colTime}>{emp ? (emp.ETA || emp.time || emp.Time) : ''}</Text>
                             <Text style={styles.colSig}></Text>
                         </View>
                     ))}
                 </View>
 
-                {/* Footer block */}
-                <View style={styles.footerWrapper}>
-                    <View style={styles.footerLeft}>
-                        {[
-                            ['Start Time', ''],
-                            ['End Time', ''],
-                            ['Total Time', ''],
-                            ['Start KM', ''],
-                            ['End KM', '']
-                        ].map((row, i) => (
-                            <View style={[styles.footerRow, i === 4 ? { borderBottom: 'none', height: 25 } : {}]} key={i}>
-                                <Text style={styles.footerLabel}>{row[0]}</Text>
-                                <Text style={styles.footerVal}>{row[1]}</Text>
-                            </View>
-                        ))}
-                    </View>
-
-                    <View style={styles.footerMiddle}>
-                        <View style={[styles.footerRow, { height: '33.33%' }]}>
-                            <Text style={{ padding: 4 }}>Driver Name</Text>
+                {/* Legacy Summary Footer */}
+                <View style={styles.footerTableContainer}>
+                    {/* Left Footer Block */}
+                    <View style={styles.footerBlockCol1}>
+                        <View style={styles.footerInnerRow}>
+                            <Text style={styles.footerLabelCol}>Start Time</Text>
+                            <Text style={styles.footerValCol}></Text>
                         </View>
-                        <View style={[styles.footerRow, { height: '33.33%' }]}>
-                             <Text style={{ padding: 4 }}>Vehicle Number</Text>
+                        <View style={styles.footerInnerRow}>
+                            <Text style={styles.footerLabelCol}>End Time</Text>
+                            <Text style={styles.footerValCol}></Text>
                         </View>
-                        <View style={[styles.footerRow, { borderBottom: 'none', height: '33.33%' }]}>
-                            <Text style={{ padding: 4 }}>Vendor Name</Text>
+                        <View style={styles.footerInnerRow}>
+                            <Text style={styles.footerLabelCol}>Total Time</Text>
+                            <Text style={styles.footerValCol}></Text>
+                        </View>
+                        <View style={styles.footerInnerRow}>
+                            <Text style={[styles.footerLabelCol, styles.footerBold]}>Start KM</Text>
+                            <Text style={styles.footerValCol}></Text>
+                        </View>
+                        <View style={[styles.footerInnerRow, { borderBottom: 'none' }]}>
+                            <Text style={[styles.footerLabelCol, styles.footerBold]}>End KM</Text>
+                            <Text style={styles.footerValCol}></Text>
                         </View>
                     </View>
 
-                    <View style={styles.footerRight}>
-                        <Text style={styles.remarksHeader}>Remarks:</Text>
-                        <View style={styles.approvalRow}>
-                            <Text>EscortID/Name</Text>
-                            <Text>Signature</Text>
-                            <Text>Approval</Text>
+                    {/* Middle Footer Block */}
+                    <View style={styles.footerBlockCol2}>
+                        <View style={[styles.footerInnerRow, { flex: 1 }]}>
+                            <Text style={styles.footerBold}>Driver Name</Text>
                         </View>
+                        <View style={[styles.footerInnerRow, { flex: 1 }]}>
+                            <Text style={styles.footerBold}>Vehicle Number</Text>
+                        </View>
+                        <View style={[styles.footerInnerRow, { flex: 1, borderBottom: 'none' }]}>
+                            <Text style={styles.footerBold}>Vendor Name</Text>
+                        </View>
+                    </View>
+
+                    {/* Right Footer Block */}
+                    <View style={styles.footerBlockCol3}>
+                        <View style={[styles.footerInnerRow, { borderBottom: 'none', padding: 6 }]}>
+                            <Text style={styles.footerBold}>Remarks:</Text>
+                        </View>
+                        <View style={[styles.footerInnerRow, { borderBottom: 'none', paddingBottom: 0 }]}>
+                            <Text style={{ width: '33.33%' }}>EscortID/Name</Text>
+                            <Text style={{ width: '33.33%' }}>Signature</Text>
+                            <Text style={{ width: '33.33%' }}>Approval</Text>
+                        </View>
+                        <View style={[styles.footerInnerRow, { borderBottom: 'none', height: 40 }]}></View>
                     </View>
                 </View>
+
+                {/* Legacy Declaration (Visible mostly for Drops) */}
+                {isDrop && (
+                    <View>
+                        <Text style={styles.declarationLabel}>
+                            Note : * I,__________________ will be the last drop in the cab. Signature __________________{"\n\n"}
+                            {"       "}* I, __________________ have been dropped off at __________________ (p.m./ a.m.) Signature __________________
+                        </Text>
+                    </View>
+                )}
             </Page>
         );
-    });
+    };
 
     return (
         <Document>
-            {sheetsToGenerate}
+            {sheetsData.map((sheet, index) => generatePage(sheet, index))}
         </Document>
     );
 };
 
 export default TripSheetPdfDocument;
+
