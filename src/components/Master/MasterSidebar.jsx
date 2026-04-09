@@ -181,6 +181,18 @@ const MasterSidebar = ({
             min-height: 0;
           }
 
+          @media (max-width: 768px) {
+            .offcanvas.offcanvas-end {
+              width: 100% !important;
+            }
+          }
+
+          @media (min-width: 769px) and (max-width: 1024px) {
+            .offcanvas.offcanvas-end {
+              width: 80% !important;
+            }
+          }
+
           @media (max-width: 576px) {
             .offcanvas-footer {
               padding: 0.75rem;
@@ -222,7 +234,7 @@ const MasterSidebar = ({
           className={`offcanvas-header ${headerBgColor} ${headerTextColor} offcanvas-header-lg ${headerClassName}`}
           style={headerStyle}
         >
-          <h5 className="subtitle fw-normal" id={`${id}Label`}>
+          <h5 className="subtitle fw-normal w-100" id={`${id}Label`}>
             {title}
           </h5>
           <button

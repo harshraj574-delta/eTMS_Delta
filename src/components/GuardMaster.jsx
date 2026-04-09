@@ -7,7 +7,7 @@ import { InputText } from "primereact/inputtext";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { InputTextarea } from "primereact/inputtextarea";
-import { Sidebar as PrimeSidebar } from "primereact/sidebar"; // Renamed to avoid conflict with your Sidebar component
+import MasterSidebar from "./Master/MasterSidebar";
 import sessionManager from "../utils/SessionManager";
 import GuardMasterService from "../services/compliance/GuardMasterService";
 import { apiService } from "../services/api";
@@ -420,36 +420,43 @@ const exportToExcel = () => {
               />
             </div>
           </div>
-
-          {/* Add Guard Sidebar */}
-          <PrimeSidebar
-            visible={addGuardMaster}
-            position="right"
-            onHide={() => setAddGuardMaster(false)}
-            showCloseIcon={false}
-            dismissable={false}
-            style={{ width: "40%" }}
+        </div>
+      </div>
+      
+      {/* Add Guard Sidebar */}
+      <MasterSidebar
+            show={addGuardMaster}
+            onClose={() => setAddGuardMaster(false)}
+            title={
+              <div className="w-100 d-flex justify-content-between align-items-center pe-4">
+                <span>Add Guard</span>
+                {selectedGuard?.status === "Y" && <span className="text-warning fs-6">Attrited</span>}
+              </div>
+            }
+            width="40%"
+            footerButtons={[
+              {
+                label: "Cancel",
+                className: "btn btn-outline-secondary",
+                onClick: () => setAddGuardMaster(false)
+              },
+              {
+                label: "Save",
+                className: "btn btn-success",
+                onClick: SaveGuard
+              }
+            ]}
           >
-            <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-              <h6 className="sidebarTitle">Add Guard</h6>
-              <span className="d-flex align-items-center">
-                <p className="text-warning">{selectedGuard?.status === "Y" ? "Attrited" : ""}</p>
-                <Button
-                  icon="pi pi-times"
-                  className="p-button-rounded p-button-text"
-                  onClick={() => setAddGuardMaster(false)}
-                />
-              </span>
-            </div>
-            <div className="sidebarBody">
+            <div className="sidebarBody p-3">
               <div className="row">
                 {/*    <div className="col-12 mb-3">
                                     <h6 className="sidebarSubTitle">Guard Details</h6>
                                 </div>*/}
                 <div className="col-12 mb-3">
-                  <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
-                    <h6 className="sidebarSubTitle">Basic Details</h6>
-                    <div className="d-flex justify-content-between">
+                  <div className="d-flex flex-row justify-content-between align-items-center p-2 rounded" style={{ backgroundColor: "#eaeaff" }}>
+                    <h6 className="text-primary m-0 ps-2 fs-6 fw-semibold">Basic Details</h6>
+                    <div className="d-flex align-items-center gap-2 pe-2">
+                      <label className="m-0 fs-6 fw-semibold">Attrited</label>
                       <Checkbox
                         checked={selectedGuard?.status === "Y"}
                         onChange={(e) => {
@@ -459,7 +466,6 @@ const exportToExcel = () => {
                           }));
                         }}
                       />
-                      <label className="mx-2">Attrited</label>
                     </div>
                   </div>
                 </div>
@@ -619,55 +625,42 @@ const exportToExcel = () => {
                 </div>
               </div>
             </div>
-            {/* Fixed button container at bottom of sidebar */}
-            <div className="sidebar-fixed-bottom position-absolute pe-3">
-              <div className="d-flex gap-3 justify-content-end">
-                <Button
-                  label="Cancel"
-                  className="btn btn-outline-secondary"
-                  onClick={() => setAddGuardMaster(false)}
-                />
-                <Button
-                  label="Save"
-                  className="btn btn-success"
-                  onClick={SaveGuard}
-                />
-              </div>
-            </div>
-          </PrimeSidebar>
+          </MasterSidebar>
 
           {/* Edit Guard Sidebar */}
-          <PrimeSidebar
-            visible={visibleLeft}
-            position="right"
-            onHide={() => setVisibleLeft(false)}
-            showCloseIcon={false}
-            dismissable={false}
-            style={{ width: "40%" }}
+          <MasterSidebar
+            show={visibleLeft}
+            onClose={() => setVisibleLeft(false)}
+            title={
+              <div className="w-100 d-flex justify-content-between align-items-center pe-4">
+                <span>{selectedGuard?.Name || "Guard Details"} - {selectedGuard?.GuardID || ""}</span>
+                {selectedGuard?.status === "Y" && <span className="text-warning fs-6">Attrited</span>}
+              </div>
+            }
+            width="40%"
+            footerButtons={[
+              {
+                label: "Cancel",
+                className: "btn btn-outline-secondary",
+                onClick: () => setVisibleLeft(false)
+              },
+              {
+                label: "Update",
+                className: "btn btn-success",
+                onClick: UpdateGuard
+              }
+            ]}
           >
-            <div className="sidebarHeader d-flex justify-content-between align-items-center sidebarTitle p-0">
-              <h6 className="sidebarTitle">
-                {selectedGuard?.Name || "Guard Details"} -{" "}
-                {selectedGuard?.GuardID || ""}
-              </h6>
-              <span className="d-flex align-items-center">
-                <p className="text-warning">{selectedGuard?.status === "Y" ? "Attrited" : ""}</p>
-                <Button
-                  icon="pi pi-times"
-                  className="p-button-rounded p-button-text"
-                  onClick={() => setVisibleLeft(false)}
-                />
-              </span>
-            </div>
-            <div className="sidebarBody">
+            <div className="sidebarBody p-3">
               <div className="row">
                 {/* <div className="col-12 mb-3">
                                     <h6 className="sidebarSubTitle">Guard Details</h6>
                                 </div>*/}
                 <div className="col-12 mb-3">
-                  <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
-                    <h6 className="sidebarSubTitle">Vehical Details</h6>
-                    <div className="d-flex justify-content-between">
+                  <div className="d-flex flex-row justify-content-between align-items-center p-2 rounded" style={{ backgroundColor: "#eaeaff" }}>
+                    <h6 className="text-primary m-0 ps-2 fs-6 fw-semibold">Vehicle Details</h6>
+                    <div className="d-flex align-items-center gap-2 pe-2">
+                      <label className="m-0 fs-6 fw-semibold">Attrited</label>
                       <Checkbox
                         checked={selectedGuard?.status === "Y"}
                         onChange={(e) => {
@@ -677,7 +670,6 @@ const exportToExcel = () => {
                           }));
                         }}
                       />
-                      <label className="mx-2">Attrited</label>
                     </div>
                   </div>
                 </div>
@@ -830,24 +822,7 @@ const exportToExcel = () => {
                 </div>
               </div>
             </div>
-            {/* Fixed button container at bottom of sidebar */}
-            <div className="sidebar-fixed-bottom position-absolute pe-3">
-              <div className="d-flex gap-3 justify-content-end">
-                <Button
-                  label="Cancel"
-                  className="btn btn-outline-secondary"
-                  onClick={() => setVisibleLeft(false)}
-                />
-                <Button
-                  label="Update"
-                  className="btn btn-success"
-                  onClick={UpdateGuard}
-                />
-              </div>
-            </div>
-          </PrimeSidebar>
-        </div>
-      </div>
+          </MasterSidebar>
     </>
   );
 };

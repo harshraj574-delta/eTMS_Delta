@@ -20,7 +20,6 @@ import MasterSidebar from "./Master/MasterSidebar";
 import ReportButton from "./common/ReportButton";
 import { CustomDataTable } from "./common/CustomDataTable";
 import CustomPaginator from "./common/CustomPaginator";
-import noReportImage from "../assets/no_report.png";
 const EmployeeMaster = () => {
     const [loading, setLoading] = useState(false);
     const UserId = sessionManager.getUserSession().ID;
@@ -61,6 +60,7 @@ const EmployeeMaster = () => {
     const [secondDoseDate, setSecondDoseDate] = useState("");
     const [address, setAddress] = useState("");
     // const [nmtRequired, setNmtRequired] = useState(false);
+    const [isNMT, setIsNMT] = useState(false);
     const [oobRequired, setOobRequired] = useState(false);
     const [medicalRequired, setMedicalRequired] = useState(false);
     const [pwdRequired, setPwdRequired] = useState(false);
@@ -379,7 +379,7 @@ const EmployeeMaster = () => {
             return;
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            toastService.warn("Enter valid email (e.g., abc12@gmail.com)"); return;
+            toastService.warn("Enter valid email (e.g., abc@12gmail.com)"); return;
         }
 
         if (!facility && facility !== 0) {
@@ -406,8 +406,6 @@ const EmployeeMaster = () => {
             toastService.warn("Landmark is required");
             return;
         }
-
-
         const employeeData = {
             id: 0,
             empCode: employeeId || "",
@@ -438,6 +436,10 @@ const EmployeeMaster = () => {
             MedicalExpiryDate: date || "1900-01-01",
             GuardReq: guardRequired ? 1 : 0,
             Tptfor: transportRequired ? parseInt(transportRequired) : 0,
+            IsNMT: isNMT ? 1 : 0,
+            IsOOB: oobRequired ? 1 : 0,
+            IsPWD: pwdRequired ? 1 : 0,
+
         };
         //console.log("Employee payload sending:", employeeData);
         setLoading(true);
@@ -648,7 +650,7 @@ const EmployeeMaster = () => {
             console.error("No employee data passed to bindEmployeeFromApi");
             return;
         }
-       
+
         //console.log("Binding employee:", emp);
         setEmployeeId(emp.empCode || "");
         setEmpName(emp.empName || "");
@@ -693,31 +695,31 @@ const EmployeeMaster = () => {
         if (emp.managerId) {
             setManager(String(emp.managerId));
         }
-        
+
         // Handle City, Area, Landmark cascading
         if (emp.City) {
             const cityValue = emp.City.trim();
             //console.log("Setting City:", cityValue);
-            
+
             // Fetch and set city options
             await fetchGetGeoCityByRS();
             await new Promise(resolve => setTimeout(resolve, 100));
             setCity(cityValue);
             await new Promise(resolve => setTimeout(resolve, 50));
-            
+
             if (emp.Colony) {
                 const areaValue = emp.Colony.trim();
                 //console.log("Setting Area:", areaValue);
-                
+
                 // Fetch area options based on selected city
                 await fetchGetGeoCityColonyRS(cityValue);
                 await new Promise(resolve => setTimeout(resolve, 100));
                 setArea(areaValue);
                 await new Promise(resolve => setTimeout(resolve, 50));
-                
+
                 // Fetch landmark options based on selected area
                 if (emp.geoCodeId) {
-                   // console.log("Setting GeoCodeId:", emp.geoCodeId);
+                    // console.log("Setting GeoCodeId:", emp.geoCodeId);
                     await fetchGetSubColonyRs(areaValue);
                     await new Promise(resolve => setTimeout(resolve, 100));
                     setGeoCodeId(parseInt(emp.geoCodeId));
@@ -725,7 +727,6 @@ const EmployeeMaster = () => {
                 }
             }
         }
-        
         setErrors({ mobile: "", email: "" });
         setSelectedEmployee(emp);
     };
@@ -776,7 +777,10 @@ const EmployeeMaster = () => {
                 Tptfor: transportRequired ? parseInt(transportRequired) : 0,
                 VaccineName: vaccineName || "0",
                 FirstDoseDate: firstDoseDate || "",
-                SecondDoesDate: secondDoseDate || ""
+                SecondDoesDate: secondDoseDate || "",
+                IsNMT: isNMT ? 1 : 0,
+                IsOOB: oobRequired ? 1 : 0,
+                IsPWD: pwdRequired ? 1 : 0,
             };
             //console.log("Update payload:", updateData);
             const response = await EmployeeMasterService.UpdateEmployee(updateData);
@@ -833,27 +837,6 @@ const EmployeeMaster = () => {
                         </div>
                     </div>
                 </div>
-                {!hasSearched && (
-                    <div className="card_tb">
-                        <div
-                            className="d-flex flex-column align-items-center justify-content-center p-5"
-                            style={{ minHeight: "70vh" }}
-                        >
-                            <img
-                                src={noReportImage}
-                                alt="No Report Selected"
-                                style={{
-                                    maxWidth: "100px",
-                                    opacity: 0.5,
-                                    marginBottom: "1rem",
-                                }}
-                            />
-                            <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-                                Please search for an employee by ID or name
-                            </p>
-                        </div>
-                    </div>
-                )}
                 {hasSearched && (
                     <>
                         <div className="card_tb p-3">
@@ -916,7 +899,8 @@ const EmployeeMaster = () => {
                             onClick={isEditMode ? handleUpdateEmployee : handleSaveEmployee}
                             loading={loading}
                         />
-                    </div>}
+                    </div>
+                }
             >
                 <div className="p-3">
                     <div className="row g-2">
@@ -1191,8 +1175,8 @@ const EmployeeMaster = () => {
                                     <label htmlFor="oobReq" className="form-label mb-0">OOB</label>
                                 </div>
                                 <div className="col-4 col-sm-4 col-md-2 d-flex align-items-center gap-2">
-                                    <Checkbox inputId="medicalReq" checked={medicalRequired} onChange={(e) => setMedicalRequired(e.checked)} />
-                                    <label htmlFor="medicalReq" className="form-label mb-0">Medical</label>
+                                    <Checkbox inputId="medicalReq" checked={isNMT} onChange={(e) => setIsNMT(e.checked)} />
+                                    <label htmlFor="medicalReq" className="form-label mb-0">IsNMT</label>
                                 </div>
                                 <div className="col-4 col-sm-4 col-md-2 d-flex align-items-center gap-2">
                                     <Checkbox inputId="pwdReq" checked={pwdRequired} onChange={(e) => setPwdRequired(e.checked)} />

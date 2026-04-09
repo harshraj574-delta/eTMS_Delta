@@ -1297,7 +1297,7 @@ const ManageRouteDesktop = ({
 
   // New state for initial no data report
   // Initialize based on routes data (in case switching back from mobile view)
-  const [hasSearched, setHasSearched] = useState(routes?.length > 0);
+  const hasSearched = logic?.state?.isSearchEnabled ?? (routes?.length > 0);
   // Track the date that was actually searched (for unlock buttons visibility)
   const [searchedShiftDate, setSearchedShiftDate] = useState(routes?.length > 0 ? shiftDate : null);
 
@@ -1809,7 +1809,6 @@ const ManageRouteDesktop = ({
       }
 
       // Basic UI cleanup
-      setHasSearched(true);
       setSearchedShiftDate(shiftDate);
       setIsShiftLocked(false);
       setIsUnlockMode(false);
@@ -1830,7 +1829,6 @@ const ManageRouteDesktop = ({
   const handleRouteIdClick = useCallback(
     async (clickedRouteId) => {
       setIsSubmitting(true);
-      setHasSearched(true); // Ensure image is hidden when clicking a route ID
 
 
       try {

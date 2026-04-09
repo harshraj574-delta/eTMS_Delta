@@ -112,7 +112,15 @@ const Header = ({
     <div className="header" ref={headerRef}>
       <style>{`
         .header {
-          overflow: visible;
+          overflow: hidden;
+          box-sizing: border-box !important;
+        }
+
+        .header .link-right li:nth-child(1)::before,
+        .header .link-right li:nth-child(2)::before {
+          height: 75px !important;
+          top: 50% !important;
+          transform: translateY(-50%) !important;
         }
         
         @media (max-width: 767px) {

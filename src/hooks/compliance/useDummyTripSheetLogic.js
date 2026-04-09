@@ -301,11 +301,11 @@ export const useDummyTripSheetLogic = () => {
             toastService.error('Please select Facility');
             return false;
         }
-        if (tripType === null || tripType === '') {
+        if (tripType === null || tripType === undefined) {
             toastService.error('Please select Trip Type');
             return false;
         }
-        if (selectedShift === 0 || selectedShift === "0" || !selectedShift) {
+        if (selectedShift === 0 || selectedShift === "0" || selectedShift === null || selectedShift === undefined) {
             toastService.error('Please select ShiftTime');
             return false;
         }

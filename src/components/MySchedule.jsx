@@ -967,7 +967,7 @@ const MySchedule = () => {
         
         // Success handled by mutation hook (toast), proceed to close
         // Close canvas
-        const canvas = document.getElementById("New_Schedule");
+        const canvas = document.getElementById("raise_Feedback");
         if (canvas) {
             const bsCanvas = Offcanvas.getInstance(canvas);
             bsCanvas?.hide();

@@ -34,7 +34,7 @@ const MobileHeader = ({
     return (
         <div 
             className={`sticky-top bg-white border-bottom shadow-sm d-flex align-items-center justify-content-between px-3 py-2 ${className}`}
-            style={{ zIndex: 1000, height: '60px' }}
+            style={{ zIndex: 1000, height: '60px', overflow: 'hidden', boxSizing: 'border-box' }}
         >
             <div className="d-flex align-items-center gap-2 overflow-hidden">
                 {showBack && (

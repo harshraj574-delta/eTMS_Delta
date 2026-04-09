@@ -51,7 +51,11 @@ const EmployeeCard = memo(({
   }, [employee, dayIndex, isDisabled, onShiftClick]);
 
   const handleTripClick = useCallback((e) => {
+    e.preventDefault();
     e.stopPropagation();
+    if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
+      e.nativeEvent.stopImmediatePropagation();
+    }
     onTripClick(employee, dayIndex);
   }, [employee, dayIndex, onTripClick]);
 
@@ -93,9 +97,12 @@ const EmployeeCard = memo(({
       {dayData.hasTrip && (dayData.pickup || dayData.drop) && (
         <div className="employee-card-right">
           <button 
+            type="button"
             className="trip-icon-btn"
             onClick={handleTripClick}
             title="View Trip Details"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#trips"
             style={{ background: 'transparent', border: 'none' }}
           >
             <TripCarIcon />

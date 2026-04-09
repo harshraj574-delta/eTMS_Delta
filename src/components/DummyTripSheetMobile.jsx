@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import MobileHeader from './common/mobile/MobileHeader';
+import Header from './Master/Header';
+import Sidebar from './Master/SidebarMenu';
 import MobileCardList from './common/mobile/MobileCardList';
 import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
@@ -60,10 +61,13 @@ const DummyTripSheetMobile = ({
         value: c.CabType
     }));
 
-    const shiftOptions = shifts.map((s) => ({
-        label: s.shiftTime,
-        value: s.shiftTime
-    }));
+    const shiftOptions = [
+        { label: 'Blank', value: '' },
+        ...shifts.map((s) => ({
+            label: s.shiftTime,
+            value: s.shiftTime
+        }))
+    ];
 
     const tripTypeOptions = [
         { label: 'Pick', value: 'P' },
@@ -116,10 +120,11 @@ const DummyTripSheetMobile = ({
     };
 
     return (
-        <div className="bg-light min-vh-100 pb-5">
-            <MobileHeader title="Dummy Trip Sheet" showBack={true} />
+        <div className="container-fluid p-0 bg-light min-vh-100 pb-5">
+            <Header mainTitle="Transport" pageTitle="Spot Hire Request" showNewButton={false} />
+            <Sidebar />
 
-            <div className="p-3">
+            <div className="middle">
                 <div className="mb-3">
                     <TabSwitcher
                         tabs={[
@@ -183,6 +188,8 @@ const DummyTripSheetMobile = ({
                                 <Dropdown
                                     value={selectedFacility}
                                     options={facilityOptions}
+                                    optionLabel="label"
+                                    optionValue="value"
                                     onChange={(e) =>
                                         setSelectedFacility(e.value)
                                     }
@@ -202,6 +209,8 @@ const DummyTripSheetMobile = ({
                                 <Dropdown
                                     value={tripType}
                                     options={tripTypeOptions}
+                                    optionLabel="label"
+                                    optionValue="value"
                                     onChange={(e) => setTripType(e.value)}
                                     placeholder="-Select-"
                                     className={`w-100 compact-mobile-dropdown ${
@@ -223,6 +232,8 @@ const DummyTripSheetMobile = ({
                                     <Dropdown
                                         value={selectedShift}
                                         options={shiftOptions}
+                                        optionLabel="label"
+                                        optionValue="value"
                                         onChange={(e) =>
                                             setSelectedShift(e.value)
                                         }
@@ -242,6 +253,8 @@ const DummyTripSheetMobile = ({
                                     <Dropdown
                                         value={selectedCabType}
                                         options={cabTypeOptions}
+                                        optionLabel="label"
+                                        optionValue="value"
                                         onChange={(e) =>
                                             setSelectedCabType(e.value)
                                         }
@@ -447,7 +460,6 @@ const DummyTripSheetMobile = ({
                 fileName={`DummyTripSheet_${
                     pdfData?.date?.toISOString().split('T')[0]
                 }_${pdfData?.transId || ''}.pdf`}
-                title={`Trip Sheet Preview - ${pdfData?.transId || 'New'}`}
             />
         </div>
     );

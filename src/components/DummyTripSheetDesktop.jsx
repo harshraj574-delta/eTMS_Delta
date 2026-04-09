@@ -76,10 +76,13 @@ const DummyTripSheetDesktop = ({
         value: c.CabType
     }));
 
-    const shiftOptions = shifts.map((s) => ({
-        label: s.shiftTime,
-        value: s.shiftTime
-    }));
+    const shiftOptions = [
+        { label: 'Blank', value: '' },
+        ...shifts.map((s) => ({
+            label: s.shiftTime,
+            value: s.shiftTime
+        }))
+    ];
 
     const tripTypeOptions = [
         { label: 'Pick', value: 'P' },
@@ -155,6 +158,8 @@ const DummyTripSheetDesktop = ({
                             <Dropdown
                                 value={selectedFacility}
                                 options={facilityOptions}
+                                optionLabel="label"
+                                optionValue="value"
                                 onChange={(e) =>
                                     setSelectedFacility(e.value)
                                 }
@@ -170,6 +175,8 @@ const DummyTripSheetDesktop = ({
                             <Dropdown
                                 value={tripType}
                                 options={tripTypeOptions}
+                                optionLabel="label"
+                                optionValue="value"
                                 onChange={(e) => setTripType(e.value)}
                                 placeholder="-Select-"
                                 className="w-100"
@@ -183,6 +190,8 @@ const DummyTripSheetDesktop = ({
                             <Dropdown
                                 value={selectedShift}
                                 options={shiftOptions}
+                                optionLabel="label"
+                                optionValue="value"
                                 onChange={(e) => setSelectedShift(e.value)}
                                 placeholder="-Select-"
                                 className="w-100"
@@ -196,6 +205,8 @@ const DummyTripSheetDesktop = ({
                             <Dropdown
                                 value={selectedCabType}
                                 options={cabTypeOptions}
+                                optionLabel="label"
+                                optionValue="value"
                                 onChange={(e) =>
                                     setSelectedCabType(e.value)
                                 }

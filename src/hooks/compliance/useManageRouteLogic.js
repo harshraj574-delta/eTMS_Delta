@@ -200,7 +200,8 @@ const useManageRouteLogic = () => {
         // Current State exposed to View
         state: {
             filters,
-            ui: uiState
+            ui: uiState,
+            isSearchEnabled
         },
 
         // Actions exposed to View

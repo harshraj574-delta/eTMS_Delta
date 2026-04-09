@@ -213,7 +213,10 @@ class EmployeeMasterService {
                 Tptfor: params.Tptfor,
                 VaccineName: params.VaccineName,
                 FirstDoseDate: params.FirstDoseDate,
-                SecondDoesDate: params.SecondDoesDate
+                SecondDoesDate: params.SecondDoesDate,
+                IsNMT: params.IsNMT,
+                IsOOB: params.IsOOB,
+                IsPWD: params.IsPWD,
             });
             return response.data;
         } catch (error) {
@@ -253,6 +256,9 @@ class EmployeeMasterService {
                 MedicalExpiryDate: params.MedicalExpiryDate,
                 GuardReq: params.GuardReq,
                 Tptfor: params.Tptfor,
+                IsNMT: params.IsNMT,
+                IsOOB: params.IsOOB,
+                IsPWD: params.IsPWD,
             });
             return response.data;
         } catch (error) {
