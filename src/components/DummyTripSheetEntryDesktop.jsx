@@ -335,49 +335,36 @@ const DummyTripSheetEntryDesktop = ({
                         <div className="col-12">
                             <div className="card_tb">
                                 <div className="p-3">
-                                    <>
-                                        {employees.length === 0 ? (
-                                            <div className="alert alert-info d-flex align-items-center rounded-3 border-0 shadow-sm">
-                                                <i className="material-icons me-3 fs-4 text-info">info</i>
-                                                <div>
-                                                    <strong>No employees mapped to this route.</strong>
-                                                    <br />
-                                                    <small>Click "Edit Trip Form" or "Add Employee" above to continue.</small>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="table-responsive">
-                                                <CustomDataTable
-                                                    value={currentEmployees}
-                                                    emptyMessage="No records found"
-                                                    stripedRows
-                                                    className="p-datatable-sm"
-                                                    responsiveLayout="scroll"
-                                                >
-                                                    {columns.map((col, idx) => (
-                                                        <Column 
-                                                            key={idx} 
-                                                            field={col.field} 
-                                                            header={col.header} 
-                                                            body={col.body} 
-                                                            sortable={col.sortable} 
-                                                        />
-                                                    ))}
-                                                </CustomDataTable>
-                                            </div>
-                                        )}
-                                        {employees.length > 0 && (
-                                            <CustomPaginator
-                                                totalRecords={employees.length}
-                                                rows={rowsPerPage}
-                                                first={(currentPage - 1) * rowsPerPage}
-                                                onPageChange={(e) => {
-                                                    setCurrentPage(e.page + 1);
-                                                    setRowsPerPage(e.rows);
-                                                }}
-                                            />
-                                        )}
-                                    </>
+                                    <div className="table-responsive">
+                                        <CustomDataTable
+                                            value={currentEmployees}
+                                            emptyMessage="No employees mapped to this route"
+                                            stripedRows
+                                            className="p-datatable-sm"
+                                            responsiveLayout="scroll"
+                                        >
+                                            {columns.map((col, idx) => (
+                                                <Column 
+                                                    key={idx} 
+                                                    field={col.field} 
+                                                    header={col.header} 
+                                                    body={col.body} 
+                                                    sortable={col.sortable} 
+                                                />
+                                            ))}
+                                        </CustomDataTable>
+                                    </div>
+                                    {employees.length > 0 && (
+                                        <CustomPaginator
+                                            totalRecords={employees.length}
+                                            rows={rowsPerPage}
+                                            first={(currentPage - 1) * rowsPerPage}
+                                            onPageChange={(e) => {
+                                                setCurrentPage(e.page + 1);
+                                                setRowsPerPage(e.rows);
+                                            }}
+                                        />
+                                    )}
                                 </div>
                             </div>
                         </div>

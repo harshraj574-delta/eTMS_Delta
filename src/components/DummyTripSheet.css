@@ -49,8 +49,8 @@
     left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
+    width: 22px;
+    height: 22px;
     z-index: 2;
     pointer-events: none;
 }
@@ -73,6 +73,13 @@
 
 .dummy-trip-entry-search .no-label {
     margin-top: 0;
+}
+
+.dummy-trip-entry-search .custom-calendar-icon {
+    width: 26px !important;
+    height: 26px !important;
+    left: 9px;
+    object-fit: contain;
 }
 
 .dummy-trip-entry-search .custom-calendar-input .p-inputtext,
@@ -154,6 +161,10 @@
 .dummy-trip-entry-search .dummy-trip-id-group .p-inputtext {
     padding-top: 0.45rem !important;
     padding-bottom: 0.45rem !important;
+}
+
+.dummy-trip-entry-search .custom-calendar-input .p-inputtext {
+    padding-left: 42px !important;
 }
 
 .dummy-trip-entry-search .dummy-trip-id-group .p-inputgroup-addon {
@@ -319,12 +330,6 @@
         font-size: 13px !important;
         padding: 0.4rem 0.55rem !important;
         white-space: nowrap !important;
-    }
-
-    .custom-calendar-icon {
-        width: 18px;
-        height: 18px;
-        left: 10px;
     }
 
     .dummy-trip-action-group {

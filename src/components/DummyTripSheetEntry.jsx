@@ -76,9 +76,6 @@ const DummyTripSheetEntry = () => {
         handledSearchAttemptRef.current = searchAttemptCount;
 
         if (data.routeInfo.length > 0) {
-            if (!Array.isArray(data.employees) || data.employees.length === 0) {
-                setIsSidebarOpen(true);
-            }
             return;
         }
 
