@@ -1,6 +1,6 @@
 import React from 'react';
 
-const StatusBadge = ({ status }) => {
+const StatusBadge = ({ status, centered = true }) => {
   // Normalize status to lowercase for comparison
   const normalizedStatus = status ? status.toLowerCase() : '';
 
@@ -18,7 +18,7 @@ const StatusBadge = ({ status }) => {
     textTransform: 'capitalize',
     opacity: 1,
     padding: '0 10px', // Add horizontal padding for longer text
-    margin: '0 auto', // Center the badge in its container (the table cell)
+    margin: centered ? '0 auto' : '0', // Allow pages to opt into left alignment
     whiteSpace: 'nowrap', // Prevent text wrapping
   };
 
@@ -26,8 +26,13 @@ const StatusBadge = ({ status }) => {
 
   if (normalizedStatus === 'approved') {
     background = '#0BAA60';
+  } else if (normalizedStatus === 'boarded') {
+    background = '#0BAA60';
   } else if (normalizedStatus === 'pending') {
     background = '#E18A07';
+  } else if (normalizedStatus === 'no show' || normalizedStatus === 'noshow') {
+    background = '#FFECBA';
+    commonStyle.color = '#E18A07';
   } else if (normalizedStatus === 'rejected') {
     background = '#F03D3D';
   } else if (normalizedStatus === 'cancelled') {

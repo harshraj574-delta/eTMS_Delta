@@ -103,7 +103,7 @@ const DummyTripSheetEntryMobile = ({
             toastService.success(`Employee ${selectedEmployee.empName} added to route ${searchRouteId}`);
             handleCloseAddEmployeeModal();
         } catch (error) {
-            toastService.error("Failed to add employee to route.");
+            toastService.error(error?.message || "Failed to add employee to route.");
             console.error(error);
         } finally {
             setIsAddingEmployee(false);

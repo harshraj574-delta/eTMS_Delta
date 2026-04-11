@@ -9,6 +9,7 @@ import { toastService } from "../services/toastService";
 import sessionManager from "../utils/SessionManager";
 import DummyTripSheetEntryService from "../services/compliance/DummyTripSheetEntryService";
 import Loader from "./common/Loader";
+import calendarIcon from "../assets/calendar.png";
 import {
     useVendorByFacility,
     useVehicleType,
@@ -590,7 +591,7 @@ const DummyTripSheetEntrySidebar = ({ routeInfo, employee, actions, searchRouteI
 
                 {routeContext && (
                     <div className="col-12 col-xl-6">
-                        <label className="form-label">Route Context</label>
+                        <label className="form-label">Facility</label>
                         <InputText value={routeContext} readOnly className="w-100" />
                     </div>
                 )}
@@ -671,14 +672,16 @@ const DummyTripSheetEntrySidebar = ({ routeInfo, employee, actions, searchRouteI
                 <div className="col-12 col-xl-6">
                     <label className="form-label">Start Time</label>
                     <div className="dummy-trip-time-group">
-                        <Calendar
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.value)}
-                            className="w-100"
-                            dateFormat="mm/dd/yy"
-                            placeholder="Start Date"
-                            showIcon
-                        />
+                        <div className="custom-calendar-wrapper">
+                            <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                            <Calendar
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.value)}
+                                className="w-100 custom-calendar-input dummy-trip-time-calendar"
+                                dateFormat="mm/dd/yy"
+                                placeholder="Start Date"
+                            />
+                        </div>
                         <Dropdown
                             value={startHour}
                             onChange={(e) => setStartHour(e.value)}
@@ -699,14 +702,16 @@ const DummyTripSheetEntrySidebar = ({ routeInfo, employee, actions, searchRouteI
                 <div className="col-12 col-xl-6">
                     <label className="form-label">End Time</label>
                     <div className="dummy-trip-time-group">
-                        <Calendar
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.value)}
-                            className="w-100"
-                            dateFormat="mm/dd/yy"
-                            placeholder="End Date"
-                            showIcon
-                        />
+                        <div className="custom-calendar-wrapper">
+                            <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                            <Calendar
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.value)}
+                                className="w-100 custom-calendar-input dummy-trip-time-calendar"
+                                dateFormat="mm/dd/yy"
+                                placeholder="End Date"
+                            />
+                        </div>
                         <Dropdown
                             value={endHour}
                             onChange={(e) => setEndHour(e.value)}

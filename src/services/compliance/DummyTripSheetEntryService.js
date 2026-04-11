@@ -124,7 +124,17 @@ class DummyTripSheetEntry {
                 addresstype: params.addresstype,
                 routeId: params.routeId
             })
-            return typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            const responseData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            const result =
+                Array.isArray(responseData)
+                    ? responseData[0]?.result ?? responseData[0]?.Result
+                    : responseData?.result ?? responseData?.Result;
+
+            if (result !== undefined && Number(result) === 0) {
+                throw new Error("Employee could not be added to the route.");
+            }
+
+            return responseData;
         }catch(error){
             console.error("Error adding emp to dummy route data:", error);
             throw error;

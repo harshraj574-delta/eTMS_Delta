@@ -76,6 +76,7 @@ const DummyTripSheetEntry = () => {
         handledSearchAttemptRef.current = searchAttemptCount;
 
         if (data.routeInfo.length > 0) {
+            toastService.success("Trip data loaded successfully");
             return;
         }
 

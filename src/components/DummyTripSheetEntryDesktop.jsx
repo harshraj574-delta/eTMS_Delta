@@ -19,6 +19,7 @@ import calendarIcon from "../assets/calendar.png";
 import sessionManager from "../utils/SessionManager";
 import Loader from "./common/Loader";
 import ReportButton from "./common/ReportButton";
+import StatusBadge from "./common/StatusBadge";
 import "./DummyTripSheet.css";
 
 const DummyTripSheetEntryDesktop = ({
@@ -147,7 +148,7 @@ const DummyTripSheetEntryDesktop = ({
             toastService.success(`Employee ${selectedEmployee.empName} added to route ${searchRouteId}`);
             handleCloseAddEmployeeModal();
         } catch (error) {
-            toastService.error("Failed to add employee to route.");
+            toastService.error(error?.message || "Failed to add employee to route.");
             console.error(error);
         } finally {
             setIsAddingEmployee(false);
@@ -206,13 +207,15 @@ const DummyTripSheetEntryDesktop = ({
         {
             field: "trackingStatus",
             header: "Status",
+            align: "center",
             body: (rowData) => {
                 const statusMap = {
-                    "B": <span className="badge bg-success">Boarded</span>,
-                    "C": <span className="badge bg-danger">Cancelled</span>,
-                    "N": <span className="badge bg-warning text-dark">No Show</span>
+                    "B": "Boarded",
+                    "C": "Cancelled",
+                    "N": "No Show"
                 };
-                return statusMap[rowData.trackingStatus] || <span>{rowData.trackingStatus}</span>;
+                const label = statusMap[rowData.trackingStatus];
+                return label ? <StatusBadge status={label} /> : <span>{rowData.trackingStatus}</span>;
             }
         },
         { field: "trackingRemark", header: "Remark" }
@@ -344,14 +347,15 @@ const DummyTripSheetEntryDesktop = ({
                                             responsiveLayout="scroll"
                                         >
                                             {columns.map((col, idx) => (
-                                                <Column 
-                                                    key={idx} 
-                                                    field={col.field} 
-                                                    header={col.header} 
-                                                    body={col.body} 
-                                                    sortable={col.sortable} 
-                                                />
-                                            ))}
+                                                        <Column 
+                                                            key={idx} 
+                                                            field={col.field} 
+                                                            header={col.header} 
+                                                            body={col.body} 
+                                                            align={col.align}
+                                                            sortable={col.sortable} 
+                                                        />
+                                                    ))}
                                         </CustomDataTable>
                                     </div>
                                     {employees.length > 0 && (
