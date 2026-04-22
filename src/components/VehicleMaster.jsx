@@ -19,6 +19,11 @@ import Loader from "./common/Loader";
 import CustomPaginator from "./common/CustomPaginator";
 import { ToastContainer } from "react-toastify";
 
+const VEHICLE_DOCS_STORAGE_KEY = "vehicle_docs";
+const CLOUDINARY_UPLOAD_URL =
+  "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
+const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
+
 const VehicleMaster = () => {
     // ========== ALL STATE DECLARATIONS FIRST ==========
     const [selectedCity, setSelectedCity] = useState(null);
@@ -50,6 +55,10 @@ const VehicleMaster = () => {
     const [editFuelType, setEditFuelType] = useState([]);
     const [documentDetails, setDocumentDetails] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [vehicleDocs, setVehicleDocs] = useState({});
+    const [uploadingDocIds, setUploadingDocIds] = useState({});
+    const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
+    const [activeSidebarTab, setActiveSidebarTab] = useState("details");
 
     const [first, setFirst] = useState(0);
     const [rows, setRows] = useState(50);
@@ -454,62 +463,155 @@ const VehicleMaster = () => {
         }
     }, [editVehicleFormData.VehicleTypeId, updateVehicle]);
 
-    // ========== OTHER FUNCTIONS ==========
-    const handleUpload = async () => {
-        if (!selectedFile) {
-            toastService.warn("Please select a file to upload.");
-            return;
-        }
+    // ========== CLOUDINARY DOCUMENT UPLOAD ==========
+    const getVehicleDocKeys = (vehicleData) => [
+        vehicleData.VehicleId, vehicleData.Id, vehicleData.VehicleNo
+    ].filter(Boolean).map(String);
 
-        const toBase64 = (file) =>
-            new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result.split(",")[1]);
-                reader.onerror = (error) => reject(error);
-            });
-
-        const base64File = await toBase64(selectedFile);
-
-        const payload = {
-            FacilityId: vehicleFormData.FacilityId || 0,
-            VehicleId: vehicleFormData.VehicleId || 0,
-            VehicleNo: vehicleFormData.VehicleNo || "",
-            DocumentId: vehicleFormData.DocumentType || 0,
-            DocumentName: selectedFile.name,
-            UpdatedBy: userID,
-            File: {
-                ContentLength: selectedFile.size,
-                ContentType: selectedFile.type,
-                FileName: selectedFile.name,
-                InputStream: base64File
-            }
-        };
-
+    const loadVehicleDocs = (vehicleData) => {
         try {
-            const response = await VehicleMasterService.SPR_AddUpdateVehicleDocument(payload);
-
-            if (Array.isArray(response) && response.length > 0 && response[0].RESULT === 0) {
-                toastService.success("File uploaded successfully.");
-                setSelectedFile(null);
-            } else {
-                const errorMessage = typeof response === 'string' ? response : "File upload failed.";
-                toastService.error(errorMessage);
+            const stored = JSON.parse(localStorage.getItem(VEHICLE_DOCS_STORAGE_KEY) || "{}");
+            const keys = getVehicleDocKeys(vehicleData);
+            for (const key of keys) {
+                if (stored[key]) { setVehicleDocs(stored[key]); return; }
             }
+            setVehicleDocs({});
+        } catch { setVehicleDocs({}); }
+    };
+
+    const saveVehicleDocs = (vehicleData, docs) => {
+        try {
+            const stored = JSON.parse(localStorage.getItem(VEHICLE_DOCS_STORAGE_KEY) || "{}");
+            const keys = getVehicleDocKeys(vehicleData);
+            keys.forEach(key => { stored[key] = docs; });
+            localStorage.setItem(VEHICLE_DOCS_STORAGE_KEY, JSON.stringify(stored));
+        } catch (err) { console.error("Failed to save vehicle docs:", err); }
+    };
+
+    const uploadToCloudinary = (file, vehicleId, docTypeId, onProgress) =>
+        new Promise((resolve, reject) => {
+            const uploadFormData = new FormData();
+            uploadFormData.append("file", file);
+            uploadFormData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+            uploadFormData.append("asset_folder", `vehicles/${vehicleId}/${docTypeId}`);
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", CLOUDINARY_UPLOAD_URL);
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable && onProgress) onProgress(Math.round((event.loaded / event.total) * 100));
+            };
+            xhr.onload = () => {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) { resolve(data.secure_url); return; }
+                    reject(new Error(data.error?.message || "Upload failed"));
+                } catch (error) { reject(error); }
+            };
+            xhr.onerror = () => reject(new Error("Upload failed"));
+            xhr.send(uploadFormData);
+        });
+
+    const handleVehicleDocUpload = async (file, docTypeId, vehicleData) => {
+        if (!file) return;
+        const vehicleKeys = getVehicleDocKeys(vehicleData);
+        const vehicleKey = vehicleKeys[0];
+        if (!vehicleKey) { toastService.warn("Please enter the vehicle number before uploading documents."); return; }
+        try {
+            setUploadingDocIds((prev) => ({ ...prev, [docTypeId]: true }));
+            setUploadProgressByDoc((prev) => ({ ...prev, [docTypeId]: 0 }));
+            const url = await uploadToCloudinary(file, vehicleKey, docTypeId, (progress) => {
+                setUploadProgressByDoc((prev) => ({ ...prev, [docTypeId]: progress }));
+            });
+            const updated = { ...vehicleDocs, [docTypeId]: url };
+            setVehicleDocs(updated);
+            saveVehicleDocs(vehicleData, updated);
+            toastService.success("Document uploaded successfully.");
         } catch (error) {
             console.error("An error occurred during file upload:", error);
-            toastService.error("Failed to upload the file!");
+            toastService.error("Failed to upload the document.");
+        } finally {
+            setUploadingDocIds((prev) => ({ ...prev, [docTypeId]: false }));
+            setUploadProgressByDoc((prev) => ({ ...prev, [docTypeId]: 0 }));
         }
     };
 
+    const resetVehicleDocsState = () => {
+        setVehicleDocs({}); setUploadingDocIds({}); setUploadProgressByDoc({}); setActiveSidebarTab("details");
+    };
+
+    const uploadedDocCount = documentDetails.filter((d) => vehicleDocs[d.value]).length;
+
+    const renderSidebarTabs = () => (
+        <div className="doc-tabs-bar">
+            <button type="button" className={`doc-tab-btn ${activeSidebarTab === "details" ? "active" : ""}`} onClick={() => setActiveSidebarTab("details")}>
+                <i className="pi pi-car" style={{ fontSize: "13px" }} /> Details
+            </button>
+            <button type="button" className={`doc-tab-btn ${activeSidebarTab === "documents" ? "active" : ""}`} onClick={() => setActiveSidebarTab("documents")}>
+                <i className="pi pi-file" style={{ fontSize: "13px" }} /> Documents
+                <span className="doc-tab-count">{uploadedDocCount}/{documentDetails.length}</span>
+            </button>
+        </div>
+    );
+
+    const renderVehicleDocumentCards = (vehicleData) => (
+        <div className="doc-tab-panel">
+            <div className="doc-tab-summary mb-3">
+                <span className="fw-semibold">Uploaded:</span>{" "}
+                <span style={{ color: "#6366f1", fontWeight: 700 }}>{uploadedDocCount}</span>
+                <span className="text-muted"> / {documentDetails.length} documents</span>
+            </div>
+            <div className="row g-3">
+                {documentDetails.map((doc) => {
+                    const url = vehicleDocs[doc.value];
+                    const isUploading = Boolean(uploadingDocIds[doc.value]);
+                    const progress = uploadProgressByDoc[doc.value] || 0;
+                    return (
+                        <div className="col-12 col-md-6" key={`vehicle-doc-${doc.value}`}>
+                            <div className="doc-upload-card">
+                                <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <div className="fw-semibold" style={{ fontSize: "14px" }}>{doc.name}</div>
+                                    <span className={`doc-status-badge ${isUploading ? "uploading" : url ? "uploaded" : "pending"}`}>
+                                        {isUploading ? "Uploading..." : url ? "Uploaded" : "Pending"}
+                                    </span>
+                                </div>
+                                <div className="small text-muted mb-2">PDF only</div>
+                                <input type="file" accept="application/pdf" className="form-control form-control-sm mb-2" disabled={isUploading}
+                                    onChange={(e) => { handleVehicleDocUpload(e.target.files?.[0], doc.value, vehicleData); e.target.value = ""; }} />
+                                {isUploading && (
+                                    <div className="mb-2">
+                                        <div className="doc-progress-track"><div className="doc-progress-fill" style={{ width: `${progress}%` }} /></div>
+                                        <div className="small mt-1" style={{ color: "#6366f1", fontWeight: 600, fontSize: "12px" }}>Uploading {progress}%</div>
+                                    </div>
+                                )}
+                                <div className="d-flex gap-2 flex-wrap">
+                                    {url ? (
+                                        <>
+                                            <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm rounded-pill px-3">Preview</a>
+                                            <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => { window.open(url.replace('/upload/', '/upload/fl_attachment/'), '_blank'); }}>Download</button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button type="button" className="btn btn-outline-primary btn-sm rounded-pill px-3" disabled>Preview</button>
+                                            <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" disabled>Download</button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
     const InsertAddVehicle = async () => {
+        setActiveSidebarTab("details");
         setIsSubmitting(true);
-        if (!vehicleFormData.VehicleNo) {
+        if (!vehicleFormData.VehicleNo || !vehicleFormData.VehicleNo.toString().trim()) {
             toastService.warn("Please enter the vehicle number.");
             setIsSubmitting(false);
             return;
         }
-        if (!vehicleFormData.VehicleRegNo) {
+        if (!vehicleFormData.VehicleRegNo || !vehicleFormData.VehicleRegNo.toString().trim()) {
             toastService.warn("Please enter the vehicle registration number.");
             setIsSubmitting(false);
             return;
@@ -564,6 +666,7 @@ const VehicleMaster = () => {
             setAddVehicle(false);
             setVehicleFormData(initialFormData);
             setIsAttrited(false);
+            resetVehicleDocsState();
             await VehiclesDetailsData();
         } catch (error) {
             console.error("Error while adding vehicle:", error);
@@ -575,6 +678,36 @@ const VehicleMaster = () => {
 
     const UpdateVehicle = async () => {
         setIsSubmitting(true);
+        if (!editVehicleFormData.VehicleNo || !editVehicleFormData.VehicleNo.toString().trim()) {
+            toastService.warn("Please enter the vehicle number.");
+            setActiveSidebarTab("details");
+            setIsSubmitting(false);
+            return;
+        }
+        if (!editVehicleFormData.VehicleRegNo || !editVehicleFormData.VehicleRegNo.toString().trim()) {
+            toastService.warn("Please enter the vehicle registration number.");
+            setActiveSidebarTab("details");
+            setIsSubmitting(false);
+            return;
+        }
+        if (!editVehicleFormData.FacilityId) {
+            toastService.warn("Please select a facility.");
+            setActiveSidebarTab("details");
+            setIsSubmitting(false);
+            return;
+        }
+        if (!editVehicleFormData.VendorId) {
+            toastService.warn("Please select a vendor.");
+            setActiveSidebarTab("details");
+            setIsSubmitting(false);
+            return;
+        }
+        if (!editVehicleFormData.VehicleTypeId) {
+            toastService.warn("Please select a vehicle type.");
+            setActiveSidebarTab("details");
+            setIsSubmitting(false);
+            return;
+        }
         try {
             const response = await VehicleMasterService.SPR_AddUpdateVehicle({
                 ...editVehicleFormData,
@@ -606,6 +739,7 @@ const VehicleMaster = () => {
             toastService.success("Vehicle has been updated successfully.");
             setUpdateVehicle(false);
             setEditVehicleFormData(initialEditFormData);
+            resetVehicleDocsState();
             await VehiclesDetailsData();
         } catch (error) {
             console.error("Error while updating vehicle:", error);
@@ -852,6 +986,8 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
     });
 
     setEditAttrited(rowData.Attrited === "Yes");
+    loadVehicleDocs(rowData);
+    setActiveSidebarTab("details");
     setUpdateVehicle(true);
   }
 }}
@@ -919,6 +1055,8 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                 ]}
             >
                 <div className="p-3 bg-white">
+                    {renderSidebarTabs()}
+                    {activeSidebarTab === "details" && (
                     <div className="row">
                                 <div className="col-12 mb-3">
                                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
@@ -1041,32 +1179,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                     <label>Remark</label>
                                     <InputText className="form-control" placeholder="Remark" value={vehicleFormData.Remark} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Remark: e.target.value })} />
                                 </div>
-                                <div className="col-12 mb-3">
-                                    <h6 className="sidebarSubTitle">Document Details</h6>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Document Type</label>
-                                    <Dropdown optionLabel="name" optionValue="value" placeholder="Select Document Type" className="w-100" filter options={documentDetails} value={vehicleFormData.DocumentType || ""} onChange={(e) => setVehicleFormData({ ...vehicleFormData, DocumentType: e.value })} />
-                                </div>
-                                <div className="field col-8 mb-3">
-                                    <label>Choose File</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'start' }}>
-                                        <FileUpload mode="basic"
-                                            name="file[]"
-                                            accept="image/*"
-                                            className=""
-                                            multiple
-                                            customUpload
-                                            uploadHandler={(e) => {
-                                                if (e.files && e.files.length > 0) {
-                                                    setSelectedFile(e.files[0]);
-                                                }
-                                            }}
-                                            chooseLabel={selectedFile ? selectedFile.name : "Choose File"} />
 
-                                        <button className="btn btn-dark ms-2" onClick={handleUpload}>Upload File</button>
-                                    </div>
-                                </div>
                                 <div className="col-12 mb-3">
                                     <h6 className="sidebarSubTitle">Other Details</h6>
                                 </div>
@@ -1109,6 +1222,8 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 </div>
 
                             </div>
+                    )}
+                    {activeSidebarTab === "documents" && renderVehicleDocumentCards(vehicleFormData)}
                         </div>
             </MasterSidebar>
 
@@ -1138,6 +1253,8 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                 ]}
             >
                 <div className="p-3 bg-white">
+                    {renderSidebarTabs()}
+                    {activeSidebarTab === "details" && (
                     <div className="row">
                                 <div className="col-12 mb-3">
                                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
@@ -1366,26 +1483,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, Remark: e.target.value })}
                                     />
                                 </div>
-                                <div className="col-12 mb-3">
-                                    <h6 className="sidebarSubTitle">Document Details</h6>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Document Type</label>
-                                    <Dropdown 
-                                        optionLabel="name" 
-                                        optionValue="value" 
-                                        placeholder="Select Document Type" 
-                                        className="w-100" 
-                                        filter 
-                                        options={documentDetails} 
-                                        value={editVehicleFormData.DocumentType || ""} 
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, DocumentType: e.value })} 
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Choose File</label>
-                                    <FileUpload mode="basic" name="demo[]" accept="image/*" className="w-100" />
-                                </div>
+
                                 <div className="col-12 mb-3">
                                     <h6 className="sidebarSubTitle">Other Details</h6>
                                 </div>
@@ -1460,6 +1558,8 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 </div>
 
                             </div>
+                    )}
+                    {activeSidebarTab === "documents" && renderVehicleDocumentCards(editVehicleFormData)}
                         </div>
             </MasterSidebar>
         </>

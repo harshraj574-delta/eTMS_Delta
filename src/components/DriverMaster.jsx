@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 
-import { FileUpload } from "primereact/fileupload";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
@@ -30,6 +29,10 @@ const DEFAULT_DRIVER_DOCUMENT_OPTIONS = [
   { name: "PV Certificate", value: 13 },
   { name: "Valid Badge", value: 14 },
 ];
+const DRIVER_DOCS_STORAGE_KEY = "driver_docs";
+const CLOUDINARY_UPLOAD_URL =
+  "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
+const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
 
 const DriverMaster = () => {
   const customSortStyle = {
@@ -54,6 +57,10 @@ const DriverMaster = () => {
   const [documentDetails, setDocumentDetails] = useState(
     DEFAULT_DRIVER_DOCUMENT_OPTIONS
   );
+  const [driverDocs, setDriverDocs] = useState({});
+  const [uploadingDocIds, setUploadingDocIds] = useState({});
+  const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
+  const [activeSidebarTab, setActiveSidebarTab] = useState("details");
 
   // Selected Values
   const [selFacility, setSelFacility] = useState(null);
@@ -105,7 +112,6 @@ const DriverMaster = () => {
       FinalWarning: "",
       AadharVerification: 0,
       PVStatus: 0,
-      DocumentType: 0,
       Remark: "",
       Medical_Fit_Certificate: 0,
       DriverInfo_Display: 0,
@@ -178,6 +184,153 @@ const DriverMaster = () => {
     }
   };
 
+  const loadDriverDocs = (driverId) => {
+    if (!driverId) {
+      return {};
+    }
+
+    try {
+      const allDocs =
+        JSON.parse(localStorage.getItem(DRIVER_DOCS_STORAGE_KEY)) || {};
+      return allDocs[driverId] || {};
+    } catch (error) {
+      console.log("Error", error);
+      return {};
+    }
+  };
+
+  const saveDriverDocs = (driverId, docs) => {
+    if (!driverId) {
+      return;
+    }
+
+    try {
+      const allDocs =
+        JSON.parse(localStorage.getItem(DRIVER_DOCS_STORAGE_KEY)) || {};
+      allDocs[driverId] = docs;
+      localStorage.setItem(
+        DRIVER_DOCS_STORAGE_KEY,
+        JSON.stringify(allDocs)
+      );
+    } catch (error) {
+      console.log("Error", error);
+    }
+  };
+
+  const resetDriverDocumentState = () => {
+    setDriverDocs({});
+    setUploadingDocIds({});
+    setUploadProgressByDoc({});
+    setActiveSidebarTab("details");
+  };
+
+  const uploadToCloudinary = (file, driverId, docTypeId, onProgress) =>
+    new Promise((resolve, reject) => {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      uploadFormData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      uploadFormData.append(
+        "asset_folder",
+        `drivers/${driverId}/${docTypeId}`
+      );
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", CLOUDINARY_UPLOAD_URL);
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          onProgress(
+            Math.round((event.loaded / event.total) * 100)
+          );
+        }
+      };
+
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+
+          if (
+            xhr.status >= 200 &&
+            xhr.status < 300 &&
+            data.secure_url
+          ) {
+            resolve(data.secure_url);
+            return;
+          }
+
+          reject(
+            new Error(data.error?.message || "Upload failed")
+          );
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error("Upload failed"));
+      };
+
+      xhr.send(uploadFormData);
+    });
+
+  const handleDocUpload = async (file, docTypeId) => {
+    if (!file) {
+      return;
+    }
+
+    const driverId = formData.DriverId?.trim();
+
+    if (!driverId) {
+      toastService.warn(
+        "Please enter the driver ID before uploading documents."
+      );
+      return;
+    }
+
+    try {
+      setUploadingDocIds((prev) => ({
+        ...prev,
+        [docTypeId]: true,
+      }));
+      setUploadProgressByDoc((prev) => ({
+        ...prev,
+        [docTypeId]: 0,
+      }));
+
+      const url = await uploadToCloudinary(
+        file,
+        driverId,
+        docTypeId,
+        (progress) => {
+          setUploadProgressByDoc((prev) => ({
+            ...prev,
+            [docTypeId]: progress,
+          }));
+        }
+      );
+      const updated = {
+        ...driverDocs,
+        [docTypeId]: url,
+      };
+
+      setDriverDocs(updated);
+      saveDriverDocs(driverId, updated);
+      toastService.success("Document uploaded successfully.");
+    } catch (error) {
+      console.log("Error", error);
+      toastService.error("Failed to upload the document.");
+    } finally {
+      setUploadingDocIds((prev) => ({
+        ...prev,
+        [docTypeId]: false,
+      }));
+      setUploadProgressByDoc((prev) => ({
+        ...prev,
+        [docTypeId]: 0,
+      }));
+    }
+  };
+
   // Fetch driver details from API
   const fetchDriverDetails = async () => {
     // Validate dropdowns before calling API
@@ -246,9 +399,6 @@ const DriverMaster = () => {
         FinalWarning: "",
         AadharVerification: 0,
         PVStatus: 0,
-        DocumentType: Number(
-          selectedDriver.DocumentType || selectedDriver.DocumentId || 0
-        ),
         Remark: selectedDriver.Remark || "",
         Medical_Fit_Certificate: 0,
         DriverInfo_Display: 0,
@@ -256,6 +406,10 @@ const DriverMaster = () => {
         UpdatedBy: userId,
       });
 
+      setDriverDocs(loadDriverDocs(selectedDriver.DriverId));
+      setUploadingDocIds({});
+      setUploadProgressByDoc({});
+      setActiveSidebarTab("details");
       setEditingDriverId(driverId);
       setVisibleLeft(true);
     }
@@ -263,6 +417,7 @@ const DriverMaster = () => {
 
   const openAddSidebar = () => {
     setFormData(getInitialFormData());
+    resetDriverDocumentState();
     setEditingDriverId(null);
     setAddDriverMaster(true);
   };
@@ -352,6 +507,7 @@ const DriverMaster = () => {
         );
         setVisibleLeft(false);
         setAddDriverMaster(false);
+        resetDriverDocumentState();
         fetchDriverDetails();
       } else {
         toastService.error(result.MSG || "Failed to save driver.");
@@ -374,6 +530,130 @@ const DriverMaster = () => {
           : "badge badge_danger"
       }
     />
+  );
+
+  const uploadedDocCount = documentDetails.filter((d) => driverDocs[d.value]).length;
+
+  const renderDocumentCards = () => (
+    <div className="row g-3">
+      {documentDetails.map((doc) => {
+        const url = driverDocs[doc.value];
+        const isUploading = Boolean(uploadingDocIds[doc.value]);
+        const progress = uploadProgressByDoc[doc.value] || 0;
+
+        return (
+          <div
+            className="col-12 col-md-6"
+            key={`driver-doc-${doc.value}`}
+          >
+            <div className="doc-upload-card">
+              <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <div className="fw-semibold" style={{ fontSize: "14px" }}>{doc.name}</div>
+                <span
+                  className={`doc-status-badge ${
+                    isUploading ? "uploading" : url ? "uploaded" : "pending"
+                  }`}
+                >
+                  {isUploading ? "Uploading..." : url ? "Uploaded" : "Pending"}
+                </span>
+              </div>
+              <div className="small text-muted mb-2">
+                PDF only
+              </div>
+              <input
+                type="file"
+                accept="application/pdf"
+                className="form-control form-control-sm mb-2"
+                disabled={isUploading}
+                onChange={(e) => {
+                  handleDocUpload(
+                    e.target.files?.[0],
+                    doc.value
+                  );
+                  e.target.value = "";
+                }}
+              />
+              {isUploading && (
+                <div className="mb-2">
+                  <div className="doc-progress-track">
+                    <div
+                      className="doc-progress-fill"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="small mt-1" style={{ color: "#6366f1", fontWeight: 600, fontSize: "12px" }}>
+                    Uploading {progress}%
+                  </div>
+                </div>
+              )}
+              <div className="d-flex gap-2 flex-wrap">
+                {url ? (
+                  <>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                    >
+                      Preview
+                    </a>
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                      onClick={() => {
+                        const downloadUrl = url.replace('/upload/', '/upload/fl_attachment/');
+                        window.open(downloadUrl, '_blank');
+                      }}
+                    >
+                      Download
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                      disabled
+                    >
+                      Preview
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                      disabled
+                    >
+                      Download
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderSidebarTabs = () => (
+    <div className="doc-tabs-bar">
+      <button
+        type="button"
+        className={`doc-tab-btn ${activeSidebarTab === "details" ? "active" : ""}`}
+        onClick={() => setActiveSidebarTab("details")}
+      >
+        <i className="pi pi-user" style={{ fontSize: "13px" }} />
+        Details
+      </button>
+      <button
+        type="button"
+        className={`doc-tab-btn ${activeSidebarTab === "documents" ? "active" : ""}`}
+        onClick={() => setActiveSidebarTab("documents")}
+      >
+        <i className="pi pi-file" style={{ fontSize: "13px" }} />
+        Documents
+        <span className="doc-tab-count">{uploadedDocCount}/{documentDetails.length}</span>
+      </button>
+    </div>
   );
 
   return (
@@ -510,14 +790,22 @@ const DriverMaster = () => {
           {/* Edit Driver Master */}
           <MasterSidebar
             show={visibleLeft}
-            onClose={() => setVisibleLeft(false)}
+            onClose={() => {
+              setVisibleLeft(false);
+              setDriverDocs({});
+              setUploadingDocIds({});
+            }}
             title="Edit Driver Details"
             width="50%"
             footerButtons={[
               {
                 label: "Cancel",
                 className: "btn btn-outline-secondary",
-                onClick: () => setVisibleLeft(false),
+                onClick: () => {
+                  setVisibleLeft(false);
+                  setDriverDocs({});
+                  setUploadingDocIds({});
+                },
               },
               {
                 label: "Save Changes",
@@ -528,6 +816,8 @@ const DriverMaster = () => {
             ]}
           >
             <div className="p-3 bg-white" >
+              {renderSidebarTabs()}
+              {activeSidebarTab === "details" && (
               <div className="row" >
                 <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Personal Details</h6>
@@ -782,34 +1072,6 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="col-12 mb-3">
-                  <h6 className="sidebarSubTitle">Document Details</h6>
-                </div>
-                <div className="field col-3 mb-3">
-                  <label>Document Type</label>
-                  <Dropdown
-                    value={formData.DocumentType || ""}
-                    onChange={(e) =>
-                      handleFormChange("DocumentType", e.value)
-                    }
-                    options={documentDetails}
-                    optionLabel="name"
-                    optionValue="value"
-                    placeholder="Select Document Type"
-                    className="w-100"
-                    filter
-                  />
-                </div>
-                <div className="field col-4 mb-3">
-                  <label>Choose File</label>
-                  <FileUpload
-                    mode="basic"
-                    name="demo[]"
-                    url="/api/upload"
-                    accept="image/*"
-                    className="w-100"
-                  />
-                </div>
-                <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Other Details</h6>
                 </div>
                 <div className="field col-12 d-flex align-items-center gap-4">
@@ -861,20 +1123,39 @@ const DriverMaster = () => {
                   </div>
                 </div>
                 </div>
+              )}
+              {activeSidebarTab === "documents" && (
+                <div className="doc-tab-panel">
+                  <div className="doc-tab-summary mb-3">
+                    <span className="fw-semibold">Uploaded:</span>{" "}
+                    <span style={{ color: "#6366f1", fontWeight: 700 }}>{uploadedDocCount}</span>
+                    <span className="text-muted"> / {documentDetails.length} documents</span>
+                  </div>
+                  {renderDocumentCards()}
+                </div>
+              )}
               </div>
           </MasterSidebar>
 
           {/* Add Driver Master */}
           <MasterSidebar
             show={addDriverMaster}
-            onClose={() => setAddDriverMaster(false)}
+            onClose={() => {
+              setAddDriverMaster(false);
+              setDriverDocs({});
+              setUploadingDocIds({});
+            }}
             title="Add Driver Details"
             width="50%"
             footerButtons={[
               {
                 label: "Cancel",
                 className: "btn btn-outline-secondary",
-                onClick: () => setAddDriverMaster(false),
+                onClick: () => {
+                  setAddDriverMaster(false);
+                  setDriverDocs({});
+                  setUploadingDocIds({});
+                },
               },
               {
                 label: "Save Changes",
@@ -885,6 +1166,8 @@ const DriverMaster = () => {
             ]}
           >
             <div className="p-3 bg-white">
+              {renderSidebarTabs()}
+              {activeSidebarTab === "details" && (
               <div className="row">
                 <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Personal Details</h6>
@@ -1139,34 +1422,6 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="col-12 mb-3">
-                  <h6 className="sidebarSubTitle">Document Details</h6>
-                </div>
-                <div className="field col-3 mb-3">
-                  <label>Document Type</label>
-                  <Dropdown
-                    value={formData.DocumentType || ""}
-                    onChange={(e) =>
-                      handleFormChange("DocumentType", e.value)
-                    }
-                    options={documentDetails}
-                    optionLabel="name"
-                    optionValue="value"
-                    placeholder="Select Document Type"
-                    className="w-100"
-                    filter
-                  />
-                </div>
-                <div className="field col-4 mb-3">
-                  <label>Choose File</label>
-                  <FileUpload
-                    mode="basic"
-                    name="demo[]"
-                    url="/api/upload"
-                    accept="image/*"
-                    className="w-100"
-                  />
-                </div>
-                <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Other Details</h6>
                 </div>
                 <div className="field col-12 d-flex align-items-center gap-4">
@@ -1218,6 +1473,17 @@ const DriverMaster = () => {
                   </div>
               </div>
               </div>
+              )}
+              {activeSidebarTab === "documents" && (
+                <div className="doc-tab-panel">
+                  <div className="doc-tab-summary mb-3">
+                    <span className="fw-semibold">Uploaded:</span>{" "}
+                    <span style={{ color: "#6366f1", fontWeight: 700 }}>{uploadedDocCount}</span>
+                    <span className="text-muted"> / {documentDetails.length} documents</span>
+                  </div>
+                  {renderDocumentCards()}
+                </div>
+              )}
             </div>
           </MasterSidebar>
     </>
