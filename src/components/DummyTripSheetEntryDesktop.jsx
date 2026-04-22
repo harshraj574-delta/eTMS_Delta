@@ -225,7 +225,7 @@ const DummyTripSheetEntryDesktop = ({
         <>
             <Loader isVisible={isLoading || isSearching || isAddingEmployee} fullScreen={true} />
             <ToastContainer position="top-right" autoClose={3000} />
-            <Header pageTitle="Dummy TripSheet Entry" />
+            <Header pageTitle="Spot Hire Validate" />
             <SidebarMenu />
             
             <div className="middle">

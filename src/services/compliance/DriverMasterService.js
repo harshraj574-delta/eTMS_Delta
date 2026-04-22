@@ -22,6 +22,12 @@ class DriverMasterService {
       api.post("/SPR_AddUpdateDriverMaster", data)
     );
   }
+
+  async getDocumentDetails(params) {
+    return Promise.resolve(
+      api.post("/SPR_DocumentDetails", params)
+    );
+  }
 }
 
 export default new DriverMasterService();

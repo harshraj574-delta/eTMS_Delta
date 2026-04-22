@@ -13,7 +13,6 @@ import { Column } from "primereact/column";
 import MasterSidebar from "./Master/MasterSidebar";
 import { Checkbox } from "primereact/checkbox";
 import { Badge } from "primereact/badge";
-import { Toast } from "primereact/toast";
 import { ToastContainer } from "react-toastify";
 
 import sessionManager from "../utils/SessionManager";
@@ -22,9 +21,17 @@ import ReportButton from "./common/ReportButton";
 import Loader from "./common/Loader";
 import { toastService } from "../services/toastService";
 
-const DriverMaster = () => {
-  const toastRef = React.useRef(null);
+const DEFAULT_DRIVER_DOCUMENT_OPTIONS = [
+  { name: "Aadhar Card", value: 8 },
+  { name: "Address Proof", value: 9 },
+  { name: "Age Proof", value: 10 },
+  { name: "Driving Licence", value: 11 },
+  { name: "Medical Certificate", value: 12 },
+  { name: "PV Certificate", value: 13 },
+  { name: "Valid Badge", value: 14 },
+];
 
+const DriverMaster = () => {
   const customSortStyle = {
     ".p-sortable-column:not(.p-highlight) .p-sortable-column-icon": {
       opacity: 0,
@@ -44,6 +51,9 @@ const DriverMaster = () => {
   // Lookup states
   const [facilities, setFacilities] = useState([]);
   const [venders, setVenders] = useState([]);
+  const [documentDetails, setDocumentDetails] = useState(
+    DEFAULT_DRIVER_DOCUMENT_OPTIONS
+  );
 
   // Selected Values
   const [selFacility, setSelFacility] = useState(null);
@@ -95,6 +105,7 @@ const DriverMaster = () => {
       FinalWarning: "",
       AadharVerification: 0,
       PVStatus: 0,
+      DocumentType: 0,
       Remark: "",
       Medical_Fit_Certificate: 0,
       DriverInfo_Display: 0,
@@ -110,6 +121,7 @@ const DriverMaster = () => {
 
   useEffect(() => {
     fetchFacilities();
+    fetchDocumentDetails();
   }, []);
 
   useEffect(() => {
@@ -143,6 +155,29 @@ const DriverMaster = () => {
       });
   };
 
+  const fetchDocumentDetails = async () => {
+    try {
+      const response = await driverMasterService.getDocumentDetails({
+        type: "D",
+      });
+      const data =
+        typeof response.data === "string"
+          ? JSON.parse(response.data)
+          : response.data || [];
+
+      if (Array.isArray(data) && data.length > 0) {
+        setDocumentDetails(
+          data.map((item) => ({
+            name: item.DocumentType,
+            value: item.Id,
+          }))
+        );
+      }
+    } catch (error) {
+      console.log("Error", error);
+    }
+  };
+
   // Fetch driver details from API
   const fetchDriverDetails = async () => {
     // Validate dropdowns before calling API
@@ -170,7 +205,7 @@ const DriverMaster = () => {
       setFirst(0); // Reset pagination on data fetch
     } catch (error) {
       console.log("Error", error);
-      showError("Failed to load driver details");
+      toastService.error("Failed to load driver details.");
     } finally {
       setLoading(false);
     }
@@ -211,6 +246,9 @@ const DriverMaster = () => {
         FinalWarning: "",
         AadharVerification: 0,
         PVStatus: 0,
+        DocumentType: Number(
+          selectedDriver.DocumentType || selectedDriver.DocumentId || 0
+        ),
         Remark: selectedDriver.Remark || "",
         Medical_Fit_Certificate: 0,
         DriverInfo_Display: 0,
@@ -245,27 +283,27 @@ const DriverMaster = () => {
 
   const validateForm = () => {
     if (!formData.DriverId.trim()) {
-      showError("Driver ID is required");
+      toastService.warn("Please enter the driver ID.");
       return false;
     }
     if (!formData.DriverName.trim()) {
-      showError("Driver Name is required");
+      toastService.warn("Please enter the driver name.");
       return false;
     }
     if (!formData.ContactNo.trim()) {
-      showError("Contact Number is required");
+      toastService.warn("Please enter the contact number.");
       return false;
     }
     if (formData.DateOfBirth === null) {
-      showError("Date of Birth is required");
+      toastService.warn("Please select the date of birth.");
       return false;
     }
     if (formData.FacilityId === 0) {
-      showError("Facility is required");
+      toastService.warn("Please select a facility.");
       return false;
     }
     if (formData.VendorId === 0) {
-      showError("Vendor is required");
+      toastService.warn("Please select a vendor.");
       return false;
     }
     return true;
@@ -309,37 +347,21 @@ const DriverMaster = () => {
         result.RESULT === 1 ||
         result.MSG?.includes("Successfully")
       ) {
-        showSuccess(result.MSG);
+        toastService.success(
+          result.MSG || "Driver details saved successfully."
+        );
         setVisibleLeft(false);
         setAddDriverMaster(false);
         fetchDriverDetails();
       } else {
-        showError(result.MSG || "Failed to save driver");
+        toastService.error(result.MSG || "Failed to save driver.");
       }
     } catch (error) {
       console.log("Error", error);
-      showError("Error saving driver details");
+      toastService.error("Failed to save driver details.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const showError = (message) => {
-    toastRef.current?.show({
-      severity: "error",
-      summary: "Error",
-      detail: message,
-      life: 3000,
-    });
-  };
-
-  const showSuccess = (message) => {
-    toastRef.current?.show({
-      severity: "success",
-      summary: "Success",
-      detail: message,
-      life: 3000,
-    });
   };
 
   // Licence Exp. Date
@@ -357,7 +379,6 @@ const DriverMaster = () => {
   return (
     <>
       <Loader isVisible={loading} fullScreen={true} />
-      <Toast ref={toastRef} />
       <Header
         pageTitle="Driver Master"
         showNewButton={true}
@@ -761,6 +782,34 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="col-12 mb-3">
+                  <h6 className="sidebarSubTitle">Document Details</h6>
+                </div>
+                <div className="field col-3 mb-3">
+                  <label>Document Type</label>
+                  <Dropdown
+                    value={formData.DocumentType || ""}
+                    onChange={(e) =>
+                      handleFormChange("DocumentType", e.value)
+                    }
+                    options={documentDetails}
+                    optionLabel="name"
+                    optionValue="value"
+                    placeholder="Select Document Type"
+                    className="w-100"
+                    filter
+                  />
+                </div>
+                <div className="field col-4 mb-3">
+                  <label>Choose File</label>
+                  <FileUpload
+                    mode="basic"
+                    name="demo[]"
+                    url="/api/upload"
+                    accept="image/*"
+                    className="w-100"
+                  />
+                </div>
+                <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Other Details</h6>
                 </div>
                 <div className="field col-12 d-flex align-items-center gap-4">
@@ -1087,6 +1136,34 @@ const DriverMaster = () => {
                       handleFormChange("Remark", e.target.value)
                     }
                     placeholder="Remark"
+                  />
+                </div>
+                <div className="col-12 mb-3">
+                  <h6 className="sidebarSubTitle">Document Details</h6>
+                </div>
+                <div className="field col-3 mb-3">
+                  <label>Document Type</label>
+                  <Dropdown
+                    value={formData.DocumentType || ""}
+                    onChange={(e) =>
+                      handleFormChange("DocumentType", e.value)
+                    }
+                    options={documentDetails}
+                    optionLabel="name"
+                    optionValue="value"
+                    placeholder="Select Document Type"
+                    className="w-100"
+                    filter
+                  />
+                </div>
+                <div className="field col-4 mb-3">
+                  <label>Choose File</label>
+                  <FileUpload
+                    mode="basic"
+                    name="demo[]"
+                    url="/api/upload"
+                    accept="image/*"
+                    className="w-100"
                   />
                 </div>
                 <div className="col-12 mb-3">

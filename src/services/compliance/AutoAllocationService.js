@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // Configuration
-const ROUTING_ENGINE_BASE_URL = 'http://localhost:5001';
-// const ROUTING_ENGINE_BASE_URL = 'https://ftqbvxxmpm.ap-south-1.awsapprunner.com';
+// const ROUTING_ENGINE_BASE_URL = 'http://localhost:5001';
+const ROUTING_ENGINE_BASE_URL = 'https://ftqbvxxmpm.ap-south-1.awsapprunner.com';
 const REOPTIMIZE_API_URL = `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/reoptimize`;
 const GENERATE_API_URL = `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/generate`;
 const MAX_EMPLOYEES_PER_ROUTE = 12;
