@@ -252,7 +252,7 @@ const VehicleTypeMaster = () => {
     return (
         <>
             <Loader isVisible={isSubmitting} fullScreen={true} />
-            <Header pageTitle="Vehicle Master" showNewButton={true} onNewButtonClick={setVehicleType} />
+            <Header pageTitle="Vehicle Type Master" showNewButton={true} onNewButtonClick={setVehicleType} />
             <Sidebar />
             <div className="middle">
                 <div className="row">

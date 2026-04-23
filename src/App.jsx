@@ -68,6 +68,7 @@ import ManageColony from "./components/ManageColony";
 import FemaleTrack from "./components/FemaleTrack";
 import DummyTripSheet from "./components/DummyTripSheet";
 import DummyTripSheetEntry from "./components/DummyTripSheetEntry";
+import HelpDesk from "./components/HelpDesk";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -154,6 +155,7 @@ function App() {
         <Route path="/FemaleTrack" element={<PrivateRoute element={<FemaleTrack />} />} />
         <Route path="/DummyTripsheetGen" element={<PrivateRoute element={<DummyTripSheet />} />} />
         <Route path="/DummyTripsheetEntry" element={<PrivateRoute element={<DummyTripSheetEntry />} />} />
+        <Route path="/HelpDesk" element={<PrivateRoute element={<HelpDesk />} />} />
 
 
 

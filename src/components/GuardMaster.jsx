@@ -16,6 +16,7 @@ import { Calendar } from "primereact/calendar";
 import { Checkbox } from "primereact/checkbox";
 import { InputNumber } from "primereact/inputnumber";
 import { toastService } from "../services/toastService";
+import { ToastContainer } from "react-toastify";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import CustomPaginator from "./common/CustomPaginator";
@@ -313,11 +314,12 @@ const exportToExcel = () => {
     <>
       <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header
-        pageTitle="Vehicle Master"
+        pageTitle="Escort Master"
         showNewButton={true}
         onNewButtonClick={handleAddGuardClick}
       />
       <Sidebar />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">
