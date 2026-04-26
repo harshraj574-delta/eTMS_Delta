@@ -1,12 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import useSessionStore from '../../store/useSessionStore';
-
+import MarqueeMessages from '../MarqueeMessages';
+import ScrollingMessagesService from '../../services/compliance/ScrollingMessagesService';
+import sessionManager from '../../utils/SessionManager';
 const SidebarMenu = () => {
   const menuItemsRaw = useSessionStore((state) => state.menuItems);
   const location = useLocation();
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const [openNestedMenu, setOpenNestedMenu] = useState({});
+  const [scrollingMessages, setScrollingMessages] = useState([]);
+
+  useEffect(() => {
+    const fetchScrollingMessages = async () => {
+      try {
+        const userId = sessionManager.getUserSession()?.ID || 0;
+        const response = await ScrollingMessagesService.GetAllMessages({ empid: userId });
+        const data = typeof response === 'string' ? JSON.parse(response) : response;
+        setScrollingMessages(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching scrolling messages:", err);
+      }
+    };
+    fetchScrollingMessages();
+  }, []);
 
   const organizeMenuItems = (items) => {
     if (!items) return [];
@@ -292,6 +309,17 @@ const SidebarMenu = () => {
             </button>
           </div>
         </div>
+
+        {scrollingMessages.length > 0 && (
+          <div className="cardx help p-3 mt-3">
+            <span className="material-icons mb-3">announcement</span>
+            <p className="overline_text_sm">Updates</p>
+            <MarqueeMessages
+              messages={scrollingMessages}
+              style={{ width: '100%', borderRadius: '6px' }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

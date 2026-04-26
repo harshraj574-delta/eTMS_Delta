@@ -592,6 +592,25 @@ const ShiftTimeMaster = () => {
                 <Column field="facilityName" header="Facility" />
                 <Column field="Day" header="Day Type" />
                 <Column
+                  header="Shuttle"
+                  body={() => (
+                    <span
+                      className="badge rounded-pill px-3 bg-danger"
+                      style={{
+                        height: '24px',
+                        minWidth: '60px',
+                        borderRadius: '28.95px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                      }}
+                    >
+                      NO
+                    </span>
+                  )}
+                />
+                <Column
                   field="Active"
                   header="Status"
                   body={statusBodyTemplate}

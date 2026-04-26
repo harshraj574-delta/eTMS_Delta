@@ -1,4 +1,6 @@
 import { useState } from "react";
+import useSessionStore from "./store/useSessionStore";
+import ConsentModal from "./components/ConsentModal";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import Login from "./components/Login";
@@ -69,14 +71,31 @@ import FemaleTrack from "./components/FemaleTrack";
 import DummyTripSheet from "./components/DummyTripSheet";
 import DummyTripSheetEntry from "./components/DummyTripSheetEntry";
 import HelpDesk from "./components/HelpDesk";
+import ScrollingMessages from "./components/ScrollingMessages"
+import DisclaimerMaster from "./components/DisclaimerMaster"
+import EmployeeRecordSwapping from "./components/EmployeeRecordSwapping"
+import EmpSpoc from "./components/EmpSpoc";
+import RoutingConfig from "./components/RoutingConfig";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
 function App() {
+  const isAuthenticated = useSessionStore((state) => state.isAuthenticated);
+  const disclaimerStatus = useSessionStore((state) => state.user?.DisclaimerStatus);
+  const updateDisclaimerStatus = useSessionStore((state) => state.updateDisclaimerStatus);
+
+  const showConsentModal =
+    isAuthenticated &&
+    (Number(disclaimerStatus) === 0 || Number(disclaimerStatus) === 2);
+
   return (
     <>
+      <ConsentModal
+        visible={showConsentModal}
+        onAgree={() => updateDisclaimerStatus(1)}
+      />
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -156,6 +175,11 @@ function App() {
         <Route path="/DummyTripsheetGen" element={<PrivateRoute element={<DummyTripSheet />} />} />
         <Route path="/DummyTripsheetEntry" element={<PrivateRoute element={<DummyTripSheetEntry />} />} />
         <Route path="/HelpDesk" element={<PrivateRoute element={<HelpDesk />} />} />
+        <Route path="/EmpSpoc" element={<PrivateRoute element={<EmpSpoc />} />} />
+        <Route path="/RoutingConfig" element={<PrivateRoute element={<RoutingConfig />} />} />
+        <Route path="/ScrollingMessages" element={<PrivateRoute element={<ScrollingMessages />} />} />
+        <Route path="/DisclaimerMaster" element={<PrivateRoute element={<DisclaimerMaster />} />} />
+        <Route path="/EmployeeRecordSwapping" element={<PrivateRoute element={<EmployeeRecordSwapping />} />} />
 
 
 

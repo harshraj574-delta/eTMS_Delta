@@ -23,6 +23,9 @@ class GuardMasterService {
     async GetNewGuardID(params) {
         return Promise.resolve(api.post("/GetTempEmpID", params));
     }
+    async SPR_DocumentDetails(params) {
+        return Promise.resolve(api.post("/SPR_DocumentDetails", { type: params.type }));
+    }
 }
 
 export default new GuardMasterService();

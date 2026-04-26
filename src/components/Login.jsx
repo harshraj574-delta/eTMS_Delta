@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import '../components/css/bootstrap.min.css';   
+// import '../components/css/bootstrap.min.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../components/css/style.css';
 import { Form, Button, Container, Alert } from 'react-bootstrap';

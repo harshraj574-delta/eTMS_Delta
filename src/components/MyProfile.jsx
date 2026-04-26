@@ -145,7 +145,7 @@ const MyProfile = () => {
                       </div>
                     </div>
 
-                    <ul class="requi_sec" style={{ paddingLeft: '50px', paddingRight: '50px' }}>
+                    <ul class="requi_sec" style={{ paddingLeft: '50px', paddingRight: '50px', gap: '32px' }}>
                       <li>
                         <small style={labelStyle}>Transport Required</small>{" "}
                         <span
@@ -160,62 +160,46 @@ const MyProfile = () => {
                             borderRadius: '28.95px',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            color: '#fff'
                           }}
                         >
                           {profileData?.tptReqText === "Yes" ? "YES" : "NO"}
                         </span>
                       </li>
                       <li>
-                        <small style={labelStyle}>Nodal Point </small>{" "}
-                        {/* {profileData?.geoX}-{profileData?.geoY} */}
-                        <a 
-                          href="#" 
+                        <small style={labelStyle}>Shuttle User</small>{" "}
+                        <span
+                          className="badge rounded-pill px-3 bg-danger"
+                          style={{
+                            width: '88px',
+                            height: '24px',
+                            borderRadius: '28.95px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff'
+                          }}
+                        >
+                          NO
+                        </span>
+                      </li>
+                      <li>
+                        <small style={labelStyle}>Home Geocode </small>{" "}
+                        <a
+                          href="#"
                           onClick={e => { e.preventDefault(); setVisible(true); }}
                         >
-                          <img 
-                            src={locationIcon} 
-                            alt="Location" 
-                            style={{ 
-                              width: '30px', 
+                          <img
+                            src={locationIcon}
+                            alt="Location"
+                            style={{
+                              width: '30px',
                               height: '30px',
                               filter: 'brightness(0) saturate(100%) invert(62%) sepia(4%) saturate(258%) hue-rotate(138deg) brightness(96%) contrast(86%)'
                             }}
                           />
                         </a>
-                        {/* <span
-                          style={{
-                            cursor:
-                              profileData && profileData.geoX && profileData.geoY
-                                ? "pointer"
-                                : "default",
-                          }}
-                          onClick={() => {
-                            if (profileData && profileData.geoX && profileData.geoY) {
-                              window.open(
-                                `https://www.google.com/maps?q=${profileData.geoX},${profileData.geoY}`,
-                                "_blank"
-                              );
-                            } else if (profileData && profileData.landmark) {
-                              const query = encodeURIComponent(
-                                profileData.landmark
-                              );
-                              window.open(
-                                `https://www.google.com/maps/search/?api=1&query=${query}`,
-                                "_blank"
-                              );
-                            }
-                          }}
-                        >
-                          <BiMap
-                            style={{
-                              color:
-                                profileData && profileData.geoX && profileData.geoY
-                                  ? "#007bff"
-                                  : undefined,
-                            }}
-                          />
-                        </span>{" "} */}
                         {profileData && profileData.landmark ? (
                           <span style={dataStyle}>{profileData.landmark}</span>
                         ) : (
@@ -274,7 +258,7 @@ const MyProfile = () => {
                   class="card profile_card mb-4"
                   style={{
                     width: '100%',
-                    height: '310px',
+                    minHeight: '310px',
                     borderRadius: '20px',
                     border: '1px solid #D2D2D2'
                   }}
@@ -312,7 +296,54 @@ const MyProfile = () => {
                           >
                             {profileData?.colony || "N/A"}
                           </span>
-                           
+
+                      </li>
+                      <li>
+                        <span style={labelStyle}>Pickup Point</span>
+                        <span
+                          className={
+                            !profileData?.landmark
+                              ? "text-danger fw-bold"
+                              : undefined
+                          }
+                          style={dataStyle}
+                        >
+                          {profileData?.landmark || "N/A"}
+                        </span>
+                      </li>
+                      <li>
+                        <span style={labelStyle}>Medical</span>
+                        <span
+                          className="badge rounded-pill px-3 bg-danger"
+                          style={{
+                            width: '88px',
+                            height: '24px',
+                            borderRadius: '28.95px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff'
+                          }}
+                        >
+                          NO
+                        </span>
+                      </li>
+                      <li>
+                        <span style={labelStyle}>Pwd</span>
+                        <span
+                          className="badge rounded-pill px-3 bg-danger"
+                          style={{
+                            width: '88px',
+                            height: '24px',
+                            borderRadius: '28.95px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff'
+                          }}
+                        >
+                          NO
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -395,8 +426,8 @@ const MyProfile = () => {
       </div>
 
       {/* Maps Popup */}
-      <Dialog 
-        header="Nodal Point Location"
+      <Dialog
+        header="Home Geocode"
         visible={visible} 
         style={{ width: '90vw', minHeight: '90vh' }} 
         onHide={() => setVisible(false)}

@@ -1082,7 +1082,7 @@ const AdhocManagement = () => {
                         body={(rowData) => (
                           <div className="d-flex align-items-center">
                             <span
-                              className="material-icons md-18 text-danger"
+                              className={`material-icons md-18 ${rowData.tptreq === "Y" ? "text-success" : "text-danger"}`}
                               title={
                                 rowData.tptreq === "Y"
                                   ? "Transport"
@@ -1094,7 +1094,7 @@ const AdhocManagement = () => {
                                 : "no_transfer"}
                             </span>
                             <span
-                              className="material-icons md-18 text-danger mx-2"
+                              className={`material-icons md-18 mx-2 ${rowData.geoCode === "Y" ? "text-success" : "text-danger"}`}
                               title={
                                 rowData.geoCode === "Y"
                                   ? "Geocoded"

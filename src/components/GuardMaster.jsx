@@ -22,6 +22,10 @@ import { saveAs } from "file-saver";
 import CustomPaginator from "./common/CustomPaginator";
 import Loader from "./common/Loader";
 
+const GUARD_DOCS_STORAGE_KEY = "guard_docs";
+const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
+const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
+
 const GuardMaster = () => {
   const [addGuardMaster, setAddGuardMaster] = useState(false);
   const [visibleLeft, setVisibleLeft] = useState(false);
@@ -36,6 +40,11 @@ const GuardMaster = () => {
   const [selFacility, setSelFacility] = useState(null);
   const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [documentDetails, setDocumentDetails] = useState([]);
+  const [guardDocs, setGuardDocs] = useState({});
+  const [uploadingDocIds, setUploadingDocIds] = useState({});
+  const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
+  const [activeSidebarTab, setActiveSidebarTab] = useState("details");
 
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
@@ -47,9 +56,10 @@ const GuardMaster = () => {
 
   // Open sidebar with employee data
   const openEditSidebar = (guardData) => {
-    setSelectedGuard(guardData); // Set the selected guard data
-    setVisibleLeft(true); // Open sidebar
-    //console.log("Selected Guard Details -->", guardData);
+    setSelectedGuard(guardData);
+    setVisibleLeft(true);
+    loadGuardDocs(guardData);
+    setActiveSidebarTab("details");
   };
 const exportToExcel = () => {
   // Table data ko Excel sheet me convert karo
@@ -62,6 +72,7 @@ const exportToExcel = () => {
 };
   useEffect(() => {
     fetchFacilities();
+    fetchDocumentDetails();
   }, []);
 
   useEffect(() => {
@@ -184,8 +195,9 @@ const exportToExcel = () => {
 
       const response = await GuardMasterService.SaveGuard(params);
       toastService.success("Guard saved successfully.");
-      setAddGuardMaster(false); // Close the add sidebar
-      setSelectedGuard(null); // Reset the form
+      setAddGuardMaster(false);
+      setSelectedGuard(null);
+      resetGuardDocsState();
 
       // Refresh the guard list
       if (selFacility) {
@@ -236,6 +248,7 @@ const exportToExcel = () => {
       status: "Y",
       Remarks: "",
     });
+    resetGuardDocsState();
     setAddGuardMaster(true);
   };
 
@@ -294,9 +307,9 @@ const exportToExcel = () => {
       };
 
       const response = await GuardMasterService.UpdateGuard(params);
-      //  console.log('updateresponse',response);
       toastService.success("Guard updated successfully.");
       setVisibleLeft(false);
+      resetGuardDocsState();
 
       if (selFacility == null) {
         fetchGuardDetails(sessionManager.getUserSession().FacilityID);
@@ -310,6 +323,156 @@ const exportToExcel = () => {
       setIsSubmitting(false);
     }
   };
+  // ========== DOCUMENT UPLOAD HELPERS ==========
+  const fetchDocumentDetails = async () => {
+    try {
+      const response = await GuardMasterService.SPR_DocumentDetails({ type: "G" });
+      const parsed = JSON.parse(response.data);
+      const formatted = parsed.map((item) => ({ name: item.DocumentType, value: item.Id }));
+      setDocumentDetails(formatted);
+    } catch (error) {
+      console.error("Error fetching guard document details:", error);
+    }
+  };
+
+  const getGuardDocKeys = (guardData) =>
+    [guardData.GuardID, guardData.ID, guardData.Id].filter(Boolean).map(String);
+
+  const loadGuardDocs = (guardData) => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(GUARD_DOCS_STORAGE_KEY) || "{}");
+      const keys = getGuardDocKeys(guardData);
+      for (const key of keys) {
+        if (stored[key]) { setGuardDocs(stored[key]); return; }
+      }
+      setGuardDocs({});
+    } catch { setGuardDocs({}); }
+  };
+
+  const saveGuardDocs = (guardData, docs) => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(GUARD_DOCS_STORAGE_KEY) || "{}");
+      const keys = getGuardDocKeys(guardData);
+      keys.forEach((key) => { stored[key] = docs; });
+      localStorage.setItem(GUARD_DOCS_STORAGE_KEY, JSON.stringify(stored));
+    } catch (err) { console.error("Failed to save guard docs:", err); }
+  };
+
+  const uploadToCloudinary = (file, guardKey, docTypeId, onProgress) =>
+    new Promise((resolve, reject) => {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      uploadFormData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      uploadFormData.append("asset_folder", `guards/${guardKey}/${docTypeId}`);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", CLOUDINARY_UPLOAD_URL);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) onProgress(Math.round((event.loaded / event.total) * 100));
+      };
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) { resolve(data.secure_url); return; }
+          reject(new Error(data.error?.message || "Upload failed"));
+        } catch (error) { reject(error); }
+      };
+      xhr.onerror = () => reject(new Error("Upload failed"));
+      xhr.send(uploadFormData);
+    });
+
+  const handleGuardDocUpload = async (file, docTypeId, guardData) => {
+    if (!file) return;
+    const guardKeys = getGuardDocKeys(guardData);
+    const guardKey = guardKeys[0];
+    if (!guardKey) { toastService.warn("Please fill in the Guard ID before uploading documents."); return; }
+    try {
+      setUploadingDocIds((prev) => ({ ...prev, [docTypeId]: true }));
+      setUploadProgressByDoc((prev) => ({ ...prev, [docTypeId]: 0 }));
+      const url = await uploadToCloudinary(file, guardKey, docTypeId, (progress) => {
+        setUploadProgressByDoc((prev) => ({ ...prev, [docTypeId]: progress }));
+      });
+      const updated = { ...guardDocs, [docTypeId]: url };
+      setGuardDocs(updated);
+      saveGuardDocs(guardData, updated);
+      toastService.success("Document uploaded successfully.");
+    } catch (error) {
+      console.error("Error uploading guard document:", error);
+      toastService.error("Failed to upload the document.");
+    } finally {
+      setUploadingDocIds((prev) => ({ ...prev, [docTypeId]: false }));
+      setUploadProgressByDoc((prev) => ({ ...prev, [docTypeId]: 0 }));
+    }
+  };
+
+  const resetGuardDocsState = () => {
+    setGuardDocs({}); setUploadingDocIds({}); setUploadProgressByDoc({}); setActiveSidebarTab("details");
+  };
+
+  const uploadedDocCount = documentDetails.filter((d) => guardDocs[d.value]).length;
+
+  const renderSidebarTabs = () => (
+    <div className="doc-tabs-bar">
+      <button type="button" className={`doc-tab-btn ${activeSidebarTab === "details" ? "active" : ""}`} onClick={() => setActiveSidebarTab("details")}>
+        <i className="pi pi-user" style={{ fontSize: "13px" }} /> Details
+      </button>
+      <button type="button" className={`doc-tab-btn ${activeSidebarTab === "documents" ? "active" : ""}`} onClick={() => setActiveSidebarTab("documents")}>
+        <i className="pi pi-file" style={{ fontSize: "13px" }} /> Documents
+        <span className="doc-tab-count">{uploadedDocCount}/{documentDetails.length}</span>
+      </button>
+    </div>
+  );
+
+  const renderGuardDocumentCards = (guardData) => (
+    <div className="doc-tab-panel">
+      <div className="doc-tab-summary mb-3">
+        <span className="fw-semibold">Uploaded:</span>{" "}
+        <span style={{ color: "#6366f1", fontWeight: 700 }}>{uploadedDocCount}</span>
+        <span className="text-muted"> / {documentDetails.length} documents</span>
+      </div>
+      <div className="row g-3">
+        {documentDetails.map((doc) => {
+          const url = guardDocs[doc.value];
+          const isUploading = Boolean(uploadingDocIds[doc.value]);
+          const progress = uploadProgressByDoc[doc.value] || 0;
+          return (
+            <div className="col-12 col-md-6" key={`guard-doc-${doc.value}`}>
+              <div className="doc-upload-card">
+                <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                  <div className="fw-semibold" style={{ fontSize: "14px" }}>{doc.name}</div>
+                  <span className={`doc-status-badge ${isUploading ? "uploading" : url ? "uploaded" : "pending"}`}>
+                    {isUploading ? "Uploading..." : url ? "Uploaded" : "Pending"}
+                  </span>
+                </div>
+                <div className="small text-muted mb-2">PDF only</div>
+                <input type="file" accept="application/pdf" className="form-control form-control-sm mb-2" disabled={isUploading}
+                  onChange={(e) => { handleGuardDocUpload(e.target.files?.[0], doc.value, guardData); e.target.value = ""; }} />
+                {isUploading && (
+                  <div className="mb-2">
+                    <div className="doc-progress-track"><div className="doc-progress-fill" style={{ width: `${progress}%` }} /></div>
+                    <div className="small mt-1" style={{ color: "#6366f1", fontWeight: 600, fontSize: "12px" }}>Uploading {progress}%</div>
+                  </div>
+                )}
+                <div className="d-flex gap-2 flex-wrap">
+                  {url ? (
+                    <>
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm rounded-pill px-3">Preview</a>
+                      <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => { window.open(url.replace('/upload/', '/upload/fl_attachment/'), '_blank'); }}>Download</button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="btn btn-outline-primary btn-sm rounded-pill px-3" disabled>Preview</button>
+                      <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" disabled>Download</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Loader isVisible={isSubmitting} fullScreen={true} />
@@ -449,11 +612,10 @@ const exportToExcel = () => {
               }
             ]}
           >
-            <div className="sidebarBody p-3">
+            <div className="p-3 bg-white">
+              {renderSidebarTabs()}
+              {activeSidebarTab === "details" && (
               <div className="row">
-                {/*    <div className="col-12 mb-3">
-                                    <h6 className="sidebarSubTitle">Guard Details</h6>
-                                </div>*/}
                 <div className="col-12 mb-3">
                   <div className="d-flex flex-row justify-content-between align-items-center p-2 rounded" style={{ backgroundColor: "#eaeaff" }}>
                     <h6 className="text-primary m-0 ps-2 fs-6 fw-semibold">Basic Details</h6>
@@ -609,10 +771,6 @@ const exportToExcel = () => {
                     className="w-100"
                   />
                 </div>
-                {/* <div className="field col-6 mb-3">
-                  
-                </div> */}
-
                 <div className="field col-12 mb-3">
                   <label>Remarks</label>
                   <InputTextarea
@@ -626,6 +784,8 @@ const exportToExcel = () => {
                   />
                 </div>
               </div>
+              )}
+              {activeSidebarTab === "documents" && renderGuardDocumentCards(selectedGuard || {})}
             </div>
           </MasterSidebar>
 
@@ -653,14 +813,13 @@ const exportToExcel = () => {
               }
             ]}
           >
-            <div className="sidebarBody p-3">
+            <div className="p-3 bg-white">
+              {renderSidebarTabs()}
+              {activeSidebarTab === "details" && (
               <div className="row">
-                {/* <div className="col-12 mb-3">
-                                    <h6 className="sidebarSubTitle">Guard Details</h6>
-                                </div>*/}
                 <div className="col-12 mb-3">
                   <div className="d-flex flex-row justify-content-between align-items-center p-2 rounded" style={{ backgroundColor: "#eaeaff" }}>
-                    <h6 className="text-primary m-0 ps-2 fs-6 fw-semibold">Vehicle Details</h6>
+                    <h6 className="text-primary m-0 ps-2 fs-6 fw-semibold">Guard Details</h6>
                     <div className="d-flex align-items-center gap-2 pe-2">
                       <label className="m-0 fs-6 fw-semibold">Attrited</label>
                       <Checkbox
@@ -823,6 +982,8 @@ const exportToExcel = () => {
                   />
                 </div>
               </div>
+              )}
+              {activeSidebarTab === "documents" && renderGuardDocumentCards(selectedGuard || {})}
             </div>
           </MasterSidebar>
     </>

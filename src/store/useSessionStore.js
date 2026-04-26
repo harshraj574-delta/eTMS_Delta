@@ -27,6 +27,13 @@ const useSessionStore = create(
                 });
             },
 
+            updateDisclaimerStatus: (status) => {
+                const { user } = get();
+                if (user) {
+                    set({ user: { ...user, DisclaimerStatus: status } });
+                }
+            },
+
             logout: () => {
                 set({
                     user: null,

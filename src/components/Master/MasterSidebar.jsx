@@ -100,12 +100,9 @@ const MasterSidebar = ({
             transition: transform 0.3s ease-in-out, visibility 0s linear 0s;
           }
           
-          /* Footer Styling */
+          /* Footer Styling — natural flex item, never overlaps body */
           .offcanvas-footer {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            flex-shrink: 0;
             padding: 1rem;
             background-color: #f9fafb;
             border-top: 1px solid #e5e7eb;
@@ -113,8 +110,6 @@ const MasterSidebar = ({
             justify-content: flex-end;
             align-items: center;
             gap: 0.75rem;
-            height: auto;
-            z-index: 10;
           }
 
           .offcanvas-footer .btn {
@@ -155,12 +150,13 @@ const MasterSidebar = ({
             color: white !important;
           }
 
+          /* Body fills remaining height and scrolls — no padding-bottom hacks */
           .offcanvas-body {
-            padding-bottom: 7rem !important; /* Ensure content doesn't get hidden behind footer */
-            flex: 1;
+            flex: 1 1 0;
+            min-height: 0;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            min-height: 0;
           }
           
           /* Ensure PrimeReact dropdown/multiselect panels appear above sidebar */
@@ -222,10 +218,12 @@ const MasterSidebar = ({
         aria-labelledby={`${id}Label`}
         data-bs-backdrop={false}
         data-bs-scroll="true"
-        style={{ 
-          width: width, 
-          maxWidth: "100%", 
-          borderLeft: showLeftBorder ? `${leftBorderWidth} solid ${leftBorderColor}` : "none"
+        style={{
+          width: width,
+          maxWidth: "100%",
+          borderLeft: showLeftBorder ? `${leftBorderWidth} solid ${leftBorderColor}` : "none",
+          display: "flex",
+          flexDirection: "column",
         }}
         aria-modal={show ? "true" : undefined}
         role={show ? "dialog" : undefined}

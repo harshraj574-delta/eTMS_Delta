@@ -10,9 +10,19 @@ import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import MasterSidebar from "./Master/MasterSidebar";
 import { toastService } from "../services/toastService";
+import { ToastContainer } from "react-toastify";
 import { InputNumber } from 'primereact/inputnumber';
 import CustomPaginator from "./common/CustomPaginator";
 import Loader from "./common/Loader";
+
+const VEHICLE_TYPE_FUEL_KEY = "vehicle_type_fuel_data";
+
+const fuelTypeOptions = [
+    { label: "DIESEL", value: "DIESEL" },
+    { label: "CNG", value: "CNG" },
+    { label: "PETROL", value: "PETROL" },
+    { label: "EV", value: "EV" },
+];
 
 const VehicleTypeMaster = () => {
     const [selectedVendor, setSelectedVendor] = useState(0);
@@ -28,6 +38,8 @@ const VehicleTypeMaster = () => {
     const [EditVendorScheme, setEditVendorScheme] = useState(null);
     const [vehicleType, setVehicleType] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [addFuelType, setAddFuelType] = useState(null);
+    const [editFuelType, setEditFuelType] = useState(null);
 
     const [first, setFirst] = useState(0);
     const [rows, setRows] = useState(50);
@@ -37,9 +49,32 @@ const VehicleTypeMaster = () => {
         setRows(event.rows);
     };
 
-    // const userFacilityId = sessionManager.getUserSession().FacilityID;
-    // const userFacility = facilityList.find(f => f.Id === userFacilityId);
-    // Update the useEffect to properly initialize newVendor
+    const getFuelTypeKey = (vt) => {
+        if (!vt) return null;
+        if (vt.Id) return String(vt.Id);
+        if (vt.vehicle && vt.vendorId) return `${vt.vehicle}|${vt.vendorId}`;
+        return null;
+    };
+
+    const loadFuelType = (vt) => {
+        try {
+            const key = getFuelTypeKey(vt);
+            if (!key) return null;
+            const data = JSON.parse(localStorage.getItem(VEHICLE_TYPE_FUEL_KEY) || "{}");
+            return data[key] || null;
+        } catch { return null; }
+    };
+
+    const saveFuelType = (vt, fuel) => {
+        try {
+            const key = getFuelTypeKey(vt);
+            if (!key) return;
+            const data = JSON.parse(localStorage.getItem(VEHICLE_TYPE_FUEL_KEY) || "{}");
+            data[key] = fuel;
+            localStorage.setItem(VEHICLE_TYPE_FUEL_KEY, JSON.stringify(data));
+        } catch (err) { console.error("Failed to save fuel type:", err); }
+    };
+
     useEffect(() => {
         BindFacilityDDL();
     }, []);
@@ -128,6 +163,7 @@ const VehicleTypeMaster = () => {
     // Bind GridView
     const handleVehicleType = (rowData) => {
         setSelectedVehicletype(rowData);
+        setEditFuelType(loadFuelType(rowData));
     };
 
     const handleSaveVehicleType = async () => {
@@ -175,9 +211,11 @@ const VehicleTypeMaster = () => {
             switch (response[0].result) {
                 case 1:
                     toastService.success('Vehicle type saved successfully.');
+                    saveFuelType(selectedVehicletype, addFuelType);
                     await BindVehicleTypeList(selectedVendor, selectedFacility);
                     setVehicleType(false);
-                    setSelectedVehicletype(null); // Reset form after successful save
+                    setSelectedVehicletype(null);
+                    setAddFuelType(null);
                     break;
                 case 0:
                     toastService.warn('Vehicle type already exists.');
@@ -232,10 +270,10 @@ const VehicleTypeMaster = () => {
 
             if (response[0].result == 1) {
                 toastService.success('Vehicle type updated successfully.');
-                // Refresh the grid data
+                saveFuelType(selectedVehicletype, editFuelType);
                 BindVehicleTypeList(selectedVendor, selectedFacility);
                 setVisibleLeft(false);
-                // You might want to add a success toast notification here
+                setEditFuelType(null);
             }
             else if (response[0].result == 0) {
                 toastService.warn('Vehicle type already exists.');
@@ -254,6 +292,7 @@ const VehicleTypeMaster = () => {
             <Loader isVisible={isSubmitting} fullScreen={true} />
             <Header pageTitle="Vehicle Type Master" showNewButton={true} onNewButtonClick={setVehicleType} />
             <Sidebar />
+            <ToastContainer position="top-right" autoClose={3000} />
             <div className="middle">
                 <div className="row">
                     <div className="col-12">
@@ -334,7 +373,7 @@ const VehicleTypeMaster = () => {
                                 <Column field="cost_ac" header="Cost AC"></Column>
                                 <Column field="cost_nonac" header="Cost Non AC"></Column>
                                 <Column sortable field="occupancy" header="Occupancy"></Column>
-                                <Column sortable field="vendorType" header="Scheme"></Column>
+                                <Column sortable field="vendorType" header="Bill Type"></Column>
                                 {/* <Column field="updatedBy" header="Updated By"></Column> */}
                                 <Column sortable field="updatedAt" header="Last Updated"></Column>
                             </DataTable>
@@ -372,7 +411,7 @@ const VehicleTypeMaster = () => {
             >
                 <div className="p-3 bg-white">
                     <div className="row">
-                        <div className="field col-12 mb-3">
+                        <div className="field col-6 mb-3">
                             <label>Vehicle <span>*</span></label>
                             <InputText
                                 className="form-control"
@@ -381,7 +420,7 @@ const VehicleTypeMaster = () => {
                                 onChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, vehicle: e.target.value })}
                             />
                         </div>
-                        <div className="field col-12 mb-3">
+                        <div className="field col-6 mb-3">
                             <label>Vendor <span>*</span></label>
                             <Dropdown
                                 placeholder="Vendor"
@@ -392,9 +431,10 @@ const VehicleTypeMaster = () => {
                                 optionLabel="vendorName"
                                 optionValue="Id"
                                 onChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, vendorId: e.value }, BindEditVendorScheme(e.value))}
+                                appendTo="self"
                             />
                         </div>
-                        <div className="field col-12 mb-3">
+                        <div className="field col-6 mb-3">
                             <label>Cost AC</label>
                             <InputText
                                 className="form-control"
@@ -406,7 +446,7 @@ const VehicleTypeMaster = () => {
                                 }))}
                             />
                         </div>
-                        <div className="field col-12 mb-3">
+                        <div className="field col-6 mb-3">
                             <label>Cost Non AC</label>
                             <InputText
                                 className="form-control"
@@ -418,7 +458,7 @@ const VehicleTypeMaster = () => {
                                 }))}
                             />
                         </div>
-                        <div className="field col-12 mb-3">
+                        <div className="field col-6 mb-3">
                             <label>Occupancy</label>
                             <InputNumber
                                 className="w-100"
@@ -430,12 +470,25 @@ const VehicleTypeMaster = () => {
                                 useGrouping={false}
                             />
                         </div>
-                        <div className="field col-12 mb-3">
-                            <label>Scheme</label>
+                        <div className="field col-6 mb-3">
+                            <label>Bill Type</label>
                             <InputText disabled={true}
                                 className="form-control"
                                 placeholder="Scheme"
                                 value={selectedVehicletype?.vendorType || ''}
+                            />
+                        </div>
+                        <div className="field col-6 mb-3">
+                            <label>Fuel Type</label>
+                            <Dropdown
+                                placeholder="Select Fuel Type"
+                                className="w-100"
+                                value={editFuelType}
+                                options={fuelTypeOptions}
+                                optionLabel="label"
+                                optionValue="value"
+                                onChange={(e) => setEditFuelType(e.value)}
+                                appendTo="self"
                             />
                         </div>
                     </div>
@@ -448,6 +501,7 @@ const VehicleTypeMaster = () => {
                 onClose={() => {
                     setVehicleType(false);
                     setSelectedVehicletype(null);
+                    setAddFuelType(null);
                 }}
                 title="Add Vehicle Type"
                 width="25%"
@@ -458,6 +512,7 @@ const VehicleTypeMaster = () => {
                         onClick: () => {
                             setVehicleType(false);
                             setSelectedVehicletype(null);
+                            setAddFuelType(null);
                         },
                     },
                     {
@@ -471,8 +526,8 @@ const VehicleTypeMaster = () => {
             >
                 <div className="p-3 bg-white">
                     <div className="row">
-                        <div className="field col-12 mb-3">
-                            <label>Facility<span className="text-danger">*</span></label>
+                        <div className="field col-6 mb-3">
+                            <label>Facility <span className="text-danger">*</span></label>
                             <Dropdown
                                 value={selectedFacility}
                                 options={facilityList}
@@ -484,41 +539,7 @@ const VehicleTypeMaster = () => {
                                 id="ddlfacilityAdd"
                             />
                         </div>
-                        <div className="field col-12 mb-3">
-                            <label>Vehicle </label>
-                            <InputText
-                                className="form-control"
-                                placeholder="Enter Vehicle Name"
-                                value={selectedVehicletype?.vehicle || ''}
-                                onChange={(e) => setSelectedVehicletype(prev => ({
-                                    ...(prev || {}),
-                                    vehicle: e.target.value
-                                }))}
-                            />
-                        </div>
-                        <div className="field col-12 mb-3">
-                            <label>Cost_Ac</label>
-                            <InputText
-                                className="form-control"
-                                value={selectedVehicletype?.cost_ac || ''}
-                                onChange={(e) => setSelectedVehicletype(prev => ({
-                                    ...(prev || {}),
-                                    cost_ac: e.target.value
-                                }))}
-                            />
-                        </div>
-                        <div className="field col-12 mb-3">
-                            <label>Cost Non_Ac</label>
-                            <InputText
-                                className="form-control"
-                                value={selectedVehicletype?.cost_nonac || ''}
-                                onChange={(e) => setSelectedVehicletype(prev => ({
-                                    ...(prev || {}),
-                                    cost_nonac: e.target.value
-                                }))}
-                            />
-                        </div>
-                        <div className="field col-12 mb-3">
+                        <div className="field col-6 mb-3">
                             <label>Vendor <span className="text-danger">*</span></label>
                             <Dropdown
                                 placeholder="Select Vendor"
@@ -538,9 +559,46 @@ const VehicleTypeMaster = () => {
                                         BindEditVendorScheme(e.value);
                                     }
                                 }}
+                                appendTo="self"
                             />
                         </div>
-                        <div className="field col-12 mb-3">
+                        <div className="field col-6 mb-3">
+                            <label>Vehicle</label>
+                            <InputText
+                                className="form-control"
+                                placeholder="Enter Vehicle Name"
+                                value={selectedVehicletype?.vehicle || ''}
+                                onChange={(e) => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    vehicle: e.target.value
+                                }))}
+                            />
+                        </div>
+                        <div className="field col-6 mb-3">
+                            <label>Cost AC</label>
+                            <InputText
+                                className="form-control"
+                                placeholder="Cost AC"
+                                value={selectedVehicletype?.cost_ac || ''}
+                                onChange={(e) => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    cost_ac: e.target.value
+                                }))}
+                            />
+                        </div>
+                        <div className="field col-6 mb-3">
+                            <label>Cost Non AC</label>
+                            <InputText
+                                className="form-control"
+                                placeholder="Cost Non AC"
+                                value={selectedVehicletype?.cost_nonac || ''}
+                                onChange={(e) => setSelectedVehicletype(prev => ({
+                                    ...(prev || {}),
+                                    cost_nonac: e.target.value
+                                }))}
+                            />
+                        </div>
+                        <div className="field col-6 mb-3">
                             <label>Occupancy</label>
                             <InputNumber
                                 className="w-100"
@@ -555,13 +613,26 @@ const VehicleTypeMaster = () => {
                                 useGrouping={false}
                             />
                         </div>
-                        <div className="field col-12 mb-3">
-                            <label>Scheme</label>
+                        <div className="field col-6 mb-3">
+                            <label>Bill Type</label>
                             <InputText
                                 className="form-control"
                                 placeholder="Scheme"
                                 disabled={true}
                                 value={selectedVehicletype?.vendorType || ''}
+                            />
+                        </div>
+                        <div className="field col-6 mb-3">
+                            <label>Fuel Type</label>
+                            <Dropdown
+                                placeholder="Select Fuel Type"
+                                className="w-100"
+                                value={addFuelType}
+                                options={fuelTypeOptions}
+                                optionLabel="label"
+                                optionValue="value"
+                                onChange={(e) => setAddFuelType(e.value)}
+                                appendTo="self"
                             />
                         </div>
                     </div>

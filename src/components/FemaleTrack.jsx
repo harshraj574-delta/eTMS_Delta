@@ -19,6 +19,7 @@ import { toastService } from "../services/toastService";
 import { ToastContainer } from "react-toastify";
 import useIsMobile from "./common/useIsMobile";
 import * as XLSX from "xlsx";
+import AnimatedCounter from "./common/AnimatedCounter";
 import {
   useFacilityQuery,
   useShiftsQuery,
@@ -49,24 +50,24 @@ const remarkDropdownOptions = [
 const formatDateTime = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "";
+  if (isNaN(d.getTime())) return dateStr.replace(/\s+/, " | ");
   return d.toLocaleString("en-IN", {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: true,
-  });
+  }).replace(", ", " | ");
 };
 
 const formatDateOnly = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "";
+  if (isNaN(d.getTime())) return dateStr;
   return d.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 const formatTimeOnly = (dateStr) => {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "";
+  if (isNaN(d.getTime())) return dateStr;
   return d.toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 };
 
@@ -190,7 +191,7 @@ const FemaleTrack = () => {
     try {
       await updateMutation.mutateAsync({
         Routeid: selectedRow.Routeid,
-        EmpID: selectedRow.employeeid,
+        EmpID: selectedRow.id,
         Tracked: 1,
         Remark: sidebarRemark,
         UpdatedBy: sessionManager.getUserSession()?.ID,
@@ -207,7 +208,7 @@ const FemaleTrack = () => {
     }
   }, [selectedRow, sidebarAction, sidebarRemark, sidebarRemark1, sidebarRemark2, sidebarRemark3, updateMutation]);
 
-  const isRowLocked = selectedRow?.Tracked === 1 || selectedRow?.TrackingStatus === "1";
+  const isRowLocked = selectedRow?.Tracked === 1;
 
   const onPageChange = (e) => { setFirst(e.first); setRows(e.rows); };
 
@@ -270,9 +271,9 @@ const FemaleTrack = () => {
   const callTrackerBody = useCallback((rowData) => {
     const dates = [rowData.FirstChkDate, rowData.SecondChkDate, rowData.ThirdChkDate];
     return (
-      <div>
+      <div className="d-flex flex-column w-100">
         {dates.map((d, i) => (
-          <div key={i} style={{ fontSize: "11px", color: d ? "#333" : "#aaa" }}>
+          <div key={i} className="d-flex align-items-center" style={{ fontSize: "11px", color: d ? "#333" : "#aaa", height: "30px", borderBottom: i < 2 ? "1px solid #dee2e6" : "none" }}>
             {i + 1}. {d ? formatDateTime(d) : "—"}
           </div>
         ))}
@@ -283,10 +284,16 @@ const FemaleTrack = () => {
   const callRemarksBody = useCallback((rowData) => {
     const remarks = [rowData.Remark1, rowData.Remark2, rowData.Remark3];
     return (
-      <div>
+      <div className="d-flex flex-column w-100">
         {remarks.map((r, i) => (
-          <div key={i} style={{ fontSize: "11px", color: r ? "#333" : "#aaa" }}>
-            {r || "—"}
+          <div key={i} className="d-flex align-items-center" style={{ height: "30px", width: "100%", borderBottom: i < 2 ? "1px solid #dee2e6" : "none" }}>
+            <select
+              className="form-select form-select-sm"
+              disabled
+              style={{ fontSize: "11px", padding: "2px 20px 2px 8px", height: "24px", minHeight: "24px", color: r ? "#333" : "#aaa", backgroundColor: "#f8f9fa", cursor: "not-allowed" }}
+            >
+              <option>{r || "—"}</option>
+            </select>
           </div>
         ))}
       </div>
@@ -330,6 +337,9 @@ const FemaleTrack = () => {
           .female-track-page .filter-row { flex-direction: column; }
           .female-track-page .filter-row > div { width: 100% !important; }
         }
+        .custom-calendar-wrapper { position: relative; width: 100%; }
+        .custom-calendar-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; z-index: 1; pointer-events: none; }
+        .custom-calendar-input .p-inputtext { padding-left: 35px !important; }
       `}</style>
       <Loader isVisible={isLoading || isFetching || updateMutation.isPending} fullScreen={true} />
       <Header pageTitle="Female Track" />
@@ -347,15 +357,16 @@ const FemaleTrack = () => {
               <div className="row filter-row">
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
                   <label className="form-label">Shift Date <span className="text-danger">*</span></label>
-                  <Calendar
-                    value={shiftDate}
-                    onChange={(e) => setShiftDate(e.value)}
-                    dateFormat="dd/mm/yy"
-                    className="w-100"
-                    showIcon
-                    icon={() => <img src={calendarIcon} alt="cal" style={{ width: 18, height: 18 }} />}
-                    placeholder="Select Date"
-                  />
+                  <div className="custom-calendar-wrapper">
+                    <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                    <Calendar
+                      value={shiftDate}
+                      onChange={(e) => setShiftDate(e.value)}
+                      dateFormat="dd/mm/yy"
+                      className="w-100 custom-calendar-input"
+                      placeholder="Select Date"
+                    />
+                  </div>
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3">
                   <label className="form-label">Facility <span className="text-danger">*</span></label>
@@ -390,11 +401,43 @@ const FemaleTrack = () => {
                   />
                 </div>
                 <div className="col-12 col-sm-6 col-md-4 col-lg-2 mb-3 d-flex align-items-end">
-                  <ReportButton label="Submit" onClick={handleSubmit} icon="pi pi-search" />
+                  <ReportButton label="Submit" onClick={handleSubmit} />
                 </div>
               </div>
             </div>
           </div>
+
+          {/* KPI Section */}
+          {searchTriggered && (
+            <div className="col-12 mb-3 mt-3">
+              <div className="row g-3">
+                <div className="col-12 col-sm-4">
+                  <div className="cardNew p-4 bg-white h-100">
+                    <h3 className="text-success">
+                      <AnimatedCounter value={120} />
+                    </h3>
+                    <span>Tracked</span>
+                  </div>
+                </div>
+                <div className="col-12 col-sm-4">
+                  <div className="cardNew p-4 bg-white h-100">
+                    <h3 className="text-warning">
+                      <AnimatedCounter value={45} />
+                    </h3>
+                    <span>In-Transit</span>
+                  </div>
+                </div>
+                <div className="col-12 col-sm-4">
+                  <div className="cardNew p-4 bg-white h-100">
+                    <h3 className="text-primary">
+                      <AnimatedCounter value={75} />
+                    </h3>
+                    <span>Not-Tracked</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Table */}
           <div className="col-12">

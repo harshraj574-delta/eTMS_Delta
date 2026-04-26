@@ -11,6 +11,7 @@ import { Button } from "primereact/button";
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import MasterSidebar from "./Master/MasterSidebar";
+import calendarIcon from "../assets/calendar.png";
 import VehicleMasterService from "../services/compliance/VehicleMasterService";
 import sessionManager from "../utils/SessionManager.js";
 import { toastService } from "../services/toastService.js";
@@ -20,6 +21,10 @@ import CustomPaginator from "./common/CustomPaginator";
 import { ToastContainer } from "react-toastify";
 
 const VEHICLE_DOCS_STORAGE_KEY = "vehicle_docs";
+const VEHICLE_CAB_TYPE_KEY = "vehicle_cab_type_data";
+const VEHICLE_ATTRITE_REASON_KEY = "vehicle_attrite_reason_data";
+const VEHICLE_SPEED_LOCK_KEY = "vehicle_speed_lock_data";
+const VEHICLE_BS_EMISSION_KEY = "vehicle_bs_emission_data";
 const CLOUDINARY_UPLOAD_URL =
   "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
 const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
@@ -38,6 +43,14 @@ const VehicleMaster = () => {
     const userID = sessionManager.getUserSession().ID;
     const [isAttrited, setIsAttrited] = useState(false);
     const [editAttrited, setEditAttrited] = useState(false);
+    const [attriteReason, setAttriteReason] = useState("");
+    const [editAttriteReason, setEditAttriteReason] = useState("");
+    const [vehicleCabType, setVehicleCabType] = useState(null);
+    const [editVehicleCabType, setEditVehicleCabType] = useState(null);
+    const [speedLock, setSpeedLock] = useState(null);
+    const [editSpeedLock, setEditSpeedLock] = useState(null);
+    const [bsEmission, setBsEmission] = useState(null);
+    const [editBsEmission, setEditBsEmission] = useState(null);
     const [showTable, setShowTable] = useState(false);
     const [facilityAdd, setFacilityAdd] = useState([]);
     const [selectedFacility, setSelectedFacility] = useState(null);
@@ -176,6 +189,80 @@ const VehicleMaster = () => {
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    };
+
+    // ========== ATTRITE REASON LOCALSTORAGE HELPERS ==========
+    const loadAttriteReason = (vehicleId) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_ATTRITE_REASON_KEY) || "{}");
+            return data[String(vehicleId)] || "";
+        } catch { return ""; }
+    };
+
+    const saveAttriteReason = (vehicleId, reason) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_ATTRITE_REASON_KEY) || "{}");
+            data[String(vehicleId)] = reason;
+            localStorage.setItem(VEHICLE_ATTRITE_REASON_KEY, JSON.stringify(data));
+        } catch (err) { console.error("Failed to save attrite reason:", err); }
+    };
+
+    const cabTypeOptions = [
+        { label: "Cab", value: "cab" },
+        { label: "Shuttle", value: "shuttle" },
+        { label: "QRT", value: "qrt" },
+    ];
+
+    const loadCabType = (vehicleId) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_CAB_TYPE_KEY) || "{}");
+            return data[String(vehicleId)] || null;
+        } catch { return null; }
+    };
+
+    const saveCabType = (vehicleId, type) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_CAB_TYPE_KEY) || "{}");
+            data[String(vehicleId)] = type;
+            localStorage.setItem(VEHICLE_CAB_TYPE_KEY, JSON.stringify(data));
+        } catch (err) { console.error("Failed to save cab type:", err); }
+    };
+
+    const loadSpeedLock = (vehicleId) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_SPEED_LOCK_KEY) || "{}");
+            const val = data[String(vehicleId)];
+            return val !== undefined ? val : null;
+        } catch { return null; }
+    };
+
+    const saveSpeedLock = (vehicleId, value) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_SPEED_LOCK_KEY) || "{}");
+            data[String(vehicleId)] = value;
+            localStorage.setItem(VEHICLE_SPEED_LOCK_KEY, JSON.stringify(data));
+        } catch (err) { console.error("Failed to save speed lock:", err); }
+    };
+
+    const bsEmissionOptions = [
+        { label: "BS-III", value: "BS-III" },
+        { label: "BS-IV",  value: "BS-IV"  },
+        { label: "BS-VI",  value: "BS-VI"  },
+    ];
+
+    const loadBsEmission = (vehicleId) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_BS_EMISSION_KEY) || "{}");
+            return data[String(vehicleId)] || null;
+        } catch { return null; }
+    };
+
+    const saveBsEmission = (vehicleId, value) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_BS_EMISSION_KEY) || "{}");
+            data[String(vehicleId)] = value;
+            localStorage.setItem(VEHICLE_BS_EMISSION_KEY, JSON.stringify(data));
+        } catch (err) { console.error("Failed to save BS emission:", err); }
     };
 
     // ========== FETCH FUNCTIONS ==========
@@ -663,9 +750,17 @@ const VehicleMaster = () => {
 
             console.log("Add/Update Vehicle Response:", response);
             toastService.success("The vehicle has been added successfully.");
+            if (vehicleFormData.VehicleNo) saveCabType(vehicleFormData.VehicleNo, vehicleCabType);
+            if (vehicleFormData.VehicleNo) saveSpeedLock(vehicleFormData.VehicleNo, speedLock);
+            if (vehicleFormData.VehicleNo) saveBsEmission(vehicleFormData.VehicleNo, bsEmission);
+            if (vehicleFormData.VehicleNo) saveAttriteReason(vehicleFormData.VehicleNo, attriteReason);
             setAddVehicle(false);
             setVehicleFormData(initialFormData);
             setIsAttrited(false);
+            setAttriteReason("");
+            setVehicleCabType(null);
+            setSpeedLock(null);
+            setBsEmission(null);
             resetVehicleDocsState();
             await VehiclesDetailsData();
         } catch (error) {
@@ -737,8 +832,18 @@ const VehicleMaster = () => {
 
             console.log("Update Vehicle Response:", response);
             toastService.success("Vehicle has been updated successfully.");
+            const shuttleKey = editVehicleFormData.Id || editVehicleFormData.VehicleId;
+            if (shuttleKey) saveCabType(shuttleKey, editVehicleCabType);
+            if (shuttleKey) saveSpeedLock(shuttleKey, editSpeedLock);
+            if (shuttleKey) saveBsEmission(shuttleKey, editBsEmission);
+            if (shuttleKey) saveAttriteReason(shuttleKey, editAttriteReason);
             setUpdateVehicle(false);
             setEditVehicleFormData(initialEditFormData);
+            setEditAttrited(false);
+            setEditAttriteReason("");
+            setEditVehicleCabType(null);
+            setEditSpeedLock(null);
+            setEditBsEmission(null);
             resetVehicleDocsState();
             await VehiclesDetailsData();
         } catch (error) {
@@ -815,13 +920,24 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
     // ========== JSX RETURN ==========
     return (
         <>
+            <style>{`
+                .custom-calendar-wrapper { position: relative; width: 100%; }
+                .custom-calendar-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; z-index: 1; pointer-events: none; }
+                .custom-calendar-input .p-inputtext { padding-left: 35px !important; }
+                @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+            `}</style>
             <Loader isVisible={isSubmitting} fullScreen={true} />
             <Header pageTitle="Vehicle Master" showNewButton={true} onNewButtonClick={() => {
                 setVehicleFormData(initialFormData);
                 setIsAttrited(false);
+                setAttriteReason("");
+                setVehicleCabType(null);
+                setSpeedLock(null);
+                setBsEmission(null);
                 setSelectedFacility(null);
                 setSelectedVendorAdd(null);
                 setSelectedVehicleType(null);
+                resetVehicleDocsState();
                 setAddVehicle(true);
             }} />
             <Sidebar />
@@ -986,6 +1102,10 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
     });
 
     setEditAttrited(rowData.Attrited === "Yes");
+    setEditAttriteReason(loadAttriteReason(rowData.Id));
+    setEditVehicleCabType(loadCabType(rowData.Id));
+    setEditSpeedLock(loadSpeedLock(rowData.Id));
+    setEditBsEmission(loadBsEmission(rowData.Id));
     loadVehicleDocs(rowData);
     setActiveSidebarTab("details");
     setUpdateVehicle(true);
@@ -1030,9 +1150,20 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                 show={addVehicle}
                 onClose={() => setAddVehicle(false)}
                 title={
-                    <div className="w-100 d-flex justify-content-between align-items-center pe-4">
-                        <span>Add Vehicle Master</span>
-                        {isAttrited && <span className="text-warning fs-6">Attrited</span>}
+                    <div className="w-100 d-flex justify-content-between align-items-center pe-4 gap-3">
+                        <span style={{ whiteSpace: "nowrap" }}>Add Vehicle Master</span>
+                        {isAttrited && (
+                            <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ animation: "slideDown 0.2s ease", maxWidth: 360 }}>
+                                <span className="text-warning fs-6" style={{ whiteSpace: "nowrap" }}>Attrited</span>
+                                <input
+                                    type="text"
+                                    placeholder="Attrite reason..."
+                                    value={attriteReason}
+                                    onChange={(e) => setAttriteReason(e.target.value)}
+                                    style={{ flex: 1, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", color: "#fff", fontSize: "0.82rem", borderRadius: "0.375rem", padding: "0.25rem 0.5rem", outline: "none" }}
+                                />
+                            </div>
+                        )}
                     </div>
                 }
                 width="50%"
@@ -1061,7 +1192,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 <div className="col-12 mb-3">
                                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
                                         <h6 className="sidebarSubTitle">Vehicle Details</h6>
-                                        <div className="d-flex justify-content-between me-3">
+                                        <div className="d-flex align-items-center gap-3 me-3">
                                             <Checkbox inputId="AttriteAdd" checked={isAttrited} onChange={(e) => setIsAttrited(e.target.checked)} />
                                             <label htmlFor="AttriteAdd" className="ms-2">Attrited</label>
                                         </div>
@@ -1077,7 +1208,10 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Registration Date</label>
-                                    <Calendar className="w-100" placeholder="Vehicle Registration Date" value={vehicleFormData.VehicleRegDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, VehicleRegDate: e.value })} appendTo="self" />
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Vehicle Registration Date" value={vehicleFormData.VehicleRegDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, VehicleRegDate: e.value })} appendTo="self" />
+                                    </div>
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Facility<span style={{ color: "red" }}>*</span></label>
@@ -1109,41 +1243,30 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         options={vehicleType} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
-                                    <label>Permit Expiry Date</label>
-                                    <Calendar className="w-100" placeholder="Permit Expiry Date" value={vehicleFormData.PermitExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PermitExpiryDate: e.value })} appendTo="self" />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Insurance Expiry</label>
-                                    <Calendar className="w-100" placeholder="Insurance Expiry Date" value={vehicleFormData.InsuranceExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceExpiryDate: e.value })} appendTo="self" />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Fitness Expiry</label>
-                                    <Calendar className="w-100" placeholder="Fitness Expiry Date" value={vehicleFormData.FitnessExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FitnessExpiryDate: e.value })} appendTo="self" />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Tax Expiry</label>
-                                    <Calendar className="w-100" placeholder="Tax Expiry Date" value={vehicleFormData.TaxExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, TaxExpiryDate: e.value })} appendTo="self" />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>PUC Expiry</label>
-                                    <Calendar className="w-100" placeholder="PUC Expiry Date" value={vehicleFormData.PUCExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PUCExpiryDate: e.value })} appendTo="self" />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Cab Induction</label>
-                                    <Calendar className="w-100" placeholder="Cab Induction Date" value={vehicleFormData.CabInductionDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabInductionDate: e.value })} appendTo="self" />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Cab Expiry</label>
-                                    <Calendar className="w-100" placeholder="Cab Expiry Date" value={vehicleFormData.CabExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabExpiryDate: e.value })} appendTo="self" />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Chassis No.</label>
-                                    <InputText className="form-control" placeholder="Chassis Number" value={vehicleFormData.ChasisNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, ChasisNo: e.target.value })} />
+                                    <label>Type</label>
+                                    <Dropdown
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select Type"
+                                        className="w-100"
+                                        value={vehicleCabType}
+                                        onChange={(e) => setVehicleCabType(e.value)}
+                                        options={cabTypeOptions}
+                                        appendTo="self"
+                                    />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Model No.</label>
                                     <InputText className="form-control" placeholder="Model Number" value={vehicleFormData.ModalNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, ModalNo: e.target.value })} />
                                 </div>
+                                <div className="field col-4 mb-3">
+                                    <label className="d-block">Fuel Type</label>
+                                    <Dropdown optionLabel="name" optionValue="value" placeholder="Select Fuel Type" className="w-100"
+                                        value={vehicleFormData.FuleType || ""}
+                                        onChange={(e) => setVehicleFormData({ ...vehicleFormData, FuleType: e.value })}
+                                        options={fuelType} appendTo="self" />
+                                </div>
+                                <div className="w-100"></div>
                                 <div className="field col-4 mb-3">
                                     <label>Insurance No.</label>
                                     <InputText className="form-control" placeholder="Insurance Number" value={vehicleFormData.InsuranceNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceNo: e.target.value })} />
@@ -1152,12 +1275,58 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                     <label>Insurance Company</label>
                                     <InputText className="form-control" placeholder="Insurance Company Name" value={vehicleFormData.InsuranceCompanyName} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceCompanyName: e.target.value })} />
                                 </div>
-                                <div className="field col-4">
-                                    <label className="d-block">Fuel Type</label>
-                                    <Dropdown optionLabel="name" optionValue="value" placeholder="Select Fuel Type" className="w-100"
-                                        value={vehicleFormData.FuleType || ""}
-                                        onChange={(e) => setVehicleFormData({ ...vehicleFormData, FuleType: e.value })}
-                                        options={fuelType} appendTo="self" />
+                                <div className="field col-4 mb-3">
+                                    <label>Insurance Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Insurance Expiry Date" value={vehicleFormData.InsuranceExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceExpiryDate: e.value })} appendTo="self" />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Permit Expiry Date</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Permit Expiry Date" value={vehicleFormData.PermitExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PermitExpiryDate: e.value })} appendTo="self" />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Fitness Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Fitness Expiry Date" value={vehicleFormData.FitnessExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FitnessExpiryDate: e.value })} appendTo="self" />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Tax Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Tax Expiry Date" value={vehicleFormData.TaxExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, TaxExpiryDate: e.value })} appendTo="self" />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>PUC Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="PUC Expiry Date" value={vehicleFormData.PUCExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PUCExpiryDate: e.value })} appendTo="self" />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Cab Induction</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Cab Induction Date" value={vehicleFormData.CabInductionDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabInductionDate: e.value })} appendTo="self" />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Cab Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Cab Expiry Date" value={vehicleFormData.CabExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, CabExpiryDate: e.value })} appendTo="self" />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Chassis No.</label>
+                                    <InputText className="form-control" placeholder="Chassis Number" value={vehicleFormData.ChasisNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, ChasisNo: e.target.value })} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Warning-1</label>
@@ -1173,9 +1342,38 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Attrited Date</label>
-                                    <Calendar className="w-100" placeholder="Attrited Date" value={vehicleFormData.AttritedDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, AttritedDate: e.value })} appendTo="self" />
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Attrited Date" value={vehicleFormData.AttritedDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, AttritedDate: e.value })} appendTo="self" />
+                                    </div>
                                 </div>
-                                <div className="field col-8 mb-3">
+                                <div className="field col-4 mb-3">
+                                    <label>Speed Lock (km/h)</label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        placeholder="e.g. 80"
+                                        value={speedLock ?? ""}
+                                        min={0}
+                                        max={200}
+                                        onChange={(e) => setSpeedLock(e.target.value === "" ? null : Number(e.target.value))}
+                                    />
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>BS Emission Standard</label>
+                                    <Dropdown
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select BS Standard"
+                                        className="w-100"
+                                        value={bsEmission}
+                                        onChange={(e) => setBsEmission(e.value)}
+                                        options={bsEmissionOptions}
+                                        appendTo="self"
+                                        showClear
+                                    />
+                                </div>
+                                <div className="field col-4 mb-3">
                                     <label>Remark</label>
                                     <InputText className="form-control" placeholder="Remark" value={vehicleFormData.Remark} onChange={(e) => setVehicleFormData({ ...vehicleFormData, Remark: e.target.value })} />
                                 </div>
@@ -1232,9 +1430,20 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                 show={updateVehicle}
                 onClose={() => setUpdateVehicle(false)}
                 title={
-                    <div className="w-100 d-flex justify-content-between align-items-center pe-4">
-                        <span>Edit Vehicle Master</span>
-                        {editAttrited && <span className="text-warning fs-6">Attrited</span>}
+                    <div className="w-100 d-flex justify-content-between align-items-center pe-4 gap-3">
+                        <span style={{ whiteSpace: "nowrap" }}>Edit Vehicle Master</span>
+                        {editAttrited && (
+                            <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ animation: "slideDown 0.2s ease", maxWidth: 360 }}>
+                                <span className="text-warning fs-6" style={{ whiteSpace: "nowrap" }}>Attrited</span>
+                                <input
+                                    type="text"
+                                    placeholder="Attrite reason..."
+                                    value={editAttriteReason}
+                                    onChange={(e) => setEditAttriteReason(e.target.value)}
+                                    style={{ flex: 1, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.4)", color: "#fff", fontSize: "0.82rem", borderRadius: "0.375rem", padding: "0.25rem 0.5rem", outline: "none" }}
+                                />
+                            </div>
+                        )}
                     </div>
                 }
                 width="50%"
@@ -1259,7 +1468,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 <div className="col-12 mb-3">
                                     <div className="bg-light-blue w-100 d-flex justify-content-between align-items-center">
                                         <h6 className="sidebarSubTitle">Vehicle Details</h6>
-                                        <div className="d-flex justify-content-between me-3">
+                                        <div className="d-flex align-items-center gap-3 me-3">
                                             <Checkbox inputId="AttriteEdit" checked={editAttrited} onChange={(e) => setEditAttrited(e.checked)} />
                                             <label htmlFor="AttriteEdit" className="ms-2">Attrited</label>
                                         </div>
@@ -1279,9 +1488,12 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Registration Date</label>
-                                    <Calendar className="w-100" placeholder="Vehicle Registration Date"
-                                        value={editVehicleFormData.VehicleRegDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, VehicleRegDate: e.value })} appendTo="self" />
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Vehicle Registration Date"
+                                            value={editVehicleFormData.VehicleRegDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, VehicleRegDate: e.value })} appendTo="self" />
+                                    </div>
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Facility</label>
@@ -1331,17 +1543,17 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Vehicle Type</label>
-                                    <Dropdown 
-                                        optionLabel="name" 
-                                        optionValue="value" 
-                                        placeholder="Select Vehicle Type" 
-                                        className="w-100" 
+                                    <Dropdown
+                                        optionLabel="name"
+                                        optionValue="value"
+                                        placeholder="Select Vehicle Type"
+                                        className="w-100"
                                         filter
                                         value={editVehicleFormData.VehicleTypeId || ""}
                                         onChange={(e) => {
-                                            setEditVehicleFormData({ 
-                                                ...editVehicleFormData, 
-                                                VehicleTypeId: e.value 
+                                            setEditVehicleFormData({
+                                                ...editVehicleFormData,
+                                                VehicleTypeId: e.value
                                             })
                                             setSelectedEditVehicleType(e.value);
                                         }}
@@ -1350,66 +1562,16 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
-                                    <label>Permit Expiry Date</label>
-                                    <Calendar className="w-100" placeholder="Permit Expiry Date"
-                                        value={editVehicleFormData.PermitExpiryDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, PermitExpiryDate: e.value })}
+                                    <label>Type</label>
+                                    <Dropdown
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select Type"
+                                        className="w-100"
+                                        value={editVehicleCabType}
+                                        onChange={(e) => setEditVehicleCabType(e.value)}
+                                        options={cabTypeOptions}
                                         appendTo="self"
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Insurance Expiry</label>
-                                    <Calendar className="w-100" placeholder="Insurance Expiry Date"
-                                        value={editVehicleFormData.InsuranceExpiryDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, InsuranceExpiryDate: e.value })}
-                                        appendTo="self"
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Fitness Expiry</label>
-                                    <Calendar className="w-100" placeholder="Fitness Expiry Date"
-                                        value={editVehicleFormData.FitnessExpiryDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, FitnessExpiryDate: e.value })}
-                                        appendTo="self"
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Tax Expiry</label>
-                                    <Calendar className="w-100" placeholder="Tax Expiry Date"
-                                        value={editVehicleFormData.TaxExpiryDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, TaxExpiryDate: e.value })}
-                                        appendTo="self"
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>PUC Expiry</label>
-                                    <Calendar className="w-100" placeholder="PUC Expiry Date"
-                                        value={editVehicleFormData.PUCExpiryDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, PUCExpiryDate: e.value })}
-                                        appendTo="self"
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Cab Induction</label>
-                                    <Calendar className="w-100" placeholder="Cab Induction Date"
-                                        value={editVehicleFormData.CabInductionDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, CabInductionDate: e.value })}
-                                        appendTo="self"
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Cab Expiry</label>
-                                    <Calendar className="w-100" placeholder="Cab Expiry Date"
-                                        value={editVehicleFormData.CabExpiryDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, CabExpiryDate: e.value })}
-                                        appendTo="self"
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Chassis No.</label>
-                                    <InputText className="form-control" placeholder="Chassis Number"
-                                        value={editVehicleFormData.ChasisNo}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, ChasisNo: e.target.value })}
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1419,6 +1581,21 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, ModalNo: e.target.value })}
                                     />
                                 </div>
+                                <div className="field col-4 mb-3">
+                                    <label className="d-block">Fuel Type</label>
+                                    <Dropdown
+                                        optionLabel="name"
+                                        optionValue="value"
+                                        placeholder="Select Fuel Type"
+                                        className="w-100"
+                                        filter
+                                        value={editVehicleFormData.FuleType || ""}
+                                        options={editFuelType}
+                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, FuleType: e.value })}
+                                        appendTo="self"
+                                    />
+                                </div>
+                                <div className="w-100"></div>
                                 <div className="field col-4 mb-3">
                                     <label>Insurance No.</label>
                                     <InputText className="form-control" placeholder="Insurance Number"
@@ -1433,18 +1610,88 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, InsuranceCompanyName: e.target.value })}
                                     />
                                 </div>
-                                <div className="field col-4">
-                                    <label className="d-block">Fuel Type</label>
-                                    <Dropdown 
-                                        optionLabel="name" 
-                                        optionValue="value" 
-                                        placeholder="Select Fuel Type" 
-                                        className="w-100" 
-                                        filter
-                                        value={editVehicleFormData.FuleType || ""}
-                                        options={editFuelType}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, FuleType: e.value })}
-                                        appendTo="self"
+                                <div className="field col-4 mb-3">
+                                    <label>Insurance Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Insurance Expiry Date"
+                                            value={editVehicleFormData.InsuranceExpiryDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, InsuranceExpiryDate: e.value })}
+                                            appendTo="self"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Permit Expiry Date</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Permit Expiry Date"
+                                            value={editVehicleFormData.PermitExpiryDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, PermitExpiryDate: e.value })}
+                                            appendTo="self"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Fitness Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Fitness Expiry Date"
+                                            value={editVehicleFormData.FitnessExpiryDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, FitnessExpiryDate: e.value })}
+                                            appendTo="self"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Tax Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Tax Expiry Date"
+                                            value={editVehicleFormData.TaxExpiryDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, TaxExpiryDate: e.value })}
+                                            appendTo="self"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>PUC Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="PUC Expiry Date"
+                                            value={editVehicleFormData.PUCExpiryDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, PUCExpiryDate: e.value })}
+                                            appendTo="self"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Cab Induction</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Cab Induction Date"
+                                            value={editVehicleFormData.CabInductionDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, CabInductionDate: e.value })}
+                                            appendTo="self"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Cab Expiry</label>
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Cab Expiry Date"
+                                            value={editVehicleFormData.CabExpiryDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, CabExpiryDate: e.value })}
+                                            appendTo="self"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Chassis No.</label>
+                                    <InputText className="form-control" placeholder="Chassis Number"
+                                        value={editVehicleFormData.ChasisNo}
+                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, ChasisNo: e.target.value })}
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1470,13 +1717,42 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Attrited Date</label>
-                                    <Calendar className="w-100" placeholder="Attrited Date"
-                                        value={editVehicleFormData.AttritedDate}
-                                        onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, AttritedDate: e.value })}
-                                        appendTo="self"
+                                    <div className="custom-calendar-wrapper">
+                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                        <Calendar className="w-100 custom-calendar-input" placeholder="Attrited Date"
+                                            value={editVehicleFormData.AttritedDate}
+                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, AttritedDate: e.value })}
+                                            appendTo="self"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Speed Lock (km/h)</label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        placeholder="e.g. 80"
+                                        value={editSpeedLock ?? ""}
+                                        min={0}
+                                        max={200}
+                                        onChange={(e) => setEditSpeedLock(e.target.value === "" ? null : Number(e.target.value))}
                                     />
                                 </div>
-                                <div className="field col-8 mb-3">
+                                <div className="field col-4 mb-3">
+                                    <label>BS Emission Standard</label>
+                                    <Dropdown
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select BS Standard"
+                                        className="w-100"
+                                        value={editBsEmission}
+                                        onChange={(e) => setEditBsEmission(e.value)}
+                                        options={bsEmissionOptions}
+                                        appendTo="self"
+                                        showClear
+                                    />
+                                </div>
+                                <div className="field col-4 mb-3">
                                     <label>Remark</label>
                                     <InputText className="form-control" placeholder="Remark"
                                         value={editVehicleFormData.Remark}

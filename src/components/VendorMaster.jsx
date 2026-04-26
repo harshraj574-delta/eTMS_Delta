@@ -23,6 +23,8 @@ import { ToastContainer } from "react-toastify";
 import CustomPaginator from "./common/CustomPaginator";
 import Loader from "./common/Loader";
 
+const VENDOR_VEHICLE_PCT_KEY = "vendor_vehicle_pct";
+
 const VendorMaster = () => {
   const [selectedFacility, setSelectedfacility] = useState(null);
   const [visibleLeft, setVisibleLeft] = useState(false);
@@ -48,6 +50,8 @@ const VendorMaster = () => {
 
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
+  const [addVehiclePct, setAddVehiclePct] = useState({ small: "", medium: "", large: "" });
+  const [editVehiclePct, setEditVehiclePct] = useState({ small: "", medium: "", large: "" });
 
   const onPageChange = (event) => {
     setFirst(event.first);
@@ -103,6 +107,7 @@ const VendorMaster = () => {
   // Add this function to handle vendor selection
   const handleVendorSelect = (vendor) => {
     setSelectedVendor(vendor);
+    setEditVehiclePct(loadVehiclePct(vendor));
   };
 
   // Update vendor details using API
@@ -172,6 +177,7 @@ const VendorMaster = () => {
       });
 
       if (response[0].result === 1) {
+        saveVehiclePct(selectedVendor.Id, editVehiclePct);
         toastService.success("Data Updated Successfully");
         // Refresh the vendor grid
         BindVendorGrid(selectedFacility);
@@ -179,6 +185,7 @@ const VendorMaster = () => {
         setVisibleLeft(false);
         // Clear the selected vendor
         setSelectedVendor(null);
+        setEditVehiclePct({ small: "", medium: "", large: "" });
       }
     } catch (error) {
       console.error("Error updating vendor:", error);
@@ -288,6 +295,7 @@ const VendorMaster = () => {
           vendorType: "route",
           attrited: 0,
         });
+        setAddVehiclePct({ small: "", medium: "", large: "" });
         setVisibleLeftAdd(false); // Close the sidebar
       }
     } catch (error) {
@@ -295,6 +303,22 @@ const VendorMaster = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const loadVehiclePct = (vendor) => {
+    if (!vendor?.Id) return { small: "", medium: "", large: "" };
+    try {
+      const data = JSON.parse(localStorage.getItem(VENDOR_VEHICLE_PCT_KEY) || "{}");
+      return data[String(vendor.Id)] || { small: "", medium: "", large: "" };
+    } catch { return { small: "", medium: "", large: "" }; }
+  };
+
+  const saveVehiclePct = (vendorId, pct) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(VENDOR_VEHICLE_PCT_KEY) || "{}");
+      data[String(vendorId)] = pct;
+      localStorage.setItem(VENDOR_VEHICLE_PCT_KEY, JSON.stringify(data));
+    } catch {}
   };
 
   // Open sidebar with employee data
@@ -381,7 +405,7 @@ const VendorMaster = () => {
                 <Column field="vendorStrength" header="Fleet Strength" sortable />
                 <Column sortable field="vendorStrength2" header="Fleet Strength2" />
                 <Column sortable field="vendorStrength3" header="Fleet Strength3" />
-                <Column field="vendorType" header="Vendor Type" />
+                <Column field="vendorType" header="Bill Type" />
                 <Column
                   field="attrited"
                   header="Attrited"
@@ -406,7 +430,7 @@ const VendorMaster = () => {
       {/* Add Vendor */}
       <MasterSidebar
         show={visibleLeftAdd}
-        onClose={() => setVisibleLeftAdd(false)}
+        onClose={() => { setVisibleLeftAdd(false); setAddVehiclePct({ small: "", medium: "", large: "" }); }}
         title={
           <div className="w-100 d-flex justify-content-between align-items-center pe-4">
             <span>Add Vendor</span>
@@ -418,7 +442,7 @@ const VendorMaster = () => {
           {
             label: "Cancel",
             className: "btn btn-outline-secondary",
-            onClick: () => setVisibleLeftAdd(false),
+            onClick: () => { setVisibleLeftAdd(false); setAddVehiclePct({ small: "", medium: "", large: "" }); },
           },
           {
             label: "Save Changes",
@@ -585,9 +609,46 @@ const VendorMaster = () => {
                   />
                 </div>
 
+                <div className="field col-4 mb-3">
+                  <label className="d-block">Small Vehicle %</label>
+                  <InputText
+                    className="form-control"
+                    placeholder="Small Vehicle %"
+                    value={addVehiclePct.small}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || /^\d+$/.test(val)) setAddVehiclePct(prev => ({ ...prev, small: val }));
+                    }}
+                  />
+                </div>
+                <div className="field col-4 mb-3">
+                  <label className="d-block">Medium Vehicle %</label>
+                  <InputText
+                    className="form-control"
+                    placeholder="Medium Vehicle %"
+                    value={addVehiclePct.medium}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || /^\d+$/.test(val)) setAddVehiclePct(prev => ({ ...prev, medium: val }));
+                    }}
+                  />
+                </div>
+                <div className="field col-4 mb-3">
+                  <label className="d-block">Large Vehicle %</label>
+                  <InputText
+                    className="form-control"
+                    placeholder="Large Vehicle %"
+                    value={addVehiclePct.large}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || /^\d+$/.test(val)) setAddVehiclePct(prev => ({ ...prev, large: val }));
+                    }}
+                  />
+                </div>
+
                 <div className="field col-12 d-flex flex-wrap justify-content-start align-items-center gap-4 mt-4">
                   <div className="d-flex">
-                    <label htmlFor="">Vendor Type</label>
+                    <label htmlFor="">Bill Type</label>
                   </div>
                   <div className="d-flex">
                     <RadioButton
@@ -839,12 +900,49 @@ const VendorMaster = () => {
                     />
                   </div>
 
+                  <div className="field col-4 mb-3">
+                    <label className="d-block">Small Vehicle %</label>
+                    <InputText
+                      className="form-control"
+                      placeholder="Small Vehicle %"
+                      value={editVehiclePct.small}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d+$/.test(val)) setEditVehiclePct(prev => ({ ...prev, small: val }));
+                      }}
+                    />
+                  </div>
+                  <div className="field col-4 mb-3">
+                    <label className="d-block">Medium Vehicle %</label>
+                    <InputText
+                      className="form-control"
+                      placeholder="Medium Vehicle %"
+                      value={editVehiclePct.medium}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d+$/.test(val)) setEditVehiclePct(prev => ({ ...prev, medium: val }));
+                      }}
+                    />
+                  </div>
+                  <div className="field col-4 mb-3">
+                    <label className="d-block">Large Vehicle %</label>
+                    <InputText
+                      className="form-control"
+                      placeholder="Large Vehicle %"
+                      value={editVehiclePct.large}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || /^\d+$/.test(val)) setEditVehiclePct(prev => ({ ...prev, large: val }));
+                      }}
+                    />
+                  </div>
+
                   <div
                     className="field col-12 d-flex flex-wrap justify-content-start align-items-center gap-4 mt-3"
                     style={{ whiteSpace: "nowrap" }}
                   >
                     <div className="d-flex">
-                      <label htmlFor="">Vendor Type</label>
+                      <label htmlFor="">Bill Type</label>
                     </div>
                     <div className="d-flex">
                       <RadioButton

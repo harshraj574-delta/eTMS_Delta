@@ -8,7 +8,6 @@ import { apiService } from "../../services/api";
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { Avatar } from 'primereact/avatar';
 import { OverlayPanel } from 'primereact/overlaypanel';
-
 const Header = ({ 
   mainTitle, 
   pageTitle, 
@@ -191,6 +190,7 @@ const Header = ({
           </span>
         </div>
         
+
         {showAdhocButton && (
           <button 
             className="btn btn-primary ms-auto" 

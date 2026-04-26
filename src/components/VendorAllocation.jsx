@@ -430,10 +430,10 @@ const VendorAllocation = () => {
                 <div className="card_tb p-3 d-flex justify-content-between align-items-center">
                   <ul className="vendor_info">
                     <li>
-                      <small>Total Routes-</small> {routeStatistics?.TotalRoutes ?? 0},
+                      <small>Total Routes-</small> {routeStatistics?.TotalRoutes ?? 0}
                     </li>
                     <li>
-                      <small>Total Employees-</small> {routeStatistics?.TotalEmps ?? 0},
+                      <small>Total Employees-</small> {routeStatistics?.TotalEmps ?? 0}
                     </li>
                     {/* Vendor count list */}
                     {assignedVendorCounts.filter((v) => v.AssignedVendor > 0).length > 0 ? (
@@ -459,6 +459,8 @@ const VendorAllocation = () => {
                     value={fetchData}
                     className="p-datatable-sm"
                     responsiveLayout="scroll"
+                    scrollable={true}
+                    scrollHeight="400px"
                     emptyMessage="No data found"
                   >
                     <Column field="RouteID" header="RouteID" sortable />
@@ -495,18 +497,18 @@ const VendorAllocation = () => {
                   {/* ✅ Show total count */}
                   <div className="mt-2 text-start">
 
-                    Showing {fetchData.length} of {fetchData.length} entries
+                    {/* Showing {fetchData.length} of {fetchData.length} entries */}
                   </div>
                 </div>
               </div>
             </div>
-            <div className="row">
+            {/* <div className="row">
               <div className="col text-end">
                 <button className="btn btn-primary" onClick={handleSaveAll} disabled={isBackDate}>
                   <span className="material-icons me-2">save</span> Save All
                 </button>
               </div>
-            </div>
+            </div> */}
           </>
         )}
       </div>

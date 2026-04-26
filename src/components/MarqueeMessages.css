@@ -1,0 +1,80 @@
+.marquee-banner {
+  width: 100%;
+  overflow: hidden;
+  background-color: #4a36ec;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+/* Horizontal marquee */
+.marquee-banner.marquee-horizontal {
+  height: 34px;
+  white-space: nowrap;
+}
+
+/* Vertical marquee */
+.marquee-banner.marquee-vertical {
+  height: 34px;
+  justify-content: center;
+}
+
+.marquee-track {
+  display: inline-block;
+  padding-left: 100%;
+}
+
+.marquee-vertical .marquee-track {
+  padding-left: 0;
+  text-align: center;
+  width: 100%;
+}
+
+/* Horizontal: Right to Left */
+@keyframes scroll-rtl {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Horizontal: Left to Right */
+@keyframes scroll-ltr {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(0); }
+}
+
+/* Vertical: Top to Bottom */
+@keyframes scroll-ttb {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* Vertical: Bottom to Top */
+@keyframes scroll-btu {
+  0%   { transform: translateY(100%); }
+  100% { transform: translateY(-100%); }
+}
+
+.marquee-rtl { animation: scroll-rtl 25s linear infinite; }
+.marquee-ltr { animation: scroll-ltr 25s linear infinite; }
+.marquee-ttb { animation: scroll-ttb 8s linear infinite; }
+.marquee-btu { animation: scroll-btu 8s linear infinite; }
+
+/* Blink animation */
+@keyframes blink-anim {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.marquee-blink {
+  animation: blink-anim 1.5s step-start infinite;
+  white-space: nowrap;
+  padding-left: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.marquee-banner:hover .marquee-track {
+  animation-play-state: paused;
+}

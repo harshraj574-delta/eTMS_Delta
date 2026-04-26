@@ -1017,7 +1017,7 @@ const MapGeocoding = () => {
               placeholder="Select City"
               className="w-100"
               filter
-              appendTo="self"
+              appendTo={() => document.body}
             />
           </div>
 
@@ -1032,7 +1032,7 @@ const MapGeocoding = () => {
               placeholder="Select Colony"
               className="w-100"
               filter
-              appendTo="self"
+              appendTo={() => document.body}
             />
           </div>
 

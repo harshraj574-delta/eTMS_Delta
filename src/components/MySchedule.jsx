@@ -207,6 +207,18 @@ const MySchedule = () => {
 
   const [weekDays, setWeekDays] = useState(() => generateWeekDays(todayStr));
 
+  // Employee Profile Form State
+  const [isEmployeeProfileOpen, setIsEmployeeProfileOpen] = useState(false);
+  const [selectedProfileEmployee, setSelectedProfileEmployee] = useState(null);
+  const [profileForm, setProfileForm] = useState({
+    tptRequired: false,
+    transportType: 'Cab',
+    costCenter: '',
+    bcpParameter: false,
+    pwd: false,
+    allowedTransportWeekend: false,
+  });
+
   // -- Queries --
 
   // 1. Lock Details
@@ -803,6 +815,46 @@ const MySchedule = () => {
     setIsTripsModalOpen(true);
   };
 
+  const handleEmployeeProfileClick = (employee) => {
+    setSelectedProfileEmployee(employee);
+    // Load from local storage
+    const storedData = localStorage.getItem(`empProfile_${employee.EmployeeID}`);
+    if (storedData) {
+      setProfileForm(JSON.parse(storedData));
+    } else {
+      setProfileForm({
+        tptRequired: employee.tptReq === "Y",
+        transportType: 'Cab',
+        costCenter: '',
+        bcpParameter: false,
+        pwd: false,
+        allowedTransportWeekend: false,
+      });
+    }
+
+    setIsEmployeeProfileOpen(true);
+    setTimeout(() => {
+      const el = document.getElementById("Employee_Profile_Sidebar");
+      if (el) {
+        const bsOffcanvas = Offcanvas.getInstance(el) || new Offcanvas(el);
+        bsOffcanvas.show();
+      }
+    }, 10);
+  };
+
+  const handleProfileSubmit = () => {
+    if (!selectedProfileEmployee) return;
+    localStorage.setItem(`empProfile_${selectedProfileEmployee.EmployeeID}`, JSON.stringify(profileForm));
+    toastService.success("Profile changes applied successfully!");
+    
+    // Close sidebar
+    const el = document.getElementById("Employee_Profile_Sidebar");
+    if (el) {
+      const bsOffcanvas = Offcanvas.getInstance(el);
+      if (bsOffcanvas) bsOffcanvas.hide();
+    }
+    setTimeout(() => setIsEmployeeProfileOpen(false), 400);
+  };
 
   const fetchRoutesDetails = (routeId) => {
     // Just trigger the query by setting ID
@@ -1306,9 +1358,16 @@ const MySchedule = () => {
                             }`}
                           >
                             <td>
-                              <span className="text-muted">
+                              <a
+                                href="#!"
+                                className="text-decoration-none fw-bold"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleEmployeeProfileClick(employee);
+                                }}
+                              >
                                 {employee.EmpName}
-                              </span>
+                              </a>
                               {employee.geoCode !== "Y" && (
                                 <span
                                   className="material-icons md-18 text-danger mx-2"
@@ -2408,6 +2467,175 @@ const MySchedule = () => {
             onClick={handleSubmit}
           >
             Submit
+          </button>
+        </div>
+      </div>
+
+      {/* <!-- Employee Profile Detail Sidebar --> */}
+      <div
+        className="offcanvas offcanvas-end"
+        tabIndex="-1"
+        id="Employee_Profile_Sidebar"
+        aria-labelledby="offcanvasRightLabel"
+        data-bs-backdrop="static"
+      >
+        <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
+          <h5 className="subtitle fw-normal">
+            Update Employee Profile -{" "}
+            {selectedProfileEmployee
+              ? `${selectedProfileEmployee.EmpCode || (selectedProfileEmployee.EmpName?.includes('-') ? selectedProfileEmployee.EmpName.split('-')[0].trim() : selectedProfileEmployee.EmployeeID)} ${selectedProfileEmployee.EmpName?.includes('-') ? selectedProfileEmployee.EmpName.split('-')[1].trim() : selectedProfileEmployee.EmpName}`
+              : "Loading..."}
+          </h5>
+          <button
+            type="button"
+            className="btn-close btn-close-white"
+            data-bs-dismiss="offcanvas"
+            aria-label="Close"
+            onClick={() => setTimeout(() => setIsEmployeeProfileOpen(false), 400)}
+          ></button>
+        </div>
+        <div className="offcanvas-body px-4">
+          <div className="row">
+            <div className="col-12 mb-3">
+              <ul className="offcanvas_list">
+                {selectedProfileEmployee && (
+                  <>
+                    <li>
+                      <small>Employee ID</small> {selectedProfileEmployee.EmpCode || (selectedProfileEmployee.EmpName?.includes('-') ? selectedProfileEmployee.EmpName.split('-')[0].trim() : selectedProfileEmployee.EmployeeID)}
+                    </li>
+                    <li>
+                      <small>Name</small> {selectedProfileEmployee.EmpName?.includes('-') ? selectedProfileEmployee.EmpName.split('-')[1].trim() : selectedProfileEmployee.EmpName}
+                    </li>
+                  </>
+                )}
+              </ul>
+            </div>
+            
+            <div className="col-12 mb-3">
+              <div className="card form_card border-0">
+                <div className="card-header">Profile Configuration</div>
+                <div className="card-body">
+                  <div className="row align-items-end">
+                    <div className="col-6 mb-3">
+                      <div className="form-check mt-3">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="tptRequired"
+                          checked={profileForm.tptRequired}
+                          onChange={(e) => setProfileForm({...profileForm, tptRequired: e.target.checked})}
+                        />
+                        <label className="form-check-label" htmlFor="tptRequired">
+                          Transport Required
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div className="col-6 mb-3">
+                      <label className="form-label d-block">Transport Type</label>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="transportType"
+                          id="transportTypeCab"
+                          value="Cab"
+                          checked={profileForm.transportType === 'Cab'}
+                          onChange={(e) => setProfileForm({...profileForm, transportType: e.target.value})}
+                        />
+                        <label className="form-check-label" htmlFor="transportTypeCab">Cab</label>
+                      </div>
+                      <div className="form-check form-check-inline">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="transportType"
+                          id="transportTypeShuttle"
+                          value="Shuttle"
+                          checked={profileForm.transportType === 'Shuttle'}
+                          onChange={(e) => setProfileForm({...profileForm, transportType: e.target.value})}
+                        />
+                        <label className="form-check-label" htmlFor="transportTypeShuttle">Shuttle</label>
+                      </div>
+                    </div>
+
+                    <div className="col-6 mb-3">
+                      <div className="form-check mt-3">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="bcpParameter"
+                          checked={profileForm.bcpParameter}
+                          onChange={(e) => setProfileForm({...profileForm, bcpParameter: e.target.checked})}
+                        />
+                        <label className="form-check-label" htmlFor="bcpParameter">
+                          BCP Parameter
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div className="col-6 mb-3">
+                      <label className="form-label" htmlFor="costCenter">Cost Center</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="costCenter"
+                        maxLength="10"
+                        value={profileForm.costCenter}
+                        onChange={(e) => setProfileForm({...profileForm, costCenter: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="col-6 mb-3">
+                      <div className="form-check mt-3">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="pwd"
+                          checked={profileForm.pwd}
+                          onChange={(e) => setProfileForm({...profileForm, pwd: e.target.checked})}
+                        />
+                        <label className="form-check-label" htmlFor="pwd">
+                          PWD
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div className="col-6 mb-3">
+                      <div className="form-check mt-3">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="allowedTransportWeekend"
+                          checked={profileForm.allowedTransportWeekend}
+                          onChange={(e) => setProfileForm({...profileForm, allowedTransportWeekend: e.target.checked})}
+                        />
+                        <label className="form-check-label" htmlFor="allowedTransportWeekend">
+                          Allowed Transport for Weekend
+                        </label>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+        <div className="offcanvas-footer">
+          <button
+            className="btn btn-outline-secondary"
+            data-bs-dismiss="offcanvas"
+            onClick={() => setTimeout(() => setIsEmployeeProfileOpen(false), 400)}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn btn-success mx-3"
+            onClick={handleProfileSubmit}
+          >
+            Apply
           </button>
         </div>
       </div>
