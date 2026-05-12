@@ -23,10 +23,10 @@ const ScrollingMessages = () => {
 
   const [facilities, setFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
-  const [newMessageText, setNewMessageText] = useState('');
-  const [newAlignment, setNewAlignment] = useState('Right to Left');
-  const [newColor, setNewColor] = useState('#ffffff');
-  const [newMovement, setNewMovement] = useState('Scroll');
+  const [newMessageText, setNewMessageText] = useState("");
+  const [newAlignment, setNewAlignment] = useState("Right to Left");
+  const [newColor, setNewColor] = useState("#ffffff");
+  const [newMovement, setNewMovement] = useState("Scroll");
 
   const UserID = sessionStorage.getItem("ID");
 
@@ -42,8 +42,12 @@ const ScrollingMessages = () => {
       const response = await ScrollingMessagesService.GetAllMessages(params);
 
       let data = response;
-      if (typeof data === 'string') {
-        try { data = JSON.parse(data); } catch (e) { console.error("Error parsing messages:", e); }
+      if (typeof data === "string") {
+        try {
+          data = JSON.parse(data);
+        } catch (e) {
+          console.error("Error parsing messages:", e);
+        }
       }
 
       setMessages(Array.isArray(data) ? data : []);
@@ -57,10 +61,16 @@ const ScrollingMessages = () => {
 
   const fetchFacilities = async () => {
     try {
-      const response = await ScrollingMessagesService.SelectFacility({ Userid: UserID });
-      const parsed = typeof response === "string" ? JSON.parse(response) : response;
+      const response = await ScrollingMessagesService.SelectFacility({
+        Userid: UserID,
+      });
+      const parsed =
+        typeof response === "string" ? JSON.parse(response) : response;
       const formatted = Array.isArray(parsed)
-        ? parsed.map((item) => ({ label: item.facility || item.facilityName, value: item.Id }))
+        ? parsed.map((item) => ({
+            label: item.facility || item.facilityName,
+            value: item.Id,
+          }))
         : [];
       formatted.unshift({ label: "All Facility", value: 0 });
       setFacilities(formatted);
@@ -81,18 +91,19 @@ const ScrollingMessages = () => {
     setEditMode(true);
     setSelectedMessageId(rowData.id || rowData.MessageId);
     setSelectedFacility(rowData.FacilityId ?? rowData.facilityId ?? null);
-    setNewMessageText(rowData.Message || rowData.MessageText || '');
-    setNewAlignment(rowData.Alignment || 'Right to Left');
-    setNewColor(rowData.Color || '#ffffff');
-    setNewMovement(rowData.Movement || 'Scroll');
+    setNewMessageText(rowData.Message || rowData.MessageText || "");
+    setNewAlignment(rowData.Alignment || "Right to Left");
+    setNewColor(rowData.Color || "#ffffff");
+    setNewMovement(rowData.Movement || "Scroll");
     setSidebarVisible(true);
   };
 
   const toggleStatus = async (rowData) => {
     try {
+      console.log("rowData", rowData);
       const params = {
         Id: rowData.id || rowData.MessageId,
-        Type: rowData.Status === 'Activated' ? 'Deactivated' : 'Activated',
+        Type: rowData.Status === "Activated" ? 0 : 1,
         userId: sessionManager.getUserSession()?.ID || 0,
       };
       await ScrollingMessagesService.ActivateDeactivateMessage(params);
@@ -136,11 +147,11 @@ const ScrollingMessages = () => {
   };
 
   const resetForm = () => {
-    setNewMessageText('');
+    setNewMessageText("");
     setSelectedFacility(null);
-    setNewAlignment('Right to Left');
-    setNewColor('#ffffff');
-    setNewMovement('Scroll');
+    setNewAlignment("Right to Left");
+    setNewColor("#ffffff");
+    setNewMovement("Scroll");
     setEditMode(false);
     setSelectedMessageId(null);
   };
@@ -159,17 +170,17 @@ const ScrollingMessages = () => {
   const actionBodyTemplate = (rowData) => (
     <span
       className="text-decoration-underline"
-      style={{ color: '#4a36ec', cursor: 'pointer', fontSize: '13px' }}
+      style={{ color: "#4a36ec", cursor: "pointer", fontSize: "13px" }}
       onClick={() => toggleStatus(rowData)}
     >
-      {rowData.Status === 'Activated' ? 'Deactivate' : 'Activate'}
+      {rowData.Status === "Activated" ? "Deactivate" : "Activate"}
     </span>
   );
 
   const selectBodyTemplate = (rowData) => (
     <span
       className="text-decoration-underline"
-      style={{ color: '#4a36ec', cursor: 'pointer', fontSize: '13px' }}
+      style={{ color: "#4a36ec", cursor: "pointer", fontSize: "13px" }}
       onClick={() => handleEdit(rowData)}
     >
       Select
@@ -177,22 +188,30 @@ const ScrollingMessages = () => {
   );
 
   const colorBodyTemplate = (rowData) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <div style={{ width: '16px', height: '16px', borderRadius: '4px', backgroundColor: rowData.Color || '#ffffff', border: '1px solid #ccc' }} />
-      <span>{rowData.Color || '#ffffff'}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <div
+        style={{
+          width: "16px",
+          height: "16px",
+          borderRadius: "4px",
+          backgroundColor: rowData.Color || "#ffffff",
+          border: "1px solid #ccc",
+        }}
+      />
+      <span>{rowData.Color || "#ffffff"}</span>
     </div>
   );
 
   const statusBodyTemplate = (rowData) => (
     <span
       style={{
-        display: 'inline-block',
-        padding: '2px 10px',
-        borderRadius: '12px',
-        fontSize: '12px',
-        fontWeight: '600',
-        backgroundColor: rowData.Status === 'Activated' ? '#d4edda' : '#f8d7da',
-        color: rowData.Status === 'Activated' ? '#155724' : '#721c24',
+        display: "inline-block",
+        padding: "2px 10px",
+        borderRadius: "12px",
+        fontSize: "12px",
+        fontWeight: "600",
+        backgroundColor: rowData.Status === "Activated" ? "#d4edda" : "#f8d7da",
+        color: rowData.Status === "Activated" ? "#155724" : "#721c24",
       }}
     >
       {rowData.Status}
@@ -205,14 +224,23 @@ const ScrollingMessages = () => {
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
 
-      <div className="middle" style={{ backgroundColor: '#f9f9f9', minHeight: '100vh' }}>
-        <div style={{ padding: '20px' }}>
+      <div
+        className="middle"
+        style={{ backgroundColor: "#f9f9f9", minHeight: "100vh" }}
+      >
+        <div style={{ padding: "20px" }}>
           <div className="row mb-3">
             <div className="col-12">
-              <h6 className="fw-bold mb-0" style={{ fontSize: '16px', color: '#1c1d20' }}>
+              <h6
+                className="fw-bold mb-0"
+                style={{ fontSize: "16px", color: "#1c1d20" }}
+              >
                 Message Master
               </h6>
-              <p className="mb-0" style={{ fontSize: '13px', color: '#999d9e' }}>
+              <p
+                className="mb-0"
+                style={{ fontSize: "13px", color: "#999d9e" }}
+              >
                 View, Activate/Deactivate and manage scrolling messages
               </p>
             </div>
@@ -227,22 +255,47 @@ const ScrollingMessages = () => {
               <Column
                 body={selectBodyTemplate}
                 header="Select"
-                style={{ width: '70px', textAlign: 'center' }}
+                style={{ width: "70px", textAlign: "center" }}
               />
-              <Column field="facility" header="Facility" style={{ width: '110px' }} />
-              <Column field="Message" header="Message" />
-              <Column field="Alignment" header="Alignment" style={{ width: '130px' }} />
-              <Column body={colorBodyTemplate} header="Color" style={{ width: '110px' }} />
-              <Column field="Movement" header="Movement" style={{ width: '100px' }} />
+              <Column
+                field="facility"
+                header="Facility"
+                style={{ width: "110px" }}
+              />
+              <Column
+                field="Message"
+                header="Message"
+                style={{
+                  maxWidth: "400px",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              />
+              <Column
+                field="Alignment"
+                header="Alignment"
+                style={{ width: "130px" }}
+              />
+              <Column
+                body={colorBodyTemplate}
+                header="Color"
+                style={{ width: "110px" }}
+              />
+              <Column
+                field="Movement"
+                header="Movement"
+                style={{ width: "100px" }}
+              />
               <Column
                 body={statusBodyTemplate}
                 header="Status"
-                style={{ width: '110px' }}
+                style={{ width: "110px" }}
               />
               <Column
                 body={actionBodyTemplate}
                 header="Action"
-                style={{ width: '100px', textAlign: 'center' }}
+                style={{ width: "100px", textAlign: "center" }}
               />
             </CustomDataTable>
 
@@ -257,7 +310,11 @@ const ScrollingMessages = () => {
               <a
                 href="#!"
                 className="text-decoration-underline"
-                style={{ color: '#4a36ec', fontSize: '13px', fontWeight: '500' }}
+                style={{
+                  color: "#4a36ec",
+                  fontSize: "13px",
+                  fontWeight: "500",
+                }}
                 onClick={openAddForm}
               >
                 + Add New Message
@@ -276,7 +333,10 @@ const ScrollingMessages = () => {
         headerTextColor="text-white"
         footer={
           <div className="offcanvas-footer">
-            <button className="btn btn-outline-secondary" onClick={handleCancel}>
+            <button
+              className="btn btn-outline-secondary"
+              onClick={handleCancel}
+            >
               Cancel
             </button>
             <button className="btn btn-success" onClick={handleSave}>
@@ -287,23 +347,31 @@ const ScrollingMessages = () => {
       >
         <div className="p-3">
           <div className="mb-3">
-            <label className="form-label fw-semibold" style={{ fontSize: '13px', color: '#545557' }}>
+            <label
+              className="form-label fw-semibold"
+              style={{ fontSize: "13px", color: "#545557" }}
+            >
               Facility Name
             </label>
             <select
               className="form-select form-select-sm"
-              value={selectedFacility ?? ''}
+              value={selectedFacility ?? ""}
               onChange={(e) => setSelectedFacility(e.target.value)}
             >
               <option value="">-- Select Facility --</option>
               {facilities.map((f) => (
-                <option key={f.value} value={f.value}>{f.label}</option>
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="mb-3">
-            <label className="form-label fw-semibold" style={{ fontSize: '13px', color: '#545557' }}>
+            <label
+              className="form-label fw-semibold"
+              style={{ fontSize: "13px", color: "#545557" }}
+            >
               Alignment
             </label>
             <select
@@ -319,7 +387,10 @@ const ScrollingMessages = () => {
           </div>
 
           <div className="mb-3">
-            <label className="form-label fw-semibold" style={{ fontSize: '13px', color: '#545557' }}>
+            <label
+              className="form-label fw-semibold"
+              style={{ fontSize: "13px", color: "#545557" }}
+            >
               Text Color
             </label>
             <div className="d-flex align-items-center gap-2">
@@ -328,14 +399,17 @@ const ScrollingMessages = () => {
                 className="form-control form-control-color"
                 value={newColor}
                 onChange={(e) => setNewColor(e.target.value)}
-                style={{ width: '50px', padding: '0.2rem' }}
+                style={{ width: "50px", padding: "0.2rem" }}
               />
-              <span style={{ fontSize: '13px' }}>{newColor}</span>
+              <span style={{ fontSize: "13px" }}>{newColor}</span>
             </div>
           </div>
 
           <div className="mb-3">
-            <label className="form-label fw-semibold" style={{ fontSize: '13px', color: '#545557' }}>
+            <label
+              className="form-label fw-semibold"
+              style={{ fontSize: "13px", color: "#545557" }}
+            >
               Movement Type
             </label>
             <select
@@ -349,13 +423,16 @@ const ScrollingMessages = () => {
           </div>
 
           <div className="mb-3">
-            <label className="form-label fw-semibold" style={{ fontSize: '13px', color: '#545557' }}>
+            <label
+              className="form-label fw-semibold"
+              style={{ fontSize: "13px", color: "#545557" }}
+            >
               Message
             </label>
             <textarea
               className="form-control form-control-sm"
               rows="5"
-              style={{ resize: 'vertical' }}
+              style={{ resize: "vertical" }}
               value={newMessageText}
               onChange={(e) => setNewMessageText(e.target.value)}
               placeholder="Enter message text..."

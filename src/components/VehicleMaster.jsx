@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import { Tooltip } from "primereact/tooltip";
@@ -6,10 +6,12 @@ import { Checkbox } from "primereact/checkbox";
 import { FileUpload } from "primereact/fileupload";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
+import { MultiSelect } from "primereact/multiselect";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
-import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
+import { CustomDataTable } from "./common/CustomDataTable";
+import TableToolbar from "./common/TableToolbar";
 import MasterSidebar from "./Master/MasterSidebar";
 import calendarIcon from "../assets/calendar.png";
 import VehicleMasterService from "../services/compliance/VehicleMasterService";
@@ -22,6 +24,8 @@ import { ToastContainer } from "react-toastify";
 
 const VEHICLE_DOCS_STORAGE_KEY = "vehicle_docs";
 const VEHICLE_CAB_TYPE_KEY = "vehicle_cab_type_data";
+const VEHICLE_MAKE_KEY = "vehicle_make_data";
+const VEHICLE_FACILITY_MAPPING_KEY = "vehicle_facility_mapping_data";
 const VEHICLE_ATTRITE_REASON_KEY = "vehicle_attrite_reason_data";
 const VEHICLE_SPEED_LOCK_KEY = "vehicle_speed_lock_data";
 const VEHICLE_BS_EMISSION_KEY = "vehicle_bs_emission_data";
@@ -51,6 +55,10 @@ const VehicleMaster = () => {
     const [editSpeedLock, setEditSpeedLock] = useState(null);
     const [bsEmission, setBsEmission] = useState(null);
     const [editBsEmission, setEditBsEmission] = useState(null);
+    const [vehicleMake, setVehicleMake] = useState("");
+    const [editVehicleMake, setEditVehicleMake] = useState("");
+    const [facilityMapping, setFacilityMapping] = useState([]);
+    const [editFacilityMapping, setEditFacilityMapping] = useState([]);
     const [showTable, setShowTable] = useState(false);
     const [facilityAdd, setFacilityAdd] = useState([]);
     const [selectedFacility, setSelectedFacility] = useState(null);
@@ -75,6 +83,10 @@ const VehicleMaster = () => {
 
     const [first, setFirst] = useState(0);
     const [rows, setRows] = useState(50);
+    const [globalFilter, setGlobalFilter] = useState("");
+    const [filteredVehicleData, setFilteredVehicleData] = useState([]);
+    const op = useRef(null);
+    const filterButtonRef = useRef(null);
 
     const onPageChange = (event) => {
         setFirst(event.first);
@@ -167,6 +179,58 @@ const VehicleMaster = () => {
 
     const [editVehicleFormData, setEditVehicleFormData] = useState(initialEditFormData);
 
+    // ========== FILTER + EXPORT ==========
+    useEffect(() => {
+        if (!globalFilter || globalFilter.trim() === "") {
+            setFilteredVehicleData(vehicleDetails);
+        } else {
+            const lower = globalFilter.toLowerCase();
+            setFilteredVehicleData(
+                vehicleDetails.filter(item =>
+                    Object.values(item).some(val =>
+                        String(val ?? "").toLowerCase().includes(lower)
+                    )
+                )
+            );
+        }
+        setFirst(0);
+    }, [vehicleDetails, globalFilter]);
+
+    const exportToCSV = (data, filename) => {
+        if (!data || data.length === 0) return;
+        const exportFields = ["VehicleNo", "VehicleRegNo", "VehicleType", "FacilityName", "VendorName", "FuleType",
+            "PermitExpiryDate", "InsuranceExpiryDate", "FitnessExpiryDate", "TaxExpiryDate", "PUCExpiryDate", "Attrited"];
+        const headers = exportFields;
+        const csvContent = [
+            headers.join(","),
+            ...data.map(row =>
+                headers.map(h => {
+                    const v = row[h];
+                    if (v === null || v === undefined) return "";
+                    const s = String(v);
+                    return s.includes(",") || s.includes('"') || s.includes("\n")
+                        ? `"${s.replace(/"/g, '""')}"` : s;
+                }).join(",")
+            ),
+        ].join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.setAttribute("href", URL.createObjectURL(blob));
+        link.setAttribute("download", `${filename}.csv`);
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportExcel = () => {
+        if (filteredVehicleData.length === 0) {
+            toastService.error("No data to export");
+            return;
+        }
+        exportToCSV(filteredVehicleData, `vehicle_master_${new Date().toISOString().slice(0, 10)}`);
+    };
+
     // ========== HELPER FUNCTIONS ==========
     const formatDate = (dateStr) => {
         if (!dateStr) return "";
@@ -176,6 +240,38 @@ const VehicleMaster = () => {
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
+    };
+
+    const getExpiryBadge = (dateStr) => {
+        if (!dateStr) return null;
+        const date = new Date(dateStr);
+        if (isNaN(date)) return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+
+        let badge = null;
+        if (diffDays <= 0) {
+            badge = { label: "Expired", bg: "#FEE2E2", color: "#B91C1C", dot: "#EF4444" };
+        } else if (diffDays <= 7) {
+            badge = { label: `${diffDays}d left`, bg: "#FEF3C7", color: "#92400E", dot: "#F59E0B" };
+        } else if (diffDays <= 15) {
+            badge = { label: `${diffDays}d left`, bg: "#DBEAFE", color: "#1E40AF", dot: "#3B82F6" };
+        }
+        return badge;
+    };
+
+    const expiryDateBody = (dateStr) => {
+        const formatted = formatDate(dateStr);
+        const badge = getExpiryBadge(dateStr);
+        const style = badge ? { color: badge.color, fontWeight: 600 } : { color: "#374151" };
+        if (!badge) return <span style={style}>{formatted || "—"}</span>;
+        const cls = badge.dot === "#EF4444" ? "expiry-tip-expired" : badge.dot === "#F59E0B" ? "expiry-tip-warning" : "expiry-tip-info";
+        return (
+            <span className={cls} data-pr-tooltip={badge.label} data-pr-position="top" style={style}>
+                {formatted || "—"}
+            </span>
+        );
     };
 
     const formatDateAdd = (date) => {
@@ -263,6 +359,36 @@ const VehicleMaster = () => {
             data[String(vehicleId)] = value;
             localStorage.setItem(VEHICLE_BS_EMISSION_KEY, JSON.stringify(data));
         } catch (err) { console.error("Failed to save BS emission:", err); }
+    };
+
+    const loadVehicleMake = (vehicleId) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_MAKE_KEY) || "{}");
+            return data[String(vehicleId)] || "";
+        } catch { return ""; }
+    };
+
+    const saveVehicleMake = (vehicleId, make) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_MAKE_KEY) || "{}");
+            data[String(vehicleId)] = make;
+            localStorage.setItem(VEHICLE_MAKE_KEY, JSON.stringify(data));
+        } catch (err) { console.error("Failed to save vehicle make:", err); }
+    };
+
+    const loadFacilityMapping = (vehicleId) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_FACILITY_MAPPING_KEY) || "{}");
+            return data[String(vehicleId)] || [];
+        } catch { return []; }
+    };
+
+    const saveFacilityMapping = (vehicleId, mapping) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_FACILITY_MAPPING_KEY) || "{}");
+            data[String(vehicleId)] = mapping;
+            localStorage.setItem(VEHICLE_FACILITY_MAPPING_KEY, JSON.stringify(data));
+        } catch (err) { console.error("Failed to save facility mapping:", err); }
     };
 
     // ========== FETCH FUNCTIONS ==========
@@ -754,6 +880,8 @@ const VehicleMaster = () => {
             if (vehicleFormData.VehicleNo) saveSpeedLock(vehicleFormData.VehicleNo, speedLock);
             if (vehicleFormData.VehicleNo) saveBsEmission(vehicleFormData.VehicleNo, bsEmission);
             if (vehicleFormData.VehicleNo) saveAttriteReason(vehicleFormData.VehicleNo, attriteReason);
+            if (vehicleFormData.VehicleNo) saveVehicleMake(vehicleFormData.VehicleNo, vehicleMake);
+            if (vehicleFormData.VehicleNo) saveFacilityMapping(vehicleFormData.VehicleNo, facilityMapping);
             setAddVehicle(false);
             setVehicleFormData(initialFormData);
             setIsAttrited(false);
@@ -761,6 +889,8 @@ const VehicleMaster = () => {
             setVehicleCabType(null);
             setSpeedLock(null);
             setBsEmission(null);
+            setVehicleMake("");
+            setFacilityMapping([]);
             resetVehicleDocsState();
             await VehiclesDetailsData();
         } catch (error) {
@@ -837,6 +967,8 @@ const VehicleMaster = () => {
             if (shuttleKey) saveSpeedLock(shuttleKey, editSpeedLock);
             if (shuttleKey) saveBsEmission(shuttleKey, editBsEmission);
             if (shuttleKey) saveAttriteReason(shuttleKey, editAttriteReason);
+            if (shuttleKey) saveVehicleMake(shuttleKey, editVehicleMake);
+            if (shuttleKey) saveFacilityMapping(shuttleKey, editFacilityMapping);
             setUpdateVehicle(false);
             setEditVehicleFormData(initialEditFormData);
             setEditAttrited(false);
@@ -844,6 +976,8 @@ const VehicleMaster = () => {
             setEditVehicleCabType(null);
             setEditSpeedLock(null);
             setEditBsEmission(null);
+            setEditVehicleMake("");
+            setEditFacilityMapping([]);
             resetVehicleDocsState();
             await VehiclesDetailsData();
         } catch (error) {
@@ -934,6 +1068,8 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                 setVehicleCabType(null);
                 setSpeedLock(null);
                 setBsEmission(null);
+                setVehicleMake("");
+                setFacilityMapping([]);
                 setSelectedFacility(null);
                 setSelectedVendorAdd(null);
                 setSelectedVehicleType(null);
@@ -986,10 +1122,37 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                     </div>
                     {/* Table Start */}
                     {showTable && (
+                        <>
+                        <div className="col-12 d-flex align-items-center gap-2 mt-3 mb-2">
+                            <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>Expiry Status:</span>
+                            {[
+                                { dot: "#EF4444", bg: "#FEE2E2", color: "#B91C1C", label: "Expired" },
+                                { dot: "#F59E0B", bg: "#FEF3C7", color: "#92400E", label: "≤ 7 days" },
+                                { dot: "#3B82F6", bg: "#DBEAFE", color: "#1E40AF", label: "≤ 15 days" },
+                            ].map(({ dot, bg, color, label }) => (
+                                <span key={label} style={{
+                                    display: "inline-flex", alignItems: "center", gap: "5px",
+                                    background: bg, color, fontSize: "11px", fontWeight: 600,
+                                    padding: "3px 10px", borderRadius: "20px",
+                                }}>
+                                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: dot, display: "inline-block" }}></span>
+                                    {label}
+                                </span>
+                            ))}
+                        </div>
                         <div className="col-12">
-                            <div className="card_tb">
-                                <DataTable value={[...vehicleDetails].slice(first, first + rows)} emptyMessage="No Records Found">
-                                         <Tooltip target=".id-link" content="Click to Edit Details" />
+                            <div className="card_tb p-3">
+                                <TableToolbar
+                                    search={globalFilter}
+                                    onSearch={(e) => setGlobalFilter(e.target.value)}
+                                    onRefresh={() => setGlobalFilter("")}
+                                    onExport={exportExcel}
+                                    showFilter={false}
+                                    overlayRef={op}
+                                    filterButtonRef={filterButtonRef}
+                                />
+                                <CustomDataTable value={filteredVehicleData.slice(first, first + rows)} emptyMessage="No Records Found">
+                                    <Tooltip target=".id-link" content="Click to Edit Details" />
                                     <Column sortable field="Id" header="ID" body={(rowData) => (
                                         <a href="#" className="id-link"
                                         onClick={async (e) => {
@@ -1106,6 +1269,8 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
     setEditVehicleCabType(loadCabType(rowData.Id));
     setEditSpeedLock(loadSpeedLock(rowData.Id));
     setEditBsEmission(loadBsEmission(rowData.Id));
+    setEditVehicleMake(loadVehicleMake(rowData.Id));
+    setEditFacilityMapping(loadFacilityMapping(rowData.Id));
     loadVehicleDocs(rowData);
     setActiveSidebarTab("details");
     setUpdateVehicle(true);
@@ -1125,22 +1290,34 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                     <Column field="FacilityName" header="Facility Name"></Column>
                                     <Column field="VendorName" header="Vendor Name"></Column>
                                     <Column field="FuleType" header="Fuel Type"></Column>
-                                    <Column field="PermitExpiryDate" header="Permit Expiry Date" body={rowData => formatDate(rowData.PermitExpiryDate)}></Column>
-                                    <Column field="InsuranceExpiryDate" header="Insurance Expiry Date" body={rowData => formatDate(rowData.InsuranceExpiryDate)}></Column>
-                                    <Column field="FitnessExpiryDate" header="Fitness Expiry Date" body={rowData => formatDate(rowData.FitnessExpiryDate)}></Column>
-                                    <Column field="TaxExpiryDate" header="Tax Expiry Date" body={rowData => formatDate(rowData.TaxExpiryDate)}></Column>
-                                    <Column field="PUCExpiryDate" header="PUC Expiry Date" body={rowData => formatDate(rowData.PUCExpiryDate)}></Column>
+                                    <Column field="PermitExpiryDate" header="Permit Expiry" body={rowData => expiryDateBody(rowData.PermitExpiryDate)}></Column>
+                                    <Column field="InsuranceExpiryDate" header="Insurance Expiry" body={rowData => expiryDateBody(rowData.InsuranceExpiryDate)}></Column>
+                                    <Column field="FitnessExpiryDate" header="Fitness Expiry" body={rowData => expiryDateBody(rowData.FitnessExpiryDate)}></Column>
+                                    <Column field="TaxExpiryDate" header="Tax Expiry" body={rowData => expiryDateBody(rowData.TaxExpiryDate)}></Column>
+                                    <Column field="PUCExpiryDate" header="PUC Expiry" body={rowData => expiryDateBody(rowData.PUCExpiryDate)}></Column>
                                     <Column field="Attrited" header="Attrited"></Column>
-                                </DataTable>
+                                </CustomDataTable>
+                                <style>{`
+                                    .expiry-tooltip-expired .p-tooltip-text { background: #FEE2E2 !important; color: #B91C1C !important; font-weight: 600 !important; border: 1px solid #EF4444 !important; border-radius: 6px !important; }
+                                    .expiry-tooltip-expired.p-tooltip-top .p-tooltip-arrow { border-top-color: #FEE2E2 !important; }
+                                    .expiry-tooltip-warning .p-tooltip-text { background: #FEF3C7 !important; color: #92400E !important; font-weight: 600 !important; border: 1px solid #F59E0B !important; border-radius: 6px !important; }
+                                    .expiry-tooltip-warning.p-tooltip-top .p-tooltip-arrow { border-top-color: #FEF3C7 !important; }
+                                    .expiry-tooltip-info .p-tooltip-text { background: #DBEAFE !important; color: #1E40AF !important; font-weight: 600 !important; border: 1px solid #3B82F6 !important; border-radius: 6px !important; }
+                                    .expiry-tooltip-info.p-tooltip-top .p-tooltip-arrow { border-top-color: #DBEAFE !important; }
+                                `}</style>
+                                <Tooltip target=".expiry-tip-expired" className="expiry-tooltip-expired" />
+                                <Tooltip target=".expiry-tip-warning" className="expiry-tooltip-warning" />
+                                <Tooltip target=".expiry-tip-info" className="expiry-tooltip-info" />
                                 <CustomPaginator
                                     first={first}
                                     rows={rows}
-                                    totalRecords={vehicleDetails.length}
+                                    totalRecords={filteredVehicleData.length}
                                     onPageChange={onPageChange}
                                     rowsPerPageOptions={[50, 100, 150, 200]}
                                 />
                             </div>
                         </div>
+                        </>
                     )}
                 </div>
             </div>
@@ -1220,6 +1397,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         setSelectedFacility(e.value);
                                         setSelectedVendorAdd(null);
                                         setSelectedVehicleType(null);
+                                        setFacilityMapping([]);
                                     }} options={facilityAdd} appendTo="self" />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1241,6 +1419,10 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                             setVehicleFormData({ ...vehicleFormData, VehicleTypeId: e.value });
                                         }}
                                         options={vehicleType} appendTo="self" />
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Vehicle Make</label>
+                                    <InputText className="form-control" placeholder="e.g. Toyota, Maruti" value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} />
                                 </div>
                                 <div className="field col-4 mb-3">
                                     <label>Type</label>
@@ -1266,7 +1448,35 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         onChange={(e) => setVehicleFormData({ ...vehicleFormData, FuleType: e.value })}
                                         options={fuelType} appendTo="self" />
                                 </div>
-                                <div className="w-100"></div>
+                                <div className="field col-4 mb-3">
+                                    <label className="d-block">Facility Mapping</label>
+                                    <MultiSelect
+                                        optionLabel="name"
+                                        optionValue="value"
+                                        placeholder={vehicleFormData.FacilityId ? "Select Facilities" : "Select Facility first"}
+                                        className="w-100"
+                                        value={facilityMapping}
+                                        onChange={(e) => setFacilityMapping(e.value)}
+                                        options={facilityAdd.filter(f => f.value !== vehicleFormData.FacilityId)}
+                                        disabled={!vehicleFormData.FacilityId}
+                                        display="chip"
+                                        appendTo={document.body}
+                                    />
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>BS Emission Standard</label>
+                                    <Dropdown
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select BS Standard"
+                                        className="w-100"
+                                        value={bsEmission}
+                                        onChange={(e) => setBsEmission(e.value)}
+                                        options={bsEmissionOptions}
+                                        appendTo="self"
+                                        showClear
+                                    />
+                                </div>
                                 <div className="field col-4 mb-3">
                                     <label>Insurance No.</label>
                                     <InputText className="form-control" placeholder="Insurance Number" value={vehicleFormData.InsuranceNo} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceNo: e.target.value })} />
@@ -1357,20 +1567,6 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         min={0}
                                         max={200}
                                         onChange={(e) => setSpeedLock(e.target.value === "" ? null : Number(e.target.value))}
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>BS Emission Standard</label>
-                                    <Dropdown
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        placeholder="Select BS Standard"
-                                        className="w-100"
-                                        value={bsEmission}
-                                        onChange={(e) => setBsEmission(e.value)}
-                                        options={bsEmissionOptions}
-                                        appendTo="self"
-                                        showClear
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
@@ -1514,6 +1710,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                             setEditSelectedFacility(e.value);
                                             setSelectedEditVendor(null);
                                             setSelectedEditVehicleType(null);
+                                            setEditFacilityMapping([]);
                                         }}
                                         filter
                                         appendTo="self"
@@ -1562,6 +1759,10 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">
+                                    <label>Vehicle Make</label>
+                                    <InputText className="form-control" placeholder="e.g. Toyota, Maruti" value={editVehicleMake} onChange={(e) => setEditVehicleMake(e.target.value)} />
+                                </div>
+                                <div className="field col-4 mb-3">
                                     <label>Type</label>
                                     <Dropdown
                                         optionLabel="label"
@@ -1595,7 +1796,35 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         appendTo="self"
                                     />
                                 </div>
-                                <div className="w-100"></div>
+                                <div className="field col-4 mb-3">
+                                    <label className="d-block">Facility Mapping</label>
+                                    <MultiSelect
+                                        optionLabel="name"
+                                        optionValue="value"
+                                        placeholder={editVehicleFormData.FacilityId ? "Select Facilities" : "Select Facility first"}
+                                        className="w-100"
+                                        value={editFacilityMapping}
+                                        onChange={(e) => setEditFacilityMapping(e.value)}
+                                        options={editFacility.filter(f => f.value !== editVehicleFormData.FacilityId)}
+                                        disabled={!editVehicleFormData.FacilityId}
+                                        display="chip"
+                                        appendTo={document.body}
+                                    />
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>BS Emission Standard</label>
+                                    <Dropdown
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select BS Standard"
+                                        className="w-100"
+                                        value={editBsEmission}
+                                        onChange={(e) => setEditBsEmission(e.value)}
+                                        options={bsEmissionOptions}
+                                        appendTo="self"
+                                        showClear
+                                    />
+                                </div>
                                 <div className="field col-4 mb-3">
                                     <label>Insurance No.</label>
                                     <InputText className="form-control" placeholder="Insurance Number"
@@ -1610,61 +1839,38 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, InsuranceCompanyName: e.target.value })}
                                     />
                                 </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Insurance Expiry</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="Insurance Expiry Date"
-                                            value={editVehicleFormData.InsuranceExpiryDate}
-                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, InsuranceExpiryDate: e.value })}
-                                            appendTo="self"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Permit Expiry Date</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="Permit Expiry Date"
-                                            value={editVehicleFormData.PermitExpiryDate}
-                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, PermitExpiryDate: e.value })}
-                                            appendTo="self"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Fitness Expiry</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="Fitness Expiry Date"
-                                            value={editVehicleFormData.FitnessExpiryDate}
-                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, FitnessExpiryDate: e.value })}
-                                            appendTo="self"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Tax Expiry</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="Tax Expiry Date"
-                                            value={editVehicleFormData.TaxExpiryDate}
-                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, TaxExpiryDate: e.value })}
-                                            appendTo="self"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>PUC Expiry</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="PUC Expiry Date"
-                                            value={editVehicleFormData.PUCExpiryDate}
-                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, PUCExpiryDate: e.value })}
-                                            appendTo="self"
-                                        />
-                                    </div>
-                                </div>
+                                {[
+                                    { label: "Insurance Expiry", field: "InsuranceExpiryDate", placeholder: "Insurance Expiry Date" },
+                                    { label: "Permit Expiry Date", field: "PermitExpiryDate", placeholder: "Permit Expiry Date" },
+                                    { label: "Fitness Expiry", field: "FitnessExpiryDate", placeholder: "Fitness Expiry Date" },
+                                    { label: "Tax Expiry", field: "TaxExpiryDate", placeholder: "Tax Expiry Date" },
+                                    { label: "PUC Expiry", field: "PUCExpiryDate", placeholder: "PUC Expiry Date" },
+                                    { label: "Cab Expiry", field: "CabExpiryDate", placeholder: "Cab Expiry Date" },
+                                ].map(({ label, field, placeholder }) => {
+                                    const status = getExpiryBadge(editVehicleFormData[field]);
+                                    return (
+                                        <div key={field} className="field col-4 mb-3">
+                                            <label style={status ? { color: status.color, fontWeight: 600 } : {}}>
+                                                {label}
+                                            </label>
+                                            <div className="custom-calendar-wrapper" style={status ? { border: `1.5px solid ${status.dot}`, borderRadius: "6px" } : {}}>
+                                                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                                <Calendar
+                                                    className="w-100 custom-calendar-input"
+                                                    placeholder={placeholder}
+                                                    value={editVehicleFormData[field]}
+                                                    onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, [field]: e.value })}
+                                                    appendTo="self"
+                                                />
+                                            </div>
+                                            {status && (
+                                                <small style={{ color: status.color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
+                                                    ● {status.label}
+                                                </small>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                                 <div className="field col-4 mb-3">
                                     <label>Cab Induction</label>
                                     <div className="custom-calendar-wrapper">
@@ -1672,17 +1878,6 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         <Calendar className="w-100 custom-calendar-input" placeholder="Cab Induction Date"
                                             value={editVehicleFormData.CabInductionDate}
                                             onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, CabInductionDate: e.value })}
-                                            appendTo="self"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Cab Expiry</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="Cab Expiry Date"
-                                            value={editVehicleFormData.CabExpiryDate}
-                                            onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, CabExpiryDate: e.value })}
                                             appendTo="self"
                                         />
                                     </div>
@@ -1736,20 +1931,6 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         min={0}
                                         max={200}
                                         onChange={(e) => setEditSpeedLock(e.target.value === "" ? null : Number(e.target.value))}
-                                    />
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>BS Emission Standard</label>
-                                    <Dropdown
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        placeholder="Select BS Standard"
-                                        className="w-100"
-                                        value={editBsEmission}
-                                        onChange={(e) => setEditBsEmission(e.value)}
-                                        options={bsEmissionOptions}
-                                        appendTo="self"
-                                        showClear
                                     />
                                 </div>
                                 <div className="field col-4 mb-3">

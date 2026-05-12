@@ -8,7 +8,16 @@ import { apiService } from "../../services/api";
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { Avatar } from 'primereact/avatar';
 import { OverlayPanel } from 'primereact/overlaypanel';
-const Header = ({ 
+import useSOSPoller from '../../hooks/useSOSPoller';
+import useSOSStore from '../../store/useSOSStore';
+import NotificationPanel from '../NotificationPanel';
+const ETMS_DOC_URLS = {
+  FAQs: "https://res.cloudinary.com/dnzzrvbdz/raw/upload/v1777458153/etms_docs/FAQs.pdf",
+  HelpDocuments: "https://res.cloudinary.com/dnzzrvbdz/raw/upload/v1777458154/etms_docs/HelpDocuments.pdf",
+  TermsAndConditions: "https://res.cloudinary.com/dnzzrvbdz/raw/upload/v1777458155/etms_docs/TermsAndConditions.pdf",
+};
+
+const Header = ({
   mainTitle, 
   pageTitle, 
   showAdhocButton = false, 
@@ -20,10 +29,17 @@ const Header = ({
     return typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   });
   const [profileData, setProfileData] = useState(null);
+  const [profilePicUrl, setProfilePicUrl] = useState(() => {
+    const userId = sessionManager.getUserSession().ID;
+    return localStorage.getItem(`profile_picture_${userId}`) || null;
+  });
   const navigate = useNavigate();
   const headerRef = useRef(null);
   const profileMenuRef = useRef(null);
+  const notifPanelRef = useRef(null);
   const logout = useSessionStore((state) => state.logout);
+  const sosCount = useSOSStore((state) => state.sosAlerts.length);
+  useSOSPoller();
 
   const prevWidth = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
 
@@ -82,6 +98,14 @@ const Header = ({
       middle.classList.toggle('expanded', isSidebarCollapsed);
     }
   }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    const handlePicUpdate = (e) => {
+      setProfilePicUrl(e.detail?.url || null);
+    };
+    window.addEventListener("profilePictureUpdated", handlePicUpdate);
+    return () => window.removeEventListener("profilePictureUpdated", handlePicUpdate);
+  }, []);
 
   // Listen for sidebar expand event (dispatched from SidebarMenu when icon is clicked in collapsed mode)
   useEffect(() => {
@@ -204,12 +228,13 @@ const Header = ({
         )}
         
         {showNewButton && (
-          <button 
-            className="btn btn-primary ms-auto" 
-            onClick={onNewButtonClick} 
+          <button
+            id="tour-new-btn"
+            className="btn btn-primary ms-auto"
+            onClick={onNewButtonClick}
             aria-controls="offcanvasRight"
           >
-            <span className="material-icons me-2">add_circle</span> 
+            <span className="material-icons me-2">add_circle</span>
             New
           </button>
         )}
@@ -220,6 +245,71 @@ const Header = ({
               <img src="images/logo.svg" alt="Company Logo" />
             </a>
           </li>
+          <li>
+            <style>{`
+              .notif-bell-btn {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 38px;
+                height: 38px;
+                border-radius: 50%;
+                border: none;
+                background: transparent;
+                cursor: pointer;
+                transition: background 0.2s;
+                color: #374151;
+              }
+              .notif-bell-btn:hover {
+                background: rgba(0, 0, 0, 0.05);
+              }
+              .notif-bell-btn .material-icons {
+                font-size: 22px;
+              }
+              .notif-bell-active .material-icons {
+                color: #1a1a2e;
+              }
+              .notif-bell-badge {
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                min-width: 17px;
+                height: 17px;
+                border-radius: 999px;
+                background: #ef4444;
+                color: #fff;
+                font-size: 10px;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 4px;
+                line-height: 1;
+                border: 2px solid #fff;
+                box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
+                animation: notif-badge-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+              }
+              @keyframes notif-badge-pop {
+                from { transform: scale(0); }
+                to   { transform: scale(1); }
+              }
+            `}</style>
+            <button
+              className={`notif-bell-btn${sosCount > 0 ? ' notif-bell-active' : ''}`}
+              onClick={(e) => notifPanelRef.current?.toggle(e)}
+              aria-label={`${sosCount} SOS alert${sosCount !== 1 ? 's' : ''}`}
+            >
+              <span className="material-icons">notifications</span>
+              {sosCount > 0 && (
+                <span className="notif-bell-badge">
+                  {sosCount > 99 ? '99+' : sosCount}
+                </span>
+              )}
+            </button>
+            <NotificationPanel ref={notifPanelRef} />
+          </li>
+
           <li className="dropdown">
             <style>{`
               .header-profile-trigger {
@@ -348,16 +438,31 @@ const Header = ({
                 color: #dc2626;
               }
             `}</style>
-            <a 
-              href="#!" 
+            <a
+              href="#!"
               onClick={(e) => profileMenuRef.current.toggle(e)}
               className="header-profile-trigger"
             >
-              <Avatar 
-                label={employeeName ? employeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
-                size="normal"
-                shape="circle"
-              />
+              {profilePicUrl ? (
+                <img
+                  src={profilePicUrl}
+                  alt={employeeName}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.25)',
+                    flexShrink: 0
+                  }}
+                />
+              ) : (
+                <Avatar
+                  label={employeeName ? employeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+                  size="normal"
+                  shape="circle"
+                />
+              )}
               <div className="header-user-info">
                 <span className="header-user-name-text">{employeeName}</span>
               </div>
@@ -367,11 +472,25 @@ const Header = ({
             {/* Profile Dropdown Menu */}
             <OverlayPanel ref={profileMenuRef} className="profile-dropdown" dismissable appendTo={document.body}>
               <div className="profile-dropdown-header">
-                <Avatar 
-                  label={employeeName ? employeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
-                  size="large"
-                  shape="circle"
-                />
+                {profilePicUrl ? (
+                  <img
+                    src={profilePicUrl}
+                    alt={employeeName}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      flexShrink: 0
+                    }}
+                  />
+                ) : (
+                  <Avatar
+                    label={employeeName ? employeeName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}
+                    size="large"
+                    shape="circle"
+                  />
+                )}
                 <div className="profile-dropdown-header-info">
                   <h6>{employeeName}</h6>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#6b7280' }}>
@@ -452,19 +571,19 @@ const Header = ({
                   </a>
                 </li>
                 <li>
-                  <a href="#!" onClick={() => profileMenuRef.current.hide()}>
+                  <a href="#!" onClick={() => { profileMenuRef.current.hide(); window.open(ETMS_DOC_URLS.FAQs, '_blank'); }}>
                     <span className="material-icons">help_outline</span>
                     FAQs
                   </a>
                 </li>
                 <li>
-                  <a href="#!" onClick={() => profileMenuRef.current.hide()}>
+                  <a href="#!" onClick={() => { profileMenuRef.current.hide(); window.open(ETMS_DOC_URLS.HelpDocuments, '_blank'); }}>
                     <span className="material-icons">menu_book</span>
                     Help Documents
                   </a>
                 </li>
                 <li>
-                  <a href="#!" onClick={() => profileMenuRef.current.hide()}>
+                  <a href="#!" onClick={() => { profileMenuRef.current.hide(); window.open(ETMS_DOC_URLS.TermsAndConditions, '_blank'); }}>
                     <span className="material-icons">description</span>
                     Terms & Conditions
                   </a>

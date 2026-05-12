@@ -1,12 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import { Dialog } from 'primereact/dialog';
-import { Button } from 'primereact/button';
+import { Calendar } from 'primereact/calendar';
+import { Tooltip } from 'primereact/tooltip';
+import MasterSidebar from "./Master/MasterSidebar";
 import { apiService } from "../services/api";
+import { toastService } from "../services/toastService";
 import Alert from '@mui/material/Alert';
 import locationIcon from '../assets/location.png';
+import calendarIcon from '../assets/calendar.png';
 import Loader from "./common/Loader";
+import { ToastContainer } from "react-toastify";
+import { useProfileTour } from "../hooks/useGuidedTour";
+
+const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
+const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
+const PROFILE_PIC_STORAGE_KEY = "profile_picture_";
 
 const MyProfile = () => {
   const [profileData, setProfileData] = useState(null);
@@ -14,8 +24,26 @@ const MyProfile = () => {
   const [error, setError] = useState(null);
 
   const [visible, setVisible] = useState(false);
+  const [profilePicUrl, setProfilePicUrl] = useState(null);
+  const [uploadingPic, setUploadingPic] = useState(false);
+  const [profilePicDialogVisible, setProfilePicDialogVisible] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const [addressDialogVisible, setAddressDialogVisible] = useState(false);
+  const [newAddress, setNewAddress] = useState('');
+  const [addressEffectiveDate, setAddressEffectiveDate] = useState(null);
+  const [updatingAddress, setUpdatingAddress] = useState(false);
+
+  const [medicalDialogVisible, setMedicalDialogVisible] = useState(false);
+  const [medicalEffectiveDate, setMedicalEffectiveDate] = useState(null);
+  const [medicalFromDate, setMedicalFromDate] = useState(null);
+  const [medicalToDate, setMedicalToDate] = useState(null);
+  const [updatingMedical, setUpdatingMedical] = useState(false);
 
   const userId = sessionStorage.getItem("ID");
+
+  // Tour starts only after profile data has loaded — no setTimeout needed.
+  useProfileTour({ isReady: !loading });
 
   // Label typography style
   const labelStyle = {
@@ -33,6 +61,104 @@ const MyProfile = () => {
     fontSize: '16px',
     lineHeight: '24px',
     letterSpacing: '-0.01em'
+  };
+
+  useEffect(() => {
+    const stored = localStorage.getItem(PROFILE_PIC_STORAGE_KEY + userId);
+    if (stored) setProfilePicUrl(stored);
+  }, [userId]);
+
+  const handlePicUpload = async (file) => {
+    if (!file) return;
+    setUploadingPic(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      uploadFormData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      uploadFormData.append("asset_folder", `profile_pictures/${userId}`);
+
+      const response = await fetch(CLOUDINARY_UPLOAD_URL, {
+        method: "POST",
+        body: uploadFormData,
+      });
+      const data = await response.json();
+      if (data.secure_url) {
+        setProfilePicUrl(data.secure_url);
+        localStorage.setItem(PROFILE_PIC_STORAGE_KEY + userId, data.secure_url);
+        window.dispatchEvent(new CustomEvent("profilePictureUpdated", { detail: { url: data.secure_url } }));
+      }
+    } catch (err) {
+      console.error("Profile picture upload failed:", err);
+    } finally {
+      setUploadingPic(false);
+    }
+  };
+
+  const currentMedicalStatus = profileData?.medicalStatus || "NO";
+
+  const closeMedicalDialog = () => {
+    setMedicalDialogVisible(false);
+    setMedicalEffectiveDate(null);
+    setMedicalFromDate(null);
+    setMedicalToDate(null);
+  };
+
+  const handleMedicalUpdate = async () => {
+    setUpdatingMedical(true);
+    try {
+      let emailId = "";
+      try {
+        const persisted = JSON.parse(sessionStorage.getItem("session-storage") || "{}");
+        emailId = persisted?.state?.user?.EmailID || "";
+      } catch (_) {}
+
+      const newStatus = currentMedicalStatus === "YES" ? "NO" : "YES";
+      const bodyDetail = newStatus === "YES"
+        ? `your medical status change request from NO to YES has been received (From: ${medicalFromDate?.toLocaleDateString() || ""} - To: ${medicalToDate?.toLocaleDateString() || ""}).`
+        : `your medical status change request from YES to NO has been received (Effective: ${medicalEffectiveDate?.toLocaleDateString() || ""}).`;
+
+      await apiService.SendEmail({
+        ToEmail: emailId,
+        CcEmail: "",
+        Subject: "Medical Status Change Request",
+        Body: `<font face="Calibri">Dear Transport User,<br><br>With reference to your medical status change request, ${bodyDetail} Please log in to your eTMS to check the details.<br><br>Thanks.<br><br><br>****This is a system generated mail. Please do not reply to this mail, as the mail box is not monitored****`,
+      });
+      toastService.success("Your request has been raised.");
+      closeMedicalDialog();
+    } catch (err) {
+      console.error("Medical update email failed:", err);
+      toastService.error("Failed to raise request. Please try again.");
+    } finally {
+      setUpdatingMedical(false);
+    }
+  };
+
+  const handleAddressUpdate = async () => {
+    if (!newAddress.trim()) return;
+    setUpdatingAddress(true);
+    try {
+      let emailId = "";
+      try {
+        const persisted = JSON.parse(sessionStorage.getItem("session-storage") || "{}");
+        emailId = persisted?.state?.user?.EmailID || "";
+      } catch (_) {}
+
+      await apiService.SendEmail({
+        ToEmail: emailId,
+        CcEmail: "",
+        Subject: "Address Change Request",
+        Body: `<font face="Calibri">Dear Transport User,<br><br>We have received your address change request. Your requested address will be reviewed and updated by the concerned team. Please log in to your eTMS to track the status.<br><br>Thanks.<br><br><br>****This is a system generated mail. Please do not reply to this mail, as the mail box is not monitored****`,
+      });
+      toastService.success("Your address change request has been raised.");
+      setAddressDialogVisible(false);
+      setNewAddress('');
+      setAddressEffectiveDate(null);
+    } catch (err) {
+      console.error("Address update email failed:", err);
+      toastService.error("Failed to raise request. Please try again.");
+    } finally {
+      setUpdatingAddress(false);
+    }
   };
 
   useEffect(() => {
@@ -63,7 +189,8 @@ const MyProfile = () => {
         showNewButton={false}
         onNewButtonClick={() => {}}
       />
-      <Loader isVisible={loading} fullScreen={true} />
+      <Loader isVisible={loading || updatingAddress || updatingMedical} fullScreen={true} />
+      <ToastContainer position="top-right" autoClose={3000} />
       <Sidebar />
       <div class="middle">
         <div class="row mt-3">
@@ -116,11 +243,57 @@ const MyProfile = () => {
                 >
                   <div class="card-body p-0">
                     <div class="d-flex justify-content-start align-items-start p-5 pt-4">
-                      <img src="images/ali1.png" class="me-3" alt="" />
-                      <div>
+                      <div
+                        id="tour-profile-pic"
+                        className="me-3 position-relative"
+                        style={{ width: '80px', height: '80px', flexShrink: 0, cursor: 'pointer' }}
+                        onClick={() => setProfilePicDialogVisible(true)}
+                      >
+                        {profilePicUrl ? (
+                          <img
+                            src={profilePicUrl}
+                            alt="Profile"
+                            style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5e7eb' }}
+                          />
+                        ) : (
+                          <img
+                            src="images/ali1.png"
+                            alt="Profile"
+                            style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }}
+                          />
+                        )}
+                        <div
+                          style={{
+                            position: 'absolute', bottom: 0, right: 0,
+                            width: '26px', height: '26px',
+                            borderRadius: '50%',
+                            background: uploadingPic ? '#9ca3af' : '#6366f1',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '2px solid #fff',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.18)'
+                          }}
+                        >
+                          {uploadingPic ? (
+                            <span className="material-icons" style={{ fontSize: '14px', color: '#fff' }}>hourglass_top</span>
+                          ) : (
+                            <span className="material-icons" style={{ fontSize: '14px', color: '#fff' }}>photo_camera</span>
+                          )}
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            handlePicUpload(e.target.files?.[0]);
+                            e.target.value = "";
+                          }}
+                        />
+                      </div>
+                      <div id="tour-profile-info">
                         <h5>
                           {" "}
-                          <small 
+                          <small
                             style={{
                               fontFamily: 'Plus Jakarta Sans',
                               fontWeight: 600,
@@ -145,7 +318,7 @@ const MyProfile = () => {
                       </div>
                     </div>
 
-                    <ul class="requi_sec" style={{ paddingLeft: '50px', paddingRight: '50px', gap: '32px' }}>
+                    <ul id="tour-transport-status" class="requi_sec" style={{ paddingLeft: '50px', paddingRight: '50px', gap: '32px' }}>
                       <li>
                         <small style={labelStyle}>Transport Required</small>{" "}
                         <span
@@ -254,7 +427,8 @@ const MyProfile = () => {
                 </div>
               </div>
               <div class="col-12 col-lg-7">
-                <div 
+                <div id="tour-personal-details">
+                <div
                   class="card profile_card mb-4"
                   style={{
                     width: '100%',
@@ -268,7 +442,20 @@ const MyProfile = () => {
                     <ul>
                       <li>
                         <span style={labelStyle}>Address</span>{" "}
-                        <span style={dataStyle}>{profileData?.address || "No Address"}</span>
+                        <Tooltip target="#address-edit-btn" content="Click to request address change" position="top" />
+                        <a
+                          id="address-edit-btn"
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setNewAddress(profileData?.address || '');
+                            setAddressEffectiveDate(null);
+                            setAddressDialogVisible(true);
+                          }}
+                          style={{ ...dataStyle, color: '#6366f1', textDecoration: 'underline', cursor: 'pointer' }}
+                        >
+                          {profileData?.address || "No Address"}
+                        </a>
                       </li>
                       <li>
                         <span style={labelStyle}>City</span>
@@ -313,20 +500,29 @@ const MyProfile = () => {
                       </li>
                       <li>
                         <span style={labelStyle}>Medical</span>
-                        <span
-                          className="badge rounded-pill px-3 bg-danger"
-                          style={{
-                            width: '88px',
-                            height: '24px',
-                            borderRadius: '28.95px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#fff'
-                          }}
+                        <Tooltip target="#medical-edit-btn" content="Click to request medical status change" position="top" />
+                        <a
+                          id="medical-edit-btn"
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); setMedicalDialogVisible(true); }}
+                          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                         >
-                          NO
-                        </span>
+                          <span
+                            className="badge rounded-pill px-3 bg-danger"
+                            style={{
+                              width: '88px',
+                              height: '24px',
+                              borderRadius: '28.95px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#fff'
+                            }}
+                          >
+                            NO
+                          </span>
+                          <span className="material-icons" style={{ fontSize: '14px', color: '#6366f1', lineHeight: 1 }}>edit</span>
+                        </a>
                       </li>
                       <li>
                         <span style={labelStyle}>Pwd</span>
@@ -419,11 +615,261 @@ const MyProfile = () => {
                     </ul>
                   </div>
                 </div>
+                </div>{/* /tour-personal-details */}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Medical Status Change Sidebar */}
+      <MasterSidebar
+        show={medicalDialogVisible}
+        onClose={closeMedicalDialog}
+        title="Update Medical Status"
+        width="400px"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: closeMedicalDialog,
+            disabled: updatingMedical,
+          },
+          {
+            label: updatingMedical ? "Submitting..." : "Submit Request",
+            className: "btn btn-success",
+            onClick: handleMedicalUpdate,
+            disabled: updatingMedical || (
+              currentMedicalStatus === "YES"
+                ? !medicalEffectiveDate
+                : !medicalFromDate || !medicalToDate
+            ),
+          },
+        ]}
+      >
+        <div className="p-3">
+          <div className="mb-4" style={{ background: '#f8f9fa', border: '1px solid #e9ecef', borderRadius: '8px', padding: '14px 16px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9ca3af', marginBottom: '5px' }}>Current</div>
+              <span style={{
+                display: 'inline-block', padding: '2px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
+                background: currentMedicalStatus === "YES" ? '#d1fae5' : '#fee2e2',
+                color: currentMedicalStatus === "YES" ? '#065f46' : '#991b1b',
+                border: `1px solid ${currentMedicalStatus === "YES" ? '#a7f3d0' : '#fca5a5'}`
+              }}>
+                {currentMedicalStatus}
+              </span>
+            </div>
+            <span className="material-icons" style={{ fontSize: '16px', color: '#9ca3af', margin: '0 10px' }}>arrow_forward</span>
+            <div style={{ flex: 1, textAlign: 'right' }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#9ca3af', marginBottom: '5px' }}>Requested</div>
+              <span style={{
+                display: 'inline-block', padding: '2px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
+                background: currentMedicalStatus === "YES" ? '#fee2e2' : '#d1fae5',
+                color: currentMedicalStatus === "YES" ? '#991b1b' : '#065f46',
+                border: `1px solid ${currentMedicalStatus === "YES" ? '#fca5a5' : '#a7f3d0'}`
+              }}>
+                {currentMedicalStatus === "YES" ? "NO" : "YES"}
+              </span>
+            </div>
+          </div>
+
+          {currentMedicalStatus === "YES" ? (
+            <div className="mb-3">
+              <label className="form-label fw-semibold">
+                Effective Date <span className="text-danger">*</span>
+              </label>
+              <div style={{ position: 'relative', width: '100%' }}>
+                <img src={calendarIcon} alt="calendar" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', zIndex: 2, pointerEvents: 'none' }} />
+                <Calendar
+                  className="w-100"
+                  inputStyle={{ paddingLeft: '36px' }}
+                  value={medicalEffectiveDate}
+                  onChange={(e) => setMedicalEffectiveDate(e.value)}
+                  minDate={new Date()}
+                  dateFormat="mm/dd/yy"
+                  placeholder="Select effective date"
+                  appendTo={document.body}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mb-3">
+                <label className="form-label fw-semibold">
+                  From Date <span className="text-danger">*</span>
+                </label>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <img src={calendarIcon} alt="calendar" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', zIndex: 2, pointerEvents: 'none' }} />
+                  <Calendar
+                    className="w-100"
+                    inputStyle={{ paddingLeft: '36px' }}
+                    value={medicalFromDate}
+                    onChange={(e) => { setMedicalFromDate(e.value); if (medicalToDate && e.value > medicalToDate) setMedicalToDate(null); }}
+                    minDate={new Date()}
+                    dateFormat="mm/dd/yy"
+                    placeholder="Select from date"
+                    appendTo={document.body}
+                  />
+                </div>
+              </div>
+              <div className="mb-3">
+                <label className="form-label fw-semibold">
+                  To Date <span className="text-danger">*</span>
+                </label>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <img src={calendarIcon} alt="calendar" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', zIndex: 2, pointerEvents: 'none' }} />
+                  <Calendar
+                    className="w-100"
+                    inputStyle={{ paddingLeft: '36px' }}
+                    value={medicalToDate}
+                    onChange={(e) => setMedicalToDate(e.value)}
+                    minDate={medicalFromDate || new Date()}
+                    dateFormat="mm/dd/yy"
+                    placeholder="Select to date"
+                    appendTo={document.body}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </MasterSidebar>
+
+      {/* Address Change Sidebar */}
+      <MasterSidebar
+        show={addressDialogVisible}
+        onClose={() => { setAddressDialogVisible(false); setNewAddress(''); setAddressEffectiveDate(null); }}
+        title="Update Address"
+        width="400px"
+        footerButtons={[
+          {
+            label: "Cancel",
+            className: "btn btn-outline-secondary",
+            onClick: () => { setAddressDialogVisible(false); setNewAddress(''); setAddressEffectiveDate(null); },
+            disabled: updatingAddress,
+          },
+          {
+            label: updatingAddress ? "Updating..." : "Update",
+            className: "btn btn-success",
+            onClick: handleAddressUpdate,
+            disabled: updatingAddress || !newAddress.trim() || !addressEffectiveDate,
+          },
+        ]}
+      >
+        <div className="p-3">
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Address</label>
+            <textarea
+              className="form-control"
+              placeholder="Enter new address"
+              rows={3}
+              value={newAddress}
+              onChange={(e) => setNewAddress(e.target.value)}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+          <div className="mb-3">
+            <label className="form-label fw-semibold">
+              Effective Date <span className="text-danger">*</span>
+            </label>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <img
+                src={calendarIcon}
+                alt="calendar"
+                style={{
+                  position: 'absolute', left: '10px', top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '20px', height: '20px',
+                  zIndex: 2, pointerEvents: 'none'
+                }}
+              />
+              <Calendar
+                className="w-100"
+                inputStyle={{ paddingLeft: '36px' }}
+                value={addressEffectiveDate}
+                onChange={(e) => setAddressEffectiveDate(e.value)}
+                minDate={new Date()}
+                dateFormat="mm/dd/yy"
+                placeholder="Select effective date"
+                appendTo={document.body}
+              />
+            </div>
+          </div>
+        </div>
+      </MasterSidebar>
+
+      {/* Profile Picture Dialog */}
+      <Dialog
+        header="Profile Photo"
+        visible={profilePicDialogVisible}
+        onHide={() => setProfilePicDialogVisible(false)}
+        style={{ width: '360px' }}
+        draggable={false}
+        resizable={false}
+      >
+        <div style={{ textAlign: 'center', padding: '4px 0 12px' }}>
+
+          {/* Avatar with brand ring */}
+          <div style={{ display: 'inline-block', position: 'relative', marginBottom: '16px' }}>
+            <div style={{ width: '124px', height: '124px', borderRadius: '50%', padding: '3px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'inline-block' }}>
+              <img
+                src={profilePicUrl || "images/ali1.png"}
+                alt="Profile"
+                style={{ width: '118px', height: '118px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #fff', display: 'block' }}
+              />
+            </div>
+            {uploadingPic && (
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="material-icons" style={{ color: '#fff', fontSize: '28px' }}>hourglass_top</span>
+              </div>
+            )}
+          </div>
+
+          {/* Identity */}
+          <div style={{ fontWeight: 700, fontSize: '17px', fontFamily: 'Plus Jakarta Sans', color: '#111827', lineHeight: '24px' }}>
+            {profileData?.empName || ""}
+          </div>
+          <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '3px' }}>
+            {profileData?.Email || ""}
+          </div>
+          {profileData?.empCode && (
+            <span style={{ display: 'inline-block', marginTop: '8px', fontSize: '11px', fontWeight: 600, color: '#6366f1', background: '#eef2ff', padding: '2px 12px', borderRadius: '20px', letterSpacing: '0.05em' }}>
+              {profileData.empCode}
+            </span>
+          )}
+
+          <hr style={{ margin: '18px 0 14px', borderColor: '#f3f4f6' }} />
+
+          {/* Actions */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+            <button
+              style={{ width: '100%', padding: '10px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, background: '#6366f1', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: uploadingPic ? 'not-allowed' : 'pointer', opacity: uploadingPic ? 0.7 : 1 }}
+              disabled={uploadingPic}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <span className="material-icons" style={{ fontSize: '16px' }}>upload</span>
+              {uploadingPic ? "Uploading..." : "Upload New Photo"}
+            </button>
+
+            {profilePicUrl && (
+              <button
+                style={{ background: 'none', border: 'none', fontSize: '12px', color: '#9ca3af', cursor: 'pointer', padding: '2px 0', display: 'flex', alignItems: 'center', gap: '5px' }}
+                disabled={uploadingPic}
+                onClick={() => {
+                  localStorage.removeItem(PROFILE_PIC_STORAGE_KEY + userId);
+                  setProfilePicUrl(null);
+                  window.dispatchEvent(new CustomEvent("profilePictureUpdated", { detail: { url: null } }));
+                  setProfilePicDialogVisible(false);
+                }}
+              >
+                <span className="material-icons" style={{ fontSize: '14px' }}>delete_outline</span>
+                Remove photo
+              </button>
+            )}
+          </div>
+        </div>
+      </Dialog>
 
       {/* Maps Popup */}
       <Dialog

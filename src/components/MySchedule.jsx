@@ -3,6 +3,7 @@ import Sidebar from "./Master/SidebarMenu";
 import Header from "./Master/Header";
 import Notifications from "./Master/Notifications";
 import sessionManager from "../utils/SessionManager.js";
+import { useScheduleTour } from "../hooks/useGuidedTour";
 import { apiService } from "../services/api"; // Kept for edge cases if needed, though hooks prefered
 import { toastService } from "../services/toastService.js";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
@@ -199,6 +200,7 @@ const MySchedule = () => {
   const [selectedLogoutShiftTime, setSelectedLogoutShiftTime] = useState("");
 
   // Modals
+  const [isShuttleBooked, setIsShuttleBooked] = useState(false);
   const [isEmployeeShiftOpen, setIsEmployeeShiftOpen] = useState(false);
   const [isTripsModalOpen, setIsTripsModalOpen] = useState(false);
   const [selectedEmployeeForTrips, setSelectedEmployeeForTrips] = useState(null);
@@ -209,6 +211,7 @@ const MySchedule = () => {
 
   // Employee Profile Form State
   const [isEmployeeProfileOpen, setIsEmployeeProfileOpen] = useState(false);
+  const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
   const [selectedProfileEmployee, setSelectedProfileEmployee] = useState(null);
   const [profileForm, setProfileForm] = useState({
     tptRequired: false,
@@ -217,6 +220,8 @@ const MySchedule = () => {
     bcpParameter: false,
     pwd: false,
     allowedTransportWeekend: false,
+    address: '',
+    effectiveDate: null,
   });
 
   // -- Queries --
@@ -344,9 +349,12 @@ const MySchedule = () => {
   const routeDetails = routeDetailsRaw || [];
 
   // Global Loading
-  const loading = lockLoading || facilitiesLoading || scheduleLoading 
-               || updateEmpScheduleMutation.isPending || insertScheduleMutation.isPending 
-               || cancelTripMutation.isPending; // || routeDetailsLoading? No, that's inside a collapse
+  const loading = lockLoading || facilitiesLoading || scheduleLoading
+               || updateEmpScheduleMutation.isPending || insertScheduleMutation.isPending
+               || cancelTripMutation.isPending;
+
+  // Tour starts only after initial data loads — no setTimeout needed.
+  useScheduleTour({ isReady: !loading });
 
   const onMgrPageChange = (e) => {
     setMgrFirst(e.first);
@@ -790,7 +798,11 @@ const MySchedule = () => {
     setSelectedloginfacility(loginFacilityId);
     setSelectedlogoutfacility(logoutFacilityId);
 
-    // 5. Open Modal
+    // 5. Load shuttle preference from localStorage
+    const savedShuttle = localStorage.getItem(`shuttle_${employee.EmployeeID}`);
+    setIsShuttleBooked(savedShuttle === "true");
+
+    // 6. Open Modal
     setIsEmployeeShiftOpen(true);
     setTimeout(() => {
       const el = document.getElementById("Employee_Shift");
@@ -820,7 +832,11 @@ const MySchedule = () => {
     // Load from local storage
     const storedData = localStorage.getItem(`empProfile_${employee.EmployeeID}`);
     if (storedData) {
-      setProfileForm(JSON.parse(storedData));
+      const parsed = JSON.parse(storedData);
+      setProfileForm({
+        ...parsed,
+        effectiveDate: parsed.effectiveDate ? new Date(parsed.effectiveDate) : null,
+      });
     } else {
       setProfileForm({
         tptRequired: employee.tptReq === "Y",
@@ -829,6 +845,8 @@ const MySchedule = () => {
         bcpParameter: false,
         pwd: false,
         allowedTransportWeekend: false,
+        address: '',
+        effectiveDate: null,
       });
     }
 
@@ -842,18 +860,45 @@ const MySchedule = () => {
     }, 10);
   };
 
-  const handleProfileSubmit = () => {
+  const handleProfileSubmit = async () => {
     if (!selectedProfileEmployee) return;
-    localStorage.setItem(`empProfile_${selectedProfileEmployee.EmployeeID}`, JSON.stringify(profileForm));
+    setIsSubmittingProfile(true);
+    try {
+    localStorage.setItem(
+      `empProfile_${selectedProfileEmployee.EmployeeID}`,
+      JSON.stringify({
+        ...profileForm,
+        effectiveDate: profileForm.effectiveDate ? profileForm.effectiveDate.toISOString() : null,
+      })
+    );
+
+    let emailId = "";
+    try {
+      const persisted = JSON.parse(sessionStorage.getItem("session-storage") || "{}");
+      emailId = persisted?.state?.user?.EmailID || "";
+    } catch (_) {}
+    try {
+      await apiService.SendEmail({
+        ToEmail: emailId,
+        CcEmail: "",
+        Subject: "Address Change Request",
+        Body: `<font face="Calibri">Dear Transport User,<br><br>With reference to your address change request , your request has been successfully initiated. Please log in to your eTMS to check the details.<br><br>Thanks.<br><br><br>****This is a system generated mail. Please do not reply to this mail, as the mail box is not monitored****`,
+      });
+    } catch (err) {
+      console.error("SendEmail error:", err);
+    }
+
     toastService.success("Profile changes applied successfully!");
-    
-    // Close sidebar
+
     const el = document.getElementById("Employee_Profile_Sidebar");
     if (el) {
       const bsOffcanvas = Offcanvas.getInstance(el);
       if (bsOffcanvas) bsOffcanvas.hide();
     }
     setTimeout(() => setIsEmployeeProfileOpen(false), 400);
+    } finally {
+      setIsSubmittingProfile(false);
+    }
   };
 
   const fetchRoutesDetails = (routeId) => {
@@ -1039,14 +1084,19 @@ const MySchedule = () => {
   };
 
   const handleNewButtonClick = () => {
+    // Dismiss any other open offcanvas panels before opening the New Schedule panel.
+    ['Employee_Shift', 'Employee_Profile_Sidebar', 'trips', 'profileSidebar'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) Offcanvas.getInstance(el)?.hide();
+    });
+
     const userFacilityId = sessionManager.getUserSession().FacilityID;
     setSelectedloginfacility(userFacilityId);
     setSelectedlogoutfacility(userFacilityId);
 
     const offcanvasElement = document.getElementById("raise_Feedback");
     if (offcanvasElement) {
-      const offcanvas = new Offcanvas(offcanvasElement);
-      offcanvas.show();
+      Offcanvas.getOrCreateInstance(offcanvasElement).show();
     }
   };
 
@@ -1073,7 +1123,7 @@ const MySchedule = () => {
 
 
 
-      <Loader isVisible={loading} fullScreen={true} />
+      <Loader isVisible={loading || isSubmittingProfile} fullScreen={true} />
       <Header
         pageTitle="My Schedule"
         showNewButton={true}
@@ -1102,6 +1152,7 @@ const MySchedule = () => {
             `}</style>
 
             <button
+              id="tour-replicate-btn"
               type="button"
               className="btn replicate-btn"
               onClick={handleReplicateClick}
@@ -1212,7 +1263,7 @@ const MySchedule = () => {
                 </style>
 
                 <div className="schedule-filter-bar mb-3">
-                  <div className="filter-item manager-select">
+                  <div id="tour-manager-filter" className="filter-item manager-select">
                     <label className="form-label">Manager</label>
                     <select
                       className="form-select"
@@ -1228,7 +1279,7 @@ const MySchedule = () => {
                     </select>
                   </div>
 
-                  <div className="filter-item date-select">
+                  <div id="tour-from-date" className="filter-item date-select">
                     <label className="form-label">From Date</label>
                     <div className="custom-calendar-wrapper">
                       <img
@@ -1251,7 +1302,7 @@ const MySchedule = () => {
                     </div>
                   </div>
 
-                  <div className="toolbar-wrapper">
+                  <div id="tour-schedule-toolbar" className="toolbar-wrapper">
                     <TableToolbar
                       search={scheduleFilter}
                       onSearch={(e) => setScheduleFilter(e.target.value)}
@@ -1283,7 +1334,7 @@ const MySchedule = () => {
                   >
                     <thead className="table-light">
                       <tr>
-                        <th>Employee</th>
+                        <th id="tour-employee-name-col">Employee</th>
                         {weekDays.map((day, index) => (
                           <th key={index}>
                             <div
@@ -1565,11 +1616,14 @@ const MySchedule = () => {
         data-bs-backdrop="static"
       >
         <div className="offcanvas-header bg-secondary text-white offcanvas-header-lg">
-          <h5 className="subtitle fw-normal">
-            Update Schedule -{" "}
-            {employeeSchedule && employeeSchedule.length > 0
-              ? `${employeeSchedule[0].empCode} ${employeeSchedule[0].empName} `
-              : "Loading..."}
+          <h5 className="subtitle fw-normal w-100 d-flex justify-content-between align-items-center pe-4">
+            <span>
+              Update Schedule -{" "}
+              {employeeSchedule && employeeSchedule.length > 0
+                ? `${employeeSchedule[0].empCode} ${employeeSchedule[0].empName} `
+                : "Loading..."}
+            </span>
+            {isShuttleBooked && <span className="text-warning fs-6">Shuttle</span>}
           </h5>
           <button
             type="button"
@@ -1610,6 +1664,20 @@ const MySchedule = () => {
                   </>
                 )}
               </ul>
+            </div>
+            <div className="col-12 mb-3 d-flex align-items-center gap-2">
+              <input
+                type="checkbox"
+                id="chkShuttle"
+                checked={isShuttleBooked}
+                onChange={(e) => {
+                  setIsShuttleBooked(e.target.checked);
+                  if (selectedEmployeeId) {
+                    localStorage.setItem(`shuttle_${selectedEmployeeId}`, String(e.target.checked));
+                  }
+                }}
+              />
+              <label htmlFor="chkShuttle" style={{ marginBottom: 0, cursor: "pointer" }}>Book Shuttle</label>
             </div>
             <div className="col-12 mb-3">
               <div className="card form_card border-0">
@@ -1991,7 +2059,7 @@ const MySchedule = () => {
           {/* Cut Off Timings */}
           <div className="row mb-4">
             <div className="col-12">
-              <div className="card border-warning">
+              <div id="tour-cutoff-timings" className="card border-warning">
                 <div className="card-body d-flex justify-content-start align-items-center cutoff p-0">
                   <div className="overline_textB">Cut Off Timings </div>
                   <div>
@@ -2023,7 +2091,7 @@ const MySchedule = () => {
 
           {/* Schedule Form */}
           <div className="row mb-4">
-            <div className="col">
+            <div id="tour-process" className="col">
               <label className="form-label">Process Name</label>
               <select
                 id="ddlProcess"
@@ -2039,77 +2107,82 @@ const MySchedule = () => {
                 ))}
               </select>
             </div>
-            <div className="col">
-              <label className="form-label">From</label>
-              <div className="custom-calendar-wrapper">
-                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                <Calendar
-                  id="txtNewfromDate"
-                  className="w-100 custom-calendar-input"
-                  value={fromDate ? new Date(fromDate) : null}
-                  onChange={(e) => {
-                    const date = e.value;
-                    const val = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : "";
-                    handleFromDateChange({ target: { value: val } });
-                  }}
-                  dateFormat="mm/dd/yy"
-                  appendTo={document.body}
-                  panelStyle={{ zIndex: '99999 !important' }}
-                />
+            {/* Wrap From + To in one element so the tour can highlight both together */}
+            <div id="tour-date-range" className="col d-flex gap-2">
+              <div className="flex-fill">
+                <label className="form-label">From</label>
+                <div className="custom-calendar-wrapper">
+                  <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                  <Calendar
+                    id="txtNewfromDate"
+                    className="w-100 custom-calendar-input"
+                    value={fromDate ? new Date(fromDate) : null}
+                    onChange={(e) => {
+                      const date = e.value;
+                      const val = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : "";
+                      handleFromDateChange({ target: { value: val } });
+                    }}
+                    dateFormat="mm/dd/yy"
+                    appendTo={document.body}
+                    panelStyle={{ zIndex: '99999 !important' }}
+                  />
+                </div>
+              </div>
+              <div className="flex-fill">
+                <label className="form-label">To</label>
+                <div className="custom-calendar-wrapper">
+                  <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                  <Calendar
+                    id="txtNewtoDate"
+                    className="w-100 custom-calendar-input"
+                    value={toDate ? new Date(toDate) : null}
+                    onChange={(e) => {
+                      const date = e.value;
+                      const val = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : "";
+                      handleToDateChange({ target: { value: val } });
+                    }}
+                    dateFormat="mm/dd/yy"
+                    appendTo={document.body}
+                    panelStyle={{ zIndex: '99999 !important' }}
+                  />
+                </div>
               </div>
             </div>
-            <div className="col">
-              <label className="form-label">To</label>
-              <div className="custom-calendar-wrapper">
-                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                <Calendar
-                  id="txtNewtoDate"
-                  className="w-100 custom-calendar-input"
-                  value={toDate ? new Date(toDate) : null}
-                  onChange={(e) => {
-                    const date = e.value;
-                    const val = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : "";
-                    handleToDateChange({ target: { value: val } });
-                  }}
-                  dateFormat="mm/dd/yy"
-                  appendTo={document.body}
-                  panelStyle={{ zIndex: '99999 !important' }}
-                />
+            {/* Wrap Login + Logout facility in one element so the tour can highlight both together */}
+            <div id="tour-facilities" className="col d-flex gap-2">
+              <div className="flex-fill">
+                <label className="form-label">Login Facility</label>
+                <select
+                  className="form-select"
+                  value={selectedloginfacility}
+                  onChange={handleLoginFacilityChange}
+                  id="ddlNewLoginFacility"
+                >
+                  {loginfacility.map((loginfacility) => (
+                    <option key={loginfacility.Id} value={loginfacility.Id}>
+                      {loginfacility.facilityName}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
-            <div className="col">
-              <label className="form-label">Login Facility</label>
-              <select
-                className="form-select"
-                value={selectedloginfacility}
-                onChange={handleLoginFacilityChange}
-                id="ddlNewLoginFacility"
-
-              >
-                {loginfacility.map((loginfacility) => (
-                  <option key={loginfacility.Id} value={loginfacility.Id}>
-                    {loginfacility.facilityName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col">
-              <label className="form-label">Logout Facility</label>
-              <select
-                className="form-select"
-                value={selectedlogoutfacility}
-                onChange={handleLogoutFacilityChange}
-                id="ddlNewLogoutFacility"
-              >
-                {loginfacility.map((loginfacility) => (
-                  <option key={loginfacility.Id} value={loginfacility.Id}>
-                    {loginfacility.facilityName}
-                  </option>
-                ))}
-              </select>
+              <div className="flex-fill">
+                <label className="form-label">Logout Facility</label>
+                <select
+                  className="form-select"
+                  value={selectedlogoutfacility}
+                  onChange={handleLogoutFacilityChange}
+                  id="ddlNewLogoutFacility"
+                >
+                  {loginfacility.map((loginfacility) => (
+                    <option key={loginfacility.Id} value={loginfacility.Id}>
+                      {loginfacility.facilityName}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
-          <div className="row mb-4">
+          <div id="tour-weekly-off-section" className="row mb-4">
             <div className="col-12">
               <div className="form-check form-check-inline ps-0">
                 <button
@@ -2223,7 +2296,7 @@ const MySchedule = () => {
             </div>
           </div>
 
-          <div className="row mb-4">
+          <div id="tour-shifts-section" className="row mb-4">
             <div className="col-4">
               <div className="card form_card border-0">
                 <div className="card-header">Weekdays</div>
@@ -2569,7 +2642,7 @@ const MySchedule = () => {
                           onChange={(e) => setProfileForm({...profileForm, bcpParameter: e.target.checked})}
                         />
                         <label className="form-check-label" htmlFor="bcpParameter">
-                          BCP Parameter
+                          BCP
                         </label>
                       </div>
                     </div>
@@ -2616,6 +2689,35 @@ const MySchedule = () => {
                       </div>
                     </div>
 
+                    <div className="col-12 mb-3">
+                      <label className="form-label" htmlFor="profileAddress">Address</label>
+                      <textarea
+                        className="form-control"
+                        id="profileAddress"
+                        placeholder="Enter address"
+                        rows={3}
+                        value={profileForm.address}
+                        onChange={(e) => setProfileForm({...profileForm, address: e.target.value})}
+                        style={{ resize: 'vertical' }}
+                      />
+                    </div>
+
+                    <div className="col-6 mb-3">
+                      <label className="form-label d-block">Effective Date <span className="text-danger">*</span></label>
+                      <div className="custom-calendar-wrapper">
+                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                        <Calendar
+                          className="w-100 custom-calendar-input"
+                          value={profileForm.effectiveDate}
+                          onChange={(e) => setProfileForm({...profileForm, effectiveDate: e.value})}
+                          minDate={new Date()}
+                          dateFormat="mm/dd/yy"
+                          placeholder="Select effective date"
+                          appendTo={document.body}
+                        />
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               </div>
@@ -2634,6 +2736,7 @@ const MySchedule = () => {
           <button
             className="btn btn-success mx-3"
             onClick={handleProfileSubmit}
+            disabled={isSubmittingProfile}
           >
             Apply
           </button>

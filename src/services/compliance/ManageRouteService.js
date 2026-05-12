@@ -433,6 +433,69 @@ class ManageRouteService {
     }
   }
 
+  // --- Async Job Helpers ---
+
+  async startAsyncRouteGeneration({ facilityid, sDate, triptype, shifttime, updatedBy, mainBackendUrl }) {
+    const endpoint = getRoutingEngineEndpoint('generate').replace('/generate', '/generate/async');
+    console.log(`[RoutingEngine] Starting async generation: ${endpoint}`);
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      mode: 'cors',
+      credentials: 'omit',
+      body: JSON.stringify({ facilityid, sDate, triptype, shifttime, updatedBy, mainBackendUrl })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to start async route generation: ${response.status} ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async checkInProgressJob({ facilityid, sDate, triptype }) {
+    const baseEndpoint = getRoutingEngineEndpoint('generate');
+    const baseUrl = baseEndpoint.substring(0, baseEndpoint.lastIndexOf('/generate'));
+    const params = new URLSearchParams({ facilityid: String(facilityid), sDate, triptype });
+    const endpoint = `${baseUrl}/in-progress?${params}`;
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      if (!response.ok) return { inProgress: false };
+      return response.json();
+    } catch (_) {
+      // Non-fatal: if check fails, let the caller fall through to show the generate dialog
+      return { inProgress: false };
+    }
+  }
+
+  async getRouteJobStatus(jobId) {
+    const baseEndpoint = getRoutingEngineEndpoint('generate');
+    const baseUrl = baseEndpoint.substring(0, baseEndpoint.lastIndexOf('/generate'));
+    const endpoint = `${baseUrl}/jobs/${jobId}`;
+
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      mode: 'cors',
+      credentials: 'omit'
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch job status: ${response.status} ${errorText}`);
+    }
+
+    return response.json();
+  }
+
   /**
    * Generate routes using the routing engine (V1 or V2 based on user config)
    * @param {Object} routeInputData - The route input data from GetRouteInputJson

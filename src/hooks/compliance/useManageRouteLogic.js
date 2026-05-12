@@ -41,6 +41,7 @@ const useManageRouteLogic = () => {
 
     const [searchParams, setSearchParams] = useState(null); // Committed search criteria
     const [isSearchEnabled, setIsSearchEnabled] = useState(false);
+    const [inProgressJob, setInProgressJob] = useState(null); // { jobId, progressMessage, progressPercent }
 
     // --- State: UI Toggles ---
     const [uiState, setUiState] = useState({
@@ -154,10 +155,27 @@ const useManageRouteLogic = () => {
                 setUiState(prev => ({ ...prev, showGenerateDialog: false }));
                 toastService.error("The Roster is not available.");
             } else if (result === 0) {
-                // Roster available but paths not generated -> Show Dialog
+                // Routes not generated yet — check if one is already in progress before showing dialog
                 setIsSearchEnabled(false);
-                setSearchParams(null); // Clear data
-                setUiState(prev => ({ ...prev, showGenerateDialog: true }));
+                setSearchParams(null);
+
+                const check = await ManageRouteService.checkInProgressJob({
+                    facilityid: filters.facilityId,
+                    sDate: filters.sDate,
+                    triptype: filters.tripType
+                });
+
+                if (check.inProgress) {
+                    // Resume or show another admin's active job
+                    setInProgressJob({
+                        jobId: check.jobId,
+                        progressMessage: check.progressMessage,
+                        progressPercent: check.progressPercent ?? 10
+                    });
+                } else {
+                    // Nothing running — show the confirm dialog
+                    setUiState(prev => ({ ...prev, showGenerateDialog: true }));
+                }
             } else {
                 toastService.error("Invalid validation response");
             }
@@ -201,7 +219,8 @@ const useManageRouteLogic = () => {
         state: {
             filters,
             ui: uiState,
-            isSearchEnabled
+            isSearchEnabled,
+            inProgressJob
         },
 
         // Actions exposed to View
@@ -210,6 +229,7 @@ const useManageRouteLogic = () => {
             search: handleSearch,
             deleteEmployee: handleDeleteEmployee,
             setUiState: (updates) => setUiState(prev => ({ ...prev, ...updates })),
+            clearInProgressJob: () => setInProgressJob(null),
             // Expose mutations if needed for complex UI handling
             mutations: {
                 split: splitRouteMutation,

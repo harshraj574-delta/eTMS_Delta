@@ -462,11 +462,30 @@ export const apiService = {
       });
       const DropDown = Array.isArray(response.data)
         ? response.data.map((item) => ({
-          id: item.id || 0,
+          id: item.Id ?? item.id ?? 0,
           Category: item.Category || "",
         }))
         : [];
       //console.log("Category DropDown Data:", DropDown);
+      return DropDown;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+  //Get Trip IDs for Feedback Form
+  sprSearchRouteId: async (credentials) => {
+    try {
+      const response = await api.post("/sprSearchRouteId", {
+        raiseddate: credentials.raiseddate,
+        empid: credentials.empid,
+      });
+      const DropDown = Array.isArray(response.data)
+        ? response.data.map((item) => ({
+            routeid: item.routeid || "",
+            RouteValue: item.RouteValue || "",
+          }))
+        : [];
       return DropDown;
     } catch (error) {
       console.error("API Error:", error);
@@ -481,7 +500,7 @@ export const apiService = {
       });
       const DropDown = Array.isArray(response.data)
         ? response.data.map((item) => ({
-          id: item.id || 0,
+          id: item.Id ?? item.id ?? 0,
           Category: item.Category || "",
           CompName: item.CompName || "",
           C_Type: item.C_Type || "",
@@ -1273,6 +1292,21 @@ export const apiService = {
     } catch (error) {
       console.log("API Error:", error);
       throw error.response.data || error.message;
+    }
+  },
+
+  SendEmail: async (params) => {
+    try {
+      const response = await api.post("/SendEmail", {
+        ToEmail: params.ToEmail,
+        CcEmail: params.CcEmail,
+        Subject: params.Subject,
+        Body: params.Body
+      });
+      return response.data;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error.response?.data || error.message;
     }
   }
 };

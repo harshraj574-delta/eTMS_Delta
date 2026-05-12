@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
-
+import { Tooltip } from "primereact/tooltip";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
+import TableToolbar from "./common/TableToolbar";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import MasterSidebar from "./Master/MasterSidebar";
 import { Checkbox } from "primereact/checkbox";
-import { Badge } from "primereact/badge";
 import { ToastContainer } from "react-toastify";
 
 import sessionManager from "../utils/SessionManager";
@@ -35,15 +35,6 @@ const CLOUDINARY_UPLOAD_URL =
 const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
 
 const DriverMaster = () => {
-  const customSortStyle = {
-    ".p-sortable-column:not(.p-highlight) .p-sortable-column-icon": {
-      opacity: 0,
-    },
-    ".p-sortable-column:hover .p-sortable-column-icon": {
-      opacity: 1,
-    },
-  };
-
   const [visibleLeft, setVisibleLeft] = useState(false);
   const [driverDetails, setDriverDetails] = useState([]);
   const [addDriverMaster, setAddDriverMaster] = useState(false);
@@ -74,6 +65,11 @@ const DriverMaster = () => {
   // Form state
   const [formData, setFormData] = useState(getInitialFormData());
   const [editingDriverId, setEditingDriverId] = useState(null);
+  const [showTable, setShowTable] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [filteredDriverData, setFilteredDriverData] = useState([]);
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
 
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(10);
@@ -135,6 +131,19 @@ const DriverMaster = () => {
       fetchVenders(selFacility?.Id);
     }
   }, [selFacility]);
+
+  useEffect(() => {
+    if (!globalFilter) {
+      setFilteredDriverData(driverDetails);
+      return;
+    }
+    const lower = globalFilter.toLowerCase();
+    setFilteredDriverData(
+      driverDetails.filter((d) =>
+        Object.values(d).some((v) => v && String(v).toLowerCase().includes(lower))
+      )
+    );
+  }, [driverDetails, globalFilter]);
 
   const fetchFacilities = () => {
     driverMasterService
@@ -355,7 +364,8 @@ const DriverMaster = () => {
       );
       const respData = JSON.parse(response.data);
       setDriverDetails(respData);
-      setFirst(0); // Reset pagination on data fetch
+      setShowTable(true);
+      setFirst(0);
     } catch (error) {
       console.log("Error", error);
       toastService.error("Failed to load driver details.");
@@ -380,7 +390,7 @@ const DriverMaster = () => {
         PresentAddress: selectedDriver.PresentAddress || "",
         PermanentAddress: selectedDriver.PermanentAddress || "",
         ContactNo: selectedDriver.ContactNo || "",
-        DateOfBirth: null,
+        DateOfBirth: selectedDriver.DateOfBirth ? new Date(selectedDriver.DateOfBirth) : null,
         BloodGroup: selectedDriver.BloodGroup || "",
         Qualificaton: "",
         MaritalStatus: "",
@@ -390,7 +400,7 @@ const DriverMaster = () => {
           ? new Date(selectedDriver.LicenceExpDate)
           : null,
         BadgeNo: selectedDriver.BadgeNo || "",
-        BadgeExpDate: null,
+        BadgeExpDate: selectedDriver.BadgeExpDate ? new Date(selectedDriver.BadgeExpDate) : null,
         DriverStatus: 0,
         Attrited: 0,
         AttritedDate: null,
@@ -520,17 +530,46 @@ const DriverMaster = () => {
     }
   };
 
-  // Licence Exp. Date
-  const LicenceExp = (rowData) => (
-    <Badge
-      value={rowData.LicenceExpDate}
-      severity={
-        rowData.LicenceExpDate === "N"
-          ? "badge badge_success"
-          : "badge badge_danger"
-      }
-    />
-  );
+  const exportExcel = () => {
+    const headers = ["ID", "Driver ID", "Name", "Facility", "Vendor", "Contact No.", "Licence No.", "Badge No.", "Licence Exp. Date", "Badge Exp. Date"];
+    const csvRows = filteredDriverData.map((d) => [
+      d.Id, d.DriverId, d.DriverName, d.FacilityName, d.VendorName,
+      d.ContactNo, d.LicenceNo, d.BadgeNo, d.LicenceExpDate, d.BadgeExpDate,
+    ]);
+    const csvContent = [headers, ...csvRows].map((r) => r.map((c) => `"${c ?? ""}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "DriverMaster.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const getExpiryBadge = (dateVal) => {
+    if (!dateVal) return null;
+    const date = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    if (isNaN(date) || date.getFullYear() <= 1900) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return { label: "Expired", bg: "#FEE2E2", color: "#B91C1C", dot: "#EF4444" };
+    if (diffDays <= 7) return { label: `${diffDays}d left`, bg: "#FEF3C7", color: "#92400E", dot: "#F59E0B" };
+    if (diffDays <= 15) return { label: `${diffDays}d left`, bg: "#DBEAFE", color: "#1E40AF", dot: "#3B82F6" };
+    return null;
+  };
+
+  const expiryDateBody = (dateStr) => {
+    const badge = getExpiryBadge(dateStr);
+    const style = badge ? { color: badge.color, fontWeight: 600 } : { color: "#374151" };
+    if (!badge) return <span style={style}>{dateStr || "—"}</span>;
+    const cls = badge.dot === "#EF4444" ? "expiry-tip-expired" : badge.dot === "#F59E0B" ? "expiry-tip-warning" : "expiry-tip-info";
+    return (
+      <span className={cls} data-pr-tooltip={badge.label} data-pr-position="top" style={style}>
+        {dateStr || "—"}
+      </span>
+    );
+  };
 
   const uploadedDocCount = documentDetails.filter((d) => driverDocs[d.value]).length;
 
@@ -726,64 +765,95 @@ const DriverMaster = () => {
           </div>
 
           {/* Table Start */}
-          <div className="col-12">
-            <div className="card_tb">
-              <DataTable
-                value={driverDetails.slice(first, first + rows)}
-                scrollable
-                sortField={sortField}
-                sortOrder={sortOrder}
-                onSort={onSort}
-                sortMode="single"
-                removableSort
-                pt={customSortStyle}
-              >
-                <Column
-                  field="Id"
-                  header="ID"
-                  body={(rowData) => (
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        openEditSidebar(rowData.Id);
-                      }}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {rowData.Id}
-                    </a>
-                  )}
-                ></Column>
-
-                <Column
-                  field="DriverName"
-                  header="Name"
-                  body={(rowData) => rowData.DriverName.toLowerCase()}
-                ></Column>
-                <Column field="FacilityName" header="Facility"></Column>
-                <Column field="VendorName" header="Vendor"></Column>
-                <Column field="ContactNo" header="Contact No."></Column>
-                <Column field="VehicleNo" header="Vehicle No."></Column>
-                <Column
-                  field="VehicleRegNo"
-                  header="Vehicle Reg. No."
-                ></Column>
-                <Column field="LicenceNo" header="Licence No."></Column>
-                <Column
-                  field="LicenceExpDate"
-                  header="Licence Exp. Date"
-                  body={LicenceExp}
-                ></Column>
-              </DataTable>
-              <CustomPaginator
-                first={first}
-                rows={rows}
-                totalRecords={driverDetails.length}
-                onPageChange={onPageChange}
-                rowsPerPageOptions={[5, 10, 25, 50]}
-              />
-            </div>
-          </div>
+          {showTable && (
+            <>
+              <style>{`
+                  .expiry-tooltip-expired .p-tooltip-text { background: #FEE2E2 !important; color: #B91C1C !important; font-weight: 600 !important; border: 1px solid #EF4444 !important; border-radius: 6px !important; }
+                  .expiry-tooltip-expired.p-tooltip-top .p-tooltip-arrow { border-top-color: #FEE2E2 !important; }
+                  .expiry-tooltip-warning .p-tooltip-text { background: #FEF3C7 !important; color: #92400E !important; font-weight: 600 !important; border: 1px solid #F59E0B !important; border-radius: 6px !important; }
+                  .expiry-tooltip-warning.p-tooltip-top .p-tooltip-arrow { border-top-color: #FEF3C7 !important; }
+                  .expiry-tooltip-info .p-tooltip-text { background: #DBEAFE !important; color: #1E40AF !important; font-weight: 600 !important; border: 1px solid #3B82F6 !important; border-radius: 6px !important; }
+                  .expiry-tooltip-info.p-tooltip-top .p-tooltip-arrow { border-top-color: #DBEAFE !important; }
+              `}</style>
+              <div className="col-12 d-flex align-items-center gap-2 mt-3 mb-2">
+                <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>Expiry Status:</span>
+                {[
+                  { dot: "#EF4444", bg: "#FEE2E2", color: "#B91C1C", label: "Expired" },
+                  { dot: "#F59E0B", bg: "#FEF3C7", color: "#92400E", label: "≤ 7 days" },
+                  { dot: "#3B82F6", bg: "#DBEAFE", color: "#1E40AF", label: "≤ 15 days" },
+                ].map(({ dot, bg, color, label }) => (
+                  <span key={label} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "12px", background: bg, color, fontWeight: 500, padding: "3px 10px", borderRadius: "20px" }}>
+                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: dot, display: "inline-block" }}></span>
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <div className="col-12">
+                <div className="card_tb p-3">
+                  <TableToolbar
+                    search={globalFilter}
+                    onSearch={(e) => setGlobalFilter(e.target.value)}
+                    onRefresh={() => setGlobalFilter("")}
+                    onExport={exportExcel}
+                    showFilter={false}
+                    overlayRef={op}
+                    filterButtonRef={filterButtonRef}
+                  />
+                  <CustomDataTable
+                    value={filteredDriverData.slice(first, first + rows)}
+                    emptyMessage="No Records Found"
+                    scrollable
+                    sortField={sortField}
+                    sortOrder={sortOrder}
+                    onSort={onSort}
+                    sortMode="single"
+                    removableSort
+                  >
+                    <Column
+                      field="Id"
+                      header="ID"
+                      body={(rowData) => (
+                        <a
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            openEditSidebar(rowData.Id);
+                          }}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {rowData.Id}
+                        </a>
+                      )}
+                    ></Column>
+                    <Column
+                      field="DriverName"
+                      header="Name"
+                      body={(rowData) => rowData.DriverName?.toLowerCase()}
+                    ></Column>
+                    <Column field="FacilityName" header="Facility"></Column>
+                    <Column field="VendorName" header="Vendor"></Column>
+                    <Column field="ContactNo" header="Contact No."></Column>
+                    <Column field="VehicleNo" header="Vehicle No."></Column>
+                    <Column field="VehicleRegNo" header="Vehicle Reg. No."></Column>
+                    <Column field="LicenceNo" header="Licence No."></Column>
+                    <Column field="BadgeNo" header="Badge No."></Column>
+                    <Column field="LicenceExpDate" header="Licence Exp. Date" body={(rowData) => expiryDateBody(rowData.LicenceExpDate)}></Column>
+                    <Column field="BadgeExpDate" header="Badge Exp. Date" body={(rowData) => expiryDateBody(rowData.BadgeExpDate)}></Column>
+                  </CustomDataTable>
+                  <Tooltip target=".expiry-tip-expired" className="expiry-tooltip-expired" />
+                  <Tooltip target=".expiry-tip-warning" className="expiry-tooltip-warning" />
+                  <Tooltip target=".expiry-tip-info" className="expiry-tooltip-info" />
+                  <CustomPaginator
+                    first={first}
+                    rows={rows}
+                    totalRecords={filteredDriverData.length}
+                    onPageChange={onPageChange}
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -967,15 +1037,22 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="field col-3 mb-3">
-                  <label>Licence Expiry Date</label>
-                  <Calendar
-                    className="w-100"
-                    value={formData.LicenceExpDate}
-                    onChange={(e) =>
-                      handleFormChange("LicenceExpDate", e.value)
-                    }
-                    placeholder="Licence Expiry Date"
-                  />
+                  <label style={getExpiryBadge(formData.LicenceExpDate) ? { color: getExpiryBadge(formData.LicenceExpDate).color, fontWeight: 600 } : {}}>
+                    Licence Expiry Date
+                  </label>
+                  <div style={getExpiryBadge(formData.LicenceExpDate) ? { border: `1.5px solid ${getExpiryBadge(formData.LicenceExpDate).dot}`, borderRadius: "6px", overflow: "hidden" } : {}}>
+                    <Calendar
+                      className="w-100"
+                      value={formData.LicenceExpDate}
+                      onChange={(e) => handleFormChange("LicenceExpDate", e.value)}
+                      placeholder="Licence Expiry Date"
+                    />
+                  </div>
+                  {getExpiryBadge(formData.LicenceExpDate) && (
+                    <small style={{ color: getExpiryBadge(formData.LicenceExpDate).color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
+                      ● {getExpiryBadge(formData.LicenceExpDate).label}
+                    </small>
+                  )}
                 </div>
                 <div className="field col-3 mb-3">
                   <label>Badge Number</label>
@@ -989,15 +1066,22 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="field col-3 mb-3">
-                  <label>Badge Expiry Date</label>
-                  <Calendar
-                    className="w-100"
-                    value={formData.BadgeExpDate}
-                    onChange={(e) =>
-                      handleFormChange("BadgeExpDate", e.value)
-                    }
-                    placeholder="Badge Expiry Date"
-                  />
+                  <label style={getExpiryBadge(formData.BadgeExpDate) ? { color: getExpiryBadge(formData.BadgeExpDate).color, fontWeight: 600 } : {}}>
+                    Badge Expiry Date
+                  </label>
+                  <div style={getExpiryBadge(formData.BadgeExpDate) ? { border: `1.5px solid ${getExpiryBadge(formData.BadgeExpDate).dot}`, borderRadius: "6px", overflow: "hidden" } : {}}>
+                    <Calendar
+                      className="w-100"
+                      value={formData.BadgeExpDate}
+                      onChange={(e) => handleFormChange("BadgeExpDate", e.value)}
+                      placeholder="Badge Expiry Date"
+                    />
+                  </div>
+                  {getExpiryBadge(formData.BadgeExpDate) && (
+                    <small style={{ color: getExpiryBadge(formData.BadgeExpDate).color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
+                      ● {getExpiryBadge(formData.BadgeExpDate).label}
+                    </small>
+                  )}
                 </div>
                 <div className="field col-3 mb-3">
                   <label>
@@ -1317,15 +1401,22 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="field col-3 mb-3">
-                  <label>Licence Expiry Date</label>
-                  <Calendar
-                    className="w-100"
-                    value={formData.LicenceExpDate}
-                    onChange={(e) =>
-                      handleFormChange("LicenceExpDate", e.value)
-                    }
-                    placeholder="Licence Expiry Date"
-                  />
+                  <label style={getExpiryBadge(formData.LicenceExpDate) ? { color: getExpiryBadge(formData.LicenceExpDate).color, fontWeight: 600 } : {}}>
+                    Licence Expiry Date
+                  </label>
+                  <div style={getExpiryBadge(formData.LicenceExpDate) ? { border: `1.5px solid ${getExpiryBadge(formData.LicenceExpDate).dot}`, borderRadius: "6px", overflow: "hidden" } : {}}>
+                    <Calendar
+                      className="w-100"
+                      value={formData.LicenceExpDate}
+                      onChange={(e) => handleFormChange("LicenceExpDate", e.value)}
+                      placeholder="Licence Expiry Date"
+                    />
+                  </div>
+                  {getExpiryBadge(formData.LicenceExpDate) && (
+                    <small style={{ color: getExpiryBadge(formData.LicenceExpDate).color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
+                      ● {getExpiryBadge(formData.LicenceExpDate).label}
+                    </small>
+                  )}
                 </div>
                 <div className="field col-3 mb-3">
                   <label>Badge Number</label>
@@ -1339,15 +1430,22 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="field col-3 mb-3">
-                  <label>Badge Expiry Date</label>
-                  <Calendar
-                    className="w-100"
-                    value={formData.BadgeExpDate}
-                    onChange={(e) =>
-                      handleFormChange("BadgeExpDate", e.value)
-                    }
-                    placeholder="Badge Expiry Date"
-                  />
+                  <label style={getExpiryBadge(formData.BadgeExpDate) ? { color: getExpiryBadge(formData.BadgeExpDate).color, fontWeight: 600 } : {}}>
+                    Badge Expiry Date
+                  </label>
+                  <div style={getExpiryBadge(formData.BadgeExpDate) ? { border: `1.5px solid ${getExpiryBadge(formData.BadgeExpDate).dot}`, borderRadius: "6px", overflow: "hidden" } : {}}>
+                    <Calendar
+                      className="w-100"
+                      value={formData.BadgeExpDate}
+                      onChange={(e) => handleFormChange("BadgeExpDate", e.value)}
+                      placeholder="Badge Expiry Date"
+                    />
+                  </div>
+                  {getExpiryBadge(formData.BadgeExpDate) && (
+                    <small style={{ color: getExpiryBadge(formData.BadgeExpDate).color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
+                      ● {getExpiryBadge(formData.BadgeExpDate).label}
+                    </small>
+                  )}
                 </div>
                 <div className="field col-3 mb-3">
                   <label>

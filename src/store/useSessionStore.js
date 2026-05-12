@@ -34,6 +34,28 @@ const useSessionStore = create(
                 }
             },
 
+            // ── Guided tour state ──────────────────────────────────────────────
+            // tourPending: true while the tour is in progress (first login or replay).
+            // tourPage: which section's steps to show ('profile' | 'schedule').
+            // Stored in sessionStorage so it survives in-SPA navigation and page
+            // refreshes within the same browser tab. Cleared automatically on logout
+            // because logout() calls sessionStorage.clear().
+            tourPending: false,
+            tourPage: 'profile',
+
+            // Called in App.jsx after the user accepts the disclaimer for the first time.
+            startTour: () => set({ tourPending: true, tourPage: 'profile' }),
+
+            // Called by useProfileTour when the user moves to the next page.
+            advanceTour: (page) => set({ tourPage: page }),
+
+            // Called when the tour finishes or the user explicitly closes it.
+            completeTour: () => set({ tourPending: false, tourPage: 'profile' }),
+
+            // Allows any component (e.g. Help menu) to replay the tour on demand.
+            replayTour: () => set({ tourPending: true, tourPage: 'profile' }),
+            // ──────────────────────────────────────────────────────────────────
+
             logout: () => {
                 set({
                     user: null,
@@ -41,6 +63,8 @@ const useSessionStore = create(
                     menuItems: [],
                     isAuthenticated: false,
                     lastValidationTime: 0,
+                    tourPending: false,
+                    tourPage: 'profile',
                 });
                 sessionStorage.clear();
             },

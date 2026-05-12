@@ -556,6 +556,10 @@ const FemaleTrack = () => {
                 <label>Location</label>
                 <InputText className="form-control" value={selectedRow.Location || "—"} disabled />
               </div>
+              <div className="field col-6 mb-3">
+                <label>Emergency Contact</label>
+                <InputText className="form-control" value="9876543210" disabled />
+              </div>
             </div>
 
             {/* Route Info Section */}

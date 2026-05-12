@@ -48,6 +48,7 @@ const MyFeedback = () => {
     closed: 0,
   });
   const [addRaiseFeedback, setAddRaiseFeedback] = useState(false);
+  const [tripIdDropDown, setTripIdDropDown] = useState([]);
   const [globalFilter, setGlobalFilter] = useState(null);
   const [filters, setFilters] = useState({
     TypeName: null,
@@ -203,11 +204,35 @@ const MyFeedback = () => {
       setLoading(false);
     }
   };
+  const fetchTripIds = async (date) => {
+    if (!date) { setTripIdDropDown([]); return; }
+    try {
+      const empid = sessionManager.getUserSession()?.ID;
+      const result = await apiService.sprSearchRouteId({ raiseddate: date, empid });
+      setTripIdDropDown(result);
+    } catch (error) {
+      console.error("Error fetching trip IDs:", error);
+      setTripIdDropDown([]);
+    }
+  };
+
+  const handleTravelDateChange = (e) => {
+    const date = e.target.value;
+    if (date) {
+      fetchTripIds(date);
+    } else {
+      setTripIdDropDown([]);
+    }
+  };
+
   const handleCategorySelect = (categoryId) => {
     if (categoryId) {
-      fetchComplaintType(categoryId); // Call with the selected category ID
+      fetchComplaintType(categoryId);
+      const dateVal = document.getElementById("travelDate")?.value;
+      if (dateVal) fetchTripIds(dateVal);
     } else {
-      setComplaintTypeDropDown([]); // Clear complaint types if no category is selected
+      setComplaintTypeDropDown([]);
+      setTripIdDropDown([]);
     }
   };
   // Function to refresh data
@@ -216,8 +241,6 @@ const MyFeedback = () => {
     fetchCategories(); // Refresh categories
   };
   const handleSubmitFeedback = async () => {
-    // Get the specific complaint type select element instead of using generic selector
-    //const FeedTypeId = document.getElementById("complaintTypeSelect").value;
     setLoading(true);
     // Check if required fields are filled
     const selectedCategory = document.getElementById("categorySelect").value;
@@ -233,21 +256,28 @@ const MyFeedback = () => {
       return;
     }
 
-    const ticketNo = selectedTicket; // Assuming you have the selected ticket number
-    const desc = feedbackText; // Use the feedbackText state for the description
-    const actionid = 0; // Set the appropriate action ID if needed
-    const statusid = 0; // Set the appropriate status ID if needed
-    const FeedTypeId = document.querySelector(".form-select").value; // Get selected complaint type ID
-    const RaisedDate = new Date().toISOString(); // Current date as raised date
-    const RaisedById = sessionManager.getUserSession()?.ID; // Assuming you have the user ID from the session
-    const RouteId = ""; // Set the appropriate route ID if needed
+    const FeedTypeId = document.getElementById("complaintTypeSelect").value;
+    if (!FeedTypeId || FeedTypeId === "0") {
+      toastService.warn("Please select a complaint type");
+      setLoading(false);
+      return;
+    }
+
+    const ticketNo = selectedTicket;
+    const desc = feedbackText;
+    const actionid = 0;
+    const statusid = 0;
+    const RaisedDate = document.getElementById("travelDate").value || new Date().toISOString().split("T")[0];
+    const RaisedById = sessionManager.getUserSession()?.ID;
+    const RouteId = document.getElementById("tripIdSelect").value || "";
     // Clear the fields after submission
     document.getElementById("categorySelect").value = "";
     document.getElementById("complaintTypeSelect").value = "";
     document.getElementById("travelDate").value = "";
     document.getElementById("tripIdSelect").value = "";
-    setFeedbackText(""); // Clear feedback text
-    setIsRaiseFeedbackOpen(false); // Close the offcanvas
+    setFeedbackText("");
+    setTripIdDropDown([]);
+    setIsRaiseFeedbackOpen(false);
     const offcanvasElement = document.getElementById("raise_Feedback");
     const closeButton = offcanvasElement.querySelector(
       '[data-bs-dismiss="offcanvas"]'
@@ -903,12 +933,12 @@ const MyFeedback = () => {
             className="btn-close btn-close-white"
             data-bs-dismiss="offcanvas"
             onClick={() => {
-              // Clear the fields when the offcanvas is closed
               document.querySelector("#categorySelect").value = "";
               document.querySelector("#complaintTypeSelect").value = "";
               document.querySelector("#travelDate").value = "";
               document.querySelector("#tripIdSelect").value = "";
-              setFeedbackText(""); // Clear feedback text
+              setFeedbackText("");
+              setTripIdDropDown([]);
               setIsRaiseFeedbackOpen(false);
               refreshData();
             }}
@@ -953,14 +983,24 @@ const MyFeedback = () => {
               <label className="form-label" htmlFor="travelDate">
                 Travel Date
               </label>
-              <input type="date" id="travelDate" className="form-control" />
+              <input
+                type="date"
+                id="travelDate"
+                className="form-control"
+                onChange={handleTravelDateChange}
+              />
             </div>
-            <div className="col-12 mb-3" style={{ display: "none" }}>
+            <div className="col-12 mb-3">
               <label className="form-label" htmlFor="tripIdSelect">
-                Trip Id (Optional)
+                Trip Id <em>(Optional)</em>
               </label>
               <select id="tripIdSelect" className="form-select" defaultValue="">
                 <option value="">Please Select</option>
+                {tripIdDropDown.map((trip, index) => (
+                  <option key={`${trip.routeid}-${index}`} value={trip.routeid}>
+                    {trip.RouteValue}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="col-12 mb-3">
@@ -983,6 +1023,7 @@ const MyFeedback = () => {
             className="btn btn-outline-secondary"
             data-bs-dismiss="offcanvas"
             onClick={() => {
+              setTripIdDropDown([]);
               setIsRaiseFeedbackOpen(false);
               refreshData();
             }}

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
-import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { CustomDataTable } from "./common/CustomDataTable";
+import TableToolbar from "./common/TableToolbar";
 import { InputTextarea } from "primereact/inputtextarea";
 import MasterSidebar from "./Master/MasterSidebar";
 import sessionManager from "../utils/SessionManager";
@@ -48,11 +49,23 @@ const GuardMaster = () => {
 
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [filteredGuardData, setFilteredGuardData] = useState([]);
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
 
   const onPageChange = (event) => {
     setFirst(event.first);
     setRows(event.rows);
   };
+
+  useEffect(() => {
+    if (!globalFilter) { setFilteredGuardData(GuardDetails); return; }
+    const lower = globalFilter.toLowerCase();
+    setFilteredGuardData(GuardDetails.filter((d) =>
+      Object.values(d).some((v) => v && String(v).toLowerCase().includes(lower))
+    ));
+  }, [GuardDetails, globalFilter]);
 
   // Open sidebar with employee data
   const openEditSidebar = (guardData) => {
@@ -62,8 +75,7 @@ const GuardMaster = () => {
     setActiveSidebarTab("details");
   };
 const exportToExcel = () => {
-  // Table data ko Excel sheet me convert karo
-  const ws = XLSX.utils.json_to_sheet(GuardDetails);
+  const ws = XLSX.utils.json_to_sheet(filteredGuardData.length ? filteredGuardData : GuardDetails);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Guards");
   const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
@@ -512,14 +524,6 @@ const exportToExcel = () => {
                   />
                 </div>
                 <div className="col-12 col-md-12 col-lg-10 mb-3">
-                  <div className="d-flex justify-content-end d-none">
-                    <Button
-                    label="Export Excel"
-                    icon="pi pi-file-excel"
-                    className="btn btn-primary no-label"
-                    onClick={exportToExcel}
-                  />
-                  </div>
                 </div>
                 {/* <div className="col-2">
                                     <Button label="Submit" disabled={!selFacility} className="btn btn-dark no-label-prime" onClick={fetchGuardDetails} />
@@ -530,17 +534,22 @@ const exportToExcel = () => {
 
           {/* Table Start */}
           <div className="col-12">
-            <div className="card_tb">
-              <DataTable
-                value={[...GuardDetails].slice(first, first + rows)}
+            <div className="card_tb p-3">
+              <TableToolbar
+                showFilter={false}
+                search={globalFilter}
+                onSearch={(e) => { setGlobalFilter(e.target.value); setFirst(0); }}
+                onExport={exportToExcel}
+                filterButtonRef={filterButtonRef}
+                overlayRef={op}
+              />
+              <CustomDataTable
+                value={filteredGuardData.slice(first, first + rows)}
                 emptyMessage="No guard data available"
-                rowClassName={(rowData) => {
-                  // return rowData[0].status === "Y" ? "bg-danger-subtle" : "";
-                }}
               >
                 <Column
                   sortable
-                  field="guardSE2Id"
+                  field="GuardID"
                   header="Guard ID"
                   body={(rowData) => (
                     <a
@@ -559,11 +568,7 @@ const exportToExcel = () => {
                 <Column sortable field="Designation" header="Designation" />
                 <Column sortable field="ContactNo" header="Contact No" />
                 <Column sortable field="VendorCode" header="Vendor" />
-                <Column
-                  sortable
-                  field="BarCodeIssueDate"
-                  header="Induction Date"
-                />
+                <Column sortable field="BarCodeIssueDate" header="Induction Date" />
                 <Column sortable field="ReleaseDate" header="Release Date" />
                 <Column
                   sortable
@@ -575,11 +580,11 @@ const exportToExcel = () => {
                 <Column sortable field="facilityName" header="Facility" />
                 <Column sortable field="AadharNo" header="Aadhar No." />
                 <Column sortable field="PVCStatus" header="PVC Status" />
-              </DataTable>
+              </CustomDataTable>
               <CustomPaginator
                 first={first}
                 rows={rows}
-                totalRecords={GuardDetails.length}
+                totalRecords={filteredGuardData.length}
                 onPageChange={onPageChange}
                 rowsPerPageOptions={[50, 100, 150, 200, 250]}
               />

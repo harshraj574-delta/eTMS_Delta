@@ -18,18 +18,45 @@ import { Button } from "primereact/button";
 import { ToastContainer } from 'react-toastify';
 
 
+const FACILITY_CONFIG_KEY = "facilityConfig";
+const FACILITY_SUB_KEY = "facilitySubFacilities";
+
+const defaultFacilityConfig = {
+  driverSOS: "",
+  overspeed: 20,
+  proximityRadius: 500,
+  tripClosureRadius: 1000,
+  boardingRadius: 1000,
+  deBoardingRadius: "No",
+  cabReachedRadius: 1000,
+  cabNoShowRadius: 250,
+  dropTripAcceptRadius: 0,
+  employeeAppFeedback: "Yes",
+  employeeAppGeocode: "Yes",
+  otpDebMale: "Yes",
+  otpDebFemale: "Yes",
+  activateGuard: "Yes",
+  driverDocuments: "Yes",
+  noShowRollBack: "Yes",
+  autoDSYOnDeboarding: "No",
+  autoDSYRadius: 0,
+  bluetoothBeacon: "",
+  defaultOccupancy: 12,
+  dwh: "Yes",
+};
+
 const FacilityMaster = () => {
   // Data
   const [facilityData, setFacilityData] = useState([]);
   const [filteredData, setFilteredData] = useState([]); // Filtered data for display
   const [location, setLocationData] = useState([]);
-  const [facilityContactData, setFacilityContactData] = useState([]);
+  const [facilityContactData, setFacilityContactData] = useState({});
   const [facContactLocation, setfacContactLocation] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Table
   const [expandedRows, setExpandedRows] = useState([]);
-  
+
   // Toolbar State
   const [globalFilter, setGlobalFilter] = useState("");
   const op = useRef(null);
@@ -50,6 +77,10 @@ const FacilityMaster = () => {
   // Map context: "add" | "edit" | "view"
   const [mapContext, setMapContext] = useState(null);
 
+  // Sidebar tab + extended config
+  const [activeSidebarTab, setActiveSidebarTab] = useState("basic");
+  const [facilityConfig, setFacilityConfig] = useState({ ...defaultFacilityConfig });
+
   // Add form
   const [newFacility, setNewFacility] = useState("");
   const [geoX, setGeoX] = useState(""); // longitude
@@ -59,6 +90,9 @@ const FacilityMaster = () => {
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [editGeoX, setEditGeoX] = useState(""); // longitude
   const [editGeoY, setEditGeoY] = useState(""); // latitude
+
+  // Sub-facility selection (stored in localStorage, no backend yet)
+  const [selectedSubFacilities, setSelectedSubFacilities] = useState([]);
 
   // Map shared values
   const [mapLatitude, setMapLatitude] = useState(""); // latitude
@@ -87,8 +121,8 @@ const FacilityMaster = () => {
     // Apply global search
     if (globalFilter && globalFilter.trim() !== "") {
       const lowerFilter = globalFilter.toLowerCase();
-      result = result.filter(item => 
-        Object.values(item).some(val => 
+      result = result.filter(item =>
+        Object.values(item).some(val =>
           String(val).toLowerCase().includes(lowerFilter)
         )
       );
@@ -128,10 +162,15 @@ const FacilityMaster = () => {
     }
   };
 
-  const bindFacilityContactList = async () => {
+  const bindFacilityContactList = async (locationId) => {
     try {
-      const response = await apiService.GetLevelDetail({ locationid: 0 });
-      setFacilityContactData(response);
+      const response = await apiService.GetLevelDetail({ locationid: locationId });
+
+      setFacilityContactData(prev => ({
+        ...prev,
+        [locationId]: response
+      }));
+
     } catch (error) {
       console.error("Error fetching contacts:", error);
     }
@@ -159,6 +198,44 @@ const FacilityMaster = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadFacilityConfig = (key) => {
+    try {
+      const all = JSON.parse(localStorage.getItem(FACILITY_CONFIG_KEY)) || {};
+      return { ...defaultFacilityConfig, ...(all[String(key)] || {}) };
+    } catch { return { ...defaultFacilityConfig }; }
+  };
+
+  const saveFacilityConfig = (key, config) => {
+    try {
+      const all = JSON.parse(localStorage.getItem(FACILITY_CONFIG_KEY)) || {};
+      all[String(key)] = config;
+      localStorage.setItem(FACILITY_CONFIG_KEY, JSON.stringify(all));
+    } catch {}
+  };
+
+  const loadSubFacilities = (facilityId) => {
+    try {
+      const all = JSON.parse(localStorage.getItem(FACILITY_SUB_KEY)) || {};
+      return all[String(facilityId)] || [];
+    } catch { return []; }
+  };
+
+  const saveSubFacilities = (facilityId, values) => {
+    try {
+      const all = JSON.parse(localStorage.getItem(FACILITY_SUB_KEY)) || {};
+      all[String(facilityId)] = values;
+      localStorage.setItem(FACILITY_SUB_KEY, JSON.stringify(all));
+    } catch {}
+  };
+
+  const handleSubFacilityChange = (values) => {
+    setSelectedSubFacilities(values);
+  };
+
+  const handleConfigChange = (field, value) => {
+    setFacilityConfig((prev) => ({ ...prev, [field]: value }));
   };
 
   const exportExcel = () => {
@@ -361,6 +438,8 @@ const FacilityMaster = () => {
     setGeoY("");
     setMapLatitude("");
     setMapLongitude("");
+    setActiveSidebarTab("basic");
+    setFacilityConfig({ ...defaultFacilityConfig });
   };
 
   const handleSaveFacility = async () => {
@@ -398,6 +477,7 @@ const FacilityMaster = () => {
 
       if (apiresponse[0].result === 1) {
         toastService.success("Data Saved Successfully");
+        saveFacilityConfig(`new_${nameEl.value.trim()}`, facilityConfig);
         nameEl.value = "";
         document.getElementById("txtContactNo").value = "";
         locEl.value = "0";
@@ -448,6 +528,9 @@ const FacilityMaster = () => {
     });
     setEditGeoX(geoXValue || "");
     setEditGeoY(geoYValue || "");
+    setActiveSidebarTab("basic");
+    setFacilityConfig(loadFacilityConfig(facilityId));
+    setSelectedSubFacilities(loadSubFacilities(facilityId));
     setShowEdit(true);
   };
 
@@ -483,6 +566,8 @@ const FacilityMaster = () => {
 
       if (response[0].result === 1) {
         toastService.success("Facility Updated Successfully");
+        saveFacilityConfig(selectedFacility.Id, facilityConfig);
+        saveSubFacilities(selectedFacility.Id, selectedSubFacilities);
         setShowEdit(false);
         await fetchFacilityData();
       } else {
@@ -593,13 +678,13 @@ const FacilityMaster = () => {
       <div className="map-block bg-light p-3 rounded-3 border">
         <div className="d-flex align-items-center justify-content-between mb-2">
           <label className="form-label mb-0 fw-bold text-secondary">{heading}</label>
-          <Button 
-            label="Open Map" 
-            icon="pi pi-map" 
+          <Button
+            label="Open Map"
+            icon="pi pi-map"
             className="p-button-outlined p-button-secondary p-button-sm py-1 px-3"
             style={{ fontSize: '0.85rem' }}
-            loading={loading} 
-            onClick={openMap} 
+            loading={loading}
+            onClick={openMap}
           />
         </div>
 
@@ -644,6 +729,67 @@ const FacilityMaster = () => {
       </div>
     );
   };
+
+  const renderFacilityTabs = () => (
+    <div className="doc-tabs-bar">
+      <button type="button" className={`doc-tab-btn ${activeSidebarTab === "basic" ? "active" : ""}`} onClick={() => setActiveSidebarTab("basic")}>
+        <i className="pi pi-building" style={{ fontSize: "13px" }} />
+        Basic Info
+      </button>
+      <button type="button" className={`doc-tab-btn ${activeSidebarTab === "config" ? "active" : ""}`} onClick={() => setActiveSidebarTab("config")}>
+        <i className="pi pi-cog" style={{ fontSize: "13px" }} />
+        Configuration
+      </button>
+    </div>
+  );
+
+  const YesNo = ({ field }) => (
+    <select className="form-control form-control-sm" value={facilityConfig[field]} onChange={(e) => handleConfigChange(field, e.target.value)}>
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
+  );
+
+  const NumField = ({ field }) => (
+    <input type="number" className="form-control form-control-sm" value={facilityConfig[field]} onChange={(e) => handleConfigChange(field, e.target.value)} />
+  );
+
+  const renderConfigTab = () => (
+    <div className="row g-2 mt-1">
+      <div className="col-12 mb-1"><h6 className="sidebarSubTitle">Radius Settings</h6></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Proximity Radius</label><NumField field="proximityRadius" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Trip Closure Radius</label><NumField field="tripClosureRadius" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Boarding Radius</label><NumField field="boardingRadius" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">De-Boarding Radius</label><YesNo field="deBoardingRadius" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Cab Reached Radius</label><NumField field="cabReachedRadius" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Cab No Show Radius</label><NumField field="cabNoShowRadius" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Drop Trip Accept Radius</label><NumField field="dropTripAcceptRadius" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Auto DSY on Deboarding</label><YesNo field="autoDSYOnDeboarding" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Auto DSY Radius</label><NumField field="autoDSYRadius" /></div>
+
+      <div className="col-12 mb-1 mt-2"><h6 className="sidebarSubTitle">Safety & Operations</h6></div>
+      <div className="col-6 col-sm-4 mb-2">
+        <label className="form-label form-label-sm">Driver SOS</label>
+        <input type="text" className="form-control form-control-sm" value={facilityConfig.driverSOS} onChange={(e) => handleConfigChange("driverSOS", e.target.value)} />
+      </div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Overspeed (km/h)</label><NumField field="overspeed" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Default Occupancy</label><NumField field="defaultOccupancy" /></div>
+      <div className="col-6 col-sm-4 mb-2">
+        <label className="form-label form-label-sm">Bluetooth Beacon</label>
+        <input type="text" className="form-control form-control-sm" value={facilityConfig.bluetoothBeacon} onChange={(e) => handleConfigChange("bluetoothBeacon", e.target.value)} />
+      </div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Activate Guard</label><YesNo field="activateGuard" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">No Show Roll Back</label><YesNo field="noShowRollBack" /></div>
+
+      <div className="col-12 mb-1 mt-2"><h6 className="sidebarSubTitle">App Settings</h6></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Employee App Feedback</label><YesNo field="employeeAppFeedback" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Employee App Geocode</label><YesNo field="employeeAppGeocode" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">OTP Deboarding - Male</label><YesNo field="otpDebMale" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">OTP Deboarding - Female</label><YesNo field="otpDebFemale" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">Driver Documents</label><YesNo field="driverDocuments" /></div>
+      <div className="col-6 col-sm-4 mb-2"><label className="form-label form-label-sm">DWH</label><YesNo field="dwh" /></div>
+    </div>
+  );
 
   return (
     <div className="container-fluid p-0">
@@ -721,10 +867,21 @@ const FacilityMaster = () => {
                               href="#!"
                               onClick={(e) => {
                                 e.preventDefault();
+
                                 const next = [...expandedRows];
                                 const rowIndex = next.indexOf(index);
-                                if (rowIndex > -1) next.splice(rowIndex, 1);
-                                else next.push(index);
+
+                                if (rowIndex > -1) {
+                                  next.splice(rowIndex, 1);
+                                } else {
+                                  next.push(index);
+
+                                  // 🔥 API call based on locationId
+                                  if (!facilityContactData[facility.locationId]) {
+                                    bindFacilityContactList(facility.locationId);
+                                  }
+                                }
+
                                 setExpandedRows(next);
                               }}
                             >
@@ -810,7 +967,7 @@ const FacilityMaster = () => {
                               <div className="expanded-content">
                                 <div className="table-responsive">
                                   <DataTable
-                                    value={facilityContactData}
+                                    value={facilityContactData[facility.locationId] || []}
                                     loading={loading}
                                     responsiveLayout="scroll"
                                     size="small"
@@ -872,7 +1029,7 @@ const FacilityMaster = () => {
         title="Add New Facility"
         width={offcanvasWidth}
         backdropOpacity={0.5}
-        headerBgColor = "bg-secondary"
+        headerBgColor="bg-secondary"
         backdropBlur="10px"
         footer={
           <div className="offcanvas-footer">
@@ -892,99 +1049,44 @@ const FacilityMaster = () => {
         }
       >
         <div className="p-3">
-          <div className="row g-2">
-          <div className="col-12 col-sm-6 mb-2">
-            <label htmlFor="facilityName" className="form-label">
-              Facility Name <span>*</span>
-            </label>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              id="txtfacilityName"
-              value={newFacility}
-              onChange={(e) => setNewFacility(e.target.value)}
-              placeholder="Enter facility name"
-            />
-          </div>
-
-          <div className="col-12 col-sm-6 mb-2">
-            <label htmlFor="ContactNo" className="form-label">
-              Contact No
-            </label>
-            <input
-              type="number"
-              className="form-control form-control-sm"
-              id="txtContactNo"
-              placeholder="Enter Contact No"
-            />
-          </div>
-
-          <div className="col-12 col-sm-6 mb-2">
-            <label htmlFor="Location" className="form-label">
-              Location <span>*</span>
-            </label>
-            <select className="form-control form-control-sm" id="ddlLocation">
-              <option value="0">Select Location</option>
-              {location.map((loc, index) => (
-                <option key={index} value={loc.Id}>
-                  {loc.locationName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="col-12 col-sm-6 mb-2">
-            <label htmlFor="HelpdeskEmail" className="form-label">
-              Helpdesk Email
-            </label>
-            <input
-              type="email"
-              className="form-control form-control-sm"
-              id="txtHelpdeskemail"
-              placeholder="Enter Help desk Email"
-            />
-          </div>
-
-          <div className="col-12 col-sm-6 mb-2">
-            <label htmlFor="TeamLeadEmail" className="form-label">
-              Team Lead Email
-            </label>
-            <input
-              type="email"
-              className="form-control form-control-sm"
-              id="txtTeamLeademail"
-              placeholder="Enter Team Lead Email"
-            />
-          </div>
-
-          <div className="col-12 col-sm-6 mb-2">
-            <label htmlFor="ManagerEmail" className="form-label">
-              Manager Email
-            </label>
-            <input
-              type="email"
-              className="form-control form-control-sm"
-              id="txtManageremail"
-              placeholder="Enter Manager Email"
-            />
-          </div>
-
-          <div className="col-12 col-sm-6 mb-2">
-            <label htmlFor="SiteLeadEmail" className="form-label">
-              Site Lead Email
-            </label>
-            <input
-              type="email"
-              className="form-control form-control-sm"
-              id="txtSiteLeadEmail"
-              placeholder="Enter Site Lead Email"
-            />
-          </div>
-
-          <div className="col-12 mb-2">
-            <MapPickerRow mode="add" />
-          </div>
-          </div>
+          {renderFacilityTabs()}
+          {activeSidebarTab === "basic" && (
+            <div className="row g-2 mt-1">
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="facilityName" className="form-label">Facility Name <span>*</span></label>
+                <input type="text" className="form-control form-control-sm" id="txtfacilityName" value={newFacility} onChange={(e) => setNewFacility(e.target.value)} placeholder="Enter facility name" />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="ContactNo" className="form-label">Contact No</label>
+                <input type="number" className="form-control form-control-sm" id="txtContactNo" placeholder="Enter Contact No" />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="Location" className="form-label">Location <span>*</span></label>
+                <select className="form-control form-control-sm" id="ddlLocation">
+                  <option value="0">Select Location</option>
+                  {location.map((loc, index) => (<option key={index} value={loc.Id}>{loc.locationName}</option>))}
+                </select>
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="HelpdeskEmail" className="form-label">Helpdesk Email</label>
+                <input type="email" className="form-control form-control-sm" id="txtHelpdeskemail" placeholder="Enter Helpdesk Email" />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="TeamLeadEmail" className="form-label">Team Lead Email</label>
+                <input type="email" className="form-control form-control-sm" id="txtTeamLeademail" placeholder="Enter Team Lead Email" />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="ManagerEmail" className="form-label">Manager Email</label>
+                <input type="email" className="form-control form-control-sm" id="txtManageremail" placeholder="Enter Manager Email" />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="SiteLeadEmail" className="form-label">Site Lead Email</label>
+                <input type="email" className="form-control form-control-sm" id="txtSiteLeadEmail" placeholder="Enter Site Lead Email" />
+              </div>
+              <div className="col-12 mb-2"><MapPickerRow mode="add" /></div>
+            </div>
+          )}
+          {activeSidebarTab === "config" && renderConfigTab()}
         </div>
       </MasterSidebar>
 
@@ -1014,160 +1116,69 @@ const FacilityMaster = () => {
         }
       >
         <div className="p-3">
-          {selectedFacility && (
-          <div className="row g-2">
-            <div className="col-12 col-sm-6 mb-2">
-              <label
-                htmlFor="editFacilityName"
-                className="form-label"
-              >
-                Facility Name <span>*</span>
-              </label>
-              <input
-                type="text"
-                className="form-control form-control-sm"
-                id="editFacilityName"
-                value={selectedFacility.facilityName}
-                onChange={(e) =>
-                  setSelectedFacility({
-                    ...selectedFacility,
-                    facilityName: e.target.value,
-                  })
-                }
-              />
+          {renderFacilityTabs()}
+          {activeSidebarTab === "basic" && selectedFacility && (
+            <div className="row g-2 mt-1">
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="editFacilityName" className="form-label">Facility Name <span>*</span></label>
+                <input type="text" className="form-control form-control-sm" id="editFacilityName" value={selectedFacility.facilityName}
+                  onChange={(e) => setSelectedFacility({ ...selectedFacility, facilityName: e.target.value })} />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="ContactNo" className="form-label">Contact No</label>
+                <input type="number" className="form-control form-control-sm" id="txteditContactNo" value={selectedFacility.tptContactNo}
+                  onChange={(e) => setSelectedFacility({ ...selectedFacility, tptContactNo: e.target.value })} />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="Location" className="form-label">Location <span>*</span></label>
+                <select className="form-control form-control-sm" id="ddleditLocation" value={selectedFacility.locationId}
+                  onChange={(e) => { setSelectedFacility({ ...selectedFacility, locationId: e.target.value }); setSelectedSubFacilities([]); }}>
+                  <option value="0">Select Location</option>
+                  {location.map((loc, index) => (<option key={index} value={loc.Id}>{loc.locationName}</option>))}
+                </select>
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="HelpdeskEmail" className="form-label">Helpdesk Email</label>
+                <input type="email" className="form-control form-control-sm" id="txteditHelpdeskemail" value={selectedFacility.tptEmail}
+                  onChange={(e) => setSelectedFacility({ ...selectedFacility, tptEmail: e.target.value })} />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="TeamLeadEmail" className="form-label">Team Lead Email</label>
+                <input type="email" className="form-control form-control-sm" id="txteditTeamLeademail" value={selectedFacility.ShiftInchargeMail}
+                  onChange={(e) => setSelectedFacility({ ...selectedFacility, ShiftInchargeMail: e.target.value })} />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="ManagerEmail" className="form-label">Manager Email</label>
+                <input type="email" className="form-control form-control-sm" id="txteditManageremail" value={selectedFacility.SiteLeadMail}
+                  onChange={(e) => setSelectedFacility({ ...selectedFacility, SiteLeadMail: e.target.value })} />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label htmlFor="SiteLeadEmail" className="form-label">Site Lead Email</label>
+                <input type="email" className="form-control form-control-sm" id="txteditSiteLeadEmail" value={selectedFacility.LocLeadMail}
+                  onChange={(e) => setSelectedFacility({ ...selectedFacility, LocLeadMail: e.target.value })} />
+              </div>
+              <div className="col-12 col-sm-6 mb-2">
+                <label className="form-label">Sub Facilities</label>
+                <MultiSelect
+                  value={selectedSubFacilities}
+                  options={facilityData
+                    .filter((f) => String(f.locationId) === String(selectedFacility?.locationId) && f.Id !== selectedFacility?.Id)
+                    .map((f) => ({ label: f.facilityName, value: f.Id }))}
+                  onChange={(e) => handleSubFacilityChange(e.value)}
+                  placeholder="Select sub facilities…"
+                  maxSelectedLabels={4}
+                  className="w-100"
+                  display="chip"
+                  filter
+                  showClear
+                  emptyMessage="No other facilities in this location"
+                  emptyFilterMessage="No match found"
+                />
+              </div>
+              <div className="col-12 mb-2"><MapPickerRow mode="edit" /></div>
             </div>
-
-            <div className="col-12 col-sm-6 mb-2">
-              <label htmlFor="ContactNo" className="form-label">
-                Contact No
-              </label>
-              <input
-                type="number"
-                className="form-control form-control-sm"
-                id="txteditContactNo"
-                value={selectedFacility.tptContactNo}
-                onChange={(e) =>
-                  setSelectedFacility({
-                    ...selectedFacility,
-                    tptContactNo: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div className="col-12 col-sm-6 mb-2">
-              <label htmlFor="Location" className="form-label">
-                Location <span>*</span>
-              </label>
-              <select
-                className="form-control form-control-sm"
-                id="ddleditLocation"
-                value={selectedFacility.locationId}
-                onChange={(e) =>
-                  setSelectedFacility({
-                    ...selectedFacility,
-                    locationId: e.target.value,
-                  })
-                }
-              >
-                <option value="0">Select Location</option>
-                {location.map((loc, index) => (
-                  <option key={index} value={loc.Id}>
-                    {loc.locationName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="col-12 col-sm-6 mb-2">
-              <label
-                htmlFor="HelpdeskEmail"
-                className="form-label"
-              >
-                Helpdesk Email
-              </label>
-              <input
-                type="email"
-                className="form-control form-control-sm"
-                id="txteditHelpdeskemail"
-                value={selectedFacility.tptEmail}
-                onChange={(e) =>
-                  setSelectedFacility({
-                    ...selectedFacility,
-                    tptEmail: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div className="col-12 col-sm-6 mb-2">
-              <label
-                htmlFor="TeamLeadEmail"
-                className="form-label"
-              >
-                Team Lead Email
-              </label>
-              <input
-                type="email"
-                className="form-control form-control-sm"
-                id="txteditTeamLeademail"
-                value={selectedFacility.ShiftInchargeMail}
-                onChange={(e) =>
-                  setSelectedFacility({
-                    ...selectedFacility,
-                    ShiftInchargeMail: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div className="col-12 col-sm-6 mb-2">
-              <label
-                htmlFor="ManagerEmail"
-                className="form-label"
-              >
-                Manager Email
-              </label>
-              <input
-                type="email"
-                className="form-control form-control-sm"
-                id="txteditManageremail"
-                value={selectedFacility.SiteLeadMail}
-                onChange={(e) =>
-                  setSelectedFacility({
-                    ...selectedFacility,
-                    SiteLeadMail: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div className="col-12 col-sm-6 mb-2">
-              <label
-                htmlFor="SiteLeadEmail"
-                className="form-label"
-              >
-                Site Lead Email
-              </label>
-              <input
-                type="email"
-                className="form-control form-control-sm"
-                id="txteditSiteLeadEmail"
-                value={selectedFacility.LocLeadMail}
-                onChange={(e) =>
-                  setSelectedFacility({
-                    ...selectedFacility,
-                    LocLeadMail: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div className="col-12 mb-2">
-              <MapPickerRow mode="edit" />
-            </div>
-          </div>
           )}
+          {activeSidebarTab === "config" && renderConfigTab()}
         </div>
       </MasterSidebar>
 
@@ -1179,8 +1190,8 @@ const FacilityMaster = () => {
           mapContext === "add"
             ? "Set Location"
             : mapContext === "edit"
-            ? "Update Location"
-            : "Location Map"
+              ? "Update Location"
+              : "Location Map"
         }
         width={mapOffcanvasWidth}
         backdrop={false}
@@ -1215,9 +1226,9 @@ const FacilityMaster = () => {
             </div>
 
             <div className="col-12 col-md-auto">
-              <button 
-                className="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-1" 
-                onClick={saveMapCoords} 
+              <button
+                className="btn btn-primary w-100 d-flex justify-content-center align-items-center gap-1"
+                onClick={saveMapCoords}
                 style={{ height: '38px' }}
               >
                 <PlaceIcon fontSize="small" />
@@ -1320,68 +1331,68 @@ const FacilityMaster = () => {
       >
         <div className="p-3">
           <div className="mb-3">
-          <label htmlFor="Location" className="form-label">
-            Location <span>*</span>
-          </label>
-          <select className="form-control" id="ddlContactLocation">
-            <option value="0">Select Location</option>
-            {facContactLocation.map((loc, index) => (
-              <option key={index} value={loc.Id}>
-                {loc.FullName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-3">
-          <label htmlFor="Level" className="form-label">
-            Level <span>*</span>
-          </label>
-          <select className="form-control" id="ddlLevel">
-            <option value="0">Select Level</option>
-            <option value="level 1">level 1</option>
-            <option value="level 2">level 2</option>
-            <option value="level 3">level 3</option>
-            <option value="level 4">level 4</option>
-            <option value="level 5">level 5</option>
-            <option value="level 6">level 6</option>
-            <option value="level 7">level 7</option>
-            <option value="level 8">level 8</option>
-            <option value="level 9">level 9</option>
-            <option value="level 10">level 10</option>
-          </select>
-        </div>
-        <div className="mb-3">
-          <label htmlFor="ContactName" className="form-label">
-            Name <span>*</span>
-          </label>
-          <input
-            type="text"
-            className="form-control"
-            id="txtContactName"
-            placeholder="Enter Contact Name"
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="ContactNo" className="form-label">
-            Contact No
-          </label>
-          <input
-            type="number"
-            className="form-control"
-            id="txtLevelContactNo"
-            placeholder="Enter Contact No"
-          />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="ContactEmail" className="form-label">
-            Email <span>*</span>
-          </label>
-          <input
-            type="email"
-            className="form-control"
-            id="txtContactEmail"
-            placeholder="Enter Email"
-          />
+            <label htmlFor="Location" className="form-label">
+              Location <span>*</span>
+            </label>
+            <select className="form-control" id="ddlContactLocation">
+              <option value="0">Select Location</option>
+              {facContactLocation.map((loc, index) => (
+                <option key={index} value={loc.Id}>
+                  {loc.FullName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-3">
+            <label htmlFor="Level" className="form-label">
+              Level <span>*</span>
+            </label>
+            <select className="form-control" id="ddlLevel">
+              <option value="0">Select Level</option>
+              <option value="level 1">level 1</option>
+              <option value="level 2">level 2</option>
+              <option value="level 3">level 3</option>
+              <option value="level 4">level 4</option>
+              <option value="level 5">level 5</option>
+              <option value="level 6">level 6</option>
+              <option value="level 7">level 7</option>
+              <option value="level 8">level 8</option>
+              <option value="level 9">level 9</option>
+              <option value="level 10">level 10</option>
+            </select>
+          </div>
+          <div className="mb-3">
+            <label htmlFor="ContactName" className="form-label">
+              Name <span>*</span>
+            </label>
+            <input
+              type="text"
+              className="form-control"
+              id="txtContactName"
+              placeholder="Enter Contact Name"
+            />
+          </div>
+          <div className="mb-3">
+            <label htmlFor="ContactNo" className="form-label">
+              Contact No
+            </label>
+            <input
+              type="number"
+              className="form-control"
+              id="txtLevelContactNo"
+              placeholder="Enter Contact No"
+            />
+          </div>
+          <div className="mb-3">
+            <label htmlFor="ContactEmail" className="form-label">
+              Email <span>*</span>
+            </label>
+            <input
+              type="email"
+              className="form-control"
+              id="txtContactEmail"
+              placeholder="Enter Email"
+            />
           </div>
         </div>
       </MasterSidebar>

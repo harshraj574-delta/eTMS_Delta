@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(grep -E \"\\\\.\\(js|jsx\\)$\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npx vite *)",
+      "Bash(curl -s -X POST \"https://api.cloudinary.com/v1_1/dnzzrvbdz/raw/upload\" -F \"upload_preset=hqudzekg\" -F \"folder=hr_templates\" -F \"public_id=TMSDataFeedsample\" -F \"file=@d:/etms_30oct/eTMS_UI/TMSDataFeedsample \\(1\\).xls\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('secure_url','ERROR:'+str\\(d\\)\\)\\)\")"
     ]
   }
 }

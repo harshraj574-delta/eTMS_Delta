@@ -1193,6 +1193,8 @@ const ManageRouteDesktop = ({
   const toast = useRef(null);
   const fileInputRef = useRef(null);
   const selectedRouteForSplitRef = useRef(null);
+  const pollingIntervalRef = useRef(null);
+  const prevInProgressJobIdRef = useRef(null);
 
   // Prop Mappings (Aliasing props to match legacy state names)
   const tableData = routes || [];
@@ -1333,6 +1335,33 @@ const ManageRouteDesktop = ({
       setShowGenerateRouteDialog(logic.state.ui.showGenerateDialog);
     }
   }, [logic?.state?.ui?.showGenerateDialog]);
+
+  // Show progress modal whenever the logic hook signals an in-progress job.
+  // Triggers both for same-admin resume and cross-admin visibility.
+  // Guards against re-triggering for the same jobId.
+  useEffect(() => {
+    const job = logic?.state?.inProgressJob;
+    if (!job?.jobId) return;
+    if (job.jobId === prevInProgressJobIdRef.current) return;
+
+    prevInProgressJobIdRef.current = job.jobId;
+
+    setShowProgressDialog(true);
+    setProgressStatus({
+      step: 0, totalSteps: 4,
+      message: job.progressMessage || 'Route generation in progress...',
+      progress: job.progressPercent ?? 10,
+      isError: false,
+      errorMessage: ''
+    });
+
+    startPolling(job.jobId);
+
+    return () => {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logic?.state?.inProgressJob]);
 
   // Date state
   // ShiftDate state removed (mapped to props)
@@ -3076,111 +3105,89 @@ const ManageRouteDesktop = ({
     }
   };
 
-  const handleGenerateRoute = async () => {
-    try {
-      // Sync close state
-      if (logic && logic.actions && logic.actions.setUiState) {
-        logic.actions.setUiState({ showGenerateDialog: false });
-      } else {
-        setShowGenerateRouteDialog(false);
-      }
-      
-      setShowProgressDialog(true);
-      setProgressStatus({
-        step: 1,
-        totalSteps: 4,
-        message: "Fetching route input data...",
-        progress: 25,
-        isError: false,
-        errorMessage: "",
-      });
+  const startPolling = (jobId) => {
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
 
-      const routeInputResponse = await ManageRouteService.GetRouteInputJson({
-        facilityid: selectedFacility,
-        sDate: shiftDate,
-        triptype: selectedTripType,
-        shifttime: selectedShifts,
-        locationID: "",
-        updatedBy: userID,
-      });
-
-      let routeInputData;
+    pollingIntervalRef.current = setInterval(async () => {
       try {
-        routeInputData =
-          typeof routeInputResponse === "string"
-            ? JSON.parse(routeInputResponse)
-            : routeInputResponse;
-      } catch (parseError) {
-        console.error("Error parsing route input JSON:", parseError);
-        throw new Error("Invalid route input data format");
+        const job = await ManageRouteService.getRouteJobStatus(jobId);
+
+        setProgressStatus((prev) => ({
+          ...prev,
+          message: job.progressMessage || prev.message,
+          progress: job.progressPercent ?? prev.progress,
+          isError: false,
+          errorMessage: ''
+        }));
+
+        if (job.status === 'completed') {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+          prevInProgressJobIdRef.current = null;
+          logic?.actions?.clearInProgressJob?.();
+
+          setProgressStatus((prev) => ({ ...prev, message: 'Routes generated successfully!', progress: 100 }));
+          setTimeout(async () => {
+            setShowProgressDialog(false);
+            await onSearch();
+            toastService.success('Route generation completed successfully.');
+          }, 1500);
+        } else if (job.status === 'failed') {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+          prevInProgressJobIdRef.current = null;
+          logic?.actions?.clearInProgressJob?.();
+
+          setProgressStatus((prev) => ({
+            ...prev,
+            isError: true,
+            errorMessage: job.errorMessage || 'Route generation failed. Please try again.'
+          }));
+        }
+      } catch (pollError) {
+        console.error('Polling error:', pollError);
+        // Don't stop polling on network error — retry next tick
       }
-      setProgressStatus((prev) => ({
-        ...prev,
-        step: 2,
-        message: "Route generation in Progress",
-        progress: 50,
-      }));
+    }, 5000);
+  };
 
-      const generatedRouteJson = await ManageRouteService.generateRoutes(routeInputData);
-      setProgressStatus((prev) => ({
-        ...prev,
-        step: 3,
-        message: "Saving generated route...",
-        progress: 75,
-      }));
+  const handleGenerateRoute = async () => {
+    // Close confirm dialog
+    if (logic && logic.actions && logic.actions.setUiState) {
+      logic.actions.setUiState({ showGenerateDialog: false });
+    } else {
+      setShowGenerateRouteDialog(false);
+    }
 
-      const saveResponse = await ManageRouteService.save_routesMapBasedNew({
+    setShowProgressDialog(true);
+    setProgressStatus({
+      step: 0,
+      totalSteps: 4,
+      message: 'Starting route generation...',
+      progress: 5,
+      isError: false,
+      errorMessage: ''
+    });
+
+    try {
+      const { jobId } = await ManageRouteService.startAsyncRouteGeneration({
         facilityid: selectedFacility,
         sDate: shiftDate,
         triptype: selectedTripType,
         shifttime: selectedShifts,
-        jsonstring: JSON.stringify(generatedRouteJson),
-        updatedBy: 0,
-        IsNewAdded: 0,
+        updatedBy: userID,
+        mainBackendUrl: '' // App Runner uses MAIN_BACKEND_URL env var; pass empty string
       });
 
-      setProgressStatus((prev) => ({
-        ...prev,
-        step: 4,
-        message: "Finalizing route generation...",
-        progress: 100,
-      }));
-
-      // REFACTOR: Instead of manually fetching and setting state (which fails), 
-      // call onSearch to trigger re-validation and data refetch via the hook.
-      await onSearch();
-
-      setProgressStatus((prev) => ({
-        ...prev,
-        message: "Routes generated successfully!",
-        progress: 100,
-      }));
-      setProgressStatus((prev) => ({
-        ...prev,
-        message: "Routes generated successfully!",
-        progress: 100,
-      }));
-      // showButtons is now derived, so no need to set it manually
-      setTimeout(() => {
-        setShowProgressDialog(false);
-        toastService.success(
-          "Route generation and save completed successfully."
-        );
-      }, 2000);
+      setProgressStatus((prev) => ({ ...prev, message: 'Job queued. Generating routes...', progress: 10 }));
+      startPolling(jobId);
     } catch (error) {
-      console.error("Error in route generation:", error);
-      setVendorSummary([]);
+      console.error('Error starting route generation:', error);
       setProgressStatus((prev) => ({
         ...prev,
         isError: true,
-        errorMessage:
-          error.message || "Route generation failed. Please try again.",
+        errorMessage: error.message || 'Failed to start route generation. Please try again.'
       }));
-      toastService.error(
-        error.message || "Route generation failed. Please try again."
-      );
-    } finally {
-      setShowProgressDialog(false);
     }
   };
   return (
@@ -4118,6 +4125,9 @@ const ManageRouteDesktop = ({
                       </div>
                     )}
                   />
+                  {selectedTripType === "D" && (
+                    <Column field="stickerno2" header="PF" sortable />
+                  )}
                 </DataTable>
                 <CustomPaginator
                     first={first}
@@ -4169,12 +4179,41 @@ const ManageRouteDesktop = ({
           draggable={false}
           resizable={false}
           header={
-            <div className="d-flex justify-content-between align-items-center">
-              <span>OPTIMAR Routing Engine</span>
-              <img src="/images/logo.svg" alt="" />
+            <div className="d-flex justify-content-between align-items-center w-100">
+              <div className="d-flex align-items-center gap-2">
+                <img src="/images/logo.svg" alt="" style={{ height: '20px' }} />
+                <span style={{ fontWeight: 600, fontSize: '14px' }}>OPTIMAR Routing Engine</span>
+              </div>
+              <button
+                onClick={() => {
+                  if (pollingIntervalRef.current) {
+                    clearInterval(pollingIntervalRef.current);
+                    pollingIntervalRef.current = null;
+                  }
+                  prevInProgressJobIdRef.current = null;
+                  logic?.actions?.clearInProgressJob?.();
+                  setShowProgressDialog(false);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px 6px',
+                  borderRadius: '4px',
+                  color: '#6c757d',
+                  fontSize: '18px',
+                  lineHeight: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Close"
+                aria-label="Close"
+              >
+                <i className="pi pi-times" />
+              </button>
             </div>
           }
-          style={{ width: "550px" }}
+          style={{ width: "500px" }}
           className="p-2 rounded-5 bg-white"
         >
           <div className="p-4">
@@ -4195,7 +4234,14 @@ const ManageRouteDesktop = ({
             <div className="text-center">
               <p className="mb-2">{progressStatus.message}</p>
               {progressStatus.isError && (
-                <p className="text-danger">{progressStatus.errorMessage}</p>
+                <p className="text-danger mb-0" style={{ fontSize: '13px' }}>
+                  {progressStatus.errorMessage}
+                </p>
+              )}
+              {!progressStatus.isError && (
+                <p className="text-muted mb-0" style={{ fontSize: '12px' }}>
+                  Generation continues in the background — you can close this dialog and work on other shifts.
+                </p>
               )}
             </div>
           </div>

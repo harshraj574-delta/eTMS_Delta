@@ -1,47 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog } from 'primereact/dialog';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import ConsentModalService from '../services/compliance/ConsentModalService';
 import useSessionStore from '../store/useSessionStore';
 
-const ConsentModal = ({ visible, onAgree }) => {
+// Conditionally rendered by App.jsx — mounts fresh each time, clean state guaranteed.
+const ConsentModal = ({ onAgree }) => {
     const userId = useSessionStore((state) => state.user?.ID);
-    const [disclaimerText, setDisclaimerText] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        if (!visible) return;
-        const fetchDisclaimer = async () => {
-            setLoading(true);
-            setError('');
-            try {
-                const data = await ConsentModalService.sp_getempdisclaimer();
-                const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    setDisclaimerText(parsed[0].description || '');
-                }
-            } catch {
-                setError('Unable to load consent information. Please try again.');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchDisclaimer();
-    }, [visible]);
+    // React Query handles loading state, retries, and request cancellation on unmount.
+    const { data, isLoading } = useQuery({
+        queryKey: ['disclaimer'],
+        queryFn: () => ConsentModalService.sp_getempdisclaimer(),
+        select: (raw) => {
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return Array.isArray(parsed) ? parsed[0]?.description ?? '' : '';
+        },
+        retry: 2,
+    });
 
-    const handleAgree = async () => {
-        setSubmitting(true);
-        setError('');
-        try {
-            await ConsentModalService.InsertUserDisclaimerStatus({ Status: 1, UpdatedBy: Number(userId) });
-            onAgree();
-        } catch {
-            setError('Failed to record your consent. Please try again.');
-            setSubmitting(false);
-        }
-    };
+    const { mutate: submitConsent, isPending: submitting } = useMutation({
+        mutationFn: () =>
+            ConsentModalService.InsertUserDisclaimerStatus({ Status: 1, UpdatedBy: Number(userId) }),
+        onSuccess: onAgree,
+        onError: () => setError('Failed to record your consent. Please try again.'),
+    });
+
+    const disclaimerText = data ?? '';
+    const loading = isLoading;
 
     const headerTemplate = (
         <div className="consent-modal-header">
@@ -59,7 +47,7 @@ const ConsentModal = ({ visible, onAgree }) => {
         <div className="consent-modal-footer">
             <button
                 className="consent-agree-btn"
-                onClick={handleAgree}
+                onClick={() => submitConsent()}
                 disabled={submitting || loading || !!error}
             >
                 {submitting ? (
@@ -296,7 +284,7 @@ const ConsentModal = ({ visible, onAgree }) => {
             `}</style>
 
             <Dialog
-                visible={visible}
+                visible={true}
                 header={headerTemplate}
                 footer={footerTemplate}
                 closable={false}

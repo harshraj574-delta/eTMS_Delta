@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import sessionManager from "../utils/SessionManager.js";
 import { apiService } from "../services/api";
-import { DataTable } from 'primereact/datatable';
+import { CustomDataTable } from './common/CustomDataTable';
+import TableToolbar from './common/TableToolbar';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -43,6 +44,10 @@ const VehicleTypeMaster = () => {
 
     const [first, setFirst] = useState(0);
     const [rows, setRows] = useState(50);
+    const [globalFilter, setGlobalFilter] = useState("");
+    const [filteredVehicleTypeData, setFilteredVehicleTypeData] = useState([]);
+    const op = useRef(null);
+    const filterButtonRef = useRef(null);
 
     const onPageChange = (event) => {
         setFirst(event.first);
@@ -78,6 +83,34 @@ const VehicleTypeMaster = () => {
     useEffect(() => {
         BindFacilityDDL();
     }, []);
+
+    useEffect(() => {
+        if (!globalFilter) {
+            setFilteredVehicleTypeData(VehicleTypeList);
+            return;
+        }
+        const lower = globalFilter.toLowerCase();
+        setFilteredVehicleTypeData(
+            VehicleTypeList.filter((v) =>
+                Object.values(v).some((val) => val && String(val).toLowerCase().includes(lower))
+            )
+        );
+    }, [VehicleTypeList, globalFilter]);
+
+    const exportExcel = () => {
+        const headers = ["Vehicle", "Vendor", "Cost AC", "Cost Non AC", "Occupancy", "Bill Type", "Last Updated"];
+        const csvRows = filteredVehicleTypeData.map((v) => [
+            v.vehicle, v.vendorName, v.cost_ac, v.cost_nonac, v.occupancy, v.vendorType, v.updatedAt,
+        ]);
+        const csvContent = [headers, ...csvRows].map((r) => r.map((c) => `"${c ?? ""}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "VehicleTypeMaster.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+    };
 
     // Open sidebar with employee data
     const openEditSidebar = () => {
@@ -358,9 +391,21 @@ const VehicleTypeMaster = () => {
                     </div>
                     {/* Table Start */}
                     <div className="col-12">
-                        <div className="card_tb">
-                            <DataTable value={[...VehicleTypeList].slice(first, first + rows)} emptyMessage="No Vehicle Type Found">
-                                <Column sortable field="Id" header="Vehicle" body={(rowData) => (
+                        <div className="card_tb p-3">
+                            <TableToolbar
+                                search={globalFilter}
+                                onSearch={(e) => setGlobalFilter(e.target.value)}
+                                onRefresh={() => setGlobalFilter("")}
+                                onExport={exportExcel}
+                                showFilter={false}
+                                overlayRef={op}
+                                filterButtonRef={filterButtonRef}
+                            />
+                            <CustomDataTable
+                                value={filteredVehicleTypeData.slice(first, first + rows)}
+                                emptyMessage="No Vehicle Type Found"
+                            >
+                                <Column sortable field="vehicle" header="Vehicle" body={(rowData) => (
                                     <a href="#" onClick={(e) => {
                                         e.preventDefault();
                                         setVisibleLeft(true);
@@ -374,13 +419,12 @@ const VehicleTypeMaster = () => {
                                 <Column field="cost_nonac" header="Cost Non AC"></Column>
                                 <Column sortable field="occupancy" header="Occupancy"></Column>
                                 <Column sortable field="vendorType" header="Bill Type"></Column>
-                                {/* <Column field="updatedBy" header="Updated By"></Column> */}
                                 <Column sortable field="updatedAt" header="Last Updated"></Column>
-                            </DataTable>
+                            </CustomDataTable>
                             <CustomPaginator
                                 first={first}
                                 rows={rows}
-                                totalRecords={VehicleTypeList.length}
+                                totalRecords={filteredVehicleTypeData.length}
                                 onPageChange={onPageChange}
                                 rowsPerPageOptions={[50, 100, 150, 200, 250]}
                             />

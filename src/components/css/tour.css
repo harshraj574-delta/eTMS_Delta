@@ -1,0 +1,129 @@
+/* ── eTMS Guided Tour — Driver.js theme overrides ─────────────────────────── */
+
+.etms-tour-popover.driver-popover {
+  border-radius: 14px;
+  box-shadow:
+    0 20px 60px -12px rgba(74, 54, 236, 0.22),
+    0 8px 24px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ede9fe;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  max-width: 360px;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Header strip */
+.etms-tour-popover .driver-popover-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1c1d20;
+  padding: 18px 20px 6px;
+  border-bottom: none;
+  line-height: 1.35;
+}
+
+/* Body text */
+.etms-tour-popover .driver-popover-description {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.65;
+  padding: 4px 20px 16px;
+}
+
+/* Progress bar */
+.etms-tour-popover .driver-popover-progress-text {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* Footer area */
+.etms-tour-popover .driver-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 16px;
+  border-top: 1px solid #f0eeff;
+  background: #faf9ff;
+  gap: 8px;
+}
+
+/* Navigation buttons — shared */
+.etms-tour-popover .driver-popover-prev-btn,
+.etms-tour-popover .driver-popover-next-btn,
+.etms-tour-popover .driver-popover-done-btn {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 7px 16px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.12s;
+  line-height: 1.4;
+}
+
+.etms-tour-popover .driver-popover-prev-btn:hover:not(:disabled),
+.etms-tour-popover .driver-popover-next-btn:hover:not(:disabled),
+.etms-tour-popover .driver-popover-done-btn:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+/* Previous button */
+.etms-tour-popover .driver-popover-prev-btn {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+/* Next / Done buttons */
+.etms-tour-popover .driver-popover-next-btn,
+.etms-tour-popover .driver-popover-done-btn {
+  background: linear-gradient(135deg, #4a36ec 0%, #6c56f5 100%);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(74, 54, 236, 0.32);
+}
+
+/* Close (×) button */
+.etms-tour-popover .driver-popover-close-btn {
+  color: #9ca3af;
+  font-size: 18px;
+  line-height: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.etms-tour-popover .driver-popover-close-btn:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+/* Purple ring around the spotlight — driver.js owns the box-shadow/overlay,
+   we only add an outline so we don't double-darken the page. */
+.driver-stage {
+  outline: 2.5px solid rgba(74, 54, 236, 0.70);
+  outline-offset: 0;
+}
+
+/* Arrow */
+.etms-tour-popover .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-right-color: #fff;
+}
+.etms-tour-popover .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-left-color: #fff;
+}
+.etms-tour-popover .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-bottom-color: #fff;
+}
+.etms-tour-popover .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-top-color: #fff;
+}

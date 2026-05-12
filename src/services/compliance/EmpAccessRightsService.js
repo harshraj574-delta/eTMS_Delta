@@ -78,6 +78,35 @@ class EmpAccessRightsService {
             throw error;
         }
     }
+
+    async GetUserRightLogEmpWise(params) {
+        try {
+            const response = await api.post('/GetUserRightLogEmpWise', {
+                SDate: params.SDate,
+                EDate: params.EDate,
+                FacilityId: params.FacilityId,
+                Empid: params.Empid
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error in GetUserRightLogEmpWise:', error);
+            throw error;
+        }
+    }
+
+    async CopyAccess(params) {
+        try {
+            const response = await api.post('/CopyAccess', {
+                FromEmpId: params.FromEmpId,
+                ToEmpId: params.ToEmpId
+            });
+            return response.data;
+        }
+        catch (error) {
+            console.error('Error in CopyAccess:', error);
+            throw error;
+        }
+    }
 }
 
 export default new EmpAccessRightsService();

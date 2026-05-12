@@ -80,6 +80,7 @@ const buildDefault = (overrides = {}) => ({
     zonePairingMatrixRaw: "{}",    // JSON text for the pairing matrix
     // Duration & deviation
     maxDuration: 120,              // minutes
+    maxDistanceKm: 80,             // km — hard cap on total one-way route distance
     deviationRules: JSON.parse(JSON.stringify(DEFAULT_DEVIATION_RULES)),
     // Fleet
     fleet: [
@@ -340,6 +341,11 @@ const RoutingConfig = () => {
                     hint="Route duration ceiling — routes above this are rejected (maxDuration)">
                     <NumInput value={config.maxDuration} min={30} max={480} step={10}
                         onChange={v => set("maxDuration", v)} />
+                </FieldRow>
+                <FieldRow label="Max Distance of Route (km)"
+                    hint="Hard cap on total one-way route distance — routes exceeding this are rejected (maxDistanceKm)">
+                    <NumInput value={config.maxDistanceKm} min={5} max={300} step={5}
+                        onChange={v => set("maxDistanceKm", v)} />
                 </FieldRow>
                 <FieldRow label="Guard Required"
                     hint="Master switch — a guard is added when the critical employee position is female">

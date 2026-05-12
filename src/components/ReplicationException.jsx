@@ -700,7 +700,7 @@ const ReplicationException = () => {
   return (
     <>
       <Loader isVisible={loading} fullScreen={true} />
-      <Header pageTitle="Replication Exception" showNewButton={false} />
+      <Header pageTitle="Routing Exception" showNewButton={false} />
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
 

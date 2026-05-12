@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 
@@ -8,7 +8,8 @@ import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
-import { DataTable } from "primereact/datatable";
+import { CustomDataTable } from "./common/CustomDataTable";
+import TableToolbar from "./common/TableToolbar";
 import { Column } from "primereact/column";
 import MasterSidebar from "./Master/MasterSidebar";
 import sessionManager from "../utils/SessionManager.js";
@@ -24,6 +25,12 @@ import CustomPaginator from "./common/CustomPaginator";
 import Loader from "./common/Loader";
 
 const VENDOR_VEHICLE_PCT_KEY = "vendor_vehicle_pct";
+const VENDOR_ESCORT_TYPE_KEY = "vendor_escort_type";
+
+const escortTypeOptions = [
+  { label: "Transport", value: "transport" },
+  { label: "Security", value: "security" },
+];
 
 const VendorMaster = () => {
   const [selectedFacility, setSelectedfacility] = useState(null);
@@ -50,8 +57,14 @@ const VendorMaster = () => {
 
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [filteredVendorData, setFilteredVendorData] = useState([]);
+  const op = useRef(null);
+  const filterButtonRef = useRef(null);
   const [addVehiclePct, setAddVehiclePct] = useState({ small: "", medium: "", large: "" });
   const [editVehiclePct, setEditVehiclePct] = useState({ small: "", medium: "", large: "" });
+  const [addEscortType, setAddEscortType] = useState(null);
+  const [editEscortType, setEditEscortType] = useState(null);
 
   const onPageChange = (event) => {
     setFirst(event.first);
@@ -61,6 +74,36 @@ const VendorMaster = () => {
   useEffect(() => {
     BindFacilityDDL();
   }, []);
+
+  useEffect(() => {
+    if (!globalFilter) {
+      setFilteredVendorData(VendorList);
+      return;
+    }
+    const lower = globalFilter.toLowerCase();
+    setFilteredVendorData(
+      VendorList.filter((v) =>
+        Object.values(v).some((val) => val && String(val).toLowerCase().includes(lower))
+      )
+    );
+  }, [VendorList, globalFilter]);
+
+  const exportExcel = () => {
+    const headers = ["Facility", "Vendor Name", "Vendor Info", "Vendor Contact", "Email ID", "Fleet Strength", "Fleet Strength2", "Fleet Strength3", "Bill Type", "Attrited", "Updated By"];
+    const csvRows = filteredVendorData.map((v) => [
+      v.facilityName, v.vendorName, v.vendorInfo, v.vendorContact, v.EmailId,
+      v.vendorStrength, v.vendorStrength2, v.vendorStrength3, v.vendorType,
+      v.attrited === "0" ? "No" : "Yes", v.UpdatedBy,
+    ]);
+    const csvContent = [headers, ...csvRows].map((r) => r.map((c) => `"${c ?? ""}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "VendorMaster.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   //Bind facility dropdown List from API
   const BindFacilityDDL = async () => {
@@ -108,6 +151,7 @@ const VendorMaster = () => {
   const handleVendorSelect = (vendor) => {
     setSelectedVendor(vendor);
     setEditVehiclePct(loadVehiclePct(vendor));
+    setEditEscortType(loadEscortType(vendor.Id));
   };
 
   // Update vendor details using API
@@ -178,14 +222,13 @@ const VendorMaster = () => {
 
       if (response[0].result === 1) {
         saveVehiclePct(selectedVendor.Id, editVehiclePct);
+        saveEscortType(selectedVendor.Id, editEscortType);
         toastService.success("Data Updated Successfully");
-        // Refresh the vendor grid
         BindVendorGrid(selectedFacility);
-        // Close the sidebar
         setVisibleLeft(false);
-        // Clear the selected vendor
         setSelectedVendor(null);
         setEditVehiclePct({ small: "", medium: "", large: "" });
+        setEditEscortType(null);
       }
     } catch (error) {
       console.error("Error updating vendor:", error);
@@ -296,7 +339,8 @@ const VendorMaster = () => {
           attrited: 0,
         });
         setAddVehiclePct({ small: "", medium: "", large: "" });
-        setVisibleLeftAdd(false); // Close the sidebar
+        setAddEscortType(null);
+        setVisibleLeftAdd(false);
       }
     } catch (error) {
       console.error("Error updating vendor:", error);
@@ -318,6 +362,21 @@ const VendorMaster = () => {
       const data = JSON.parse(localStorage.getItem(VENDOR_VEHICLE_PCT_KEY) || "{}");
       data[String(vendorId)] = pct;
       localStorage.setItem(VENDOR_VEHICLE_PCT_KEY, JSON.stringify(data));
+    } catch {}
+  };
+
+  const loadEscortType = (vendorId) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(VENDOR_ESCORT_TYPE_KEY) || "{}");
+      return data[String(vendorId)] || null;
+    } catch { return null; }
+  };
+
+  const saveEscortType = (vendorId, type) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(VENDOR_ESCORT_TYPE_KEY) || "{}");
+      data[String(vendorId)] = type;
+      localStorage.setItem(VENDOR_ESCORT_TYPE_KEY, JSON.stringify(data));
     } catch {}
   };
 
@@ -372,13 +431,19 @@ const VendorMaster = () => {
 
           {/* Table Start */}
           <div className="col-12">
-            <div className="card_tb">
-              <DataTable
-                value={[...VendorList].slice(first, first + rows)}
-                rowClassName={(rowData) => {
-                  //console.log("row data", rowData);
-                  // return rowData[0].attrited === "1" ? 'bg-danger-subtle' : '';
-                }}
+            <div className="card_tb p-3">
+              <TableToolbar
+                search={globalFilter}
+                onSearch={(e) => setGlobalFilter(e.target.value)}
+                onRefresh={() => setGlobalFilter("")}
+                onExport={exportExcel}
+                showFilter={false}
+                overlayRef={op}
+                filterButtonRef={filterButtonRef}
+              />
+              <CustomDataTable
+                value={filteredVendorData.slice(first, first + rows)}
+                emptyMessage="No Records Found"
               >
                 <Column field="facilityName" header="Facility" />
                 <Column
@@ -401,7 +466,7 @@ const VendorMaster = () => {
                 />
                 <Column field="vendorInfo" header="Vendor Info" />
                 <Column field="vendorContact" header="Vendor Contact" />
-                <Column field="EmailId" header="EmailId" />
+                <Column field="EmailId" header="Email ID" />
                 <Column field="vendorStrength" header="Fleet Strength" sortable />
                 <Column sortable field="vendorStrength2" header="Fleet Strength2" />
                 <Column sortable field="vendorStrength3" header="Fleet Strength3" />
@@ -411,14 +476,12 @@ const VendorMaster = () => {
                   header="Attrited"
                   body={(rowData) => (rowData.attrited === "0" ? "No" : "Yes")}
                 />
-
-
-                <Column field="UpdatedBy" header="Updated by" />
-              </DataTable>
+                <Column field="UpdatedBy" header="Updated By" />
+              </CustomDataTable>
               <CustomPaginator
                 first={first}
                 rows={rows}
-                totalRecords={VendorList.length}
+                totalRecords={filteredVendorData.length}
                 onPageChange={onPageChange}
                 rowsPerPageOptions={[50, 100, 150, 200]}
               />
@@ -430,7 +493,7 @@ const VendorMaster = () => {
       {/* Add Vendor */}
       <MasterSidebar
         show={visibleLeftAdd}
-        onClose={() => { setVisibleLeftAdd(false); setAddVehiclePct({ small: "", medium: "", large: "" }); }}
+        onClose={() => { setVisibleLeftAdd(false); setAddVehiclePct({ small: "", medium: "", large: "" }); setAddEscortType(null); }}
         title={
           <div className="w-100 d-flex justify-content-between align-items-center pe-4">
             <span>Add Vendor</span>
@@ -442,7 +505,7 @@ const VendorMaster = () => {
           {
             label: "Cancel",
             className: "btn btn-outline-secondary",
-            onClick: () => { setVisibleLeftAdd(false); setAddVehiclePct({ small: "", medium: "", large: "" }); },
+            onClick: () => { setVisibleLeftAdd(false); setAddVehiclePct({ small: "", medium: "", large: "" }); setAddEscortType(null); },
           },
           {
             label: "Save Changes",
@@ -555,6 +618,19 @@ const VendorMaster = () => {
                     onChange={(e) =>
                       setNewVendor({ ...newVendor, EmailId: e.target.value })
                     }
+                  />
+                </div>
+                <div className="field col-4 mb-3">
+                  <label className="d-block">Escort Vendor</label>
+                  <Dropdown
+                    placeholder="Select Type"
+                    className="w-100"
+                    value={addEscortType}
+                    onChange={(e) => setAddEscortType(e.value)}
+                    options={escortTypeOptions}
+                    optionLabel="label"
+                    optionValue="value"
+                    showClear
                   />
                 </div>
                 <div className="field col-4 mb-3">
@@ -837,6 +913,19 @@ const VendorMaster = () => {
                           EmailId: e.target.value,
                         })
                       }
+                    />
+                  </div>
+                  <div className="field col-4 mb-3">
+                    <label className="d-block">Escort Vendor</label>
+                    <Dropdown
+                      placeholder="Select Type"
+                      className="w-100"
+                      value={editEscortType}
+                      onChange={(e) => setEditEscortType(e.value)}
+                      options={escortTypeOptions}
+                      optionLabel="label"
+                      optionValue="value"
+                      showClear
                     />
                   </div>
                   <div className="field col-4 mb-3">
