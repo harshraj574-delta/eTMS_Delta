@@ -133,6 +133,43 @@ const hexToRgb = (hex) => {
     : null;
 };
 
+const groupMarkersByLocation = (stops, latKey, lngKey) => {
+  const coordMap = {};
+  stops.forEach((stop) => {
+    const lat = parseFloat(stop[latKey]);
+    const lng = parseFloat(stop[lngKey]);
+    if (isNaN(lat) || isNaN(lng)) return;
+    const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    if (!coordMap[key]) coordMap[key] = { lat, lng, stops: [] };
+    coordMap[key].stops.push(stop);
+  });
+  return Object.values(coordMap);
+};
+
+function createMultiStopMarker(color, count) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+      <circle cx="25" cy="25" r="15" fill="${color}" opacity="0.3" stroke="white" stroke-width="1.5"/>
+      <circle cx="22" cy="22" r="16" fill="white" stroke="#333" stroke-width="2"/>
+      <circle cx="22" cy="22" r="14" fill="${color}"/>
+      <text x="22" y="27" text-anchor="middle"
+            font-family="Arial Black, sans-serif"
+            font-size="13"
+            font-weight="900"
+            fill="white"
+            stroke="rgba(0,0,0,0.8)"
+            stroke-width="2"
+            paint-order="stroke fill">${count}</text>
+    </svg>
+  `;
+  return new L.Icon({
+    iconUrl: "data:image/svg+xml;base64," + btoa(svg),
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    popupAnchor: [0, -22],
+  });
+}
+
 const colors = ["#4285F4"];
 
 // Updated marker function to match RouteMap styling with gender-based colors
@@ -516,6 +553,79 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId, width = 
         .leaflet-control-zoom a:hover {
           background: #f5f5f5 !important;
         }
+
+        .info-window.multi-window {
+          width: 272px;
+          max-width: 272px;
+        }
+        .info-window.multi-window .info-header {
+          padding: 8px 28px 8px 12px;
+        }
+        .info-window.multi-window .stop-route-info {
+          flex-direction: column;
+          gap: 2px;
+          align-items: flex-start;
+        }
+        .info-window.multi-window .stop-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: white;
+        }
+        .info-window.multi-window .route-label {
+          font-size: 10px;
+          color: rgba(255,255,255,0.8);
+        }
+        .multi-stop-list {
+          max-height: 210px;
+          overflow-y: auto;
+          padding: 4px 0;
+        }
+        .multi-stop-list::-webkit-scrollbar {
+          width: 4px;
+        }
+        .multi-stop-list::-webkit-scrollbar-track {
+          background: #f1f5f9;
+        }
+        .multi-stop-list::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 2px;
+        }
+        .multi-stop-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          padding: 6px 10px;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .multi-stop-item:last-child {
+          border-bottom: none;
+        }
+        .stop-badge {
+          color: white;
+          font-size: 9px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 4px;
+          white-space: nowrap;
+          margin-top: 2px;
+          flex-shrink: 0;
+        }
+        .stop-emp-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .stop-emp-name {
+          font-size: 11px;
+          font-weight: 600;
+          color: #1e293b;
+          line-height: 1.3;
+        }
+        .stop-emp-meta {
+          font-size: 10px;
+          color: #64748b;
+          margin-top: 1px;
+          line-height: 1.3;
+        }
       `}</style>
 
       {/* Map as background */}
@@ -555,75 +665,78 @@ export default function OffcanvasRouteDetails({ show, onClose, routeId, width = 
           {/* Employee Markers with RouteMap styling */}
           {route &&
             route.stops &&
-            route.stops.map((emp, idx) => {
-              const lat = parseFloat(emp.GeoY);
-              const lng = parseFloat(emp.GeoX);
-              if (!isNaN(lat) && !isNaN(lng)) {
-                // Gender-based color: Pink for female, Blue for male
-                const markerColor =
-                  emp.Gender === "F" ? "#F44292" : "#4285F4";
-                const markerColorRgb = hexToRgb(markerColor);
-                return (
-                  <Marker
-                    key={`emp-${idx}`}
-                    position={[lat, lng]}
-                    icon={createColoredMarker(
-                      markerColor,
-                      emp.SNo,
-                      emp.Gender
-                    )}
-                  >
-                    <Popup>
-                      <div
-                        className="info-window"
-                        style={{
-                          "--route-color": markerColor,
-                          "--route-color-rgb": markerColorRgb,
-                        }}
-                      >
-                        <div className="info-header">
-                          <div className="stop-route-info">
+            groupMarkersByLocation(route.stops, 'GeoY', 'GeoX').map((group, gidx) => {
+              const isMulti = group.stops.length > 1;
+              const markerColor = isMulti
+                ? "#4285F4"
+                : group.stops[0].Gender === "F" ? "#F44292" : "#4285F4";
+              const markerColorRgb = hexToRgb(markerColor);
+              const markerIcon = isMulti
+                ? createMultiStopMarker(markerColor, group.stops.length)
+                : createColoredMarker(markerColor, group.stops[0].SNo, group.stops[0].Gender);
+              return (
+                <Marker
+                  key={`group-${gidx}`}
+                  position={[group.lat, group.lng]}
+                  icon={markerIcon}
+                >
+                  <Popup maxWidth={isMulti ? 272 : 220}>
+                    <div
+                      className={`info-window${isMulti ? " multi-window" : ""}`}
+                      style={{
+                        "--route-color": markerColor,
+                        "--route-color-rgb": markerColorRgb,
+                      }}
+                    >
+                      <div className="info-header">
+                        <div className="stop-route-info">
+                          {isMulti ? (
+                            <span className="stop-label">{group.stops.length} Employees</span>
+                          ) : (
                             <span className="stop-label">
                               Stop{" "}
-                              <span className="stop-number">{emp.stopNo}</span>
+                              <span className="stop-number">{group.stops[0].stopNo}</span>
                             </span>
-                            <span className="route-label">
-                              Route{" "}
-                              <span className="route-number">
-                                {route.RouteID}
-                              </span>
-                            </span>
-                          </div>
+                          )}
+                          <span className="route-label">
+                            Route{" "}
+                            <span className="route-number">{route.RouteID}</span>
+                          </span>
                         </div>
-                        <ul className="employee-details">
-                          <li>
-                            <strong>Emp Name</strong>
-                            <span>{emp.empName || "N/A"}</span>
-                          </li>
-                          <li>
-                            <strong>Emp Code</strong>
-                            <span>{emp.empCode || "N/A"}</span>
-                          </li>
-                          <li>
-                            <strong>Address</strong>
-                            <span>{emp.address || "No address"}</span>
-                          </li>
-                          <li>
-                            <strong>ETA</strong>
-                            <span>{emp.ETA || "N/A"}</span>
-                          </li>
-                          <li>
-                            <strong>Gender</strong>
-                            <span>{emp.Gender || "N/A"}</span>
-                          </li>
-                        </ul>
                       </div>
-                    </Popup>
-                  </Marker>
-                );
-              }
-              return null;
+                      {isMulti ? (
+                        <div className="multi-stop-list">
+                          {group.stops.map((emp, si) => (
+                            <div key={si} className="multi-stop-item">
+                              <span
+                                className="stop-badge"
+                                style={{ background: emp.Gender === "F" ? "#F44292" : "#4285F4" }}
+                              >
+                                #{emp.SNo}
+                              </span>
+                              <div className="stop-emp-info">
+                                <div className="stop-emp-name">{emp.empName || "N/A"}</div>
+                                <div className="stop-emp-meta">{emp.empCode} · {emp.Gender || "N/A"} · ETA: {emp.ETA || "N/A"}</div>
+                                <div className="stop-emp-meta">{emp.address || "No address"}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <ul className="employee-details">
+                          <li><strong>Emp Name</strong><span>{group.stops[0].empName || "N/A"}</span></li>
+                          <li><strong>Emp Code</strong><span>{group.stops[0].empCode || "N/A"}</span></li>
+                          <li><strong>Address</strong><span>{group.stops[0].address || "No address"}</span></li>
+                          <li><strong>ETA</strong><span>{group.stops[0].ETA || "N/A"}</span></li>
+                          <li><strong>Gender</strong><span>{group.stops[0].Gender || "N/A"}</span></li>
+                        </ul>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              );
             })}
+
           {route &&
             route.facility &&
             !isNaN(parseFloat(route.facility.facilityGeoY)) &&

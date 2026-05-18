@@ -5,7 +5,16 @@
       "Bash(node -e ' *)",
       "Bash(npx vite *)",
       "Bash(curl -s -X POST \"https://api.cloudinary.com/v1_1/dnzzrvbdz/raw/upload\" -F \"upload_preset=hqudzekg\" -F \"folder=hr_templates\" -F \"public_id=TMSDataFeedsample\" -F \"file=@d:/etms_30oct/eTMS_UI/TMSDataFeedsample \\(1\\).xls\")",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('secure_url','ERROR:'+str\\(d\\)\\)\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('secure_url','ERROR:'+str\\(d\\)\\)\\)\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\etms_30oct\\\\eTMS_UI\" -Force)",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)",
+      "Bash(Get-ChildItem -Path \"d:\\\\etms_30oct\\\\eTMS_UI\\\\src\\\\components\" -Filter \"*Route*\")",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(xargs grep -l \"dialog\\\\|modal\")",
+      "Bash(Get-Content \"d:\\\\etms_30oct\\\\eTMS_UI\\\\src\\\\components\\\\css\\\\style.css\")",
+      "Bash(Measure-Object -Line)"
     ]
   }
 }

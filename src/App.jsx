@@ -78,6 +78,7 @@ import EmpSpoc from "./components/EmpSpoc";
 import RoutingConfig from "./components/RoutingConfig";
 import AdhocChange from "./components/AdhocChange";
 import HrImportExcel from "./components/HrImportExcel";
+import BCPMaster from "./components/BCPMaster";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -197,6 +198,7 @@ function App() {
         <Route path="/EmployeeRecordSwapping" element={<PrivateRoute element={<EmployeeRecordSwapping />} />} />
         <Route path="/AdhocChange" element={<PrivateRoute element={<AdhocChange />} />} />
         <Route path="/EmpXlsDataUpload" element={<PrivateRoute element={<HrImportExcel />} />} />
+        <Route path="/BCPMaster" element={<PrivateRoute element={<BCPMaster />} />} />
 
 
 

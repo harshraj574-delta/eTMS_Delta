@@ -128,7 +128,6 @@ const AdhocChange = () => {
 
                     toastService.success("Request Rejected Successfully");
 
-                    // 🔄 Refresh data
                     fetchAdhocChange();
 
                 } catch (error) {
