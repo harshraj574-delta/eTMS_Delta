@@ -8,7 +8,7 @@ import { Calendar } from "primereact/calendar";
 import { CustomDataTable } from "./common/CustomDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
-import BCPMasterService from "../services/compliance/BCPMasterService";
+import BCPMasterService from "../services/compliance/BcpMasterService";
 import PerEmployeeBillingService from "../services/compliance/PerEmployeeBillingService";
 import { vendorAllocationService } from "../services/compliance/VendorAllocationService";
 import MasterSidebar from "./Master/MasterSidebar";

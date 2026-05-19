@@ -19,7 +19,9 @@
       "Bash(npx eslint *)",
       "Bash(cd /d \"d:\\\\etms_30oct\\\\eTMS_UI\")",
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "PowerShell(cd d:\\\\etms_30oct\\\\eTMS_UI; git ls-files src/components/ | Where-Object { $_ -notmatch \"/\" -or \\($_ -match \"^src/components/[^/]+$\"\\) } | Sort-Object | Select-Object -First 60)",
+      "PowerShell(cd d:\\\\etms_30oct\\\\eTMS_UI; git ls-files src/components/ | Where-Object { $_ -match \"^src/components/[^/]+$\" } | Sort-Object | Select-Object -Skip 60)"
     ]
   }
 }
