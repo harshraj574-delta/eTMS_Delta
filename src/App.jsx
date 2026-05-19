@@ -77,7 +77,7 @@ import EmployeeRecordSwapping from "./components/EmployeeRecordSwapping"
 import EmpSpoc from "./components/EmpSpoc";
 import RoutingConfig from "./components/RoutingConfig";
 import AdhocChange from "./components/AdhocChange";
-import HrImportExcel from "./components/HrImportExcel";
+import HrImportExcel from "./components/HRImportExcel";
 import BCPMaster from "./components/BCPMaster";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
