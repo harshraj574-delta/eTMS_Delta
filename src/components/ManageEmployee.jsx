@@ -6,6 +6,7 @@ import { apiService } from "../services/api";
 import { Calendar } from "primereact/calendar";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 import { Badge } from "primereact/badge";
@@ -425,7 +426,7 @@ function ManageEmployee() {
                                 </div>
                             </div>
 
-                            <DataTable
+                            <ResponsiveDataTable
                                 ref={dt}
                                 value={employees}
                                 loading={loading}
@@ -442,22 +443,23 @@ function ManageEmployee() {
                                     return rowData[0]?.status === "Y" ? "bg-danger-subtle" : "";
                                 }}
                                 removableSort
+                                onRowClick={({ data }) => openEditSidebar(data)}
                             >
-                                <Column sortable field="empCode" header="Employee Id" body={(rowData) => (
+                                <Column sortable field="empName" header="Employee Name" mobile={{ primary: true }} />
+                                <Column sortable field="empCode" header="Employee ID" mobile={{ subtitle: true }} body={(rowData) => (
                                     <a href="#" onClick={(e) => {
                                         e.preventDefault();
                                         openEditSidebar(rowData);
                                     }}>
                                         {rowData.empCode}
                                     </a>
-                                )}></Column>
-                                <Column sortable field="empName" header="Employee Name"></Column>
-                                <Column sortable field="ProcessName" header="Process"></Column>
-                                <Column sortable field="facilityName" header="Facility Name"></Column>
-                                <Column sortable field="email" header="E-mail Address"></Column>
-                                <Column sortable field="tptReq" header="TptReq"></Column>
-                                <Column sortable header="Status" body={memoizedStatusData}></Column>
-                            </DataTable>
+                                )} />
+                                <Column sortable field="ProcessName" header="Process" />
+                                <Column sortable field="facilityName" header="Facility" />
+                                <Column sortable field="email" header="Email" mobile={{ hidden: true }} />
+                                <Column sortable field="tptReq" header="TptReq" mobile={{ hidden: true }} />
+                                <Column sortable header="Status" mobile={{ badge: true }} body={memoizedStatusData} />
+                            </ResponsiveDataTable>
                         </div>
                     </div>
                 </div>

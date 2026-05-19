@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Dialog } from 'primereact/dialog';
+import AppDialog from './common/AppDialog';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { ProgressSpinner } from 'primereact/progressspinner';
@@ -108,23 +108,15 @@ const AddEmployeeToRouteModal = ({
         }
     }, [adding, routeId, userID, onSuccess]);
 
-    const headerContent = (
-        <div className="d-flex align-items-center gap-2">
-            <i className="pi pi-user-plus" style={{ fontSize: '1.2rem', color: '#3b82f6' }} />
-            <span>Add Employees to {routeId}</span>
-        </div>
-    );
-
     return (
-        <Dialog
+        <AppDialog
             visible={visible}
             onHide={onHide}
-            header={headerContent}
-            style={{ width: '95vw', maxWidth: '500px' }}
-            modal
-            draggable={false}
-            resizable={false}
-            className="p-fluid"
+            title={`Add Employees — ${routeId}`}
+            icon="pi pi-user-plus"
+            iconColor="#3b82f6"
+            size="md"
+            footer={null}
         >
             {/* Search Input */}
             <div className="mb-3">
@@ -192,7 +184,7 @@ const AddEmployeeToRouteModal = ({
             <div className="mt-3 text-center" style={{ fontSize: '0.8rem', color: '#64748b' }}>
                 {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''} available
             </div>
-        </Dialog>
+        </AppDialog>
     );
 };
 

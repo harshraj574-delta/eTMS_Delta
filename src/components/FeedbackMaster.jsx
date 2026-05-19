@@ -14,6 +14,7 @@ import { IconButton } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
@@ -390,39 +391,18 @@ const FeedbackMaster = () => {
                 {renderToolbar()}
               </div>
               <div className="table-responsive">
-                <CustomDataTable
+                <ResponsiveDataTable
                   value={filteredData.slice(first, first + rows)}
                   loading={loading}
                   dataKey="Id"
-                  className="p-datatable-sm"
                   emptyMessage="No complaint types found"
-                  responsiveLayout="scroll"
                   globalFilterFields={["CompName", "Category"]}
                 >
-                  <Column
-                    field="Category"
-                    header="Category"
-                    sortable
-                    className="col-process-name"
-                  />
-                  <Column
-                    field="CompName"
-                    header="Complaint Name"
-                    sortable
-                    className="col-process-name"
-                  />
-                  <Column
-                    field="severity"
-                    header="Severity"
-                    sortable
-                    style={{ width: "100px", textAlign: "center" }}
-                  />
-                  <Column
-                    header="Action"
-                    body={actionBodyTemplate}
-                    className="col-action"
-                  />
-                </CustomDataTable>
+                  <Column field="Category" header="Category" mobile={{ subtitle: true }} sortable />
+                  <Column field="CompName" header="Complaint Name" mobile={{ primary: true }} sortable />
+                  <Column field="severity" header="Severity" mobile={{ badge: true }} sortable style={{ width: "100px", textAlign: "center" }} />
+                  <Column header="Action" mobile={{ action: true }} body={actionBodyTemplate} />
+                </ResponsiveDataTable>
                 <CustomPaginator
                   first={first}
                   rows={rows}

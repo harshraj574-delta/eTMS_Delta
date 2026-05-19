@@ -8,7 +8,8 @@ import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 import { Calendar } from 'primereact/calendar';
 import { Badge } from 'primereact/badge';
-import { Dialog } from 'primereact/dialog';
+import AppDialog from './common/AppDialog';
+import AppConfirmDialog from './common/AppConfirmDialog';
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { ToastContainer } from 'react-toastify';
@@ -96,6 +97,10 @@ const mobileStyles = `
 }
 .custom-calendar-input .p-inputtext {
     padding-left: 36px !important;
+}
+@keyframes fabItemSlideIn {
+    from { opacity: 0; transform: translateX(16px) scale(0.92); }
+    to   { opacity: 1; transform: translateX(0)   scale(1);    }
 }
 `;
 
@@ -452,10 +457,10 @@ RouteEmployeeList.displayName = 'RouteEmployeeList';
 /**
  * RouteCard - Bottom-sheet style expandable card (Uber/Ola inspired)
  */
-const RouteCard = React.memo(({ 
-    route, 
-    isExpanded, 
-    onToggleExpand, 
+const RouteCard = React.memo(({
+    route,
+    isExpanded,
+    onToggleExpand,
     onDeleteEmployee,
     onViewMap,
     onAssignEmployees,
@@ -466,7 +471,10 @@ const RouteCard = React.memo(({
     activeDragId,
     isSelectMode,
     isSelected,
-    onSelect
+    onSelect,
+    isUnlockMode,
+    isSelectedForUnlock,
+    onToggleUnlock
 }) => {
     const isFinalized = route.IsRouteGenerated === 1 || !!route.isRouteFinalized;
     // Drop target for the route
@@ -509,18 +517,26 @@ const RouteCard = React.memo(({
                 <div className="d-flex justify-content-between align-items-center mb-1">
                     <div className="d-flex align-items-center gap-2">
                         {isSelectMode && (
-                            <div 
-                                onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                }} 
+                            <div
+                                onClick={(e) => { e.stopPropagation(); }}
                                 className="d-flex align-items-center me-2"
                                 style={{ zIndex: 10, position: 'relative' }}
                             >
-                                <Checkbox 
-                                    checked={isSelected} 
-                                    onChange={(e) => {
-                                        onSelect(route.RouteID);
-                                    }} 
+                                <Checkbox
+                                    checked={isSelected}
+                                    onChange={() => { onSelect(route.RouteID); }}
+                                />
+                            </div>
+                        )}
+                        {isUnlockMode && isFinalized && (
+                            <div
+                                onClick={(e) => { e.stopPropagation(); }}
+                                className="d-flex align-items-center me-2"
+                                style={{ zIndex: 10, position: 'relative' }}
+                            >
+                                <Checkbox
+                                    checked={!!isSelectedForUnlock}
+                                    onChange={() => { onToggleUnlock(route.RouteID); }}
                                 />
                             </div>
                         )}
@@ -780,6 +796,7 @@ const ManageRouteMobile = ({
     const [pendingDragOperation, setPendingDragOperation] = useState(null);
     
     // Action Buttons State
+    const [isSpeedDialVisible, setIsSpeedDialVisible] = useState(false);
     const [isRouteSelectMode, setIsRouteSelectMode] = useState(false);
     const [selectedRoutes, setSelectedRoutes] = useState(new Set());
     const [routeSelectionOrder, setRouteSelectionOrder] = useState([]);
@@ -1278,6 +1295,93 @@ const ManageRouteMobile = ({
         queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
     }, [queryClient]);
 
+    const handleToggleUnlock = useCallback((routeId) => {
+        setRoutesToUnlock((prev) => {
+            const next = new Set(prev);
+            next.has(routeId) ? next.delete(routeId) : next.add(routeId);
+            return next;
+        });
+    }, []);
+
+    const isDateCurrentOrFuture = useMemo(() => {
+        if (!filters.sDate) return false;
+        const searchDate = new Date(filters.sDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (isNaN(searchDate.getTime())) return false;
+        return searchDate >= today;
+    }, [filters.sDate]);
+
+    const speedDialModel = useMemo(() => {
+        if (routes.length === 0) return [];
+        const items = [];
+
+        if (!isShiftLocked) {
+            items.push({
+                label: isRouteSelectMode ? 'Cancel Merge' : 'Merge Mode',
+                icon: isRouteSelectMode ? 'pi pi-times' : 'pi pi-share-alt',
+                command: () => {
+                    if (isRouteSelectMode) {
+                        handleClearRouteSelection();
+                        setIsRouteSelectMode(false);
+                    } else {
+                        setIsRouteSelectMode(true);
+                        setIsUnlockMode(false);
+                        setRoutesToUnlock(new Set());
+                    }
+                }
+            });
+        }
+
+        if (isShiftLocked && isDateCurrentOrFuture) {
+            items.push({
+                label: 'Unlock Shift',
+                icon: 'pi pi-lock-open',
+                command: handleUnlockShift
+            });
+            items.push({
+                label: isUnlockMode ? 'Cancel Unlock' : 'Unlock Routes',
+                icon: isUnlockMode ? 'pi pi-times' : 'pi pi-key',
+                command: () => {
+                    if (isUnlockMode) {
+                        setIsUnlockMode(false);
+                        setRoutesToUnlock(new Set());
+                    } else {
+                        setIsUnlockMode(true);
+                        setIsRouteSelectMode(false);
+                    }
+                }
+            });
+        }
+
+        items.push({
+            label: isRecalculating ? 'Recalculating...' : 'Recalculate',
+            icon: isRecalculating ? 'pi pi-spin pi-spinner' : 'pi pi-sync',
+            command: handleRecalculateModifiedRoutes,
+            disabled: isRecalculating || isSubmitting
+        });
+        items.push({
+            label: isAllocating ? 'Allocating...' : 'Auto Vendor',
+            icon: isAllocating ? 'pi pi-spin pi-spinner' : 'pi pi-cog',
+            command: handleAutoVendorAllocation,
+            disabled: isAllocating || isSubmitting
+        });
+        items.push({
+            label: (isFinalizing || isRecalcBeforeFinalize) ? 'Please wait...' : 'Finalize',
+            icon: (isFinalizing || isRecalcBeforeFinalize) ? 'pi pi-spin pi-spinner' : 'pi pi-check-circle',
+            command: handleFinalizeRoute,
+            disabled: isFinalizing || isRecalcBeforeFinalize || isSubmitting
+        });
+
+        return items;
+    }, [
+        routes.length, isShiftLocked, isDateCurrentOrFuture,
+        isRouteSelectMode, isUnlockMode,
+        isRecalculating, isAllocating, isFinalizing, isRecalcBeforeFinalize, isSubmitting,
+        handleClearRouteSelection, handleUnlockShift,
+        handleRecalculateModifiedRoutes, handleAutoVendorAllocation, handleFinalizeRoute
+    ]);
+
     const routeItemTemplate = useCallback((route) => (
         <RouteCard
             route={route}
@@ -1289,16 +1393,20 @@ const ManageRouteMobile = ({
             onRecalculate={handleRecalculate}
             isRecalculating={recalculatingRouteId === route.RouteID}
             onEmployeeLongPress={handleEmployeeLongPress}
-            activeDragId={activeDragId} // Pass activeDragId
+            activeDragId={activeDragId}
             isSelectMode={isRouteSelectMode}
             isSelected={selectedRoutes.has(route.RouteID)}
             onSelect={handleSelectRouteToMerge}
+            isUnlockMode={isUnlockMode}
+            isSelectedForUnlock={routesToUnlock.has(route.RouteID)}
+            onToggleUnlock={handleToggleUnlock}
         />
     ), [
-        expandedRoutes, handleToggleExpand, handleDeleteRequest, 
-        handleViewMap, handleAssignEmployees, handleRecalculate, 
+        expandedRoutes, handleToggleExpand, handleDeleteRequest,
+        handleViewMap, handleAssignEmployees, handleRecalculate,
         recalculatingRouteId, handleEmployeeLongPress, activeDragId,
-        isRouteSelectMode, selectedRoutes, handleSelectRouteToMerge
+        isRouteSelectMode, selectedRoutes, handleSelectRouteToMerge,
+        isUnlockMode, routesToUnlock, handleToggleUnlock
     ]);
 
     // Handle Drag End with Confirmation
@@ -1424,7 +1532,7 @@ const ManageRouteMobile = ({
                     showNewButton={false}
                 />
                 
-                <div style={{ paddingBottom: '20px', backgroundColor: '#f1f5f9', minHeight: '100vh' }}> {/* Bottom padding */}
+                <div style={{ paddingBottom: '100px', backgroundColor: '#f1f5f9', minHeight: '100vh' }}>
             <Sidebar />
             <ToastContainer position="top-right" autoClose={3000} />
             <Toast ref={toast} position="top-center" />
@@ -1465,116 +1573,6 @@ const ManageRouteMobile = ({
                     </div>
                 </div>
 
-                {/* Mobile Action Bar */}
-                {routes.length > 0 && (
-                    <div className="px-3 py-2 bg-white shadow-sm mb-3" style={{ borderBottom: '1px solid #e2e8f0', zIndex: 10 }}>
-                        <div 
-                            className="d-flex gap-2 overflow-auto" 
-                            style={{ 
-                                paddingBottom: '8px', 
-                                scrollbarWidth: 'none', 
-                                msOverflowStyle: 'none' 
-                            }}
-                        >
-                                <div className="d-flex gap-2 flex-shrink-0">
-                                    {isRouteSelectMode && selectedRoutes.size > 1 && (
-                                        <Button
-                                            label={`Merge (${selectedRoutes.size})`}
-                                            icon="pi pi-check"
-                                            className="p-button-sm p-button-success rounded-pill flex-shrink-0"
-                                            onClick={handleMergeRoutes}
-                                        />
-                                    )}
-                                    <Button
-                                        label={isRouteSelectMode ? "Cancel Merge" : "Merge Mode"}
-                                        icon={isRouteSelectMode ? "pi pi-times" : "pi pi-share-alt"}
-                                        className={`p-button-sm rounded-pill flex-shrink-0 ${isRouteSelectMode ? 'p-button-danger' : 'p-button-outlined p-button-secondary'}`}
-                                        onClick={() => {
-                                            setIsRouteSelectMode(!isRouteSelectMode);
-                                            if (isRouteSelectMode) {
-                                                handleClearRouteSelection();
-                                            } else {
-                                                setIsUnlockMode(false);
-                                                setRoutesToUnlock(new Set());
-                                            }
-                                        }}
-                                    />
-                                </div>
-
-                            {(() => {
-                                const isDateCurrentOrFuture = (() => {
-                                    if (!filters.sDate) return false;
-                                    const searchDate = new Date(filters.sDate);
-                                    const today = new Date();
-                                    today.setHours(0, 0, 0, 0);
-                                    if (isNaN(searchDate.getTime())) return false;
-                                    return searchDate >= today;
-                                })();
-
-                                if (isShiftLocked && isDateCurrentOrFuture) {
-                                    return (
-                                        <>
-                                            <Button
-                                                label="Unlock Shift"
-                                                icon="pi pi-lock-open"
-                                                className="p-button-sm p-button-danger rounded-pill flex-shrink-0"
-                                                onClick={handleUnlockShift}
-                                            />
-                                            <Button
-                                                label={isUnlockMode ? "Cancel Unlock" : "Unlock Routes"}
-                                                icon="pi pi-key"
-                                                className="p-button-sm p-button-danger rounded-pill flex-shrink-0"
-                                                onClick={() => {
-                                                    setIsUnlockMode(!isUnlockMode);
-                                                    if (isUnlockMode) setRoutesToUnlock(new Set());
-                                                    setIsRouteSelectMode(false);
-                                                }}
-                                            />
-                                            {isUnlockMode && routesToUnlock.size > 0 && (
-                                                <Button
-                                                    label={`Confirm (${routesToUnlock.size})`}
-                                                    icon="pi pi-check"
-                                                    className="p-button-sm p-button-success rounded-pill flex-shrink-0"
-                                                    onClick={handleUnlockSelectedRoutes}
-                                                />
-                                            )}
-                                        </>
-                                    );
-                                }
-                                return null;
-                            })()}
-
-                            <Button
-                                label={isRecalculating ? "Recalculating..." : "Recalculate"}
-                                icon={isRecalculating ? "pi pi-spin pi-spinner" : "pi pi-sync"}
-                                className="p-button-sm p-button-warning rounded-pill flex-shrink-0"
-                                onClick={handleRecalculateModifiedRoutes}
-                                disabled={isRecalculating || isSubmitting}
-                            />
-
-                            <Button
-                                label={isAllocating ? "Allocating..." : "Auto Vendor"}
-                                icon={isAllocating ? "pi pi-spin pi-spinner" : "pi pi-cog"}
-                                className="p-button-sm p-button-info rounded-pill flex-shrink-0"
-                                onClick={handleAutoVendorAllocation}
-                                disabled={isAllocating || isSubmitting}
-                            />
-
-                            <Button
-                                label={
-                                    isRecalcBeforeFinalize ? "Wait..." : 
-                                    isFinalizing ? "Finalizing..." : "Finalize"
-                                }
-                                icon={
-                                    isRecalcBeforeFinalize || isFinalizing ? "pi pi-spin pi-spinner" : "pi pi-check"
-                                }
-                                className="p-button-sm p-button-success rounded-pill flex-shrink-0"
-                                onClick={handleFinalizeRoute}
-                                disabled={isFinalizing || isRecalcBeforeFinalize || isSubmitting}
-                            />
-                        </div>
-                    </div>
-                )}
 
                 {/* Main Content */}
                 <div className="mt-3">
@@ -1623,6 +1621,195 @@ const ManageRouteMobile = ({
             </div>
             </div>
 
+            {/* Mode Confirmation Floating Bar */}
+            {routes.length > 0 && (isRouteSelectMode || (isUnlockMode && isShiftLocked)) && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: '96px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 1001,
+                        background: isRouteSelectMode ? '#1e40af' : '#b91c1c',
+                        borderRadius: '28px',
+                        padding: '10px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
+                        color: '#fff',
+                        width: 'calc(100% - 40px)',
+                        maxWidth: '380px',
+                        justifyContent: 'space-between'
+                    }}
+                >
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <i className={`pi ${isRouteSelectMode ? 'pi-share-alt' : 'pi-key'}`} />
+                        {isRouteSelectMode
+                            ? `${selectedRoutes.size} route${selectedRoutes.size !== 1 ? 's' : ''} selected`
+                            : `${routesToUnlock.size} route${routesToUnlock.size !== 1 ? 's' : ''} to unlock`
+                        }
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            type="button"
+                            style={{
+                                background: 'rgba(255,255,255,0.18)',
+                                border: '1px solid rgba(255,255,255,0.4)',
+                                borderRadius: '16px',
+                                color: '#fff',
+                                padding: '5px 14px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                fontFamily: 'inherit'
+                            }}
+                            onClick={() => {
+                                if (isRouteSelectMode) { handleClearRouteSelection(); setIsRouteSelectMode(false); }
+                                else { setIsUnlockMode(false); setRoutesToUnlock(new Set()); }
+                            }}
+                        >
+                            Cancel
+                        </button>
+                        {isRouteSelectMode && selectedRoutes.size >= 2 && (
+                            <button
+                                type="button"
+                                style={{
+                                    background: '#fff',
+                                    border: 'none',
+                                    borderRadius: '16px',
+                                    color: '#1e40af',
+                                    padding: '5px 14px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit'
+                                }}
+                                onClick={handleMergeRoutes}
+                            >
+                                Merge ({selectedRoutes.size})
+                            </button>
+                        )}
+                        {isUnlockMode && routesToUnlock.size > 0 && (
+                            <button
+                                type="button"
+                                style={{
+                                    background: '#fff',
+                                    border: 'none',
+                                    borderRadius: '16px',
+                                    color: '#b91c1c',
+                                    padding: '5px 14px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    fontFamily: 'inherit'
+                                }}
+                                onClick={handleUnlockSelectedRoutes}
+                            >
+                                Unlock ({routesToUnlock.size})
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* FAB backdrop — only mounted when open, never blocks clicks when closed */}
+            {routes.length > 0 && isSpeedDialVisible && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 999,
+                        background: 'rgba(15,23,42,0.45)'
+                    }}
+                    onClick={() => setIsSpeedDialVisible(false)}
+                />
+            )}
+
+            {/* FAB action pills — icon + label always visible, no hover/tooltip dependency */}
+            {routes.length > 0 && isSpeedDialVisible && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '90px',
+                    right: '20px',
+                    zIndex: 1000,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: '10px'
+                }}>
+                    {speedDialModel.map((item, idx) => (
+                        <button
+                            key={item.label}
+                            type="button"
+                            disabled={item.disabled}
+                            onClick={() => {
+                                if (!item.disabled) {
+                                    item.command();
+                                    setIsSpeedDialVisible(false);
+                                }
+                            }}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                background: item.disabled ? '#f8fafc' : '#ffffff',
+                                border: '1.5px solid #e2e8f0',
+                                borderRadius: '24px',
+                                padding: '11px 18px 11px 14px',
+                                cursor: item.disabled ? 'not-allowed' : 'pointer',
+                                opacity: item.disabled ? 0.5 : 1,
+                                boxShadow: '0 4px 16px rgba(0,0,0,0.14)',
+                                whiteSpace: 'nowrap',
+                                fontWeight: 600,
+                                fontSize: '0.88rem',
+                                color: '#1e293b',
+                                fontFamily: 'inherit',
+                                animation: `fabItemSlideIn 0.18s ease ${idx * 0.045}s both`
+                            }}
+                        >
+                            <i
+                                className={item.icon}
+                                style={{ fontSize: '1rem', color: '#3b82f6', flexShrink: 0 }}
+                            />
+                            <span>{item.label}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* FAB trigger button */}
+            {routes.length > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setIsSpeedDialVisible(prev => !prev)}
+                    style={{
+                        position: 'fixed',
+                        bottom: '24px',
+                        right: '20px',
+                        zIndex: 1000,
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: '#3b82f6',
+                        border: 'none',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 18px rgba(59,130,246,0.45)',
+                        transition: 'transform 0.22s ease, background 0.2s ease',
+                        transform: isSpeedDialVisible ? 'rotate(45deg)' : 'rotate(0deg)'
+                    }}
+                >
+                    <i
+                        className={isSpeedDialVisible ? 'pi pi-times' : 'pi pi-bars'}
+                        style={{ fontSize: '1.25rem' }}
+                    />
+                </button>
+            )}
+
             {/* Filter Sidebar */}
             <FilterSidebar
                 visible={showFilterSidebar}
@@ -1659,122 +1846,103 @@ const ManageRouteMobile = ({
 
 
             {/* Delete Confirmation Dialog */}
-            <Dialog
+            <AppConfirmDialog
                 visible={deleteDialog.visible}
                 onHide={() => setDeleteDialog({ visible: false, employee: null, routeId: null })}
-                header="Confirm Removal"
-                footer={
-                    <div className="d-flex gap-2">
-                        <Button
-                            label="Cancel"
-                            outlined
-                            onClick={() => setDeleteDialog({ visible: false, employee: null, routeId: null })}
-                        />
-                        <Button
-                            label="Remove"
-                            severity="danger"
-                            onClick={handleConfirmDelete}
-                        />
-                    </div>
-                }
-                style={{ width: '90vw', maxWidth: '400px' }}
-            >
-                <p className="m-0">
-                    Are you sure you want to remove <strong>{deleteDialog.employee?.empName}</strong> from route <strong>{deleteDialog.routeId}</strong>?
-                </p>
-            </Dialog>
+                title="Remove Employee"
+                message={<>Remove <strong>{deleteDialog.employee?.empName}</strong> from route <strong>{deleteDialog.routeId}</strong>?</>}
+                variant="remove"
+                onConfirm={handleConfirmDelete}
+            />
 
             {/* Merge Route Confirmation Dialog */}
-            <Dialog
+            <AppConfirmDialog
                 visible={showRouteMergeDialog}
                 onHide={() => setShowRouteMergeDialog(false)}
-                header="Confirm Merge"
-                footer={
-                    <div className="d-flex gap-2 justify-content-end">
-                        <Button label="Cancel" outlined onClick={() => setShowRouteMergeDialog(false)} disabled={isSubmitting} />
-                        <Button label="Merge" onClick={confirmMergeOperation} disabled={isSubmitting} />
-                    </div>
-                }
-                style={{ width: '90vw', maxWidth: '400px' }}
-            >
-                <div>
-                    Are you sure you want to merge <strong>{pendingMergeOperation?.routeArray?.length || 0}</strong> routes into Route <strong>{pendingMergeOperation?.targetRoute}</strong>?
-                </div>
-            </Dialog>
+                title="Merge Routes"
+                message={<>Merge <strong>{pendingMergeOperation?.routeArray?.length || 0}</strong> routes into Route <strong>{pendingMergeOperation?.targetRoute}</strong>?</>}
+                detail="Employees from source routes will be moved to the target route. This cannot be undone."
+                variant="merge"
+                confirmLabel="Merge"
+                onConfirm={confirmMergeOperation}
+                isLoading={isSubmitting}
+            />
 
             {/* Auto Vendor Confirmation Dialog */}
-            <Dialog
+            <AppConfirmDialog
                 visible={showAutoVendorAllocationDialog}
                 onHide={() => setShowAutoVendorAllocationDialog(false)}
-                header="Confirm Auto Vendor Allocation"
-                footer={
-                    <div className="d-flex gap-2 justify-content-end">
-                        <Button label="No" outlined onClick={() => setShowAutoVendorAllocationDialog(false)} disabled={isSubmitting} />
-                        <Button label="Yes" onClick={confirmAutoVendorAllocation} disabled={isSubmitting} />
-                    </div>
-                }
-                style={{ width: '90vw', maxWidth: '400px' }}
-            >
-                <div>Are you sure you want to perform Auto Vendor Allocation?</div>
-            </Dialog>
+                title="Auto Vendor Allocation"
+                message="Are you sure you want to perform Auto Vendor Allocation?"
+                variant="warning"
+                confirmLabel="Allocate"
+                onConfirm={confirmAutoVendorAllocation}
+                isLoading={isSubmitting}
+            />
 
             {/* Recalculate Before Finalize Dialog */}
-            <Dialog
+            <AppDialog
                 visible={showRecalcBeforeFinalizeDialog}
                 onHide={() => setShowRecalcBeforeFinalizeDialog(false)}
-                header="Finalize Route"
+                title="Finalize Route"
+                icon="pi pi-exclamation-triangle"
+                iconColor="#f59e0b"
+                size="sm"
+                variant="warning"
                 footer={
-                    <div className="d-flex gap-2 justify-content-end mt-3 flex-wrap">
-                        <Button label="No, Finalize Directly" outlined onClick={() => {
-                            setShowRecalcBeforeFinalizeDialog(false);
-                            proceedWithFinalization();
-                        }} disabled={isSubmitting} style={{ fontSize: '0.8rem' }} />
-                        <Button label="Yes, Recalculate" onClick={handleRecalculateAndFinalize} disabled={isSubmitting} style={{ fontSize: '0.8rem' }} />
+                    <div className="d-flex gap-2 justify-content-end w-100 flex-wrap">
+                        <Button
+                            label="Finalize Directly"
+                            outlined
+                            onClick={() => { setShowRecalcBeforeFinalizeDialog(false); proceedWithFinalization(); }}
+                            disabled={isSubmitting}
+                        />
+                        <Button
+                            label={isSubmitting ? 'Please wait…' : 'Recalculate & Finalize'}
+                            severity="warning"
+                            onClick={handleRecalculateAndFinalize}
+                            disabled={isSubmitting}
+                            icon={isSubmitting ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'}
+                        />
                     </div>
                 }
-                style={{ width: '90vw', maxWidth: '400px' }}
             >
-                <div className="mb-3 d-flex align-items-start">
-                    <i className="pi pi-exclamation-triangle" style={{ color: 'orange', fontSize: '1.5rem', marginRight: '10px' }}></i>
-                    <div>Routes have been modified. It is highly recommended to recalculate routes before finalization to update ETA and distance.</div>
+                <div className="d-flex align-items-start gap-2 mb-3">
+                    <i className="pi pi-exclamation-triangle" style={{ color: '#f59e0b', fontSize: '1.25rem', flexShrink: 0, marginTop: '2px' }} />
+                    <p className="m-0">Routes have been modified. Recalculate before finalizing to ensure ETAs and distances are up to date.</p>
                 </div>
-                <div>Do you want to recalculate before finalizing?</div>
-            </Dialog>
+                <p className="m-0 text-muted small">Do you want to recalculate before finalizing?</p>
+            </AppDialog>
 
             {/* Unlock Confirmation Dialog */}
-            <Dialog
+            <AppConfirmDialog
                 visible={showUnlockConfirmDialog}
                 onHide={() => setShowUnlockConfirmDialog(false)}
-                header="Confirm Unlock"
-                footer={
-                    <div className="d-flex gap-2 justify-content-end">
-                        <Button label="Cancel" outlined onClick={() => setShowUnlockConfirmDialog(false)} disabled={isSubmitting} />
-                        <Button label="Unlock" severity="danger" onClick={confirmUnlockOperation} disabled={isSubmitting} />
-                    </div>
-                }
-                style={{ width: '90vw', maxWidth: '400px' }}
+                title="Confirm Unlock"
+                variant="unlock"
+                confirmLabel="Unlock"
+                onConfirm={confirmUnlockOperation}
+                isLoading={isSubmitting}
             >
-                <p>Are you sure you want to unlock {pendingUnlock?.type === 'shift' ? 'all finalized routes in this shift' : `${pendingUnlock?.routeIds?.length || 0} selected routes`}?</p>
-                <p className="text-muted small">Unlocked routes can be modified and must be finalized again.</p>
-            </Dialog>
+                <p className="app-dialog-body-message">
+                    Are you sure you want to unlock{' '}
+                    {pendingUnlock?.type === 'shift'
+                        ? 'all finalized routes in this shift'
+                        : `${pendingUnlock?.routeIds?.length ?? 0} selected routes`}?
+                </p>
+                <p className="app-dialog-body-detail">Unlocked routes can be modified and must be finalized again.</p>
+            </AppConfirmDialog>
 
             {/* Drag Drop Confirmation Dialog */}
-            <Dialog
+            <AppConfirmDialog
                 visible={!!pendingDragOperation}
                 onHide={handleCancelDrag}
-                header="Confirm Move"
-                footer={
-                    <div className="d-flex gap-2 justify-content-end">
-                        <Button label="Cancel" outlined onClick={handleCancelDrag} />
-                        <Button label="Confirm" onClick={handleConfirmDrag} />
-                    </div>
-                }
-                style={{ width: '90vw', maxWidth: '400px' }}
-            >
-                <div>
-                     Are you sure you want to move <strong>{pendingDragOperation?.employee?.empName}</strong> to Route <strong>{pendingDragOperation?.targetRouteId}</strong> at position <strong>{pendingDragOperation?.targetPosition}</strong>?
-                </div>
-            </Dialog>
+                title="Confirm Move"
+                message={<>Move <strong>{pendingDragOperation?.employee?.empName}</strong> to Route <strong>{pendingDragOperation?.targetRouteId}</strong> at position <strong>{pendingDragOperation?.targetPosition}</strong>?</>}
+                variant="info"
+                confirmLabel="Move"
+                onConfirm={handleConfirmDrag}
+            />
 
              {/* Drag Overlay for Visual Feedback */}
             <DragOverlay dropAnimation={null}>

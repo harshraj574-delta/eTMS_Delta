@@ -19,6 +19,7 @@ import LocationMapComponent from "./LocationMapComponent";
 import TableToolbar from "./common/TableToolbar";
 import AnimatedCounter from "./common/AnimatedCounter";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import ReportButton from "./common/ReportButton";
 import Loader from "./common/Loader";
@@ -905,38 +906,41 @@ const MapGeocoding = () => {
 
                 return filteredEmployees.length > 0 ? (
                   <>
-                    <CustomDataTable
+                    <ResponsiveDataTable
                       value={filteredEmployees.slice(first, first + rows)}
                       loading={loading}
                       emptyMessage="No employees found."
-                      className="p-datatable-sm"
                     >
                       <Column
                         body={actionBodyTemplate}
                         header="Action"
+                        mobile={{ action: true }}
                         style={{ width: "100px" }}
-                      ></Column>
-                      <Column 
-                        field="empCode" 
+                      />
+                      <Column
+                        field="empCode"
                         header="Employee ID"
+                        mobile={{ subtitle: true }}
                         style={{ width: "150px" }}
-                      ></Column>
+                      />
                       <Column
                         header="GC"
                         body={imageBodyTemplate}
+                        mobile={{ hidden: true }}
                         style={{ width: "100px" }}
-                      ></Column>
-                      <Column 
-                        field="empName" 
+                      />
+                      <Column
+                        field="empName"
                         header="Employee Name"
+                        mobile={{ primary: true }}
                         style={{ width: "200px" }}
-                      ></Column>
-                      <Column 
-                        field="facilityName" 
+                      />
+                      <Column
+                        field="facilityName"
                         header="Facility"
                         style={{ width: "150px" }}
-                      ></Column>
-                    </CustomDataTable>
+                      />
+                    </ResponsiveDataTable>
                     <CustomPaginator
                       first={first}
                       rows={rows}

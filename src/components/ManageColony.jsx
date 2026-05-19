@@ -6,7 +6,8 @@ import SidebarMenu from "./Master/SidebarMenu";
 import MasterSidebar from "./Master/MasterSidebar";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
-import { Dialog } from "primereact/dialog";
+import AppDialog from "./common/AppDialog";
+import AppConfirmDialog from "./common/AppConfirmDialog";
 import noReportImage from "../assets/no_report.png";
 import { Column } from "primereact/column";
 import CustomPaginator from "./common/CustomPaginator";
@@ -712,21 +713,6 @@ const ManageColony = () => {
     setPendingDragOp(null);
   }, []);
 
-  const dragConfirmFooter = (
-    <div className="d-flex justify-content-end gap-2">
-      <Button
-        label="Cancel"
-        className="p-button-text p-button-secondary"
-        onClick={handleCancelDrag}
-      />
-      <Button
-        label="Move"
-        className="p-button-primary"
-        icon="pi pi-arrows-v"
-        onClick={handleConfirmDrag}
-      />
-    </div>
-  );
 
   // ── Expand/Collapse toggle icon ──
   const actionTemplate = useCallback(
@@ -783,22 +769,6 @@ const ManageColony = () => {
     ],
   );
 
-  // ── Delete confirmation dialog footer ──
-  const deleteDialogFooter = (
-    <div className="d-flex justify-content-end gap-2">
-      <Button
-        label="Cancel"
-        className="p-button-text p-button-secondary"
-        onClick={actions.handleDeleteCancel}
-      />
-      <Button
-        label="Delete"
-        className="p-button-danger"
-        icon="pi pi-trash"
-        onClick={actions.handleDeleteConfirm}
-      />
-    </div>
-  );
 
   return (
     <DndContext
@@ -951,145 +921,70 @@ const ManageColony = () => {
       </div>
 
       {/* ── Delete Confirmation Dialog ── */}
-      <Dialog
+      <AppConfirmDialog
         visible={state.deleteDialogVisible}
         onHide={actions.handleDeleteCancel}
-        header="Confirm Delete"
-        footer={deleteDialogFooter}
-        modal
-        style={{ width: "400px", maxWidth: "90vw" }}
-        draggable={false}
-        className="p-dialog-compact"
-      >
-        <div className="d-flex align-items-center gap-3 py-2">
-          <span
-            className="material-icons text-danger"
-            style={{ fontSize: "36px" }}
-          >
-            warning
-          </span>
-          <div>
-            <p className="mb-1 fw-semibold">Delete this colony?</p>
-            <p className="mb-0 text-muted" style={{ fontSize: "0.9rem" }}>
-              {state.deletingItem?.Colony ||
-                state.deletingItem?.SubColony ||
-                "Selected colony"}{" "}
-              will be permanently removed.
-            </p>
-          </div>
-        </div>
-      </Dialog>
+        title="Confirm Delete"
+        variant="delete"
+        message="Delete this colony?"
+        detail={`${state.deletingItem?.Colony || state.deletingItem?.SubColony || "Selected colony"} will be permanently removed.`}
+        onConfirm={actions.handleDeleteConfirm}
+      />
 
       {/* ── Split Route Confirmation Dialog ── */}
-      <Dialog
+      <AppDialog
         visible={state.splitDialogVisible}
         onHide={actions.handleSplitCancel}
-        header="Confirm Split"
-        footer={
-          <div className="d-flex justify-content-end gap-2">
-            <Button
-              label="Cancel"
-              className="p-button-text p-button-secondary"
-              onClick={actions.handleSplitCancel}
-            />
-            <Button
-              label="Split"
-              className="p-button-primary"
-              icon="pi pi-sitemap"
-              onClick={actions.handleSplitConfirm}
-            />
-          </div>
-        }
-        modal
-        style={{ width: "450px", maxWidth: "90vw" }}
-        draggable={false}
-        className="p-dialog-compact"
+        title="Confirm Split"
+        icon="pi pi-sitemap"
+        iconColor="#3b82f6"
+        size="sm"
+        variant="info"
+        onCancel={actions.handleSplitCancel}
+        onConfirm={actions.handleSplitConfirm}
+        confirmLabel="Split"
       >
-        <div className="d-flex align-items-start gap-3 py-2">
-          <span
-            className="material-icons text-primary"
-            style={{ fontSize: "36px", flexShrink: 0 }}
-          >
-            call_split
-          </span>
-          <div>
-            <p className="mb-1 fw-semibold">Split selected colonies into a new route?</p>
-            <p className="mb-2 text-muted" style={{ fontSize: "0.9rem" }}>
-              {state.pendingSplitItems.length}{" "}
-              {state.pendingSplitItems.length === 1 ? "colony" : "colonies"} will
-              be moved to a newly created route.
-            </p>
-            <div
-              style={{
-                maxHeight: "150px",
-                overflowY: "auto",
-                fontSize: "0.85rem",
-              }}
-            >
-              {(state.pendingSplitItems || []).map((item) => (
-                <div
-                  key={item.Id}
-                  className="d-flex align-items-center gap-2 py-1 border-bottom"
-                >
-                  <span className="fw-semibold">#{item.SeqId}</span>
-                  <span className="text-muted">
-                    {item.Colony || item.SubColony || "—"}
-                  </span>
-                </div>
-              ))}
+        <p className="app-dialog-body-message">Split selected colonies into a new route?</p>
+        <p className="app-dialog-body-detail">
+          {state.pendingSplitItems.length}{" "}
+          {state.pendingSplitItems.length === 1 ? "colony" : "colonies"} will be moved to a newly created route.
+        </p>
+        <div style={{ maxHeight: "150px", overflowY: "auto", fontSize: "0.85rem" }}>
+          {(state.pendingSplitItems || []).map((item) => (
+            <div key={item.Id} className="d-flex align-items-center gap-2 py-1 border-bottom">
+              <span className="fw-semibold">#{item.SeqId}</span>
+              <span className="text-muted">{item.Colony || item.SubColony || "—"}</span>
             </div>
-          </div>
+          ))}
         </div>
-      </Dialog>
+      </AppDialog>
 
       {/* ── Move Colonies Confirmation Dialog ── */}
-      <Dialog
+      <AppDialog
         visible={state.showMoveConfirmDialog}
         onHide={actions.handleMoveCancel}
-        header="Confirm Multi-Move"
-        footer={
-          <div className="d-flex justify-content-end gap-2">
-            <Button
-              label="Cancel"
-              className="p-button-text p-button-secondary"
-              onClick={actions.handleMoveCancel}
-            />
-            <Button
-              label="Move Items"
-              className="p-button-primary"
-              icon="pi pi-arrows-v"
-              onClick={actions.handleMoveConfirm}
-            />
-          </div>
-        }
-        modal
-        style={{ width: "450px", maxWidth: "90vw" }}
-        draggable={false}
-        className="p-dialog-compact"
+        title="Confirm Multi-Move"
+        icon="pi pi-arrows-v"
+        iconColor="#3b82f6"
+        size="sm"
+        variant="info"
+        onCancel={actions.handleMoveCancel}
+        onConfirm={actions.handleMoveConfirm}
+        confirmLabel="Move Items"
       >
-        <div className="d-flex align-items-start gap-3 py-2">
-          <span
-            className="material-icons text-primary"
-            style={{ fontSize: "36px", flexShrink: 0 }}
-          >
-            playlist_play
-          </span>
-          <div>
-            <p className="mb-1 fw-semibold">Move colonies?</p>
-            <p className="mb-2 text-muted" style={{ fontSize: "0.9rem" }}>
-              Move {state.pendingMoveOperation?.items?.length}{" "}
-              {state.pendingMoveOperation?.items?.length === 1 ? "colony" : "colonies"} to the position of:
-              <br />
-              <strong>
-                #{state.pendingMoveOperation?.targetItem?.SeqId}&nbsp;
-                {state.pendingMoveOperation?.targetItem?.Colony ||
-                 state.pendingMoveOperation?.targetItem?.SubColony ||
-                 "colony"}
-              </strong>
-            </p>
-          </div>
-        </div>
-      </Dialog>
+        <p className="app-dialog-body-message">Move colonies?</p>
+        <p className="app-dialog-body-detail">
+          Move {state.pendingMoveOperation?.items?.length}{" "}
+          {state.pendingMoveOperation?.items?.length === 1 ? "colony" : "colonies"} to the position of:
+          <br />
+          <strong>
+            #{state.pendingMoveOperation?.targetItem?.SeqId}&nbsp;
+            {state.pendingMoveOperation?.targetItem?.Colony ||
+             state.pendingMoveOperation?.targetItem?.SubColony ||
+             "colony"}
+          </strong>
+        </p>
+      </AppDialog>
 
       {/* ── Edit Sidebar ── */}
       <MasterSidebar
@@ -1461,40 +1356,20 @@ const ManageColony = () => {
       </DragOverlay>
 
       {/* ── Confirmation Dialog for Drag & Drop Reorder ── */}
-      <Dialog
-        header="Confirm Move"
+      <AppConfirmDialog
         visible={!!pendingDragOp}
-        style={{ width: "400px", maxWidth: "90vw" }}
-        footer={dragConfirmFooter}
         onHide={handleCancelDrag}
-        draggable={false}
-        className="p-dialog-compact"
-      >
-        <div className="d-flex align-items-start gap-3 py-2">
-          <span
-            className="material-icons text-primary"
-            style={{ fontSize: "32px", flexShrink: 0 }}
-          >
-            swap_vert
-          </span>
-          <div>
-            <p className="mb-0 fw-semibold">Move colony?</p>
-            <p className="mb-0 text-muted" style={{ fontSize: "0.9rem" }}>
-              Are you sure you want to move{" "}
-              <strong>
-                {pendingDragOp?.sourceRow?.Colony ||
-                 pendingDragOp?.sourceRow?.SubColony}
-              </strong>{" "}
-              to the position of{" "}
-              <strong>
-                {pendingDragOp?.targetRow?.Colony ||
-                 pendingDragOp?.targetRow?.SubColony}
-              </strong>
-              ?
-            </p>
-          </div>
-        </div>
-      </Dialog>
+        title="Confirm Move"
+        variant="info"
+        confirmLabel="Move"
+        message={
+          <>
+            Move <strong>{pendingDragOp?.sourceRow?.Colony || pendingDragOp?.sourceRow?.SubColony}</strong> to the position of{" "}
+            <strong>{pendingDragOp?.targetRow?.Colony || pendingDragOp?.targetRow?.SubColony}</strong>?
+          </>
+        }
+        onConfirm={handleConfirmDrag}
+      />
 
       {/* ── Responsive Sidebar + Utility Styles ── */}
       <style>{`
@@ -1510,11 +1385,6 @@ const ManageColony = () => {
                 @media (max-width: 576px) {
                     .sidebar-responsive { width: 85% !important; }
                 }
-
-                /* Compact dialog */
-                .p-dialog-compact .p-dialog-header { padding: 1rem 1.25rem; }
-                .p-dialog-compact .p-dialog-content { padding: 0.5rem 1.25rem 1rem; }
-                .p-dialog-compact .p-dialog-footer { padding: 0.75rem 1.25rem; }
 
                 /* Drag-and-drop row visual feedback */
                 .colony-draggable-row:hover { background-color: rgba(0,0,0,0.02); }

@@ -5,6 +5,7 @@ import Loader from "./common/Loader";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import ShiftTimeMasterService from "../services/compliance/ShiftTimeMaster";
@@ -14,7 +15,7 @@ import { toastService } from "../services/toastService";
 import MasterSidebar from "./Master/MasterSidebar";
 import { Checkbox } from "primereact/checkbox";
 import { MultiSelect } from "primereact/multiselect";
-import { Dialog } from "primereact/dialog";
+import AppConfirmDialog from "./common/AppConfirmDialog";
 import TableToolbar from "./common/TableToolbar";
 
 const userID = sessionManager.getUserSession().ID;
@@ -581,18 +582,18 @@ const ShiftTimeMaster = () => {
               <div className="p-3 pb-0">
                 {renderToolbar()}
               </div>
-              <CustomDataTable
+              <ResponsiveDataTable
                 value={filteredShiftData.slice(first, first + pageRows)}
-                responsiveLayout="scroll"
                 selection={selectedRows}
                 onSelectionChange={(e) => setSelectedRows(e.value)}
               >
-                <Column field="shiftTime" header="Shift" />
+                <Column field="shiftTime" header="Shift" mobile={{ primary: true }} />
+                <Column field="facilityName" header="Facility" mobile={{ subtitle: true }} />
                 <Column field="Type" header="Trip Type" />
-                <Column field="facilityName" header="Facility" />
                 <Column field="Day" header="Day Type" />
                 <Column
                   header="Shuttle"
+                  mobile={{ hidden: true }}
                   body={() => (
                     <span
                       className="badge rounded-pill px-3 bg-danger"
@@ -613,9 +614,10 @@ const ShiftTimeMaster = () => {
                 <Column
                   field="Active"
                   header="Status"
+                  mobile={{ badge: true }}
                   body={statusBodyTemplate}
                 />
-              </CustomDataTable>
+              </ResponsiveDataTable>
               <CustomPaginator
                 first={first}
                 rows={pageRows}
@@ -755,38 +757,30 @@ const ShiftTimeMaster = () => {
           </div>
         </div>
         </MasterSidebar>
-        <Dialog
+        <AppConfirmDialog
           visible={showStatusDialog}
           onHide={closeStatusDialog}
-          header="Confirmation"
-          modal
-          footer={
-            <>
-              <Button
-                label="Cancel"
-                onClick={closeStatusDialog}
-                className="btn btn-outline-dark"
-              />
-              <Button
-                label="OK"
-                onClick={confirmStatusChange}
-                disabled={isLoading}
-                className="btn btn-primary ms-3"
-              />
-            </>
-          }
-        >
-          <p>
-            Are you sure you want to{" "}
-            {selectedShift &&
+          title="Confirm Status Change"
+          variant="warning"
+          confirmLabel={
+            selectedShift &&
             (selectedShift.Active === "Active" ||
               selectedShift.Active === true ||
               selectedShift.Active === 1)
               ? "Deactivate"
-              : "Activate"}{" "}
-            the shift for {selectedShift?.shiftTime}?
-          </p>
-        </Dialog>
+              : "Activate"
+          }
+          message={`Are you sure you want to ${
+            selectedShift &&
+            (selectedShift.Active === "Active" ||
+              selectedShift.Active === true ||
+              selectedShift.Active === 1)
+              ? "Deactivate"
+              : "Activate"
+          } the shift for ${selectedShift?.shiftTime}?`}
+          onConfirm={confirmStatusChange}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

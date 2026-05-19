@@ -6,6 +6,8 @@ import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
+import TripTypeBadge from "./common/TripTypeBadge";
 import ViewMyRoutesService from "../services/compliance/ViewMyRoutesService";
 const userID = sessionStorage.getItem("ID");
 
@@ -186,38 +188,19 @@ const ViewMyRoutes = () => {
                   <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(rowData)}>Delete</button>
                 )} />
               </DataTable> */}
-              <DataTable
+              <ResponsiveDataTable
                 value={tripData}
                 paginator
                 rows={10}
                 emptyMessage="No data available"
               >
-                {/* <Column 
-                  header="Trip ID"
-                  body={(rowData) => (
-                    <a
-                      href="#!"
-                      className="btn-text"
-                      data-bs-toggle="offcanvas"
-                      data-bs-target="#routeDetails"
-                      aria-controls="offcanvasRight"
-                      onClick={() => fetchTripDetails(
-                        rowData.routeid?.includes('<br>')
-                        ? rowData.routeid.split('<br>')[0].trim()
-                        : rowData.routeid)}
-                      >
-                      <span className="">{rowData.routeid}</span>
-                    </a>
-                  )} />
-                    */}
                 <Column
                   header="Trip ID"
+                  mobile={{ primary: true }}
                   body={(rowData) => {
-                    // Clean Trip ID for display
                     const cleanTripId = rowData.routeid
                       ? rowData.routeid.replace(/<br\s*\/?>/gi, " - ")
                       : "";
-                    // For fetching details, use only the first part before <br>
                     const fetchId = rowData.routeid?.includes("<br>")
                       ? rowData.routeid.split("<br>")[0].trim()
                       : rowData.routeid;
@@ -238,41 +221,30 @@ const ViewMyRoutes = () => {
                 <Column
                   field="shiftdate"
                   header="Trip Date"
+                  mobile={{ subtitle: true }}
                   body={(rowData) =>
                     rowData.shiftdate
-                      ? new Date(rowData.shiftdate).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "2-digit",
-                            day: "2-digit",
-                            year: "numeric",
-                          }
-                        )
+                      ? new Date(rowData.shiftdate).toLocaleDateString("en-US", {
+                          month: "2-digit",
+                          day: "2-digit",
+                          year: "numeric",
+                        })
                       : "N/A"
                   }
                 />
-
                 <Column
                   field="triptype"
                   header="Trip Type"
-                  body={(rowData) => (
-                    <span
-                      className={`badge ${
-                        rowData.triptype === "Drop"
-                          ? "text-bg-danger"
-                          : "text-bg-primary"
-                      } rounded-pill text-uppercase`}
-                    >
-                      {rowData.triptype}
-                    </span>
-                  )}
+                  mobile={{ badge: true }}
+                  body={(rowData) => <TripTypeBadge type={rowData.triptype} />}
                 />
                 <Column field="shifttime" header="Shift" />
                 <Column field="facility" header="Facility" />
                 <Column
                   field="action"
                   header="Action"
-                  style={{display:"none"}}
+                  mobile={{ hidden: true }}
+                  style={{ display: "none" }}
                   body={(rowData) => (
                     <button
                       className="btn btn-sm btn-outline-danger"
@@ -282,7 +254,7 @@ const ViewMyRoutes = () => {
                     </button>
                   )}
                 />
-              </DataTable>
+              </ResponsiveDataTable>
             </div>
           </div>
         </div>

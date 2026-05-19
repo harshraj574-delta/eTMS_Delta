@@ -7,6 +7,7 @@ import { apiService } from "../../services/api";
 import sessionManager from "../../utils/SessionManager.js";
 import { toastService } from '../../services/toastService';
 import { CustomDataTable } from "../common/CustomDataTable";
+import ResponsiveDataTable from "../common/ResponsiveDataTable";
 import CustomPaginator from "../common/CustomPaginator";
 import { Column } from "primereact/column";
 import { Button } from 'primereact/button';
@@ -121,9 +122,9 @@ const Location = () => {
           </div>
           <div className="col-lg-12">
             <div className="card_tb">
-              <CustomDataTable value={locationData.slice(first, first + rows)}> 
-                  <Column field="Id" header="ID"></Column>
-                  <Column header="Location Name" body={(location) => (
+              <ResponsiveDataTable value={locationData.slice(first, first + rows)}>
+                  <Column field="Id" header="ID" mobile={{ subtitle: true }} />
+                  <Column header="Location Name" mobile={{ primary: true }} body={(location) => (
                     <a
                       href="#!"
                       onClick={(e) => {
@@ -137,8 +138,8 @@ const Location = () => {
                     >
                       <span className="ms-3">{location.locationName}</span>
                     </a>
-                  )}></Column>
-                </CustomDataTable>
+                  )} />
+                </ResponsiveDataTable>
                 <CustomPaginator
                   first={first}
                   rows={rows}

@@ -23,6 +23,7 @@ import CustomPaginator from "./common/CustomPaginator";
 import { ToastContainer } from "react-toastify";
 
 const VEHICLE_DOCS_STORAGE_KEY = "vehicle_docs";
+const VEHICLE_STATUS_KEY = "vehicle_status_data";
 const VEHICLE_CAB_TYPE_KEY = "vehicle_cab_type_data";
 const VEHICLE_MAKE_KEY = "vehicle_make_data";
 const VEHICLE_FACILITY_MAPPING_KEY = "vehicle_facility_mapping_data";
@@ -80,6 +81,8 @@ const VehicleMaster = () => {
     const [uploadingDocIds, setUploadingDocIds] = useState({});
     const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
     const [activeSidebarTab, setActiveSidebarTab] = useState("details");
+    const [vehicleStatus, setVehicleStatus] = useState(null);
+    const [editVehicleStatus, setEditVehicleStatus] = useState(null);
 
     const [first, setFirst] = useState(0);
     const [rows, setRows] = useState(50);
@@ -389,6 +392,27 @@ const VehicleMaster = () => {
             data[String(vehicleId)] = mapping;
             localStorage.setItem(VEHICLE_FACILITY_MAPPING_KEY, JSON.stringify(data));
         } catch (err) { console.error("Failed to save facility mapping:", err); }
+    };
+
+    const statusOptions = [
+        { label: "Active", value: "Active" },
+        { label: "Bench", value: "Bench" },
+        { label: "Terminated", value: "Terminated" },
+    ];
+
+    const loadVehicleStatus = (vehicleId) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_STATUS_KEY) || "{}");
+            return data[String(vehicleId)] || null;
+        } catch { return null; }
+    };
+
+    const saveVehicleStatus = (vehicleId, status) => {
+        try {
+            const data = JSON.parse(localStorage.getItem(VEHICLE_STATUS_KEY) || "{}");
+            data[String(vehicleId)] = status;
+            localStorage.setItem(VEHICLE_STATUS_KEY, JSON.stringify(data));
+        } catch (err) { console.error("Failed to save vehicle status:", err); }
     };
 
     // ========== FETCH FUNCTIONS ==========
@@ -882,6 +906,7 @@ const VehicleMaster = () => {
             if (vehicleFormData.VehicleNo) saveAttriteReason(vehicleFormData.VehicleNo, attriteReason);
             if (vehicleFormData.VehicleNo) saveVehicleMake(vehicleFormData.VehicleNo, vehicleMake);
             if (vehicleFormData.VehicleNo) saveFacilityMapping(vehicleFormData.VehicleNo, facilityMapping);
+            if (vehicleFormData.VehicleNo) saveVehicleStatus(vehicleFormData.VehicleNo, vehicleStatus);
             setAddVehicle(false);
             setVehicleFormData(initialFormData);
             setIsAttrited(false);
@@ -891,6 +916,7 @@ const VehicleMaster = () => {
             setBsEmission(null);
             setVehicleMake("");
             setFacilityMapping([]);
+            setVehicleStatus(null);
             resetVehicleDocsState();
             await VehiclesDetailsData();
         } catch (error) {
@@ -969,6 +995,7 @@ const VehicleMaster = () => {
             if (shuttleKey) saveAttriteReason(shuttleKey, editAttriteReason);
             if (shuttleKey) saveVehicleMake(shuttleKey, editVehicleMake);
             if (shuttleKey) saveFacilityMapping(shuttleKey, editFacilityMapping);
+            if (shuttleKey) saveVehicleStatus(shuttleKey, editVehicleStatus);
             setUpdateVehicle(false);
             setEditVehicleFormData(initialEditFormData);
             setEditAttrited(false);
@@ -978,6 +1005,7 @@ const VehicleMaster = () => {
             setEditBsEmission(null);
             setEditVehicleMake("");
             setEditFacilityMapping([]);
+            setEditVehicleStatus(null);
             resetVehicleDocsState();
             await VehiclesDetailsData();
         } catch (error) {
@@ -1074,6 +1102,7 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                 setSelectedVendorAdd(null);
                 setSelectedVehicleType(null);
                 resetVehicleDocsState();
+                setVehicleStatus(null);
                 setAddVehicle(true);
             }} />
             <Sidebar />
@@ -1271,6 +1300,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
     setEditBsEmission(loadBsEmission(rowData.Id));
     setEditVehicleMake(loadVehicleMake(rowData.Id));
     setEditFacilityMapping(loadFacilityMapping(rowData.Id));
+    setEditVehicleStatus(loadVehicleStatus(rowData.Id));
     loadVehicleDocs(rowData);
     setActiveSidebarTab("details");
     setUpdateVehicle(true);
@@ -1434,6 +1464,19 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         value={vehicleCabType}
                                         onChange={(e) => setVehicleCabType(e.value)}
                                         options={cabTypeOptions}
+                                        appendTo="self"
+                                    />
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Status</label>
+                                    <Dropdown
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select Status"
+                                        className="w-100"
+                                        value={vehicleStatus}
+                                        onChange={(e) => setVehicleStatus(e.value)}
+                                        options={statusOptions}
                                         appendTo="self"
                                     />
                                 </div>
@@ -1772,6 +1815,19 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         value={editVehicleCabType}
                                         onChange={(e) => setEditVehicleCabType(e.value)}
                                         options={cabTypeOptions}
+                                        appendTo="self"
+                                    />
+                                </div>
+                                <div className="field col-4 mb-3">
+                                    <label>Status</label>
+                                    <Dropdown
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select Status"
+                                        className="w-100"
+                                        value={editVehicleStatus}
+                                        onChange={(e) => setEditVehicleStatus(e.value)}
+                                        options={statusOptions}
                                         appendTo="self"
                                     />
                                 </div>

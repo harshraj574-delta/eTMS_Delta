@@ -118,18 +118,22 @@ function MapLibreLayer({ onTilesLoaded }) {
         clearTimeout(safetyTimeout);
         if (checkIntervalRef.current) {
           clearInterval(checkIntervalRef.current);
+          checkIntervalRef.current = null;
         }
-        
+
+        // Destroy the GL map FIRST so its async resize/zoom events can no longer
+        // trigger the Leaflet _handleZoom handler (which calls this._map.getZoom()
+        // and crashes when this._map is already null during Leaflet teardown).
         if (glMapRef.current) {
+          try { glMapRef.current.remove(); } catch (e) { /* suppress */ }
           glMapRef.current = null;
         }
+
         if (layerRef.current && map) {
-            try {
-               map.removeLayer(layerRef.current);
-            } catch (e) {
-               // ignore
-            }
-            layerRef.current = null;
+          try {
+            map.removeLayer(layerRef.current);
+          } catch (e) { /* suppress — GL map already gone */ }
+          layerRef.current = null;
         }
       };
 

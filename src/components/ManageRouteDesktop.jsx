@@ -25,6 +25,8 @@ import OffcanvasRouteDetails from "./OffcanvasRouteDetails";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
 import { ProgressBar } from "primereact/progressbar";
 import { Dialog as PrimeDialog } from "primereact/dialog";
+import AppDialog from './common/AppDialog';
+import AppConfirmDialog from './common/AppConfirmDialog';
 import { point, Point } from "leaflet";
 import axios from "axios";
 import { OverlayPanel } from "primereact/overlaypanel";
@@ -4247,97 +4249,40 @@ const ManageRouteDesktop = ({
           </div>
         </PrimeDialog>
 
-        <PrimeDialog
+        <AppConfirmDialog
           visible={showGenerateRouteDialog}
           onHide={() => {
-            if (logic && logic.actions && logic.actions.setUiState) {
+            if (logic?.actions?.setUiState) {
               logic.actions.setUiState({ showGenerateDialog: false });
             } else {
               setShowGenerateRouteDialog(false);
             }
           }}
-          header="Are you sure?"
-          footer={
-            <div className="d-flex gap-2 justify-content-end">
-              <Button
-                label="No"
-                onClick={() => {
-                  if (logic && logic.actions && logic.actions.setUiState) {
-                    logic.actions.setUiState({ showGenerateDialog: false });
-                  } else {
-                    setShowGenerateRouteDialog(false);
-                  }
-                }}
-                className="btn btn-outline-dark"
-              />
-              <Button
-                label="Yes"
-                onClick={handleGenerateRoute}
-                className="btn btn-primary"
-              />
-            </div>
-          }
-          style={{ width: "auto", height: "auto" }}
-        >
-          <div className="text-center py-3">
-            <p
-              style={{
-                fontSize: "15px",
-                lineHeight: "1.6",
-                color: "#555",
-                marginBottom: "0.1rem",
-              }}
-            >
-              This will generate routes for
-              <span
-                style={{
-                  color: "#2196F3",
-                  fontWeight: 600,
-                  fontSize: "16px",
-                }}
-              >
-                {" "}
-                {shiftDate}
-              </span>
-            </p>
-          </div>
-        </PrimeDialog>
+          title="Generate Routes"
+          message={<>This will generate routes for <strong style={{ color: '#2196F3' }}>{shiftDate}</strong>.</>}
+          variant="info"
+          confirmLabel="Generate"
+          onConfirm={handleGenerateRoute}
+        />
 
-        <PrimeDialog
+        <AppDialog
           visible={showDragDropConfirmDialog}
           onHide={cancelDragDropOperation}
-          style={{ width: "692px", height: "auto" }}
-          header={
-            <div className="d-flex align-items-center">
-              <span>
-                {pendingDragOperation?.isCrossPageDrop
-                  ? "Confirm Cross-Page Employee Move"
-                  : pendingDragOperation?.isSameRouteReorder
-                    ? "Confirm Employee Reorder"
-                    : "Confirm Employee Move"}
-              </span>
-            </div>
+          title={
+            pendingDragOperation?.isCrossPageDrop
+              ? 'Confirm Cross-Page Move'
+              : pendingDragOperation?.isSameRouteReorder
+                ? 'Confirm Employee Reorder'
+                : 'Confirm Employee Move'
           }
-          modal
-          footer={
-            <>
-              <button
-                className="btn btn-outline-dark"
-                onClick={cancelDragDropOperation}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn btn-dark ms-3"
-                onClick={confirmDragDropOperation}
-                disabled={isLoading}
-              >
-                {pendingDragOperation?.isSameRouteReorder
-                  ? "Confirm Reorder"
-                  : "Confirm Move"}
-              </button>
-            </>
-          }
+          icon="pi pi-arrows-alt"
+          iconColor="#3b82f6"
+          size="md"
+          variant="info"
+          onCancel={cancelDragDropOperation}
+          onConfirm={confirmDragDropOperation}
+          confirmLabel={pendingDragOperation?.isSameRouteReorder ? 'Confirm Reorder' : 'Confirm Move'}
+          isLoading={isLoading}
         >
           {pendingDragOperation && (
             <div className="p-2">
@@ -4429,80 +4374,50 @@ const ManageRouteDesktop = ({
               )}
             </div>
           )}
-        </PrimeDialog>
+        </AppDialog>
 
-        <PrimeDialog
+        <AppDialog
           visible={showRouteMergeDialog}
           onHide={cancelMergeOperation}
-          header={
-            <div className="d-flex align-items-center">
-              <i
-                className="material-icons me-2"
-                style={{ color: "#2196F3", fontSize: "20px" }}
-              >
-                alt_route
-              </i>
-              <span style={{ fontSize: "16px", fontWeight: "600" }}>Confirm Route Merge</span>
-            </div>
-          }
-          modal
-          footer={
-            <>
-              <Button
-                label="Cancel"
-                onClick={cancelMergeOperation}
-                className="btn btn-outline-dark"
-              />
-              <Button
-                label="Confirm Merge"
-                onClick={confirmMergeOperation}
-                disabled={isLoading}
-                className="btn btn-primary ms-3"
-              />
-            </>
-          }
-          style={{ width: "450px" }}
-          className="route-merge-dialog"
+          title="Confirm Route Merge"
+          icon="pi pi-share-alt"
+          iconColor="#3b82f6"
+          size="md"
+          variant="info"
+          onCancel={cancelMergeOperation}
+          onConfirm={confirmMergeOperation}
+          confirmLabel="Merge Routes"
+          isLoading={isLoading}
         >
           {pendingMergeOperation && (
-            <div className="d-flex flex-column" style={{ fontSize: "14px" }}>
-              <p className="mb-2">
-                Are you sure you want to merge <strong>{pendingMergeOperation.sourceRoutes.length}</strong> route(s) into Route <strong className="text-primary">{pendingMergeOperation.targetRoute}</strong>?
+            <div>
+              <p className="app-dialog-body-message mb-3">
+                Merge <strong>{pendingMergeOperation.sourceRoutes.length}</strong> route(s) into Route <strong className="text-primary">{pendingMergeOperation.targetRoute}</strong>?
               </p>
-              <div className="bg-light p-3 rounded mb-0 mt-2">
-                <h6 className="fw-bold mb-2">Warning:</h6>
-                <ul className="mb-0 ps-3 text-muted" style={{ fontSize: "13px" }}>
+              <div className="bg-light p-3 rounded">
+                <h6 className="fw-bold mb-2">Warning</h6>
+                <ul className="mb-0 ps-3 text-muted" style={{ fontSize: '13px' }}>
                   <li><strong>Route {pendingMergeOperation.targetRoute}</strong> will receive all employees.</li>
-                  <li>Source routes ({pendingMergeOperation.sourceRoutes.join(", ")}) will be deleted.</li>
+                  <li>Source routes ({pendingMergeOperation.sourceRoutes.join(', ')}) will be deleted.</li>
                   <li className="text-danger">This action cannot be undone.</li>
                 </ul>
               </div>
             </div>
           )}
-        </PrimeDialog>
+        </AppDialog>
 
-        <PrimeDialog
+        <AppDialog
           visible={showSplitConfirmDialog}
           onHide={cancelSplitOperation}
-          header="Confirm Route Split"
-          modal
-          footer={
-            <>
-              <Button
-                label="Cancel"
-                onClick={cancelSplitOperation}
-                className="btn btn-outline-dark"
-              />
-              <Button
-                label="Confirm Split"
-                onClick={confirmSplitOperation}
-                disabled={isLoading}
-                className="btn btn-dark ms-2"
-              />
-            </>
-          }
-          style={{ width: "692px" }}
-          className="route-split-dialog"
+          title="Confirm Route Split"
+          icon="pi pi-sitemap"
+          iconColor="#f59e0b"
+          size="lg"
+          variant="warning"
+          onCancel={cancelSplitOperation}
+          onConfirm={confirmSplitOperation}
+          confirmLabel="Confirm Split"
+          isLoading={isLoading}
         >
           {pendingSplitOperation && (
             <div className="p-0">
@@ -4566,7 +4481,7 @@ const ManageRouteDesktop = ({
               </div>
             </div>
           )}
-        </PrimeDialog>
+        </AppDialog>
 
         <MasterSidebar
           show={showDetailsSidebar}
@@ -4820,101 +4735,57 @@ const ManageRouteDesktop = ({
           </div>
         </MasterSidebar>
 
-        <PrimeDialog
+        <AppConfirmDialog
           visible={showAutoVendorAllocationDialog}
           onHide={() => setShowAutoVendorAllocationDialog(false)}
-          header="Confirmation"
-          modal
-          footer={
-            <>
-              <Button
-                label="Cancel"
-                onClick={() => setShowAutoVendorAllocationDialog(false)}
-                className="btn btn-outline-dark"
-              />
-              <Button
-                label="OK"
-                onClick={confirmAutoVendorAllocation}
-                disabled={isLoading}
-                className="btn btn-primary ms-3"
-              />
-            </>
-          }
-        >
-          <p>Are you sure you want to automatically allocate the vendor?</p>
-        </PrimeDialog>
+          title="Auto Vendor Allocation"
+          message="Are you sure you want to automatically allocate the vendor?"
+          variant="warning"
+          confirmLabel="Allocate"
+          onConfirm={confirmAutoVendorAllocation}
+          isLoading={isLoading}
+        />
 
-        <PrimeDialog
+        <AppConfirmDialog
           visible={showDeleteEmployeeDialog}
           onHide={() => setShowDeleteEmployeeDialog(false)}
-          header={
-            <div className="d-flex align-items-center">
-              <span>Confirm Employee Deletion</span>
-            </div>
-          }
-          modal
-          footer={
-            <>
-              <Button
-                label="Cancel"
-                onClick={() => setShowDeleteEmployeeDialog(false)}
-                className="btn btn-outline-dark"
-              />
-              <Button
-                label="Delete"
-                onClick={handleDeleteEmployee}
-                className="btn btn-dark ms-3"
-              />
-            </>
-          }
+          title="Remove Employee"
+          variant="delete"
+          confirmLabel="Delete"
+          onConfirm={handleDeleteEmployee}
+          isLoading={isLoading}
         >
           {pendingDeleteEmployee && (
-            <div className="text-left">
-              <p className=" mb-3">
-                Are you sure you want to delete{" "}
-                <strong className="text-primary fw-bold">
-                  {pendingDeleteEmployee.employee.empName}
-                </strong>{" "}
-                from route{" "}
-                <strong className="text-primary fw-bold">
-                  {pendingDeleteEmployee.routeId}
-                </strong>
-                ?
+            <>
+              <p className="app-dialog-body-message mb-2">
+                Delete <strong className="text-primary">{pendingDeleteEmployee.employee.empName}</strong> from route <strong className="text-primary">{pendingDeleteEmployee.routeId}</strong>?
               </p>
-              <p className="">
-                This action cannot be undone. The employee will be removed from
-                this route.
-              </p>
-            </div>
+              <p className="app-dialog-body-detail">This action cannot be undone.</p>
+            </>
           )}
-        </PrimeDialog>
+        </AppConfirmDialog>
 
 
-        <PrimeDialog
+        <AppDialog
           visible={showAddEmployeeModal}
           onHide={handleCloseAddEmployeeModal}
-          header={
-            <div className="d-flex align-items-center">
-              <span>Add Employee to Route</span>
-            </div>
-          }
-          style={{ width: "800px", maxWidth: "95vw" }}
-          className="modern-modal"
+          title="Add Employee to Route"
+          icon="pi pi-user-plus"
+          iconColor="#3b82f6"
+          size="lg"
           footer={
-            <div className="d-flex justify-content-end">
+            <div className="d-flex gap-2 justify-content-end w-100">
               <Button
                 label="Cancel"
+                outlined
                 onClick={handleCloseAddEmployeeModal}
-                className="btn btn-outline-secondary me-2"
                 disabled={isAddingEmployee}
               />
               <Button
-                label={isAddingEmployee ? "Adding..." : "Add Employee"}
+                label={isAddingEmployee ? 'Adding…' : 'Add Employee'}
                 onClick={handleAddEmployeeToRoute}
-                className="btn btn-dark"
-                disabled={
-                  !selectedEmployee || !selectedStopNo || isAddingEmployee
-                }
+                disabled={!selectedEmployee || !selectedStopNo || isAddingEmployee}
+                icon={isAddingEmployee ? 'pi pi-spin pi-spinner' : undefined}
               />
             </div>
           }
@@ -5094,31 +4965,27 @@ const ManageRouteDesktop = ({
               </div>
             </div>
           </div>
-        </PrimeDialog>
+        </AppDialog>
 
-        <PrimeDialog
+        <AppConfirmDialog
           visible={showUnlockConfirmDialog}
           onHide={() => setShowUnlockConfirmDialog(false)}
-          header="Confirm Unlock"
-          modal
-          footer={
-            <>
-              <Button label="Cancel" onClick={() => setShowUnlockConfirmDialog(false)} className="p-button-text" />
-              <Button label="Confirm" onClick={confirmUnlockOperation} autoFocus />
-            </>
-          }
+          title="Confirm Unlock"
+          variant="unlock"
+          confirmLabel="Unlock"
+          onConfirm={confirmUnlockOperation}
         >
           {pendingUnlock && (
-            <div>
-              {pendingUnlock.type === 'shift' ? (
-                <p>Are you sure you want to unlock all {pendingUnlock.routeIds.length} finalized routes for this shift?</p>
-              ) : (
-                <p>Are you sure you want to unlock the selected {pendingUnlock.routeIds.length} route(s)?</p>
-              )}
-              <p className="mt-2 small text-muted">This will make them editable again.</p>
-            </div>
+            <>
+              <p className="app-dialog-body-message">
+                {pendingUnlock.type === 'shift'
+                  ? `Unlock all ${pendingUnlock.routeIds.length} finalized routes for this shift?`
+                  : `Unlock the selected ${pendingUnlock.routeIds.length} route(s)?`}
+              </p>
+              <p className="app-dialog-body-detail">This will make them editable again.</p>
+            </>
           )}
-        </PrimeDialog>
+        </AppConfirmDialog>
 
 
         <DragOverlay
@@ -5193,125 +5060,64 @@ const ManageRouteDesktop = ({
           ) : null}
         </DragOverlay>
 
-        <PrimeDialog
+        <AppDialog
           visible={showRecalcBeforeFinalizeDialog}
           onHide={() => setShowRecalcBeforeFinalizeDialog(false)}
-          header={
-            <div className="d-flex align-items-center">
-              <i
-                className="material-icons me-2"
-                style={{ color: "#ff9800", fontSize: "20px" }}
-              >
-                warning
-              </i>
-              <span>Recalculation Required</span>
-            </div>
-          }
-          modal
+          title="Recalculation Required"
+          icon="pi pi-exclamation-triangle"
+          iconColor="#f59e0b"
+          size="md"
+          variant="warning"
           footer={
-            <>
+            <div className="d-flex gap-2 justify-content-end w-100">
               <Button
                 label="Cancel Finalization"
+                outlined
                 onClick={() => setShowRecalcBeforeFinalizeDialog(false)}
-                className="btn btn-outline-secondary"
                 disabled={isRecalcBeforeFinalize}
               />
               <Button
-                label={
-                  isRecalcBeforeFinalize
-                    ? "Recalculating..."
-                    : "Recalculate & Finalize"
-                }
+                label={isRecalcBeforeFinalize ? 'Recalculating…' : 'Recalculate & Finalize'}
+                severity="warning"
                 onClick={handleRecalculateAndFinalize}
-                className="btn btn-primary ms-3"
                 disabled={isRecalcBeforeFinalize}
-                icon={
-                  isRecalcBeforeFinalize
-                    ? "pi pi-spin pi-spinner"
-                    : "pi pi-refresh"
-                }
+                icon={isRecalcBeforeFinalize ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'}
               />
-            </>
+            </div>
           }
-          style={{ width: "600px" }}
         >
-          <div className="p-3">
-            <div className="alert alert-warning mb-3">
-              <strong>Routes Need Recalculation!</strong>
-            </div>
-
-            <p className="mb-3">
-              Some routes have been modified and need to be recalculated before
-              finalization. This ensures that all ETAs and distances are
-              up-to-date.
-            </p>
-
-            <div className="bg-light p-3 rounded mb-3">
-              <h6 className="fw-bold mb-2">What will happen:</h6>
-              <ol className="mb-0 ps-3">
-                <li>
-                  All modified routes will be recalculated with latest ETAs
-                </li>
-                <li>Route data will be updated in the system</li>
-              </ol>
-            </div>
-
-            <p className="text-muted mb-0">
-              <small>
-                <i className="material-icons me-1" style={{ fontSize: "14px" }}>
-                  info
-                </i>
-                This process may take a few moments depending on the number of
-                routes.
-              </small>
-            </p>
+          <div className="alert alert-warning mb-3">
+            <strong>Routes Need Recalculation!</strong>
           </div>
-        </PrimeDialog>
+          <p className="mb-3">
+            Some routes have been modified and need to be recalculated before finalization.
+            This ensures that all ETAs and distances are up-to-date.
+          </p>
+          <div className="bg-light p-3 rounded mb-3">
+            <h6 className="fw-bold mb-2">What will happen:</h6>
+            <ol className="mb-0 ps-3">
+              <li>All modified routes will be recalculated with latest ETAs</li>
+              <li>Route data will be updated in the system</li>
+            </ol>
+          </div>
+          <p className="text-muted mb-0 small">
+            This process may take a few moments depending on the number of routes.
+          </p>
+        </AppDialog>
 
-        {/* Finalize Confirmation Dialog (No Recalculation Needed) */}
-        <PrimeDialog
+        {/* Finalize Confirmation Dialog */}
+        <AppConfirmDialog
           visible={showFinalizeConfirmDialog}
           onHide={() => setShowFinalizeConfirmDialog(false)}
-          header={
-            <div className="d-flex align-items-center">
-              <i
-                className="material-icons me-2"
-                style={{ color: "#2196F3", fontSize: "20px" }}
-              >
-                check_circle
-              </i>
-              <span style={{ fontSize: "16px", fontWeight: "600" }}>Confirm Finalization</span>
-            </div>
-          }
-          modal
-          footer={
-            <>
-              <Button
-                label="Cancel"
-                onClick={() => setShowFinalizeConfirmDialog(false)}
-                className="btn btn-outline-dark"
-                disabled={isFinalizing}
-              />
-              <Button
-                label={isFinalizing ? "Finalizing..." : "Finalize Routes"}
-                onClick={() => {
-                  setShowFinalizeConfirmDialog(false);
-                  proceedWithFinalization();
-                }}
-                className="btn btn-primary ms-3"
-                disabled={isFinalizing}
-              />
-            </>
-          }
-          style={{ width: "400px" }}
+          title="Confirm Finalization"
+          variant="success"
+          confirmLabel={isFinalizing ? 'Finalizing…' : 'Finalize Routes'}
+          onConfirm={() => { setShowFinalizeConfirmDialog(false); proceedWithFinalization(); }}
+          isLoading={isFinalizing}
         >
-          <div className="d-flex flex-column" style={{ fontSize: "14px" }}>
-            <p className="mb-2">Are you sure you want to finalize the current routes?</p>
-            <p className="text-muted mb-0" style={{ fontSize: "13px" }}>
-              Note: This will commit all current routes. Finalized routes are locked against further changes unless unlocked.
-            </p>
-          </div>
-        </PrimeDialog>
+          <p className="app-dialog-body-message mb-2">Are you sure you want to finalize the current routes?</p>
+          <p className="app-dialog-body-detail">Finalized routes are locked against further changes unless unlocked.</p>
+        </AppConfirmDialog>
       </DndContext>
       <style>
         {`

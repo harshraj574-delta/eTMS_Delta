@@ -10,6 +10,7 @@ import TableToolbar from "./common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -415,8 +416,7 @@ const ProcessMaster = () => {
               <div className="p-3 pb-0">
                 {renderToolbar()}
               </div>
-              <div className="table-responsive">
-                <CustomDataTable
+              <ResponsiveDataTable
                   value={filteredData.slice(first, first + rows)}
                   loading={loading}
                   dataKey="Id"
@@ -430,10 +430,12 @@ const ProcessMaster = () => {
                     header="Process Name"
                     body={processNameBodyTemplate}
                     sortable
+                    mobile={{ primary: true }}
                     className="col-process-name"
                   />
                   <Column
                     header="Total Emp."
+                    mobile={{ subtitle: true }}
                     body={(rowData) => (
                       <div className="d-flex flex-column align-items-start">
                         <span>{rowData.totalemployee}</span>
@@ -475,14 +477,16 @@ const ProcessMaster = () => {
                     field="transportEmpcount"
                     header="Transport Opted Emp."
                     sortable
+                    mobile={{ hidden: true }}
                     className="col-transport-opted"
                   />
                   <Column
                     header="Action"
                     body={processActionBodyTemplate}
+                    mobile={{ action: true }}
                     className="col-action"
                   />
-                </CustomDataTable>
+                </ResponsiveDataTable>
                 <CustomPaginator
                   first={first}
                   rows={rows}
@@ -490,7 +494,6 @@ const ProcessMaster = () => {
                   onPageChange={onPageChange}
                   rowsPerPageOptions={[5, 10, 20]}
                 />
-              </div>
             </div>
           </div>
         </div>
@@ -601,8 +604,7 @@ const ProcessMaster = () => {
             <i className="pi pi-plus"></i>
             <span>Add New Sub-Process</span>
           </button>
-          <div className="table-responsive">
-            <CustomDataTable
+          <ResponsiveDataTable
               value={subProcesses.slice(subFirst, subFirst + subRows)}
               loading={loading}
               dataKey="Id"
@@ -617,14 +619,16 @@ const ProcessMaster = () => {
                 header="Sub-Process Name"
                 sortable
                 filter
+                mobile={{ primary: true }}
                 className="col-process-name"
               />
               <Column
                 header="Action"
                 body={subProcessActionBodyTemplate}
+                mobile={{ action: true }}
                 className="col-action"
               />
-            </CustomDataTable>
+            </ResponsiveDataTable>
             <CustomPaginator
               first={subFirst}
               rows={subRows}
@@ -632,7 +636,6 @@ const ProcessMaster = () => {
               onPageChange={onSubPageChange}
               rowsPerPageOptions={[5, 10, 20]}
             />
-          </div>
       </MasterSidebar>
 
       {/* Add Sub-Process Sidebar */}

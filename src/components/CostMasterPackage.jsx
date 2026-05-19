@@ -297,12 +297,27 @@ const CostMasterPackage = () => {
       console.error("Error fetching vendors:", error);
     }
   };
-  // Export table data to Excel
   const exportExcel = () => {
-    if (dt.current) {
-      const fileName = `cost_master_${new Date().toISOString().slice(0, 10)}`;
-      dt.current.exportCSV({ fileName });
+    if (!costData.length) {
+      toastService.error("No data to export");
+      return;
     }
+    const headers = ["Vendor", "Vehicle Type", "AC Cost", "Non-AC Cost", "Fuel Rate", "Guard Cost", "Kms", "Hrs", "From Date", "To Date"];
+    const csvRows = costData.map((r) => [
+      r.vendorname, r.VehicleType, r.Cost, r.NonAcCost,
+      r.fuelrate, r.guardcost, r.km, r.hrs,
+      r.DATE, r.Enddate,
+    ]);
+    const csv = [headers, ...csvRows]
+      .map((row) => row.map((c) => `"${c ?? ""}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `CostMasterPackage_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
   const AddNewCostPackageHandler = () => {
     // Logic for adding a new cost package

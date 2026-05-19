@@ -40,6 +40,8 @@ import { apiService } from "../services/api";
 import Loader from "./common/Loader";
 import ErrorFallback from "./common/ErrorFallback";
 import ErrorBoundary from "./common/ErrorBoundary";
+import useIsMobile from "./common/useIsMobile";
+import DashboardMobile from "./DashboardMobile";
 
 const Dashboard = () => {
   const userId = sessionManager.getUserSession().ID;
@@ -112,6 +114,8 @@ const Dashboard = () => {
     { label: "Employees", value: 1 },
     { label: "Routes", value: 2 },
   ];
+
+  const isMobile = useIsMobile();
 
   const formatDateLocal = useCallback((date) => {
     const d = new Date(date);
@@ -1408,6 +1412,38 @@ const Dashboard = () => {
         <Header pageTitle="Dashboard" />
         <Sidebar />
         <div className="middle">
+          {isMobile ? (
+            <DashboardMobile
+              filter={filter}
+              activeIndex={activeIndex}
+              onTabChange={handleTabChange}
+              cities={cities}
+              selCity={selCity}
+              onCityChange={handleCityChange}
+              facilities={filteredFacilities}
+              selFacility={selFacility}
+              onFacilityChange={handleFacilityChange}
+              venders={venders}
+              selVendor={selVendor}
+              onVendorChange={handleVendorChange}
+              tripTypeOptions={tripTypeOptions}
+              selectedTripType={selectedTripType}
+              onTripTypeChange={handleTripTypeChange}
+              periodOptions={periodOptions1}
+              selectedPeriod={selectedPeriod1}
+              pendingPeriod={pendingPeriod1}
+              setPendingPeriod={setPendingPeriod1}
+              pendingDateFrom={pendingDateFrom}
+              pendingDateTo={pendingDateTo}
+              onDateFromChange={handleDateFromChange}
+              onDateToChange={handleDateToChange}
+              onCalendarApply={handleCalendarApply}
+              type={type}
+              mapTypeOptions={mapTypeOptions}
+              onMapTypeChange={handleMapTypeChange}
+            />
+          ) : (
+            <>
           {/* Sentinel element */}
           <div ref={sentinelRef} className="sticky-sentinel" />
 
@@ -1713,10 +1749,12 @@ const Dashboard = () => {
               }
             })()}
           </div>
+            </>
+          )}
         </div>
       </div>
 
-      <EnterpriseDialog
+      {!isMobile && <EnterpriseDialog
         visible={dialogVisible}
         onHide={handleDialogHide}
         title={`${type === 2 ? "Routes" : "Employees"} Density Map`}
@@ -1733,7 +1771,7 @@ const Dashboard = () => {
         }
       >
         <LeafletHeatMap filter={filter} type={type} isFullscreen={true} />
-      </EnterpriseDialog>
+      </EnterpriseDialog>}
     </ErrorBoundary>
   );
 };

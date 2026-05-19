@@ -19,6 +19,7 @@ import { Checkbox } from "primereact/checkbox";
 import MasterSidebar from "./Master/MasterSidebar";
 import ReportButton from "./common/ReportButton";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 const EmployeeMaster = () => {
     const [loading, setLoading] = useState(false);
@@ -841,21 +842,20 @@ const EmployeeMaster = () => {
                     <>
                         <div className="card_tb p-3">
                             <TableToolbar showExport={false} showFilter={false} />
-                            <CustomDataTable
+                            <ResponsiveDataTable
                                 value={rows.slice(first, first + rowsPerPage)}
                                 loading={loading}
                                 emptyMessage="No records found"
-                                className="p-datatable-sm"
                                 rowClassName={(data, props) => props.rowIndex % 2 !== 0 ? "ota-row-odd" : ""}
                             >
-                                <Column header="Employee Id" body={empCodeTemplate} />
-                                <Column field="empName" header="Employee Name" />
+                                <Column header="Employee Id" mobile={{ subtitle: true }} body={empCodeTemplate} />
+                                <Column field="empName" header="Employee Name" mobile={{ primary: true }} />
                                 <Column field="processName" header="Process" />
                                 <Column field="facilityName" header="Facility" />
-                                <Column field="email" header="Email" />
-                                <Column field="TptReq" header="TptReq" />
-                                <Column field="Attrited" header="Active" />
-                            </CustomDataTable>
+                                <Column field="email" header="Email" mobile={{ hidden: true }} />
+                                <Column field="TptReq" header="TptReq" mobile={{ hidden: true }} />
+                                <Column field="Attrited" header="Active" mobile={{ badge: true }} body={(r) => r.Attrited === "N" ? "Active" : "Inactive"} />
+                            </ResponsiveDataTable>
                             <CustomPaginator
                                 first={first}
                                 rows={rowsPerPage}

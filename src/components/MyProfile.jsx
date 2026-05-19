@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
-import { Dialog } from 'primereact/dialog';
+import AppDialog from './common/AppDialog';
 import { Calendar } from 'primereact/calendar';
 import { Tooltip } from 'primereact/tooltip';
 import MasterSidebar from "./Master/MasterSidebar";
@@ -800,13 +800,14 @@ const MyProfile = () => {
       </MasterSidebar>
 
       {/* Profile Picture Dialog */}
-      <Dialog
-        header="Profile Photo"
+      <AppDialog
+        title="Profile Photo"
+        icon="pi pi-camera"
+        iconColor="#6366f1"
         visible={profilePicDialogVisible}
         onHide={() => setProfilePicDialogVisible(false)}
-        style={{ width: '360px' }}
-        draggable={false}
-        resizable={false}
+        size="sm"
+        footer={null}
       >
         <div style={{ textAlign: 'center', padding: '4px 0 12px' }}>
 
@@ -869,14 +870,18 @@ const MyProfile = () => {
             )}
           </div>
         </div>
-      </Dialog>
+      </AppDialog>
 
       {/* Maps Popup */}
-      <Dialog
-        header="Home Geocode"
-        visible={visible} 
-        style={{ width: '90vw', minHeight: '90vh' }} 
+      <AppDialog
+        title="Home Geocode"
+        icon="pi pi-map-marker"
+        iconColor="#3b82f6"
+        visible={visible}
         onHide={() => setVisible(false)}
+        size="xl"
+        footer={null}
+        style={{ width: '90vw', minHeight: '90vh' }}
       >
         <div className="m-0">
           {profileData && profileData.geoX && profileData.geoY ? (
@@ -905,7 +910,7 @@ const MyProfile = () => {
             <div className="text-danger">No location data available</div>
           )}
         </div>
-      </Dialog>
+      </AppDialog>
     </>
   );
 };

@@ -11,7 +11,7 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { FileUpload } from "primereact/fileupload";
 import { Checkbox } from "primereact/checkbox";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import AppConfirmDialog from "./common/AppConfirmDialog";
 import CustomPaginator from "./common/CustomPaginator";
 import ShiftTimeMasterAdhocService from "../services/compliance/ShiftTimeMasterAdhocService";
 import { toastService } from "../services/toastService";
@@ -41,6 +41,8 @@ const ShiftTimeMasterAdhoc = () => {
   const [shiftCategoryAdd, setShiftCategoryAdd] = useState("");
   const [shiftCategory, setShiftCategory] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ visible: false, rowIndex: null });
+  const closeDeleteConfirm = () => setDeleteConfirm({ visible: false, rowIndex: null });
   const [shiftTime, setShiftTime] = useState("");
   useEffect(() => {
     fetchFacilities();
@@ -73,24 +75,18 @@ const ShiftTimeMasterAdhoc = () => {
     }
   }
   const handleDeleteClick = (rowIndex) => {
-    confirmDialog({
-      message: "Are you sure? You want to Delete Shift Time Master.",
-      header: "Confirmation",
-      icon: "pi pi-exclamation-triangle",
-      acceptClassName: "p-button-danger",
-      accept: () => {
-        const rowData = shiftData[rowIndex];
-        if (rowData) {
-          DeleteShiftTime(rowData.Id);
-          toastService.success("Shift Time Master Deleted Successfully");
-          fetchGetAdhocShiftTime();
-        }
-      },
-      reject: () => {
-        // Optional: Logic on cancel
-        console.log("User canceled deletion");
-      },
-    });
+    setDeleteConfirm({ visible: true, rowIndex });
+  };
+
+  const handleDeleteConfirm = () => {
+    const { rowIndex } = deleteConfirm;
+    closeDeleteConfirm();
+    const rowData = shiftData[rowIndex];
+    if (rowData) {
+      DeleteShiftTime(rowData.Id);
+      toastService.success("Shift Time Master Deleted Successfully");
+      fetchGetAdhocShiftTime();
+    }
   };
   const customSortStyle = {
     '.p-sortable-column:not(.p-highlight) .p-sortable-column-icon': {
@@ -316,7 +312,14 @@ const ShiftTimeMasterAdhoc = () => {
       />
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
-      <ConfirmDialog />
+      <AppConfirmDialog
+        visible={deleteConfirm.visible}
+        onHide={closeDeleteConfirm}
+        title="Confirm Delete"
+        variant="delete"
+        message="Are you sure you want to delete this Shift Time Master?"
+        onConfirm={handleDeleteConfirm}
+      />
       <div className="middle">
         {/* Filter Section */}
         <div className="card_tb p-3 mb-3">

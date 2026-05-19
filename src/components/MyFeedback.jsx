@@ -25,6 +25,7 @@ import Loader from "./common/Loader.jsx";
 import TableToolbar from "./common/TableToolbar.jsx";
 import { set } from "lodash";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import { ToastContainer } from "react-toastify";
 import CustomPaginator from "./common/CustomPaginator";
 import ChatIcon from "./common/ChatIcon";
@@ -702,8 +703,7 @@ const MyFeedback = () => {
                     />
                   </div>
                 </TableToolbar>
-                <div className="table-responsive">
-                  <CustomDataTable
+                <ResponsiveDataTable
                     value={finalTableData.slice(first, first + rows)}
                     loading={loading}
                     emptyMessage="No feedback data available"
@@ -711,13 +711,14 @@ const MyFeedback = () => {
                     rowClassName={(data, props) => {
                       let className = props.rowIndex % 2 !== 0 ? "ota-row-odd" : "";
                       if (data && data.Status && data.Status.toLowerCase() === "closed") {
-                        className += " column"; // Preserving existing 'column' class logic
+                        className += " column";
                       }
                       return className;
                     }}
                   >
                     <Column
                       header="Ticket No."
+                      mobile={{ primary: true }}
                       body={(rowData) => {
                         const hasConversation = rowData.ActionBy !== null && rowData.ActionBy !== '';
                         const textColor = hasConversation ? '#0BAA60' : 'inherit';
@@ -742,18 +743,19 @@ const MyFeedback = () => {
                     <Column
                       field="RaisedDate"
                       header="Shift Date"
+                      mobile={{ subtitle: true }}
                       body={(rowData) =>
                         new Date(rowData.RaisedDate).toLocaleDateString()
                       }
                     />
-                    <Column field="TypeName" header="Type" />
+                    <Column field="TypeName" header="Type" mobile={{ hidden: true }} />
                     <Column
                       field="Desrp"
                       header="Description"
                       body={(rowData) => (
                         <div
                           className="position-relative"
-                          title={rowData.Desrp} // Using native HTML title for tooltip
+                          title={rowData.Desrp}
                           style={{
                             maxWidth: "200px",
                             overflow: "hidden",
@@ -761,17 +763,17 @@ const MyFeedback = () => {
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
                           }}
-                        // Remove the ref and onMouseLeave handlers that use bootstrap
                         >
                           {rowData.Desrp}
                         </div>
                       )}
                     />
-                    <Column field="RouteId" header="Route ID" />
-                    <Column field="ActionBy" header="Last Action By" />
+                    <Column field="RouteId" header="Route ID" mobile={{ hidden: true }} />
+                    <Column field="ActionBy" header="Last Action By" mobile={{ hidden: true }} />
                     <Column
                       field="Status"
                       header="Status"
+                      mobile={{ badge: true }}
                       body={(rowData) => (
                         <span
                           className={`badgee ${rowData &&
@@ -787,6 +789,7 @@ const MyFeedback = () => {
                     />
                     <Column
                       header="Action"
+                      mobile={{ action: true }}
                       body={(rowData) => (
                         <button
                           data-bs-toggle="offcanvas"
@@ -811,7 +814,7 @@ const MyFeedback = () => {
                         </button>
                       )}
                     />
-                  </CustomDataTable>
+                  </ResponsiveDataTable>
                   <CustomPaginator
                       first={first}
                       rows={rows}
@@ -819,8 +822,6 @@ const MyFeedback = () => {
                       onPageChange={onPageChange}
                       rowsPerPageOptions={[50, 100, 150, 200]}
                   />
-
-                </div>
               </div>
             </div>
           </div>

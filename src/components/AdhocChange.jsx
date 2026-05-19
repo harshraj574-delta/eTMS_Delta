@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import noReportImage from "../assets/no_report.png";
@@ -11,7 +12,7 @@ import Loader from "./common/Loader";
 import { toastService } from "../services/toastService";
 import SidebarMenu from "./Master/SidebarMenu";
 import sessionManager from "../utils/SessionManager";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import AppConfirmDialog from "./common/AppConfirmDialog";
 
 const AdhocChange = () => {
     const [loading, setLoading] = useState(false);
@@ -20,6 +21,8 @@ const AdhocChange = () => {
     const [first, setFirst] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const UserId = sessionManager.getUserSession().ID;
+    const [confirmState, setConfirmState] = useState({ visible: false, title: '', message: '', variant: 'warning', confirmLabel: 'Confirm', onConfirm: null });
+    const closeConfirm = () => setConfirmState(s => ({ ...s, visible: false, onConfirm: null }));
 
     const paginatedData = useMemo(
         () => employeeData.slice(first, first + rowsPerPage),
@@ -70,29 +73,24 @@ const AdhocChange = () => {
     };
 
     const handleApprove = (rowData) => {
-        confirmDialog({
-            message: "Are you sure you want to approve this request?",
-            header: "Confirmation",
-            icon: "pi pi-check-circle",
-            acceptClassName: "p-button-success",
-            accept: async () => {
+        setConfirmState({
+            visible: true,
+            title: 'Confirm Approval',
+            message: 'Are you sure you want to approve this request?',
+            variant: 'success',
+            confirmLabel: 'Approve',
+            onConfirm: async () => {
+                closeConfirm();
                 try {
                     setLoading(true);
-
-                    const params = {
+                    await AdhocchangeService.UpdateAdhocStatus({
                         Id: rowData.id,
                         Status: "Approved",
                         ApprovedBy: UserId,
                         CallFrom: "Manager",
-                    };
-
-                    const response = await AdhocchangeService.UpdateAdhocStatus(params);
-
+                    });
                     toastService.success("Request Approved Successfully");
-
-                    // 🔄 Refresh data
                     fetchAdhocChange();
-
                 } catch (error) {
                     console.error("Approve error:", error);
                     toastService.error("Failed to approve request");
@@ -100,45 +98,35 @@ const AdhocChange = () => {
                     setLoading(false);
                 }
             },
-            reject: () => {
-                toastService.info("Approval cancelled");
-            },
         });
     };
 
     
     const handleReject = (rowData) => {
-        confirmDialog({
-            message: "Are you sure you want to reject this request?",
-            header: "Confirmation",
-            icon: "pi pi-exclamation-triangle",
-            acceptClassName: "p-button-danger",
-            accept: async () => {
+        setConfirmState({
+            visible: true,
+            title: 'Confirm Rejection',
+            message: 'Are you sure you want to reject this request?',
+            variant: 'delete',
+            confirmLabel: 'Reject',
+            onConfirm: async () => {
+                closeConfirm();
                 try {
                     setLoading(true);
-
-                    const params = {
+                    await AdhocchangeService.UpdateAdhocStatus({
                         Id: rowData.id,
                         Status: "Rejected",
                         ApprovedBy: UserId,
                         CallFrom: "Manager",
-                    };
-
-                    const response = await AdhocchangeService.UpdateAdhocStatus(params);
-
+                    });
                     toastService.success("Request Rejected Successfully");
-
                     fetchAdhocChange();
-
                 } catch (error) {
                     console.error("Reject error:", error);
                     toastService.error("Failed to reject request");
                 } finally {
                     setLoading(false);
                 }
-            },
-            reject: () => {
-                toastService.info("Rejection cancelled");
             },
         });
     };
@@ -148,7 +136,15 @@ const AdhocChange = () => {
             <Loader isVisible={loading} fullScreen={true} />
             <Header pageTitle="Adhoc Change" mainTitle="Admin" />
             <SidebarMenu />
-            <ConfirmDialog />
+            <AppConfirmDialog
+                visible={confirmState.visible}
+                onHide={closeConfirm}
+                title={confirmState.title}
+                message={confirmState.message}
+                variant={confirmState.variant}
+                confirmLabel={confirmState.confirmLabel}
+                onConfirm={confirmState.onConfirm}
+            />
             <div className="middle">
                 <div className="row">
                     <div className="col-12">
@@ -207,9 +203,8 @@ const AdhocChange = () => {
                             </div>
                         ) : (
                             <div className="card_tb">
-                                <CustomDataTable
+                                <ResponsiveDataTable
                                     value={paginatedData}
-                                    className="p-datatable-sm"
                                     dataKey="id"
                                     paginator
                                     rows={rowsPerPage}
@@ -217,17 +212,18 @@ const AdhocChange = () => {
                                     onPage={handlePageChange}
                                     rowsPerPageOptions={[5, 10, 25, 50]}
                                 >
-                                    <Column field="id" header="Adhoc ID" sortable />
-                                    <Column field="empName" header="Employee Details" />
-                                    <Column field="AdhocDate" header="Shift Date" />
+                                    <Column field="id" header="Adhoc ID" mobile={{ hidden: true }} sortable />
+                                    <Column field="empName" header="Employee" mobile={{ primary: true }} />
+                                    <Column field="AdhocDate" header="Shift Date" mobile={{ subtitle: true }} />
                                     <Column field="ShiftTime" header="Shift" body={formatShiftTime} />
                                     <Column field="TripType" header="Trip Type" />
                                     <Column field="facilityName" header="Facility" />
-                                    <Column field="Status" header="Status" />
-                                    <Column field="RaisedBy" header="Raised By" />
-                                    <Column field="adhocreason" header="Reason" />
+                                    <Column field="Status" header="Status" mobile={{ badge: true }} />
+                                    <Column field="RaisedBy" header="Raised By" mobile={{ hidden: true }} />
+                                    <Column field="adhocreason" header="Reason" mobile={{ hidden: true }} />
                                     <Column
                                         header="Action"
+                                        mobile={{ action: true }}
                                         body={(rowData) => (
                                             <div className="d-flex gap-2">
                                                 <span
@@ -236,7 +232,6 @@ const AdhocChange = () => {
                                                 >
                                                     Approve
                                                 </span>
-
                                                 <span
                                                     style={{ color: "red", cursor: "pointer", fontWeight: "500" }}
                                                     onClick={() => handleReject(rowData)}
@@ -245,7 +240,8 @@ const AdhocChange = () => {
                                                 </span>
                                             </div>
                                         )}
-                                    />                                </CustomDataTable>
+                                    />
+                                </ResponsiveDataTable>
                             </div>
                         )}
                     </div>

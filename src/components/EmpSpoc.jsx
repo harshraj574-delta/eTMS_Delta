@@ -4,6 +4,7 @@ import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import MasterSidebar from "./Master/MasterSidebar";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import TabSwitcher from "./common/TabSwitcher";
 import TableToolbar from "./common/TableToolbar";
@@ -440,12 +441,13 @@ const EmpSpoc = () => {
                                     <Loader />
                                 ) : (
                                     <>
-                                        <CustomDataTable
+                                        <ResponsiveDataTable
                                             value={pagedSpoc}
                                             emptyMessage="No records found."
                                         >
                                             <Column
                                                 header="Employee Code"
+                                                mobile={{ subtitle: true }}
                                                 body={(row) => (
                                                     <a
                                                         href="#!"
@@ -456,11 +458,11 @@ const EmpSpoc = () => {
                                                     </a>
                                                 )}
                                             />
-                                            <Column field="empName" header="Employee Name" />
-                                            <Column field="managerId" header="Manager ID" />
+                                            <Column field="empName" header="Employee Name" mobile={{ primary: true }} />
+                                            <Column field="managerId" header="Manager ID" mobile={{ hidden: true }} />
                                             <Column field="processName" header="Process" />
                                             <Column field="facilityName" header="Facility" />
-                                        </CustomDataTable>
+                                        </ResponsiveDataTable>
                                         <CustomPaginator
                                             first={spocFirst}
                                             rows={spocRows}
@@ -525,13 +527,13 @@ const EmpSpoc = () => {
                                     </div>
                                     {spocTeamQuery.isFetching ? <Loader /> : (
                                         <>
-                                            <CustomDataTable value={pagedTeam} emptyMessage="No employees assigned to this SPOC.">
-                                                <Column field="empCode" header="Employee Id" />
-                                                <Column field="empName" header="Employee Name" />
-                                                <Column field="processName" header="Process" />
-                                                <Column field="facilityName" header="Facility" />
-                                                <Column header="Actions" body={removeTemplate} style={{ width: "60px", textAlign: "center" }} />
-                                            </CustomDataTable>
+                                            <ResponsiveDataTable value={pagedTeam} emptyMessage="No employees assigned to this SPOC.">
+                                                <Column field="empCode" header="Employee Id" mobile={{ primary: true }} />
+                                                <Column field="empName" header="Employee Name" mobile={{ subtitle: true }} />
+                                                <Column field="processName" header="Process" mobile={{ hidden: true }} />
+                                                <Column field="facilityName" header="Facility" mobile={{ hidden: true }} />
+                                                <Column header="Actions" body={removeTemplate} mobile={{ action: true }} style={{ width: "60px", textAlign: "center" }} />
+                                            </ResponsiveDataTable>
                                             <CustomPaginator
                                                 first={teamFirst}
                                                 rows={teamRows}
@@ -664,14 +666,14 @@ const EmpSpoc = () => {
                                         </div>
                                         {assignLoading ? <Loader /> : (
                                             <>
-                                                <CustomDataTable value={pagedAssign} emptyMessage="No employees found.">
-                                                    <Column field="empCode" header="Employee Id" />
-                                                    <Column field="empName" header="Employee Name" />
-                                                    <Column field="processName" header="Process" />
-                                                    <Column field="facilityName" header="Facility" />
-                                                    <Column field="email" header="E-mail" />
-                                                    <Column header="Actions" body={assignActionsTemplate} style={{ width: "175px" }} />
-                                                </CustomDataTable>
+                                                <ResponsiveDataTable value={pagedAssign} emptyMessage="No employees found.">
+                                                    <Column field="empCode" header="Employee Id" mobile={{ primary: true }} />
+                                                    <Column field="empName" header="Employee Name" mobile={{ subtitle: true }} />
+                                                    <Column field="processName" header="Process" mobile={{ hidden: true }} />
+                                                    <Column field="facilityName" header="Facility" mobile={{ hidden: true }} />
+                                                    <Column field="email" header="E-mail" mobile={{ hidden: true }} />
+                                                    <Column header="Actions" body={assignActionsTemplate} mobile={{ action: true }} style={{ width: "175px" }} />
+                                                </ResponsiveDataTable>
                                                 <CustomPaginator
                                                     first={assignFirst}
                                                     rows={assignRows}
@@ -698,13 +700,13 @@ const EmpSpoc = () => {
                                     </div>
                                     {backupSpocQuery.isFetching ? <Loader /> : (
                                         <>
-                                            <CustomDataTable value={pagedBackup} emptyMessage="No backup SPOC assigned.">
-                                                <Column field="empCode" header="Employee Id" />
-                                                <Column field="empName" header="Employee Name" />
-                                                <Column field="processName" header="Process" />
-                                                <Column field="facilityName" header="Facility" />
-                                                <Column header="Actions" body={removeBackupTemplate} style={{ width: "60px", textAlign: "center" }} />
-                                            </CustomDataTable>
+                                            <ResponsiveDataTable value={pagedBackup} emptyMessage="No backup SPOC assigned.">
+                                                <Column field="empCode" header="Employee Id" mobile={{ primary: true }} />
+                                                <Column field="empName" header="Employee Name" mobile={{ subtitle: true }} />
+                                                <Column field="processName" header="Process" mobile={{ hidden: true }} />
+                                                <Column field="facilityName" header="Facility" mobile={{ hidden: true }} />
+                                                <Column header="Actions" body={removeBackupTemplate} mobile={{ action: true }} style={{ width: "60px", textAlign: "center" }} />
+                                            </ResponsiveDataTable>
                                             <CustomPaginator
                                                 first={backupFirst}
                                                 rows={backupRows}

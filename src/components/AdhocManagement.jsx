@@ -15,11 +15,12 @@ import { Col } from "react-bootstrap";
 import { SelectButton } from "primereact/selectbutton";
 import AdhocmanagementService from "../services/compliance/AdhocmanagementService";
 import { toastService } from "../services/toastService";
-import { ConfirmDialog } from "primereact/confirmdialog"; // Add this import
+import AppConfirmDialog from "./common/AppConfirmDialog";
 import Loader from "./common/Loader";
 import TableToolbar from "./common/TableToolbar";
 import { ToastContainer } from "react-toastify";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import TripTypeBadge from "./common/TripTypeBadge";
 import StatusBadge from "./common/StatusBadge";
@@ -660,19 +661,16 @@ const AdhocManagement = () => {
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
       <div className="container-fluid p-0">
-        <ConfirmDialog
+        <AppConfirmDialog
           visible={confirmDialogVisible}
           onHide={() => setConfirmDialogVisible(false)}
+          title="Confirm Delete"
+          variant="delete"
           message="Are you sure you want to delete this adhoc request?"
-          header="Confirmation"
-          icon="pi pi-exclamation-triangle"
-          accept={() => {
-            if (selectedItemToDelete) {
-              handleDeleteRequest(selectedItemToDelete);
-            }
+          onConfirm={() => {
+            if (selectedItemToDelete) handleDeleteRequest(selectedItemToDelete);
             setConfirmDialogVisible(false);
           }}
-          reject={() => setConfirmDialogVisible(false)}
         />
       </div>
       <div className="middle">
@@ -889,41 +887,35 @@ const AdhocManagement = () => {
                   />
                 </div>
               </TableToolbar>
-              {loading ? (
-                <div>Loading...</div>
-              ) : filteredAdhocData.length > 0 ? (
-                <>
-                  <CustomDataTable
-                    value={filteredAdhocData.slice(first, first + rows)}
-                    loading={loading}
-                    emptyMessage="No Record Found"
-                    className="p-datatable-sm"
-                    rowClassName={(data, props) => props.rowIndex % 2 !== 0 ? "ota-row-odd" : ""}
-                  >
-                    <Column sortable field="adhocid" header="Adhoc ID"></Column>
-                    <Column field="empCode" header="EmployeeID"></Column>
-                    <Column field="empName" header="Employee Name"></Column>
-                    <Column field="AdhocDate" header="Shift Date" body={(rowData) => new Date(rowData.AdhocDate).toLocaleDateString()}></Column>
-                    <Column field="ShiftTime" header="Shift"></Column>
-                    <Column field="TripType" header="Trip Type" body={(rowData) => <TripTypeBadge type={rowData.TripType} />}></Column>
-                    <Column field="facilityName" header="Facility"></Column>
-                    <Column field="Status" header="Status" align="center" body={(rowData) => <StatusBadge status={rowData.Status} />}></Column>
-                    <Column field="RaisedBy" header="Raised By"></Column>
-                    <Column field="adhocreason" header="Reason"></Column>
-                    <Column field="AprovedBy" header="Approved"></Column>
-                    <Column field="" header="Action" body={deleteBtn}></Column>
-
-                  </CustomDataTable>
-                  <CustomPaginator
-                      first={first}
-                      rows={rows}
-                      totalRecords={filteredAdhocData.length}
-                      onPageChange={onPageChange}
-                      rowsPerPageOptions={[5, 10, 25, 50]}
-                  />
-                </>
-              ) : (
-                <div>No Record Found</div>
+              <ResponsiveDataTable
+                value={filteredAdhocData.slice(first, first + rows)}
+                loading={loading}
+                emptyMessage="No adhoc records found"
+                dataKey="adhocid"
+                className="p-datatable-sm"
+                rowClassName={(data, props) => props.rowIndex % 2 !== 0 ? "ota-row-odd" : ""}
+              >
+                <Column sortable field="adhocid" header="Adhoc ID"   mobile={{ hidden: true }} />
+                <Column field="empCode"      header="Employee ID"    mobile={{ subtitle: true }} />
+                <Column field="empName"      header="Employee"       mobile={{ primary: true }} />
+                <Column field="AdhocDate"    header="Shift Date"     body={(r) => new Date(r.AdhocDate).toLocaleDateString()} />
+                <Column field="ShiftTime"    header="Shift" />
+                <Column field="TripType"     header="Trip"           body={(r) => <TripTypeBadge type={r.TripType} />} />
+                <Column field="facilityName" header="Facility" />
+                <Column field="Status"       header="Status"         align="center" body={(r) => <StatusBadge status={r.Status} />} mobile={{ badge: true }} />
+                <Column field="RaisedBy"     header="Raised By"      mobile={{ hidden: true }} />
+                <Column field="adhocreason"  header="Reason" />
+                <Column field="AprovedBy"    header="Approved"       mobile={{ hidden: true }} />
+                <Column field=""             header="Action"         body={deleteBtn} mobile={{ action: true }} />
+              </ResponsiveDataTable>
+              {filteredAdhocData.length > 0 && (
+                <CustomPaginator
+                  first={first}
+                  rows={rows}
+                  totalRecords={filteredAdhocData.length}
+                  onPageChange={onPageChange}
+                  rowsPerPageOptions={[5, 10, 25, 50]}
+                />
               )}
             </div>
           </div>

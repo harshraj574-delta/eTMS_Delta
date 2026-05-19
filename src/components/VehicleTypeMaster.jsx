@@ -4,6 +4,7 @@ import Sidebar from "./Master/SidebarMenu";
 import sessionManager from "../utils/SessionManager.js";
 import { apiService } from "../services/api";
 import { CustomDataTable } from './common/CustomDataTable';
+import ResponsiveDataTable from './common/ResponsiveDataTable';
 import TableToolbar from './common/TableToolbar';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -401,11 +402,11 @@ const VehicleTypeMaster = () => {
                                 overlayRef={op}
                                 filterButtonRef={filterButtonRef}
                             />
-                            <CustomDataTable
+                            <ResponsiveDataTable
                                 value={filteredVehicleTypeData.slice(first, first + rows)}
                                 emptyMessage="No Vehicle Type Found"
                             >
-                                <Column sortable field="vehicle" header="Vehicle" body={(rowData) => (
+                                <Column sortable field="vehicle" header="Vehicle" mobile={{ primary: true }} body={(rowData) => (
                                     <a href="#" onClick={(e) => {
                                         e.preventDefault();
                                         setVisibleLeft(true);
@@ -413,14 +414,14 @@ const VehicleTypeMaster = () => {
                                     }}>
                                         {rowData.vehicle}
                                     </a>
-                                )}></Column>
-                                <Column sortable field="vendorName" header="Vendor"></Column>
-                                <Column field="cost_ac" header="Cost AC"></Column>
-                                <Column field="cost_nonac" header="Cost Non AC"></Column>
-                                <Column sortable field="occupancy" header="Occupancy"></Column>
-                                <Column sortable field="vendorType" header="Bill Type"></Column>
-                                <Column sortable field="updatedAt" header="Last Updated"></Column>
-                            </CustomDataTable>
+                                )} />
+                                <Column sortable field="vendorName" header="Vendor" mobile={{ subtitle: true }} />
+                                <Column field="cost_ac" header="Cost AC" />
+                                <Column field="cost_nonac" header="Cost Non AC" />
+                                <Column sortable field="occupancy" header="Occupancy" />
+                                <Column sortable field="vendorType" header="Bill Type" mobile={{ badge: true }} />
+                                <Column sortable field="updatedAt" header="Last Updated" mobile={{ hidden: true }} />
+                            </ResponsiveDataTable>
                             <CustomPaginator
                                 first={first}
                                 rows={rows}

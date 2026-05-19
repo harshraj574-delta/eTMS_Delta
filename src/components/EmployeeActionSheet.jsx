@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Dialog } from 'primereact/dialog';
+import AppDialog from './common/AppDialog';
 import { Button } from 'primereact/button';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import ManageRouteService from '../services/compliance/ManageRouteService';
@@ -26,7 +26,7 @@ const EmployeeActionSheet = ({
     // Move employee to another route
     const handleMoveToRoute = useCallback(async (targetRoute) => {
         if (moving) return;
-        
+
         setMoving(true);
         try {
             // Use UpdateCutPaste API to move employee
@@ -38,7 +38,7 @@ const EmployeeActionSheet = ({
                 toStopNo: 1, // Will be reordered
                 updatedby: userID
             });
-            
+
             toastService.success(`${employee.empName} moved to ${targetRoute.RouteID}`);
             setShowRoutePicker(false);
             onHide();
@@ -54,7 +54,7 @@ const EmployeeActionSheet = ({
     // Remove employee from route
     const handleRemove = useCallback(async () => {
         if (moving) return;
-        
+
         setMoving(true);
         try {
             await ManageRouteService.DeleteEmployeeFromRoute({
@@ -63,7 +63,7 @@ const EmployeeActionSheet = ({
                 isDelete: 1,
                 updatedby: userID
             });
-            
+
             toastService.success(`${employee.empName} removed from route`);
             onHide();
             onSuccess?.();
@@ -86,21 +86,15 @@ const EmployeeActionSheet = ({
     return (
         <>
             {/* Main Action Sheet */}
-            <Dialog
+            <AppDialog
                 visible={visible && !showRoutePicker}
                 onHide={handleHide}
-                header={
-                    <div className="d-flex align-items-center gap-2">
-                        <i className="pi pi-user" style={{ color: '#3b82f6' }} />
-                        <span>{employee.empName || 'Employee'}</span>
-                    </div>
-                }
-                style={{ width: '95vw', maxWidth: '400px' }}
-                position="bottom"
-                modal
-                draggable={false}
-                resizable={false}
+                title={employee.empName || 'Employee'}
+                icon="pi pi-user"
+                iconColor="#3b82f6"
+                size="sm"
                 footer={null}
+                position="bottom"
             >
                 <div className="d-flex flex-column gap-2">
                     <Button
@@ -128,21 +122,22 @@ const EmployeeActionSheet = ({
                         No other routes available to move to
                     </div>
                 )}
-            </Dialog>
+            </AppDialog>
 
             {/* Route Picker Dialog */}
-            <Dialog
+            <AppDialog
                 visible={showRoutePicker}
                 onHide={() => setShowRoutePicker(false)}
-                header="Select Destination Route"
-                style={{ width: '95vw', maxWidth: '400px' }}
-                modal
-                draggable={false}
-                resizable={false}
+                title="Select Destination Route"
+                icon="pi pi-map"
+                iconColor="#3b82f6"
+                size="sm"
+                footer={null}
+                position="bottom"
             >
-                <div 
-                    style={{ 
-                        maxHeight: '50vh', 
+                <div
+                    style={{
+                        maxHeight: '50vh',
                         overflowY: 'auto',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px'
@@ -152,7 +147,7 @@ const EmployeeActionSheet = ({
                         <div
                             key={route.RouteID}
                             className="d-flex align-items-center justify-content-between p-3"
-                            style={{ 
+                            style={{
                                 borderBottom: index < destinationRoutes.length - 1 ? '1px solid #e5e7eb' : 'none',
                                 background: index % 2 === 0 ? '#f9fafb' : '#fff',
                                 cursor: 'pointer'
@@ -182,7 +177,7 @@ const EmployeeActionSheet = ({
                         onClick={() => setShowRoutePicker(false)}
                     />
                 </div>
-            </Dialog>
+            </AppDialog>
         </>
     );
 };

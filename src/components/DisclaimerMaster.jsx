@@ -5,6 +5,7 @@ import MasterSidebar from "../components/Master/MasterSidebar";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import DisclaimerMasterService from "../services/compliance/DisclaimerMasterService";
@@ -813,25 +814,20 @@ const DisclaimerMaster = () => {
             {/* Disclaimer Master */}
             {activeSection === "disclaimer" && (
               <>
-                <CustomDataTable
+                <ResponsiveDataTable
                   value={displayedDisclaimers}
                   emptyMessage="No disclaimers found."
                   loading={loading}
                 >
-                  <Column
-                    body={selectBodyTemplate}
-                    header="Select"
-                    style={{ width: "70px", textAlign: "center" }}
-                  />
-                  {/* <Column field="facility" header="Facility" style={{ width: "110px" }} /> */}
-                  <Column field="description" header="Disclaimer" style={{ maxWidth: "400px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} />
-                  <Column field="fromdate" header="From Date" />
-                  <Column field="todate" header="To Date" />
-                  <Column body={statusBodyTemplate} header="Status" />
-                  <Column body={actionBodyTemplate} header="Action" style={{ width: "100px" }} />
-                  <Column field="UpdatedBy" header="Updated By" />
-                  <Column field="updatedat" header="Updated At" />
-                </CustomDataTable>
+                  <Column body={selectBodyTemplate} header="Select" mobile={{ hidden: true }} style={{ width: "70px", textAlign: "center" }} />
+                  <Column field="description" header="Disclaimer" mobile={{ primary: true }} style={{ maxWidth: "400px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} />
+                  <Column field="fromdate" header="From Date" mobile={{ subtitle: true }} />
+                  <Column field="todate" header="To Date" mobile={{ hidden: true }} />
+                  <Column body={statusBodyTemplate} header="Status" mobile={{ badge: true }} />
+                  <Column body={actionBodyTemplate} header="Action" mobile={{ action: true }} style={{ width: "100px" }} />
+                  <Column field="UpdatedBy" header="Updated By" mobile={{ hidden: true }} />
+                  <Column field="updatedat" header="Updated At" mobile={{ hidden: true }} />
+                </ResponsiveDataTable>
 
                 <CustomPaginator
                   first={first}

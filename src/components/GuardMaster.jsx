@@ -24,6 +24,12 @@ import CustomPaginator from "./common/CustomPaginator";
 import Loader from "./common/Loader";
 
 const GUARD_DOCS_STORAGE_KEY = "guard_docs";
+const GUARD_STATUS_KEY = "guard_status_data";
+const GUARD_STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Bench", value: "Bench" },
+  { label: "Terminated", value: "Terminated" },
+];
 const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
 const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
 
@@ -46,6 +52,7 @@ const GuardMaster = () => {
   const [uploadingDocIds, setUploadingDocIds] = useState({});
   const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
   const [activeSidebarTab, setActiveSidebarTab] = useState("details");
+  const [guardStatus, setGuardStatus] = useState(null);
 
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
@@ -72,6 +79,7 @@ const GuardMaster = () => {
     setSelectedGuard(guardData);
     setVisibleLeft(true);
     loadGuardDocs(guardData);
+    setGuardStatus(loadGuardStatus(guardData.GuardID));
     setActiveSidebarTab("details");
   };
 const exportToExcel = () => {
@@ -207,6 +215,8 @@ const exportToExcel = () => {
 
       const response = await GuardMasterService.SaveGuard(params);
       toastService.success("Guard saved successfully.");
+      if (selectedGuard?.GuardID) saveGuardStatus(selectedGuard.GuardID, guardStatus);
+      setGuardStatus(null);
       setAddGuardMaster(false);
       setSelectedGuard(null);
       resetGuardDocsState();
@@ -261,6 +271,7 @@ const exportToExcel = () => {
       Remarks: "",
     });
     resetGuardDocsState();
+    setGuardStatus(null);
     setAddGuardMaster(true);
   };
 
@@ -320,6 +331,8 @@ const exportToExcel = () => {
 
       const response = await GuardMasterService.UpdateGuard(params);
       toastService.success("Guard updated successfully.");
+      if (selectedGuard?.GuardID) saveGuardStatus(selectedGuard.GuardID, guardStatus);
+      setGuardStatus(null);
       setVisibleLeft(false);
       resetGuardDocsState();
 
@@ -414,6 +427,21 @@ const exportToExcel = () => {
       setUploadingDocIds((prev) => ({ ...prev, [docTypeId]: false }));
       setUploadProgressByDoc((prev) => ({ ...prev, [docTypeId]: 0 }));
     }
+  };
+
+  const loadGuardStatus = (guardId) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(GUARD_STATUS_KEY) || "{}");
+      return data[String(guardId)] || null;
+    } catch { return null; }
+  };
+
+  const saveGuardStatus = (guardId, status) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(GUARD_STATUS_KEY) || "{}");
+      data[String(guardId)] = status;
+      localStorage.setItem(GUARD_STATUS_KEY, JSON.stringify(data));
+    } catch (err) { console.error("Failed to save guard status:", err); }
   };
 
   const resetGuardDocsState = () => {
@@ -776,6 +804,18 @@ const exportToExcel = () => {
                     className="w-100"
                   />
                 </div>
+                <div className="field col-6 mb-3">
+                  <label>Status</label>
+                  <Dropdown
+                    value={guardStatus}
+                    onChange={(e) => setGuardStatus(e.value)}
+                    options={GUARD_STATUS_OPTIONS}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Status"
+                    className="w-100"
+                  />
+                </div>
                 <div className="field col-12 mb-3">
                   <label>Remarks</label>
                   <InputTextarea
@@ -974,6 +1014,18 @@ const exportToExcel = () => {
                     
                   </div>
                 </div> */}
+                <div className="field col-6 mb-3">
+                  <label>Status</label>
+                  <Dropdown
+                    value={guardStatus}
+                    onChange={(e) => setGuardStatus(e.value)}
+                    options={GUARD_STATUS_OPTIONS}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Status"
+                    className="w-100"
+                  />
+                </div>
                 <div className="field col-12 mb-3">
                   <label>Remarks</label>
                   <InputTextarea

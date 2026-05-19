@@ -4,7 +4,7 @@ import Sidebar from "./Master/SidebarMenu";
 import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
 import RouteDeletionService from "../services/compliance/RouteDeletionService";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import AppConfirmDialog from "./common/AppConfirmDialog";
 import { Calendar } from "primereact/calendar";
 import calendarIcon from "../assets/calendar.png";
 import { toastService } from "../services/toastService";
@@ -33,6 +33,7 @@ const RouteDeletion = () => {
   const [shiftOptions, setShiftOptions] = useState([]);
   const [selectedShifts, setSelectedShifts] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
   useEffect(() => {
     setSelectedShifts([]);
@@ -78,15 +79,16 @@ const RouteDeletion = () => {
         EmpID: 0,
         uname: UserId,
       };
-      const response = await RouteDeletionService.DeleteRoutes(params);
-      // Response check karein
-      if (response === 1) {
+      const raw = await RouteDeletionService.DeleteRoutes(params);
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const result = Array.isArray(parsed) ? parsed[0]?.RESULT : parsed?.RESULT;
+      if (result === 1) {
         toastService.success("Routes deleted successfully");
-        // Optional: koi aur logic
-      } else if (response === -1) {
-        toastService.error("No routes found");
+      } else if (result === -1) {
+        toastService.error("No routes found for the selected criteria");
+      } else {
+        toastService.warn("Unexpected response from server");
       }
-      console.log("DeleteRoutes response:", response);
     } catch (error) {
       toastService.error("Error deleting routes");
       console.error("Error deleting routes:", error);
@@ -117,23 +119,7 @@ const RouteDeletion = () => {
       toastService.warn("Please select Shift");
       return;
     }
-    confirmDialog({
-      message: "Are you sure? You want to Delete the Routes.",
-      header: "Confirmation",
-      icon: "pi pi-exclamation-triangle",
-      acceptClassName: "p-button-danger",
-      accept: () => {
-        handleDeleteRoutes();
-        toastService.success("Routes deleted successfully");
-        // Logic after confirmation (e.g., delete action)
-        console.log("User confirmed deletion");
-      },
-      reject: () => {
-        toastService.error("Routes deletion failed");
-        // Optional: Logic on cancel
-        console.log("User canceled deletion");
-      },
-    });
+    setDeleteConfirmVisible(true);
   };
   const fetchFacilities = async () => {
     try {
@@ -180,7 +166,14 @@ const RouteDeletion = () => {
       <Header pageTitle="Route Deletion" showNewButton={false} />
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
-      <ConfirmDialog />
+      <AppConfirmDialog
+        visible={deleteConfirmVisible}
+        onHide={() => setDeleteConfirmVisible(false)}
+        title="Confirm Delete"
+        variant="delete"
+        message="Are you sure you want to delete the selected routes?"
+        onConfirm={() => { setDeleteConfirmVisible(false); handleDeleteRoutes(); }}
+      />
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">

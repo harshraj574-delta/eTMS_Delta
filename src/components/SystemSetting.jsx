@@ -7,6 +7,7 @@ import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import CostMasterService from "../services/compliance/CostMasterService";
@@ -369,27 +370,27 @@ const SystemSetting = () => {
                   </div>
                 </TableToolbar>
                 <div className="table-responsive">
-                  <CustomDataTable
+                  <ResponsiveDataTable
                     value={filteredData.slice(first, first + rows)}
-                    className="p-datatable-sm"
-                    responsiveLayout="scroll"
                   >
-                    <Column field="configName" header="Parameter Name" />
-                    <Column field="facilityName" header="Facility" />
+                    <Column field="configName" header="Parameter Name" mobile={{ primary: true }} />
+                    <Column field="facilityName" header="Facility" mobile={{ subtitle: true }} />
                     <Column field="configValue" header="Configuration Value" />
-                    <Column field="description" header="Description" />
-                    <Column field="CreatedBy" header="Created By" />
+                    <Column field="description" header="Description" mobile={{ hidden: true }} />
+                    <Column field="CreatedBy" header="Created By" mobile={{ hidden: true }} />
                     <Column
                       field="ChangedDate"
                       header="Changed On"
+                      mobile={{ hidden: true }}
                       body={({ ChangedDate }) => formatDateTime(ChangedDate)}
                     />
                     <Column
                       header="Actions"
+                      mobile={{ action: true }}
                       body={actionBodyTemplate}
                       style={{ minWidth: "120px" }}
                     />
-                  </CustomDataTable>
+                  </ResponsiveDataTable>
                   <CustomPaginator
                     first={first}
                     rows={rows}

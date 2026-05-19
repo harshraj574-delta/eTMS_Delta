@@ -552,9 +552,9 @@ const AdminSchedule = () => {
 
         {/* card_tb border-bottom-0 first_tb */}
         {hasSearched && (
-          <div className="card_tb1">
+          <div className="card_tb1" style={{ overflowX: 'auto' }}>
             {/* table table-sm m-0 */}
-            <table className="table mb-0">
+            <table className="table mb-0" style={{ minWidth: '900px' }}>
               <thead>
                 <tr>
                   <th className="d-flex justify-content-between align-items-center">
@@ -780,8 +780,8 @@ const AdminSchedule = () => {
           </div>
         )}
         {hasSearched && (
-          <div className="card_tb border-bottom-0">
-            <table className="table table-sm m-0">
+          <div className="card_tb border-bottom-0" style={{ overflowX: 'auto' }}>
+            <table className="table table-sm m-0" style={{ minWidth: '900px' }}>
               <thead>
 
                 <tr>

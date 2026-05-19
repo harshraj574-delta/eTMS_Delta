@@ -436,12 +436,27 @@ const CostMaster = () => {
       setIsSubmitting(false);
     }
   };
-  // Add this function for Excel export
   const exportExcel = () => {
-    if (dt.current) {
-      const fileName = `employee_list_${new Date().toISOString().slice(0, 10)}`;
-      dt.current.exportCSV({ fileName });
+    if (!costData.length) {
+      toastService.error("No data to export");
+      return;
     }
+    const headers = ["Vendor", "Vehicle Type", "Route Type", "Zone Name", "AC Cost", "Non-AC Cost", "Fuel Rate", "Guard Cost", "From Date", "To Date"];
+    const rows = costData.map((r) => [
+      r.vendorname, r.VehicleType, r.routetype, r.ZoneName,
+      r.Cost, r.NonAcCost, r.fuelrate, r.guardcost,
+      r.DATE, r.Enddate,
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((c) => `"${c ?? ""}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `CostMaster_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // const paginatorLeft = (

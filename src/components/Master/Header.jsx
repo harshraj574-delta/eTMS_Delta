@@ -145,10 +145,11 @@ const Header = ({
           top: 50% !important;
           transform: translateY(-50%) !important;
         }
-        
+
         @media (max-width: 767px) {
           .header .header-mid {
             flex-wrap: nowrap;
+            gap: 6px;
           }
           .header .breadcrumb-cnt {
             display: none;
@@ -156,23 +157,38 @@ const Header = ({
           .header .link-right .company_logo {
             display: none;
           }
+          /* Shrink logo so header-mid has enough room */
           .header .logo {
             margin-left: 0;
+            width: auto !important;
+            max-width: 100px !important;
+            flex-shrink: 1;
+          }
+          .header .logo img {
+            max-width: 100%;
+            height: auto;
           }
           .header-user-info {
             display: none !important;
           }
-        }
-        
-        @media (max-width: 576px) {
-          .header .header-mid {
-            gap: 8px;
+          /* Compact circular action button */
+          .header .btn.btn-primary {
+            flex-shrink: 0;
+            padding: 0 !important;
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 50% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: unset !important;
           }
-          .header .btn .btn-text {
+          .header .btn .hdr-btn-label {
             display: none;
           }
           .header .btn .material-icons {
             margin-right: 0 !important;
+            font-size: 20px !important;
           }
         }
       `}</style>
@@ -216,17 +232,17 @@ const Header = ({
         
 
         {showAdhocButton && (
-          <button 
-            className="btn btn-primary ms-auto" 
-            data-bs-toggle="offcanvas" 
-            data-bs-target="#addAdhoc" 
+          <button
+            className="btn btn-primary ms-auto"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#addAdhoc"
             aria-controls="addAdhoc"
           >
-            <span className="material-icons me-2">add_circle</span> 
-            Add Adhoc
+            <span className="material-icons me-2">add_circle</span>
+            <span className="hdr-btn-label">Add Adhoc</span>
           </button>
         )}
-        
+
         {showNewButton && (
           <button
             id="tour-new-btn"
@@ -235,7 +251,7 @@ const Header = ({
             aria-controls="offcanvasRight"
           >
             <span className="material-icons me-2">add_circle</span>
-            New
+            <span className="hdr-btn-label">New</span>
           </button>
         )}
         

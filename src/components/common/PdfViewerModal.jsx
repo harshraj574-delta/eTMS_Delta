@@ -1,17 +1,9 @@
 import React from 'react';
-import { Dialog } from 'primereact/dialog';
+import AppDialog from './AppDialog';
+import { Button } from 'primereact/button';
 import { PDFViewer, PDFDownloadLink } from '@react-pdf/renderer';
 import './PdfViewerModal.css';
 
-/**
- * A reusable modal that renders a given PDF Document definition.
- *
- * @param {boolean} visible Controls modal visibility
- * @param {function} onHide Callback when modal closes
- * @param {React.ReactElement} document The @react-pdf/renderer Document component to render
- * @param {string} fileName The default filename for downloading
- * @param {string} title Modal title
- */
 const PdfViewerModal = ({
     visible,
     onHide,
@@ -19,54 +11,40 @@ const PdfViewerModal = ({
     fileName = 'document.pdf',
     title = 'PDF Viewer'
 }) => {
-    const renderHeader = () => {
-        return (
-            <div className="d-flex w-100 justify-content-between align-items-center me-2 gap-2">
-                <span>{title}</span>
-
-                <PDFDownloadLink
-                    document={document}
-                    fileName={fileName}
-                    className="pdf-download-btn"
-                >
-                    {({ loading }) =>
-                        loading ? (
-                            'Preparing document...'
-                        ) : (
-                            <>
-                                <i className="pi pi-download me-2"></i>
-                                Download PDF
-                            </>
-                        )
-                    }
-                </PDFDownloadLink>
-            </div>
-        );
-    };
+    const footerContent = (
+        <div className="d-flex gap-2 justify-content-between w-100">
+            <PDFDownloadLink document={document} fileName={fileName} className="pdf-download-btn">
+                {({ loading }) =>
+                    loading ? 'Preparing document...' : (
+                        <><i className="pi pi-download me-2" />Download PDF</>
+                    )
+                }
+            </PDFDownloadLink>
+            <Button label="Close" outlined onClick={onHide} />
+        </div>
+    );
 
     return (
-        <Dialog
-            header={renderHeader()}
+        <AppDialog
+            title={title}
+            icon="pi pi-file-pdf"
+            iconColor="#ef4444"
             visible={visible}
-            style={{ width: '80vw', height: '90vh' }}
-            maximizable
-            modal
             onHide={onHide}
+            size="xl"
+            footer={footerContent}
+            maximizable
+            style={{ width: '80vw', height: '90vh' }}
             contentStyle={{ padding: 0, overflow: 'hidden' }}
-            baseZIndex={1300}
         >
             <div style={{ width: '100%', height: '100%', minHeight: '500px' }}>
                 {visible && (
-                    <PDFViewer
-                        width="100%"
-                        height="100%"
-                        style={{ border: 'none' }}
-                    >
+                    <PDFViewer width="100%" height="100%" style={{ border: 'none' }}>
                         {document}
                     </PDFViewer>
                 )}
             </div>
-        </Dialog>
+        </AppDialog>
     );
 };
 

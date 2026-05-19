@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "./Master/SidebarMenu";
 import Header from "./Master/Header";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import { Column } from "primereact/column";
 import Loader from "./common/Loader";
 import { ToastContainer } from "react-toastify";
@@ -466,30 +467,34 @@ const EmployeeRecordSwapping = () => {
             <>
               {/* Duplicate records table */}
               <div className="card_tb mb-3">
-                <CustomDataTable
+                <ResponsiveDataTable
                   value={duplicateRecords}
                   emptyMessage="No records found."
                 >
                   <Column
                     header="Common Value"
+                    mobile={{ primary: true }}
                     body={(r) => r.Common_Value || r.Common_Value}
                   />
                   <Column
                     header="Occurance"
+                    mobile={{ subtitle: true }}
                     style={{ width: "110px" }}
                     body={(r) => r.occurance || r.Occurance}
                   />
                   <Column
                     header="Common Field"
+                    mobile={{ badge: true }}
                     style={{ width: "130px" }}
                     body={(r) => r.commonField || r.CommonField}
                   />
                   <Column
                     body={showTemplate}
                     header="Action"
+                    mobile={{ action: true }}
                     style={{ width: "90px", textAlign: "center" }}
                   />
-                </CustomDataTable>
+                </ResponsiveDataTable>
               </div>
 
               {/* Search section */}
@@ -526,25 +531,27 @@ const EmployeeRecordSwapping = () => {
                 {/* Search results table */}
                 {hasSearched && (
                   <div className="mb-3">
-                    <CustomDataTable
+                    <ResponsiveDataTable
                       value={searchResults}
                       emptyMessage="No employees found."
                       loading={searchLoading}
                     >
                       <Column
                         header="Employee Id"
+                        mobile={{ subtitle: true }}
                         body={(r) => r.empCode || r.id}
                       />
-                      <Column field="empName" header="Employee Name" />
+                      <Column field="empName" header="Employee Name" mobile={{ primary: true }} />
                       <Column field="processName" header="Process" />
                       <Column field="facilityName" header="Facility" />
-                      <Column field="email" header="E-mail" />
+                      <Column field="email" header="E-mail" mobile={{ hidden: true }} />
                       <Column
                         body={addToCompareTemplate}
                         header=""
+                        mobile={{ action: true }}
                         style={{ width: "140px", textAlign: "center" }}
                       />
-                    </CustomDataTable>
+                    </ResponsiveDataTable>
                   </div>
                 )}
 

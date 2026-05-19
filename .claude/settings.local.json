@@ -14,7 +14,12 @@
       "Bash(Select-Object Name, FullName)",
       "Bash(xargs grep -l \"dialog\\\\|modal\")",
       "Bash(Get-Content \"d:\\\\etms_30oct\\\\eTMS_UI\\\\src\\\\components\\\\css\\\\style.css\")",
-      "Bash(Measure-Object -Line)"
+      "Bash(Measure-Object -Line)",
+      "Bash(xargs grep -L \"import ResponsiveDataTable\")",
+      "Bash(npx eslint *)",
+      "Bash(cd /d \"d:\\\\etms_30oct\\\\eTMS_UI\")",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)"
     ]
   }
 }

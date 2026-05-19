@@ -20,6 +20,20 @@ import ReportButton from "./common/ReportButton";
 import Loader from "./common/Loader";
 import { toastService } from "../services/toastService";
 
+const DRIVER_STATUS_KEY = "driver_status_data";
+const STATUS_OPTIONS = [
+  { label: "Active", value: "Active" },
+  { label: "Bench", value: "Bench" },
+  { label: "Terminated", value: "Terminated" },
+];
+
+const DRIVER_DUTY_TYPE_KEY = "driver_duty_type_data";
+const DUTY_TYPE_OPTIONS = [
+  { label: "All Duty", value: "all-duty" },
+  { label: "No Duty", value: "no-duty" },
+  { label: "Day Duty", value: "day-duty" },
+];
+
 const DEFAULT_DRIVER_DOCUMENT_OPTIONS = [
   { name: "Aadhar Card", value: 8 },
   { name: "Address Proof", value: 9 },
@@ -71,6 +85,8 @@ const DriverMaster = () => {
   const op = useRef(null);
   const filterButtonRef = useRef(null);
 
+  const [driverStatus, setDriverStatus] = useState(null);
+  const [driverDutyType, setDriverDutyType] = useState(null);
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(10);
 
@@ -144,6 +160,36 @@ const DriverMaster = () => {
       )
     );
   }, [driverDetails, globalFilter]);
+
+  const loadDriverStatus = (driverId) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(DRIVER_STATUS_KEY) || "{}");
+      return data[String(driverId)] || null;
+    } catch { return null; }
+  };
+
+  const saveDriverStatus = (driverId, status) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(DRIVER_STATUS_KEY) || "{}");
+      data[String(driverId)] = status;
+      localStorage.setItem(DRIVER_STATUS_KEY, JSON.stringify(data));
+    } catch (err) { console.error("Failed to save driver status:", err); }
+  };
+
+  const loadDriverDutyType = (driverId) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(DRIVER_DUTY_TYPE_KEY) || "{}");
+      return data[String(driverId)] || null;
+    } catch { return null; }
+  };
+
+  const saveDriverDutyType = (driverId, dutyType) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(DRIVER_DUTY_TYPE_KEY) || "{}");
+      data[String(driverId)] = dutyType;
+      localStorage.setItem(DRIVER_DUTY_TYPE_KEY, JSON.stringify(data));
+    } catch (err) { console.error("Failed to save driver duty type:", err); }
+  };
 
   const fetchFacilities = () => {
     driverMasterService
@@ -417,6 +463,8 @@ const DriverMaster = () => {
       });
 
       setDriverDocs(loadDriverDocs(selectedDriver.DriverId));
+      setDriverStatus(loadDriverStatus(selectedDriver.DriverId));
+      setDriverDutyType(loadDriverDutyType(selectedDriver.DriverId));
       setUploadingDocIds({});
       setUploadProgressByDoc({});
       setActiveSidebarTab("details");
@@ -428,6 +476,8 @@ const DriverMaster = () => {
   const openAddSidebar = () => {
     setFormData(getInitialFormData());
     resetDriverDocumentState();
+    setDriverStatus(null);
+    setDriverDutyType(null);
     setEditingDriverId(null);
     setAddDriverMaster(true);
   };
@@ -515,6 +565,12 @@ const DriverMaster = () => {
         toastService.success(
           result.MSG || "Driver details saved successfully."
         );
+        if (formData.DriverId) {
+          saveDriverStatus(formData.DriverId, driverStatus);
+          saveDriverDutyType(formData.DriverId, driverDutyType);
+        }
+        setDriverStatus(null);
+        setDriverDutyType(null);
         setVisibleLeft(false);
         setAddDriverMaster(false);
         resetDriverDocumentState();
@@ -1115,8 +1171,33 @@ const DriverMaster = () => {
                     filter
                   />
                 </div>
-                <div className="field col-3 d-flex align-items-center">
-                  <div className="d-flex mt-3">
+                <div className="field col-3 mb-3">
+                  <label>Status</label>
+                  <Dropdown
+                    value={driverStatus}
+                    onChange={(e) => setDriverStatus(e.value)}
+                    options={STATUS_OPTIONS}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Status"
+                    className="w-100"
+                  />
+                </div>
+                <div className="field col-3 mb-3">
+                  <label>Duty Type</label>
+                  <Dropdown
+                    value={driverDutyType}
+                    onChange={(e) => setDriverDutyType(e.value)}
+                    options={DUTY_TYPE_OPTIONS}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Duty Type"
+                    className="w-100"
+                  />
+                </div>
+                <div className="field col-3 mb-3">
+                  <label>&nbsp;</label>
+                  <div className="d-flex align-items-center" style={{ height: "35px" }}>
                     <Checkbox
                       checked={formData.AadharVerification === 1}
                       onChange={() =>
@@ -1124,27 +1205,25 @@ const DriverMaster = () => {
                       }
                       inputId="AadharVerification"
                     />
-                    <label
-                      htmlFor="AadharVerification"
-                      className="ms-2"
-                    >
+                    <label htmlFor="AadharVerification" className="ms-2 mb-0">
                       Aadhar Verification
                     </label>
                   </div>
                 </div>
-                <div className="field col-3 d-flex align-items-center">
-                  <div className="d-flex mt-3">
+                <div className="field col-3 mb-3">
+                  <label>&nbsp;</label>
+                  <div className="d-flex align-items-center" style={{ height: "35px" }}>
                     <Checkbox
                       checked={formData.PVStatus === 1}
                       onChange={() => handleCheckboxChange("PVStatus")}
                       inputId="PVStatus"
                     />
-                    <label htmlFor="PVStatus" className="ms-2">
+                    <label htmlFor="PVStatus" className="ms-2 mb-0">
                       PV Status
                     </label>
                   </div>
                 </div>
-                <div className="field col-12 mb-3">
+                <div className="field col-6 mb-3">
                   <label>Remark</label>
                   <InputText
                     className="form-control"
@@ -1479,8 +1558,33 @@ const DriverMaster = () => {
                     filter
                   />
                 </div>
-                <div className="field col-3 d-flex align-items-center">
-                  <div className="d-flex mt-3">
+                <div className="field col-3 mb-3">
+                  <label>Status</label>
+                  <Dropdown
+                    value={driverStatus}
+                    onChange={(e) => setDriverStatus(e.value)}
+                    options={STATUS_OPTIONS}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Status"
+                    className="w-100"
+                  />
+                </div>
+                <div className="field col-3 mb-3">
+                  <label>Duty Type</label>
+                  <Dropdown
+                    value={driverDutyType}
+                    onChange={(e) => setDriverDutyType(e.value)}
+                    options={DUTY_TYPE_OPTIONS}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Duty Type"
+                    className="w-100"
+                  />
+                </div>
+                <div className="field col-3 mb-3">
+                  <label>&nbsp;</label>
+                  <div className="d-flex align-items-center" style={{ height: "35px" }}>
                     <Checkbox
                       checked={formData.AadharVerification === 1}
                       onChange={() =>
@@ -1488,27 +1592,25 @@ const DriverMaster = () => {
                       }
                       inputId="AadharVerification"
                     />
-                    <label
-                      htmlFor="AadharVerification"
-                      className="ms-2"
-                    >
+                    <label htmlFor="AadharVerification" className="ms-2 mb-0">
                       Aadhar Verification
                     </label>
                   </div>
                 </div>
-                <div className="field col-3 d-flex align-items-center">
-                  <div className="d-flex mt-3">
+                <div className="field col-3 mb-3">
+                  <label>&nbsp;</label>
+                  <div className="d-flex align-items-center" style={{ height: "35px" }}>
                     <Checkbox
                       checked={formData.PVStatus === 1}
                       onChange={() => handleCheckboxChange("PVStatus")}
                       inputId="PVStatus"
                     />
-                    <label htmlFor="PVStatus" className="ms-2">
+                    <label htmlFor="PVStatus" className="ms-2 mb-0">
                       PV Status
                     </label>
                   </div>
                 </div>
-                <div className="field col-12 mb-3">
+                <div className="field col-6 mb-3">
                   <label>Remark</label>
                   <InputText
                     className="form-control"

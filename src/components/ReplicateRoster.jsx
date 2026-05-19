@@ -4,6 +4,7 @@ import Sidebar from "./Master/SidebarMenu";
 import Loader from "./common/Loader";
 import ReportButton from "./common/ReportButton";
 import { CustomDataTable } from "./common/CustomDataTable";
+import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
@@ -334,17 +335,15 @@ const ReplicateRoster = () => {
                 {/* Statistics Table */}
                 {showStatsTable && (
                     <div className="card_tb p-3">
-                         <CustomDataTable
+                         <ResponsiveDataTable
                             value={statsData.slice(first, first + rows)}
-                            className="p-datatable-sm"
                             emptyMessage="No statistics available."
-                            rowClassName={(data, props) => props.rowIndex % 2 !== 0 ? "ota-row-odd" : ""}
                         >
-                            <Column field="SourceRoutes" header="Source Routes" sortable />
-                            <Column field="SourceEmp" header="Source Employees" sortable />
+                            <Column field="SourceRoutes" header="Source Routes" mobile={{ primary: true }} sortable />
+                            <Column field="SourceEmp" header="Source Employees" mobile={{ subtitle: true }} sortable />
                             <Column field="DelExceptionCount" header="Delete Exception" sortable />
                             <Column field="AddExceptionCount" header="Add Exception" sortable />
-                        </CustomDataTable>
+                        </ResponsiveDataTable>
                         <CustomPaginator
                             first={first}
                             rows={rows}
