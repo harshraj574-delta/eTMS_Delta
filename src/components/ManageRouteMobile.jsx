@@ -1036,13 +1036,36 @@ const ManageRouteMobile = ({
     }, [filters, onSearch]);
 
     const handleFinalizeRoute = useCallback(async () => {
+        // Cutoff validation: Pick Up = 4 h before shift, Drop = 1 h before shift
+        if (filters.shifts) {
+            const raw = String(filters.shifts).replace(":", "");
+            if (raw.length === 4) {
+                const shiftHH = parseInt(raw.slice(0, 2), 10);
+                const shiftMM = parseInt(raw.slice(2, 4), 10);
+                const now = new Date();
+                const shiftTime = filters.sDate ? new Date(filters.sDate) : new Date();
+                shiftTime.setHours(shiftHH, shiftMM, 0, 0);
+                const cutoffMs = filters.tripType === "P" ? 4 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000;
+                const cutoffTime = new Date(shiftTime.getTime() - cutoffMs);
+                if (now >= cutoffTime) {
+                    const tripLabel = filters.tripType === "P" ? "Pick Up" : "Drop";
+                    const cutoffLabel = filters.tripType === "P" ? "4 hours" : "1 hour";
+                    const shiftLabel = `${String(shiftHH).padStart(2, "0")}:${String(shiftMM).padStart(2, "0")}`;
+                    toastService.warn(
+                        `${tripLabel} routes must be finalized at least ${cutoffLabel} before shift time (${shiftLabel}). Finalization window has closed.`
+                    );
+                    return;
+                }
+            }
+        }
+
         const needsRecalculation = await checkIfRecalculationNeeded();
         if (needsRecalculation) {
             setShowRecalcBeforeFinalizeDialog(true);
             return;
         }
         await proceedWithFinalization();
-    }, [checkIfRecalculationNeeded, proceedWithFinalization]);
+    }, [checkIfRecalculationNeeded, proceedWithFinalization, filters.shifts, filters.tripType]);
 
     const handleRecalculateAndFinalize = useCallback(async () => {
         setIsRecalcBeforeFinalize(true);

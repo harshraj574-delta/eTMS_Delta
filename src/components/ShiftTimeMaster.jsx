@@ -20,6 +20,20 @@ import TableToolbar from "./common/TableToolbar";
 
 const userID = sessionManager.getUserSession().ID;
 
+const SHIFT_TRANSPORT_KEY = "shift_transport_type";
+
+const TRANSPORT_OPTIONS = [
+  { label: "Cab Only", value: "cab" },
+  { label: "Shuttle Only", value: "shuttle" },
+  { label: "Both", value: "both" },
+];
+
+const TRANSPORT_BADGE = {
+  cab:     { label: "Cab Only",     bg: "#dbeafe", color: "#1d4ed8" },
+  shuttle: { label: "Shuttle Only", bg: "#dcfce7", color: "#15803d" },
+  both:    { label: "Both",         bg: "#f3e8ff", color: "#7e22ce" },
+};
+
 const ShiftTimeMaster = () => {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [tripType] = useState([
@@ -55,6 +69,14 @@ const ShiftTimeMaster = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedShift, setSelectedShift] = useState(null);
   const [globalFilter, setGlobalFilter] = useState("");
+
+  const [transportTypes, setTransportTypes] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(SHIFT_TRANSPORT_KEY) || "{}"); }
+    catch { return {}; }
+  });
+  const [showTransportDialog, setShowTransportDialog] = useState(false);
+  const [selectedShiftForTransport, setSelectedShiftForTransport] = useState(null);
+  const [pendingTransportType, setPendingTransportType] = useState("cab");
 
   const [first, setFirst] = useState(0);
   const [pageRows, setPageRows] = useState(50);
@@ -103,7 +125,6 @@ const ShiftTimeMaster = () => {
   const filteredShiftData = useMemo(() => {
     let result = [...shiftData];
 
-    // Apply advanced filters
     Object.keys(filters).forEach((key) => {
       const val = filters[key];
       if (Array.isArray(val) && val.length > 0) {
@@ -111,14 +132,19 @@ const ShiftTimeMaster = () => {
       }
     });
 
-    if (!globalFilter) return result;
-    
-    return result.filter(item =>
-      Object.values(item).some(val =>
-        String(val).toLowerCase().includes(globalFilter.toLowerCase())
-      )
-    );
-  }, [shiftData, globalFilter, filters]);
+    if (globalFilter) {
+      result = result.filter(item =>
+        Object.values(item).some(val =>
+          String(val).toLowerCase().includes(globalFilter.toLowerCase())
+        )
+      );
+    }
+
+    return result.map(item => ({
+      ...item,
+      _transportType: transportTypes[String(item.Id)] || "cab",
+    }));
+  }, [shiftData, globalFilter, filters, transportTypes]);
 
   const clearAdvancedFilters = () => {
     setFilters({
@@ -440,6 +466,42 @@ const ShiftTimeMaster = () => {
     }
   };
 
+  const getTransportType = (shiftId) => transportTypes[String(shiftId)] || "cab";
+
+  const saveTransportType = (shiftId, type) => {
+    const updated = { ...transportTypes, [String(shiftId)]: type };
+    setTransportTypes(updated);
+    localStorage.setItem(SHIFT_TRANSPORT_KEY, JSON.stringify(updated));
+  };
+
+  const transportTypeBodyTemplate = (rowData) => {
+    const type = rowData._transportType || "cab";
+    const cfg = TRANSPORT_BADGE[type];
+    return (
+      <span
+        onClick={() => {
+          setSelectedShiftForTransport(rowData);
+          setPendingTransportType(getTransportType(rowData.Id));
+          setShowTransportDialog(true);
+        }}
+        style={{
+          background: cfg.bg,
+          color: cfg.color,
+          padding: "3px 12px",
+          borderRadius: "20px",
+          fontSize: "12px",
+          fontWeight: 600,
+          cursor: "pointer",
+          display: "inline-block",
+          border: `1px solid ${cfg.color}40`,
+          userSelect: "none",
+        }}
+      >
+        {cfg.label}
+      </span>
+    );
+  };
+
   const renderToolbar = () => {
     const activeFilterCount = Object.values(filters).filter(
       (f) => Array.isArray(f) && f.length > 0
@@ -592,24 +654,9 @@ const ShiftTimeMaster = () => {
                 <Column field="Type" header="Trip Type" />
                 <Column field="Day" header="Day Type" />
                 <Column
-                  header="Shuttle"
+                  header="Transport Type"
                   mobile={{ hidden: true }}
-                  body={() => (
-                    <span
-                      className="badge rounded-pill px-3 bg-danger"
-                      style={{
-                        height: '24px',
-                        minWidth: '60px',
-                        borderRadius: '28.95px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                      }}
-                    >
-                      NO
-                    </span>
-                  )}
+                  body={transportTypeBodyTemplate}
                 />
                 <Column
                   field="Active"
@@ -780,6 +827,33 @@ const ShiftTimeMaster = () => {
           } the shift for ${selectedShift?.shiftTime}?`}
           onConfirm={confirmStatusChange}
           isLoading={isLoading}
+        />
+
+        <AppConfirmDialog
+          visible={showTransportDialog}
+          onHide={() => setShowTransportDialog(false)}
+          title="Set Transport Type"
+          variant="info"
+          confirmLabel="Save"
+          message={
+            <div>
+              <p className="mb-3" style={{ fontSize: "13px", color: "#475569" }}>
+                Select the transport type for shift <strong>{selectedShiftForTransport?.shiftTime}</strong>:
+              </p>
+              <Dropdown
+                value={pendingTransportType}
+                options={TRANSPORT_OPTIONS}
+                onChange={(e) => setPendingTransportType(e.value)}
+                className="w-100"
+                placeholder="Select type"
+              />
+            </div>
+          }
+          onConfirm={() => {
+            saveTransportType(selectedShiftForTransport.Id, pendingTransportType);
+            setShowTransportDialog(false);
+            toastService.success(`Transport type updated to "${TRANSPORT_BADGE[pendingTransportType].label}"`);
+          }}
         />
       </div>
     </div>

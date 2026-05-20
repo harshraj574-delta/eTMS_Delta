@@ -469,6 +469,12 @@ const VendorAllocation = () => {
                     <Column field="totalStop" header="Total Stop" sortable />
                     <Column field="PlanVehicleType" header="Planned Vehicle" />
                     <Column
+                      field="totaldist"
+                      header="Distance (km)"
+                      sortable
+                      body={(rowData) => rowData.totaldist ? `${rowData.totaldist} km` : "-"}
+                    />
+                    <Column
                       field="vendor"
                       header="Vendor"
                       style={{ minWidth: "160px", maxWidth: "200px", width: "180px" }}

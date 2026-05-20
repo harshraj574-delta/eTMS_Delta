@@ -79,6 +79,8 @@ import RoutingConfig from "./components/RoutingConfig";
 import AdhocChange from "./components/AdhocChange";
 import HrImportExcel from "./components/HRImportExcel";
 import BCPMaster from "./components/BCPMaster";
+import ExportRoster from "./components/ExportRoster";
+import ExportRouteDetail from "./components/ExportRouteDetail";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -199,8 +201,8 @@ function App() {
         <Route path="/AdhocChange" element={<PrivateRoute element={<AdhocChange />} />} />
         <Route path="/EmpXlsDataUpload" element={<PrivateRoute element={<HrImportExcel />} />} />
         <Route path="/BCPMaster" element={<PrivateRoute element={<BCPMaster />} />} />
-
-
+        <Route path="/ExportRoster" element={<PrivateRoute element={<ExportRoster />} />} />
+        <Route path="/rptRouteDetail" element={<PrivateRoute element={<ExportRouteDetail />} />} />
 
 
         {/* <Route path="/EmpDump" element={<EmpDump />} /> */}

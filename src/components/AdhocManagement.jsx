@@ -14,6 +14,7 @@ import MasterSidebar from "./Master/MasterSidebar";
 import { Col } from "react-bootstrap";
 import { SelectButton } from "primereact/selectbutton";
 import AdhocmanagementService from "../services/compliance/AdhocmanagementService";
+import { apiService } from "../services/api";
 import { toastService } from "../services/toastService";
 import AppConfirmDialog from "./common/AppConfirmDialog";
 import Loader from "./common/Loader";
@@ -62,6 +63,7 @@ const AdhocManagement = () => {
   // Sidebar employee table pagination state
   const [sidebarFirst, setSidebarFirst] = useState(0);
   const [sidebarRows, setSidebarRows] = useState(10);
+  const [sidebarEmployeeSearch, setSidebarEmployeeSearch] = useState("");
   const [selectedReason, setSelectedReason] = useState(null);
 
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false);
@@ -434,6 +436,8 @@ const AdhocManagement = () => {
     setSelectedRequestType(null);
     setSelectedReason(null);
     setSelectedEmployees([]);
+    setSidebarEmployeeSearch("");
+    setSidebarFirst(0);
     fetchEmployeeData();
     setVisibleLeft(false);
   };
@@ -482,13 +486,34 @@ const AdhocManagement = () => {
       const response = await AdhocmanagementService.AddAdhocRequest(params);
       // Handle success
       if (response) {
-        // Show success message
         toastService.success("Adhoc request saved successfully");
         handleSidebarClose();
-        // Close the sidebar
         setVisibleLeft(false);
-        // Refresh the adhoc data
         fetchAdhocData();
+
+        // Send notification email
+        try {
+          let emailId = "";
+          try {
+            const persisted = JSON.parse(sessionStorage.getItem("session-storage") || "{}");
+            emailId = persisted?.state?.user?.EmailID || "";
+          } catch (_) {}
+
+          if (emailId) {
+            const employeeNames = selectedEmployees.map((e) => e.empName || e.employeeid).join(", ");
+            const facilityLabel = facilityData.find((f) => f.Id === selectedFacility)?.facilityName || selectedFacility;
+            const tripLabel = value === "Pick Up" ? "Pick Up" : "Drop";
+
+            await apiService.SendEmail({
+              ToEmail: emailId,
+              CcEmail: "",
+              Subject: "Adhoc Request Raised Successfully",
+              Body: `<font face="Calibri">Dear Transport User,<br><br>Your Adhoc request has been raised successfully with the following details:<br><br><b>Date:</b> ${selectedDate}<br><b>Trip Type:</b> ${tripLabel}<br><b>Shift:</b> ${selectedShift}<br><b>Facility:</b> ${facilityLabel}<br><b>Request Type:</b> ${selectedRequestType || "N/A"}<br><b>Employee(s):</b> ${employeeNames}<br><br>Please log in to your eTMS to check the status of your request.<br><br>Thanks.<br><br><br>****This is a system generated mail. Please do not reply to this mail, as the mail box is not monitored****</font>`,
+            });
+          }
+        } catch (mailErr) {
+          console.error("Failed to send adhoc notification email:", mailErr);
+        }
       }
     } catch (error) {
       console.error("Error saving adhoc request:", error);
@@ -607,6 +632,21 @@ const AdhocManagement = () => {
 
     return filtered;
   }, [adhocData, globalFilter, deferredAdhocFilter, filters]);
+
+  const filteredSidebarEmployees = useMemo(() => {
+    if (!employeeData) return [];
+    if (!sidebarEmployeeSearch.trim()) return employeeData;
+    const q = sidebarEmployeeSearch.toLowerCase();
+    return employeeData.filter((e) =>
+      Object.values(e).some(
+        (v) => v !== null && v !== undefined && String(v).toLowerCase().includes(q)
+      )
+    );
+  }, [employeeData, sidebarEmployeeSearch]);
+
+  useEffect(() => {
+    setSidebarFirst(0);
+  }, [sidebarEmployeeSearch]);
 
   const handleTabChange = (newTab) => {
     setAdhocFilter(newTab);
@@ -1056,8 +1096,29 @@ const AdhocManagement = () => {
               <div className="row">
                 <div className="col-12">
                   <div className="card_tb">
+                    <div className="d-flex justify-content-end align-items-center px-3 py-2" style={{ borderBottom: "1px solid #e9ecef" }}>
+                      <div style={{ position: "relative" }}>
+                        <InputText
+                          placeholder="Search employees"
+                          className="p-inputtext-sm"
+                          style={{ paddingRight: "2.5rem", width: "250px" }}
+                          value={sidebarEmployeeSearch}
+                          onChange={(e) => setSidebarEmployeeSearch(e.target.value)}
+                        />
+                        <i
+                          className="pi pi-search"
+                          style={{
+                            position: "absolute",
+                            right: "0.75rem",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            color: "#6c757d",
+                          }}
+                        />
+                      </div>
+                    </div>
                     <CustomDataTable
-                      value={employeeData ? employeeData.slice(sidebarFirst, sidebarFirst + sidebarRows) : []}
+                      value={filteredSidebarEmployees.slice(sidebarFirst, sidebarFirst + sidebarRows)}
                       selectionMode="multiple"
                       selection={selectedEmployees}
                       onSelectionChange={(e) =>
@@ -1110,7 +1171,7 @@ const AdhocManagement = () => {
                     <CustomPaginator
                       first={sidebarFirst}
                       rows={sidebarRows}
-                      totalRecords={employeeData ? employeeData.length : 0}
+                      totalRecords={filteredSidebarEmployees.length}
                       rowsPerPageOptions={[10, 25, 50, 100]}
                       onPageChange={(e) => {
                         setSidebarFirst(e.first);

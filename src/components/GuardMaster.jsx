@@ -25,13 +25,21 @@ import Loader from "./common/Loader";
 
 const GUARD_DOCS_STORAGE_KEY = "guard_docs";
 const GUARD_STATUS_KEY = "guard_status_data";
+const GUARD_BADGE_KEY = "guard_badge_data";
+const GUARD_DUTY_TYPE_KEY = "guard_duty_type_data";
 const GUARD_STATUS_OPTIONS = [
   { label: "Active", value: "Active" },
   { label: "Bench", value: "Bench" },
   { label: "Terminated", value: "Terminated" },
 ];
+const DUTY_TYPE_OPTIONS = [
+  { label: "All Duty", value: "all-duty" },
+  { label: "No Duty", value: "no-duty" },
+  { label: "Day Duty", value: "day-duty" },
+];
 const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
 const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
+const GUARD_PIC_STORAGE_KEY = "guard_picture_";
 
 const GuardMaster = () => {
   const [addGuardMaster, setAddGuardMaster] = useState(false);
@@ -53,6 +61,11 @@ const GuardMaster = () => {
   const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
   const [activeSidebarTab, setActiveSidebarTab] = useState("details");
   const [guardStatus, setGuardStatus] = useState(null);
+  const [guardDutyType, setGuardDutyType] = useState(null);
+  const [guardPicUrl, setGuardPicUrl] = useState(null);
+  const [picUploading, setPicUploading] = useState(false);
+  const [picUploadProgress, setPicUploadProgress] = useState(0);
+  const [guardPicMap, setGuardPicMap] = useState({});
 
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
@@ -60,6 +73,7 @@ const GuardMaster = () => {
   const [filteredGuardData, setFilteredGuardData] = useState([]);
   const op = useRef(null);
   const filterButtonRef = useRef(null);
+  const guardPicInputRef = useRef(null);
 
   const onPageChange = (event) => {
     setFirst(event.first);
@@ -74,12 +88,27 @@ const GuardMaster = () => {
     ));
   }, [GuardDetails, globalFilter]);
 
+  useEffect(() => {
+    if (!GuardDetails.length) return;
+    const map = {};
+    GuardDetails.forEach((g) => {
+      if (g.GuardID) {
+        const pic = localStorage.getItem(GUARD_PIC_STORAGE_KEY + g.GuardID);
+        if (pic) map[g.GuardID] = pic;
+      }
+    });
+    setGuardPicMap(map);
+  }, [GuardDetails]);
+
   // Open sidebar with employee data
   const openEditSidebar = (guardData) => {
-    setSelectedGuard(guardData);
+    const badge = loadGuardBadge(guardData.GuardID);
+    setSelectedGuard({ ...guardData, BadgeNo: badge.BadgeNo, BadgeExpDate: badge.BadgeExpDate });
     setVisibleLeft(true);
     loadGuardDocs(guardData);
     setGuardStatus(loadGuardStatus(guardData.GuardID));
+    setGuardDutyType(loadGuardDutyType(guardData.GuardID));
+    setGuardPicUrl(loadGuardPic(guardData.GuardID));
     setActiveSidebarTab("details");
   };
 const exportToExcel = () => {
@@ -120,7 +149,7 @@ const exportToExcel = () => {
   };
 
   // Fetch Guard details from API
-  const fetchGuardDetails = async (facilityid) => {
+  const fetchGuardDetails = async (facilityid, showSuccessToast = false) => {
     //console.log('FacID',facilityid);
 
     const params = {
@@ -138,6 +167,7 @@ const exportToExcel = () => {
 
         setGuardDetails(Array.isArray(respData) ? respData : []);
         setFirst(0); // Reset pagination on data fetch
+        if (showSuccessToast) toastService.success("Data refreshed successfully.");
       } catch (parseError) {
         console.error("Error parsing guard details:", parseError);
         setGuardDetails([]);
@@ -145,8 +175,7 @@ const exportToExcel = () => {
     } catch (error) {
       console.error("Error fetching guard details:", error?.message || error);
       setGuardDetails([]);
-      // You might want to add a toast notification here
-      // toast.error("Failed to fetch guard details. Please try again.");
+      toastService.error("Failed to fetch guard details.");
     }
   };
 
@@ -203,6 +232,8 @@ const exportToExcel = () => {
         GuardComID: selectedGuard.GuardComID,
         Designation: selectedGuard.Designation,
         AadharNo: selectedGuard.AadharNo,
+        BadgeNo: selectedGuard.BadgeNo || "",
+        BadgeExpDate: selectedGuard.BadgeExpDate || "",
         PVCStatus: selectedGuard.PVCStatus === "No" ? 0 : 1,
         VaccineName: "",
         FirstDoseDate: "",
@@ -215,8 +246,13 @@ const exportToExcel = () => {
 
       const response = await GuardMasterService.SaveGuard(params);
       toastService.success("Guard saved successfully.");
-      if (selectedGuard?.GuardID) saveGuardStatus(selectedGuard.GuardID, guardStatus);
+      if (selectedGuard?.GuardID) {
+        saveGuardStatus(selectedGuard.GuardID, guardStatus);
+        saveGuardDutyType(selectedGuard.GuardID, guardDutyType);
+        saveGuardBadge(selectedGuard.GuardID, selectedGuard.BadgeNo, selectedGuard.BadgeExpDate);
+      }
       setGuardStatus(null);
+      setGuardDutyType(null);
       setAddGuardMaster(false);
       setSelectedGuard(null);
       resetGuardDocsState();
@@ -266,12 +302,15 @@ const exportToExcel = () => {
       BarCodeIssueDate: null,
       ReleaseDate: null,
       AadharNo: "",
+      BadgeNo: "",
+      BadgeExpDate: null,
       PVCStatus: "No",
       status: "Y",
       Remarks: "",
     });
     resetGuardDocsState();
     setGuardStatus(null);
+    setGuardDutyType(null);
     setAddGuardMaster(true);
   };
 
@@ -323,6 +362,8 @@ const exportToExcel = () => {
         GuardComID: selectedGuard.GuardComID,
         Designation: selectedGuard.Designation,
         AadharNo: selectedGuard.AadharNo,
+        BadgeNo: selectedGuard.BadgeNo || "",
+        BadgeExpDate: selectedGuard.BadgeExpDate || "",
         PVCStatus: selectedGuard.PVCStatus == "No" ? 0 : 1,
         VaccineName: "",
         FirstDoseDate: "",
@@ -331,8 +372,13 @@ const exportToExcel = () => {
 
       const response = await GuardMasterService.UpdateGuard(params);
       toastService.success("Guard updated successfully.");
-      if (selectedGuard?.GuardID) saveGuardStatus(selectedGuard.GuardID, guardStatus);
+      if (selectedGuard?.GuardID) {
+        saveGuardStatus(selectedGuard.GuardID, guardStatus);
+        saveGuardDutyType(selectedGuard.GuardID, guardDutyType);
+        saveGuardBadge(selectedGuard.GuardID, selectedGuard.BadgeNo, selectedGuard.BadgeExpDate);
+      }
       setGuardStatus(null);
+      setGuardDutyType(null);
       setVisibleLeft(false);
       resetGuardDocsState();
 
@@ -444,8 +490,83 @@ const exportToExcel = () => {
     } catch (err) { console.error("Failed to save guard status:", err); }
   };
 
+  const loadGuardBadge = (guardId) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(GUARD_BADGE_KEY) || "{}");
+      return data[String(guardId)] || { BadgeNo: "", BadgeExpDate: null };
+    } catch { return { BadgeNo: "", BadgeExpDate: null }; }
+  };
+
+  const saveGuardBadge = (guardId, badgeNo, badgeExpDate) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(GUARD_BADGE_KEY) || "{}");
+      data[String(guardId)] = { BadgeNo: badgeNo || "", BadgeExpDate: badgeExpDate || null };
+      localStorage.setItem(GUARD_BADGE_KEY, JSON.stringify(data));
+    } catch (err) { console.error("Failed to save guard badge:", err); }
+  };
+
+  const loadGuardDutyType = (guardId) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(GUARD_DUTY_TYPE_KEY) || "{}");
+      return data[String(guardId)] || null;
+    } catch { return null; }
+  };
+
+  const saveGuardDutyType = (guardId, dutyType) => {
+    try {
+      const data = JSON.parse(localStorage.getItem(GUARD_DUTY_TYPE_KEY) || "{}");
+      data[String(guardId)] = dutyType;
+      localStorage.setItem(GUARD_DUTY_TYPE_KEY, JSON.stringify(data));
+    } catch (err) { console.error("Failed to save guard duty type:", err); }
+  };
+
+  const loadGuardPic = (guardId) => {
+    try { return localStorage.getItem(GUARD_PIC_STORAGE_KEY + guardId) || null; } catch { return null; }
+  };
+
+  const saveGuardPic = (guardId, url) => {
+    try {
+      if (url) localStorage.setItem(GUARD_PIC_STORAGE_KEY + guardId, url);
+      else localStorage.removeItem(GUARD_PIC_STORAGE_KEY + guardId);
+    } catch (err) { console.error("Failed to save guard picture:", err); }
+  };
+
+  const handleGuardPicUpload = async (file) => {
+    if (!file) return;
+    const guardId = selectedGuard?.GuardID?.trim();
+    if (!guardId) { toastService.warn("Please fill in the Guard ID before uploading a picture."); return; }
+    try {
+      setPicUploading(true);
+      setPicUploadProgress(0);
+      const url = await uploadToCloudinary(file, guardId, "profile", (progress) => setPicUploadProgress(progress));
+      setGuardPicUrl(url);
+      saveGuardPic(guardId, url);
+      setGuardPicMap((prev) => ({ ...prev, [guardId]: url }));
+      toastService.success("Profile picture uploaded successfully.");
+    } catch (error) {
+      console.error("Error uploading guard picture:", error);
+      toastService.error("Failed to upload profile picture.");
+    } finally {
+      setPicUploading(false);
+      setPicUploadProgress(0);
+    }
+  };
+
   const resetGuardDocsState = () => {
-    setGuardDocs({}); setUploadingDocIds({}); setUploadProgressByDoc({}); setActiveSidebarTab("details");
+    setGuardDocs({}); setUploadingDocIds({}); setUploadProgressByDoc({}); setGuardPicUrl(null); setActiveSidebarTab("details");
+  };
+
+  const getExpiryBadge = (dateVal) => {
+    if (!dateVal) return null;
+    const date = dateVal instanceof Date ? dateVal : new Date(dateVal);
+    if (isNaN(date) || date.getFullYear() <= 1900) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return { label: "Expired", color: "#B91C1C", dot: "#EF4444" };
+    if (diffDays <= 7) return { label: `${diffDays}d left`, color: "#92400E", dot: "#F59E0B" };
+    if (diffDays <= 15) return { label: `${diffDays}d left`, color: "#1E40AF", dot: "#3B82F6" };
+    return null;
   };
 
   const uploadedDocCount = documentDetails.filter((d) => guardDocs[d.value]).length;
@@ -567,14 +688,29 @@ const exportToExcel = () => {
                 showFilter={false}
                 search={globalFilter}
                 onSearch={(e) => { setGlobalFilter(e.target.value); setFirst(0); }}
+                onRefresh={() => { setGlobalFilter(""); fetchGuardDetails(selFacility?.Id || sessionManager.getUserSession().FacilityID, true); }}
                 onExport={exportToExcel}
                 filterButtonRef={filterButtonRef}
                 overlayRef={op}
               />
               <CustomDataTable
-                value={filteredGuardData.slice(first, first + rows)}
+                value={filteredGuardData.slice(first, first + rows).map((row) => ({ ...row, _picUrl: guardPicMap[row.GuardID] || null }))}
                 emptyMessage="No guard data available"
               >
+                <Column
+                  header="Photo"
+                  style={{ width: "60px" }}
+                  body={(rowData) => {
+                    const pic = rowData._picUrl || null;
+                    return pic ? (
+                      <img src={pic} alt={rowData.Name} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", border: "2px solid #e5e7eb" }} />
+                    ) : (
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #e5e7eb" }}>
+                        <i className="pi pi-user" style={{ fontSize: 14, color: "#9ca3af" }} />
+                      </div>
+                    );
+                  }}
+                />
                 <Column
                   sortable
                   field="GuardID"
@@ -624,7 +760,7 @@ const exportToExcel = () => {
       {/* Add Guard Sidebar */}
       <MasterSidebar
             show={addGuardMaster}
-            onClose={() => setAddGuardMaster(false)}
+            onClose={() => { setAddGuardMaster(false); setGuardPicUrl(null); }}
             title={
               <div className="w-100 d-flex justify-content-between align-items-center pe-4">
                 <span>Add Guard</span>
@@ -636,7 +772,7 @@ const exportToExcel = () => {
               {
                 label: "Cancel",
                 className: "btn btn-outline-secondary",
-                onClick: () => setAddGuardMaster(false)
+                onClick: () => { setAddGuardMaster(false); setGuardPicUrl(null); }
               },
               {
                 label: "Save",
@@ -649,6 +785,35 @@ const exportToExcel = () => {
               {renderSidebarTabs()}
               {activeSidebarTab === "details" && (
               <div className="row">
+                <div className="col-12 mb-4 d-flex flex-column align-items-center">
+                  <div style={{ position: "relative", display: "inline-block" }}>
+                    <div
+                      style={{ width: 90, height: 90, borderRadius: "50%", border: "2px solid #e5e7eb", overflow: "hidden", cursor: "pointer", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}
+                      onClick={() => !picUploading && guardPicInputRef.current?.click()}
+                    >
+                      {guardPicUrl ? (
+                        <img src={guardPicUrl} alt="Guard" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <i className="pi pi-user" style={{ fontSize: "2.2rem", color: "#9ca3af" }} />
+                      )}
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 28, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {picUploading ? <i className="pi pi-spin pi-spinner" style={{ color: "white", fontSize: 13 }} /> : <i className="pi pi-camera" style={{ color: "white", fontSize: 13 }} />}
+                      </div>
+                    </div>
+                    {guardPicUrl && !picUploading && (
+                      <button type="button"
+                        style={{ position: "absolute", top: -5, right: -5, width: 22, height: 22, borderRadius: "50%", border: "none", background: "#ef4444", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                        onClick={() => { const gid = selectedGuard?.GuardID; setGuardPicUrl(null); if (gid) { saveGuardPic(gid, null); setGuardPicMap((prev) => { const n = { ...prev }; delete n[gid]; return n; }); } }}
+                      >
+                        <i className="pi pi-times" style={{ fontSize: 10 }} />
+                      </button>
+                    )}
+                    <input ref={guardPicInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={(e) => { handleGuardPicUpload(e.target.files?.[0]); e.target.value = ""; }} />
+                  </div>
+                  {picUploading && <small style={{ color: "#6366f1", fontWeight: 600, marginTop: 6 }}>Uploading {picUploadProgress}%</small>}
+                  {!picUploading && <small style={{ color: "#9ca3af", marginTop: 6 }}>Click to {guardPicUrl ? "change" : "upload"} photo</small>}
+                </div>
                 <div className="col-12 mb-3">
                   <div className="d-flex flex-row justify-content-between align-items-center p-2 rounded" style={{ backgroundColor: "#eaeaff" }}>
                     <h6 className="text-primary m-0 ps-2 fs-6 fw-semibold">Basic Details</h6>
@@ -792,6 +957,36 @@ const exportToExcel = () => {
                   />
                 </div>
                 <div className="field col-6 mb-3">
+                  <label>Badge Number</label>
+                  <InputText
+                    className="form-control"
+                    name="BadgeNo"
+                    value={selectedGuard?.BadgeNo || ""}
+                    onChange={handleInputChange}
+                    placeholder="Badge Number"
+                  />
+                </div>
+                <div className="field col-6 mb-3">
+                  <label style={getExpiryBadge(selectedGuard?.BadgeExpDate) ? { color: getExpiryBadge(selectedGuard.BadgeExpDate).color, fontWeight: 600 } : {}}>
+                    Badge Expiry Date
+                  </label>
+                  <div style={getExpiryBadge(selectedGuard?.BadgeExpDate) ? { border: `1.5px solid ${getExpiryBadge(selectedGuard.BadgeExpDate).dot}`, borderRadius: "6px", overflow: "hidden" } : {}}>
+                    <Calendar
+                      className="w-100"
+                      name="BadgeExpDate"
+                      value={selectedGuard?.BadgeExpDate ? new Date(selectedGuard.BadgeExpDate) : null}
+                      onChange={(e) => setSelectedGuard((prev) => ({ ...prev, BadgeExpDate: e.value ? e.value.toISOString().split("T")[0] : null }))}
+                      dateFormat="dd/mm/yy"
+                      placeholder="Badge Expiry Date"
+                    />
+                  </div>
+                  {getExpiryBadge(selectedGuard?.BadgeExpDate) && (
+                    <small style={{ color: getExpiryBadge(selectedGuard.BadgeExpDate).color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
+                      ● {getExpiryBadge(selectedGuard.BadgeExpDate).label}
+                    </small>
+                  )}
+                </div>
+                <div className="field col-6 mb-3">
                   <label>PVC Status</label>
                   <Checkbox
                     checked={selectedGuard?.PVCStatus === "Y"}
@@ -816,6 +1011,18 @@ const exportToExcel = () => {
                     className="w-100"
                   />
                 </div>
+                <div className="field col-6 mb-3">
+                  <label>Duty Type</label>
+                  <Dropdown
+                    value={guardDutyType}
+                    onChange={(e) => setGuardDutyType(e.value)}
+                    options={DUTY_TYPE_OPTIONS}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Duty Type"
+                    className="w-100"
+                  />
+                </div>
                 <div className="field col-12 mb-3">
                   <label>Remarks</label>
                   <InputTextarea
@@ -837,7 +1044,7 @@ const exportToExcel = () => {
           {/* Edit Guard Sidebar */}
           <MasterSidebar
             show={visibleLeft}
-            onClose={() => setVisibleLeft(false)}
+            onClose={() => { setVisibleLeft(false); setGuardPicUrl(null); }}
             title={
               <div className="w-100 d-flex justify-content-between align-items-center pe-4">
                 <span>{selectedGuard?.Name || "Guard Details"} - {selectedGuard?.GuardID || ""}</span>
@@ -849,7 +1056,7 @@ const exportToExcel = () => {
               {
                 label: "Cancel",
                 className: "btn btn-outline-secondary",
-                onClick: () => setVisibleLeft(false)
+                onClick: () => { setVisibleLeft(false); setGuardPicUrl(null); }
               },
               {
                 label: "Update",
@@ -862,6 +1069,35 @@ const exportToExcel = () => {
               {renderSidebarTabs()}
               {activeSidebarTab === "details" && (
               <div className="row">
+                <div className="col-12 mb-4 d-flex flex-column align-items-center">
+                  <div style={{ position: "relative", display: "inline-block" }}>
+                    <div
+                      style={{ width: 90, height: 90, borderRadius: "50%", border: "2px solid #e5e7eb", overflow: "hidden", cursor: "pointer", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}
+                      onClick={() => !picUploading && guardPicInputRef.current?.click()}
+                    >
+                      {guardPicUrl ? (
+                        <img src={guardPicUrl} alt="Guard" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <i className="pi pi-user" style={{ fontSize: "2.2rem", color: "#9ca3af" }} />
+                      )}
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 28, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {picUploading ? <i className="pi pi-spin pi-spinner" style={{ color: "white", fontSize: 13 }} /> : <i className="pi pi-camera" style={{ color: "white", fontSize: 13 }} />}
+                      </div>
+                    </div>
+                    {guardPicUrl && !picUploading && (
+                      <button type="button"
+                        style={{ position: "absolute", top: -5, right: -5, width: 22, height: 22, borderRadius: "50%", border: "none", background: "#ef4444", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                        onClick={() => { const gid = selectedGuard?.GuardID; setGuardPicUrl(null); if (gid) { saveGuardPic(gid, null); setGuardPicMap((prev) => { const n = { ...prev }; delete n[gid]; return n; }); } }}
+                      >
+                        <i className="pi pi-times" style={{ fontSize: 10 }} />
+                      </button>
+                    )}
+                    <input ref={guardPicInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={(e) => { handleGuardPicUpload(e.target.files?.[0]); e.target.value = ""; }} />
+                  </div>
+                  {picUploading && <small style={{ color: "#6366f1", fontWeight: 600, marginTop: 6 }}>Uploading {picUploadProgress}%</small>}
+                  {!picUploading && <small style={{ color: "#9ca3af", marginTop: 6 }}>Click to {guardPicUrl ? "change" : "upload"} photo</small>}
+                </div>
                 <div className="col-12 mb-3">
                   <div className="d-flex flex-row justify-content-between align-items-center p-2 rounded" style={{ backgroundColor: "#eaeaff" }}>
                     <h6 className="text-primary m-0 ps-2 fs-6 fw-semibold">Guard Details</h6>
@@ -996,6 +1232,36 @@ const exportToExcel = () => {
                   />
                 </div>
                 <div className="field col-6 mb-3">
+                  <label>Badge Number</label>
+                  <InputText
+                    className="form-control"
+                    name="BadgeNo"
+                    value={selectedGuard?.BadgeNo || ""}
+                    onChange={handleInputChange}
+                    placeholder="Badge Number"
+                  />
+                </div>
+                <div className="field col-6 mb-3">
+                  <label style={getExpiryBadge(selectedGuard?.BadgeExpDate) ? { color: getExpiryBadge(selectedGuard.BadgeExpDate).color, fontWeight: 600 } : {}}>
+                    Badge Expiry Date
+                  </label>
+                  <div style={getExpiryBadge(selectedGuard?.BadgeExpDate) ? { border: `1.5px solid ${getExpiryBadge(selectedGuard.BadgeExpDate).dot}`, borderRadius: "6px", overflow: "hidden" } : {}}>
+                    <Calendar
+                      className="w-100"
+                      name="BadgeExpDate"
+                      value={selectedGuard?.BadgeExpDate ? new Date(selectedGuard.BadgeExpDate) : null}
+                      onChange={(e) => setSelectedGuard((prev) => ({ ...prev, BadgeExpDate: e.value ? e.value.toISOString().split("T")[0] : null }))}
+                      dateFormat="dd/mm/yy"
+                      placeholder="Badge Expiry Date"
+                    />
+                  </div>
+                  {getExpiryBadge(selectedGuard?.BadgeExpDate) && (
+                    <small style={{ color: getExpiryBadge(selectedGuard.BadgeExpDate).color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
+                      ● {getExpiryBadge(selectedGuard.BadgeExpDate).label}
+                    </small>
+                  )}
+                </div>
+                <div className="field col-6 mb-3">
                   <label>PVC Status</label>
                   <Checkbox
                     checked={selectedGuard?.PVCStatus === "Yes"}
@@ -1023,6 +1289,18 @@ const exportToExcel = () => {
                     optionLabel="label"
                     optionValue="value"
                     placeholder="Select Status"
+                    className="w-100"
+                  />
+                </div>
+                <div className="field col-6 mb-3">
+                  <label>Duty Type</label>
+                  <Dropdown
+                    value={guardDutyType}
+                    onChange={(e) => setGuardDutyType(e.value)}
+                    options={DUTY_TYPE_OPTIONS}
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Duty Type"
                     className="w-100"
                   />
                 </div>

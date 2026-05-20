@@ -47,6 +47,7 @@ const DRIVER_DOCS_STORAGE_KEY = "driver_docs";
 const CLOUDINARY_UPLOAD_URL =
   "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
 const CLOUDINARY_UPLOAD_PRESET = "hqudzekg";
+const DRIVER_PIC_STORAGE_KEY = "driver_picture_";
 
 const DriverMaster = () => {
   const [visibleLeft, setVisibleLeft] = useState(false);
@@ -66,6 +67,10 @@ const DriverMaster = () => {
   const [uploadingDocIds, setUploadingDocIds] = useState({});
   const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
   const [activeSidebarTab, setActiveSidebarTab] = useState("details");
+  const [driverPicUrl, setDriverPicUrl] = useState(null);
+  const [picUploading, setPicUploading] = useState(false);
+  const [picUploadProgress, setPicUploadProgress] = useState(0);
+  const [driverPicMap, setDriverPicMap] = useState({});
 
   // Selected Values
   const [selFacility, setSelFacility] = useState(null);
@@ -84,6 +89,7 @@ const DriverMaster = () => {
   const [filteredDriverData, setFilteredDriverData] = useState([]);
   const op = useRef(null);
   const filterButtonRef = useRef(null);
+  const driverPicInputRef = useRef(null);
 
   const [driverStatus, setDriverStatus] = useState(null);
   const [driverDutyType, setDriverDutyType] = useState(null);
@@ -161,6 +167,18 @@ const DriverMaster = () => {
     );
   }, [driverDetails, globalFilter]);
 
+  useEffect(() => {
+    if (!driverDetails.length) return;
+    const map = {};
+    driverDetails.forEach((d) => {
+      if (d.DriverId) {
+        const pic = localStorage.getItem(DRIVER_PIC_STORAGE_KEY + d.DriverId);
+        if (pic) map[d.DriverId] = pic;
+      }
+    });
+    setDriverPicMap(map);
+  }, [driverDetails]);
+
   const loadDriverStatus = (driverId) => {
     try {
       const data = JSON.parse(localStorage.getItem(DRIVER_STATUS_KEY) || "{}");
@@ -189,6 +207,17 @@ const DriverMaster = () => {
       data[String(driverId)] = dutyType;
       localStorage.setItem(DRIVER_DUTY_TYPE_KEY, JSON.stringify(data));
     } catch (err) { console.error("Failed to save driver duty type:", err); }
+  };
+
+  const loadDriverPic = (driverId) => {
+    try { return localStorage.getItem(DRIVER_PIC_STORAGE_KEY + driverId) || null; } catch { return null; }
+  };
+
+  const saveDriverPic = (driverId, url) => {
+    try {
+      if (url) localStorage.setItem(DRIVER_PIC_STORAGE_KEY + driverId, url);
+      else localStorage.removeItem(DRIVER_PIC_STORAGE_KEY + driverId);
+    } catch (err) { console.error("Failed to save driver picture:", err); }
   };
 
   const fetchFacilities = () => {
@@ -276,7 +305,29 @@ const DriverMaster = () => {
     setDriverDocs({});
     setUploadingDocIds({});
     setUploadProgressByDoc({});
+    setDriverPicUrl(null);
     setActiveSidebarTab("details");
+  };
+
+  const handleDriverPicUpload = async (file) => {
+    if (!file) return;
+    const driverId = formData.DriverId?.trim();
+    if (!driverId) { toastService.warn("Please enter the driver ID before uploading a picture."); return; }
+    try {
+      setPicUploading(true);
+      setPicUploadProgress(0);
+      const url = await uploadToCloudinary(file, driverId, "profile", (progress) => setPicUploadProgress(progress));
+      setDriverPicUrl(url);
+      saveDriverPic(driverId, url);
+      setDriverPicMap((prev) => ({ ...prev, [driverId]: url }));
+      toastService.success("Profile picture uploaded successfully.");
+    } catch (error) {
+      console.error("Error uploading driver picture:", error);
+      toastService.error("Failed to upload profile picture.");
+    } finally {
+      setPicUploading(false);
+      setPicUploadProgress(0);
+    }
   };
 
   const uploadToCloudinary = (file, driverId, docTypeId, onProgress) =>
@@ -387,7 +438,7 @@ const DriverMaster = () => {
   };
 
   // Fetch driver details from API
-  const fetchDriverDetails = async () => {
+  const fetchDriverDetails = async (showSuccessToast = false) => {
     // Validate dropdowns before calling API
     if (!selFacility) {
       toastService.error("Please select Facility");
@@ -412,6 +463,7 @@ const DriverMaster = () => {
       setDriverDetails(respData);
       setShowTable(true);
       setFirst(0);
+      if (showSuccessToast) toastService.success("Data refreshed successfully.");
     } catch (error) {
       console.log("Error", error);
       toastService.error("Failed to load driver details.");
@@ -468,6 +520,7 @@ const DriverMaster = () => {
       setUploadingDocIds({});
       setUploadProgressByDoc({});
       setActiveSidebarTab("details");
+      setDriverPicUrl(loadDriverPic(selectedDriver.DriverId));
       setEditingDriverId(driverId);
       setVisibleLeft(true);
     }
@@ -849,14 +902,14 @@ const DriverMaster = () => {
                   <TableToolbar
                     search={globalFilter}
                     onSearch={(e) => setGlobalFilter(e.target.value)}
-                    onRefresh={() => setGlobalFilter("")}
+                    onRefresh={() => { setGlobalFilter(""); fetchDriverDetails(true); }}
                     onExport={exportExcel}
                     showFilter={false}
                     overlayRef={op}
                     filterButtonRef={filterButtonRef}
                   />
                   <CustomDataTable
-                    value={filteredDriverData.slice(first, first + rows)}
+                    value={filteredDriverData.slice(first, first + rows).map((row) => ({ ...row, _picUrl: driverPicMap[row.DriverId] || null }))}
                     emptyMessage="No Records Found"
                     scrollable
                     sortField={sortField}
@@ -865,6 +918,20 @@ const DriverMaster = () => {
                     sortMode="single"
                     removableSort
                   >
+                    <Column
+                      header="Photo"
+                      style={{ width: "60px" }}
+                      body={(rowData) => {
+                        const pic = rowData._picUrl || null;
+                        return pic ? (
+                          <img src={pic} alt={rowData.DriverName} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", border: "2px solid #e5e7eb" }} />
+                        ) : (
+                          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #e5e7eb" }}>
+                            <i className="pi pi-user" style={{ fontSize: 14, color: "#9ca3af" }} />
+                          </div>
+                        );
+                      }}
+                    />
                     <Column
                       field="Id"
                       header="ID"
@@ -920,6 +987,7 @@ const DriverMaster = () => {
               setVisibleLeft(false);
               setDriverDocs({});
               setUploadingDocIds({});
+              setDriverPicUrl(null);
             }}
             title="Edit Driver Details"
             width="50%"
@@ -931,6 +999,7 @@ const DriverMaster = () => {
                   setVisibleLeft(false);
                   setDriverDocs({});
                   setUploadingDocIds({});
+                  setDriverPicUrl(null);
                 },
               },
               {
@@ -945,6 +1014,35 @@ const DriverMaster = () => {
               {renderSidebarTabs()}
               {activeSidebarTab === "details" && (
               <div className="row" >
+                <div className="col-12 mb-4 d-flex flex-column align-items-center">
+                  <div style={{ position: "relative", display: "inline-block" }}>
+                    <div
+                      style={{ width: 90, height: 90, borderRadius: "50%", border: "2px solid #e5e7eb", overflow: "hidden", cursor: "pointer", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}
+                      onClick={() => !picUploading && driverPicInputRef.current?.click()}
+                    >
+                      {driverPicUrl ? (
+                        <img src={driverPicUrl} alt="Driver" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <i className="pi pi-user" style={{ fontSize: "2.2rem", color: "#9ca3af" }} />
+                      )}
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 28, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {picUploading ? <i className="pi pi-spin pi-spinner" style={{ color: "white", fontSize: 13 }} /> : <i className="pi pi-camera" style={{ color: "white", fontSize: 13 }} />}
+                      </div>
+                    </div>
+                    {driverPicUrl && !picUploading && (
+                      <button type="button"
+                        style={{ position: "absolute", top: -5, right: -5, width: 22, height: 22, borderRadius: "50%", border: "none", background: "#ef4444", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                        onClick={() => { const did = formData.DriverId?.trim(); setDriverPicUrl(null); if (did) { saveDriverPic(did, null); setDriverPicMap((prev) => { const n = { ...prev }; delete n[did]; return n; }); } }}
+                      >
+                        <i className="pi pi-times" style={{ fontSize: 10 }} />
+                      </button>
+                    )}
+                    <input ref={driverPicInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={(e) => { handleDriverPicUpload(e.target.files?.[0]); e.target.value = ""; }} />
+                  </div>
+                  {picUploading && <small style={{ color: "#6366f1", fontWeight: 600, marginTop: 6 }}>Uploading {picUploadProgress}%</small>}
+                  {!picUploading && <small style={{ color: "#9ca3af", marginTop: 6 }}>Click to {driverPicUrl ? "change" : "upload"} photo</small>}
+                </div>
                 <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Personal Details</h6>
                 </div>
@@ -1023,17 +1121,6 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="field col-3 mb-3">
-                  <label>Marital Status</label>
-                  <InputText
-                    className="form-control"
-                    value={formData.MaritalStatus}
-                    onChange={(e) =>
-                      handleFormChange("MaritalStatus", e.target.value)
-                    }
-                    placeholder="Marital Status"
-                  />
-                </div>
-                <div className="field col-3 mb-3">
                   <label>Father's Name</label>
                   <InputText
                     className="form-control"
@@ -1042,17 +1129,6 @@ const DriverMaster = () => {
                       handleFormChange("FatherName", e.target.value)
                     }
                     placeholder="Father's Name"
-                  />
-                </div>
-                <div className="field col-3 mb-3">
-                  <label>Mother's Name</label>
-                  <InputText
-                    className="form-control"
-                    value={formData.MotherName}
-                    onChange={(e) =>
-                      handleFormChange("MotherName", e.target.value)
-                    }
-                    placeholder="Mother's Name"
                   />
                 </div>
 
@@ -1307,6 +1383,7 @@ const DriverMaster = () => {
               setAddDriverMaster(false);
               setDriverDocs({});
               setUploadingDocIds({});
+              setDriverPicUrl(null);
             }}
             title="Add Driver Details"
             width="50%"
@@ -1318,6 +1395,7 @@ const DriverMaster = () => {
                   setAddDriverMaster(false);
                   setDriverDocs({});
                   setUploadingDocIds({});
+                  setDriverPicUrl(null);
                 },
               },
               {
@@ -1332,6 +1410,35 @@ const DriverMaster = () => {
               {renderSidebarTabs()}
               {activeSidebarTab === "details" && (
               <div className="row">
+                <div className="col-12 mb-4 d-flex flex-column align-items-center">
+                  <div style={{ position: "relative", display: "inline-block" }}>
+                    <div
+                      style={{ width: 90, height: 90, borderRadius: "50%", border: "2px solid #e5e7eb", overflow: "hidden", cursor: "pointer", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}
+                      onClick={() => !picUploading && driverPicInputRef.current?.click()}
+                    >
+                      {driverPicUrl ? (
+                        <img src={driverPicUrl} alt="Driver" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <i className="pi pi-user" style={{ fontSize: "2.2rem", color: "#9ca3af" }} />
+                      )}
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 28, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {picUploading ? <i className="pi pi-spin pi-spinner" style={{ color: "white", fontSize: 13 }} /> : <i className="pi pi-camera" style={{ color: "white", fontSize: 13 }} />}
+                      </div>
+                    </div>
+                    {driverPicUrl && !picUploading && (
+                      <button type="button"
+                        style={{ position: "absolute", top: -5, right: -5, width: 22, height: 22, borderRadius: "50%", border: "none", background: "#ef4444", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                        onClick={() => { const did = formData.DriverId?.trim(); setDriverPicUrl(null); if (did) { saveDriverPic(did, null); setDriverPicMap((prev) => { const n = { ...prev }; delete n[did]; return n; }); } }}
+                      >
+                        <i className="pi pi-times" style={{ fontSize: 10 }} />
+                      </button>
+                    )}
+                    <input ref={driverPicInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                      onChange={(e) => { handleDriverPicUpload(e.target.files?.[0]); e.target.value = ""; }} />
+                  </div>
+                  {picUploading && <small style={{ color: "#6366f1", fontWeight: 600, marginTop: 6 }}>Uploading {picUploadProgress}%</small>}
+                  {!picUploading && <small style={{ color: "#9ca3af", marginTop: 6 }}>Click to {driverPicUrl ? "change" : "upload"} photo</small>}
+                </div>
                 <div className="col-12 mb-3">
                   <h6 className="sidebarSubTitle">Personal Details</h6>
                 </div>
@@ -1410,17 +1517,6 @@ const DriverMaster = () => {
                   />
                 </div>
                 <div className="field col-3 mb-3">
-                  <label>Marital Status</label>
-                  <InputText
-                    className="form-control"
-                    value={formData.MaritalStatus}
-                    onChange={(e) =>
-                      handleFormChange("MaritalStatus", e.target.value)
-                    }
-                    placeholder="Marital Status"
-                  />
-                </div>
-                <div className="field col-3 mb-3">
                   <label>Father's Name</label>
                   <InputText
                     className="form-control"
@@ -1429,17 +1525,6 @@ const DriverMaster = () => {
                       handleFormChange("FatherName", e.target.value)
                     }
                     placeholder="Father's Name"
-                  />
-                </div>
-                <div className="field col-3 mb-3">
-                  <label>Mother's Name</label>
-                  <InputText
-                    className="form-control"
-                    value={formData.MotherName}
-                    onChange={(e) =>
-                      handleFormChange("MotherName", e.target.value)
-                    }
-                    placeholder="Mother's Name"
                   />
                 </div>
 

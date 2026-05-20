@@ -789,56 +789,75 @@ const VehicleMaster = () => {
         </div>
     );
 
-    const renderVehicleDocumentCards = (vehicleData) => (
-        <div className="doc-tab-panel">
-            <div className="doc-tab-summary mb-3">
-                <span className="fw-semibold">Uploaded:</span>{" "}
-                <span style={{ color: "#6366f1", fontWeight: 700 }}>{uploadedDocCount}</span>
-                <span className="text-muted"> / {documentDetails.length} documents</span>
-            </div>
-            <div className="row g-3">
-                {documentDetails.map((doc) => {
-                    const url = vehicleDocs[doc.value];
-                    const isUploading = Boolean(uploadingDocIds[doc.value]);
-                    const progress = uploadProgressByDoc[doc.value] || 0;
-                    return (
-                        <div className="col-12 col-md-6" key={`vehicle-doc-${doc.value}`}>
-                            <div className="doc-upload-card">
-                                <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                    <div className="fw-semibold" style={{ fontSize: "14px" }}>{doc.name}</div>
-                                    <span className={`doc-status-badge ${isUploading ? "uploading" : url ? "uploaded" : "pending"}`}>
-                                        {isUploading ? "Uploading..." : url ? "Uploaded" : "Pending"}
-                                    </span>
-                                </div>
-                                <div className="small text-muted mb-2">PDF only</div>
-                                <input type="file" accept="application/pdf" className="form-control form-control-sm mb-2" disabled={isUploading}
-                                    onChange={(e) => { handleVehicleDocUpload(e.target.files?.[0], doc.value, vehicleData); e.target.value = ""; }} />
-                                {isUploading && (
-                                    <div className="mb-2">
-                                        <div className="doc-progress-track"><div className="doc-progress-fill" style={{ width: `${progress}%` }} /></div>
-                                        <div className="small mt-1" style={{ color: "#6366f1", fontWeight: 600, fontSize: "12px" }}>Uploading {progress}%</div>
+    const EV_EXEMPT_DOC_KEYWORDS = ["permit", "tax"];
+
+    const renderVehicleDocumentCards = (vehicleData, isElectric = false) => {
+        const visibleDocs = isElectric
+            ? documentDetails.filter(doc => !EV_EXEMPT_DOC_KEYWORDS.some(kw => doc.name.toLowerCase().includes(kw)))
+            : documentDetails;
+        const exemptDocs = isElectric
+            ? documentDetails.filter(doc => EV_EXEMPT_DOC_KEYWORDS.some(kw => doc.name.toLowerCase().includes(kw)))
+            : [];
+
+        return (
+            <div className="doc-tab-panel">
+                {isElectric && exemptDocs.length > 0 && (
+                    <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "10px 14px", display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+                        <i className="pi pi-bolt" style={{ color: "#3b82f6", fontSize: "16px" }} />
+                        <span style={{ color: "#1d4ed8", fontSize: "13px", fontWeight: 500 }}>
+                            <strong>{exemptDocs.map(d => d.name).join(" & ")}</strong> documents are not required for electric vehicles.
+                        </span>
+                    </div>
+                )}
+                <div className="doc-tab-summary mb-3">
+                    <span className="fw-semibold">Uploaded:</span>{" "}
+                    <span style={{ color: "#6366f1", fontWeight: 700 }}>{visibleDocs.filter(d => vehicleDocs[d.value]).length}</span>
+                    <span className="text-muted"> / {visibleDocs.length} documents</span>
+                </div>
+                <div className="row g-3">
+                    {visibleDocs.map((doc) => {
+                        const url = vehicleDocs[doc.value];
+                        const isUploading = Boolean(uploadingDocIds[doc.value]);
+                        const progress = uploadProgressByDoc[doc.value] || 0;
+                        return (
+                            <div className="col-12 col-md-6" key={`vehicle-doc-${doc.value}`}>
+                                <div className="doc-upload-card">
+                                    <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                        <div className="fw-semibold" style={{ fontSize: "14px" }}>{doc.name}</div>
+                                        <span className={`doc-status-badge ${isUploading ? "uploading" : url ? "uploaded" : "pending"}`}>
+                                            {isUploading ? "Uploading..." : url ? "Uploaded" : "Pending"}
+                                        </span>
                                     </div>
-                                )}
-                                <div className="d-flex gap-2 flex-wrap">
-                                    {url ? (
-                                        <>
-                                            <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm rounded-pill px-3">Preview</a>
-                                            <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => { window.open(url.replace('/upload/', '/upload/fl_attachment/'), '_blank'); }}>Download</button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button type="button" className="btn btn-outline-primary btn-sm rounded-pill px-3" disabled>Preview</button>
-                                            <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" disabled>Download</button>
-                                        </>
+                                    <div className="small text-muted mb-2">PDF only</div>
+                                    <input type="file" accept="application/pdf" className="form-control form-control-sm mb-2" disabled={isUploading}
+                                        onChange={(e) => { handleVehicleDocUpload(e.target.files?.[0], doc.value, vehicleData); e.target.value = ""; }} />
+                                    {isUploading && (
+                                        <div className="mb-2">
+                                            <div className="doc-progress-track"><div className="doc-progress-fill" style={{ width: `${progress}%` }} /></div>
+                                            <div className="small mt-1" style={{ color: "#6366f1", fontWeight: 600, fontSize: "12px" }}>Uploading {progress}%</div>
+                                        </div>
                                     )}
+                                    <div className="d-flex gap-2 flex-wrap">
+                                        {url ? (
+                                            <>
+                                                <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm rounded-pill px-3">Preview</a>
+                                                <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" onClick={() => { window.open(url.replace('/upload/', '/upload/fl_attachment/'), '_blank'); }}>Download</button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button type="button" className="btn btn-outline-primary btn-sm rounded-pill px-3" disabled>Preview</button>
+                                                <button type="button" className="btn btn-outline-secondary btn-sm rounded-pill px-3" disabled>Download</button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const InsertAddVehicle = async () => {
         setActiveSidebarTab("details");
@@ -1251,11 +1270,17 @@ const vehicleTypeId = vehicleTypeObj ? vehicleTypeObj.value : null;
 console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleTypeObj);    
 
     // 6️⃣ Update form
+    const fuelTypeObj = editFuelType.find(
+      (f) => f.name?.trim().toLowerCase() === rowData.FuleType?.trim().toLowerCase()
+    );
+    const fuelTypeId = fuelTypeObj ? fuelTypeObj.value : null;
+
     setEditVehicleFormData({
       ...rowData,
       FacilityId: facilityId,
       VendorId: vendorId,
       VehicleTypeId: vehicleTypeId,
+      FuleType: fuelTypeId,
       VehicleRegDate: rowData.VehicleRegDate
         ? new Date(rowData.VehicleRegDate)
         : null,
@@ -1535,34 +1560,54 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         <Calendar className="w-100 custom-calendar-input" placeholder="Insurance Expiry Date" value={vehicleFormData.InsuranceExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, InsuranceExpiryDate: e.value })} appendTo="self" />
                                     </div>
                                 </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Permit Expiry Date</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="Permit Expiry Date" value={vehicleFormData.PermitExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PermitExpiryDate: e.value })} appendTo="self" />
-                                    </div>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Fitness Expiry</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="Fitness Expiry Date" value={vehicleFormData.FitnessExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FitnessExpiryDate: e.value })} appendTo="self" />
-                                    </div>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>Tax Expiry</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="Tax Expiry Date" value={vehicleFormData.TaxExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, TaxExpiryDate: e.value })} appendTo="self" />
-                                    </div>
-                                </div>
-                                <div className="field col-4 mb-3">
-                                    <label>PUC Expiry</label>
-                                    <div className="custom-calendar-wrapper">
-                                        <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                        <Calendar className="w-100 custom-calendar-input" placeholder="PUC Expiry Date" value={vehicleFormData.PUCExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PUCExpiryDate: e.value })} appendTo="self" />
-                                    </div>
-                                </div>
+                                {(() => {
+                                    const isAddElectric = fuelType.some(f => f.value === vehicleFormData.FuleType && f.name?.trim().toLowerCase() === "electric");
+                                    return (
+                                        <>
+                                            {!isAddElectric ? (
+                                                <>
+                                                    <div className="field col-4 mb-3">
+                                                        <label>Permit Expiry Date</label>
+                                                        <div className="custom-calendar-wrapper">
+                                                            <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                                            <Calendar className="w-100 custom-calendar-input" placeholder="Permit Expiry Date" value={vehicleFormData.PermitExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PermitExpiryDate: e.value })} appendTo="self" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="field col-4 mb-3">
+                                                        <label>Fitness Expiry</label>
+                                                        <div className="custom-calendar-wrapper">
+                                                            <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                                            <Calendar className="w-100 custom-calendar-input" placeholder="Fitness Expiry Date" value={vehicleFormData.FitnessExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, FitnessExpiryDate: e.value })} appendTo="self" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="field col-4 mb-3">
+                                                        <label>Tax Expiry</label>
+                                                        <div className="custom-calendar-wrapper">
+                                                            <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                                            <Calendar className="w-100 custom-calendar-input" placeholder="Tax Expiry Date" value={vehicleFormData.TaxExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, TaxExpiryDate: e.value })} appendTo="self" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="field col-4 mb-3">
+                                                        <label>PUC Expiry</label>
+                                                        <div className="custom-calendar-wrapper">
+                                                            <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                                            <Calendar className="w-100 custom-calendar-input" placeholder="PUC Expiry Date" value={vehicleFormData.PUCExpiryDate} onChange={(e) => setVehicleFormData({ ...vehicleFormData, PUCExpiryDate: e.value })} appendTo="self" />
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="col-12 mb-3">
+                                                    <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "10px 14px", display: "flex", alignItems: "center", gap: "10px" }}>
+                                                        <i className="pi pi-bolt" style={{ color: "#3b82f6", fontSize: "16px" }} />
+                                                        <span style={{ color: "#1d4ed8", fontSize: "13px", fontWeight: 500 }}>
+                                                            Electric vehicles are exempt from <strong>Permit, PUC &amp; Tax</strong> requirements.
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                                 <div className="field col-4 mb-3">
                                     <label>Cab Induction</label>
                                     <div className="custom-calendar-wrapper">
@@ -1660,7 +1705,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
 
                             </div>
                     )}
-                    {activeSidebarTab === "documents" && renderVehicleDocumentCards(vehicleFormData)}
+                    {activeSidebarTab === "documents" && renderVehicleDocumentCards(vehicleFormData, fuelType.some(f => f.value === vehicleFormData.FuleType && f.name?.trim().toLowerCase() === "electric"))}
                         </div>
             </MasterSidebar>
 
@@ -1895,38 +1940,57 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
                                         onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, InsuranceCompanyName: e.target.value })}
                                     />
                                 </div>
-                                {[
-                                    { label: "Insurance Expiry", field: "InsuranceExpiryDate", placeholder: "Insurance Expiry Date" },
-                                    { label: "Permit Expiry Date", field: "PermitExpiryDate", placeholder: "Permit Expiry Date" },
-                                    { label: "Fitness Expiry", field: "FitnessExpiryDate", placeholder: "Fitness Expiry Date" },
-                                    { label: "Tax Expiry", field: "TaxExpiryDate", placeholder: "Tax Expiry Date" },
-                                    { label: "PUC Expiry", field: "PUCExpiryDate", placeholder: "PUC Expiry Date" },
-                                    { label: "Cab Expiry", field: "CabExpiryDate", placeholder: "Cab Expiry Date" },
-                                ].map(({ label, field, placeholder }) => {
-                                    const status = getExpiryBadge(editVehicleFormData[field]);
+                                {(() => {
+                                    const isEditElectric = editFuelType.some(f => f.value === editVehicleFormData.FuleType && f.name?.trim().toLowerCase() === "electric");
+                                    const EV_EXEMPT_FIELDS = ["PermitExpiryDate", "TaxExpiryDate", "PUCExpiryDate"];
+                                    const dateFields = [
+                                        { label: "Insurance Expiry", field: "InsuranceExpiryDate", placeholder: "Insurance Expiry Date" },
+                                        { label: "Permit Expiry Date", field: "PermitExpiryDate", placeholder: "Permit Expiry Date" },
+                                        { label: "Fitness Expiry", field: "FitnessExpiryDate", placeholder: "Fitness Expiry Date" },
+                                        { label: "Tax Expiry", field: "TaxExpiryDate", placeholder: "Tax Expiry Date" },
+                                        { label: "PUC Expiry", field: "PUCExpiryDate", placeholder: "PUC Expiry Date" },
+                                        { label: "Cab Expiry", field: "CabExpiryDate", placeholder: "Cab Expiry Date" },
+                                    ].filter(({ field }) => !isEditElectric || !EV_EXEMPT_FIELDS.includes(field));
                                     return (
-                                        <div key={field} className="field col-4 mb-3">
-                                            <label style={status ? { color: status.color, fontWeight: 600 } : {}}>
-                                                {label}
-                                            </label>
-                                            <div className="custom-calendar-wrapper" style={status ? { border: `1.5px solid ${status.dot}`, borderRadius: "6px" } : {}}>
-                                                <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
-                                                <Calendar
-                                                    className="w-100 custom-calendar-input"
-                                                    placeholder={placeholder}
-                                                    value={editVehicleFormData[field]}
-                                                    onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, [field]: e.value })}
-                                                    appendTo="self"
-                                                />
-                                            </div>
-                                            {status && (
-                                                <small style={{ color: status.color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
-                                                    ● {status.label}
-                                                </small>
+                                        <>
+                                            {isEditElectric && (
+                                                <div className="col-12 mb-3">
+                                                    <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "10px 14px", display: "flex", alignItems: "center", gap: "10px" }}>
+                                                        <i className="pi pi-bolt" style={{ color: "#3b82f6", fontSize: "16px" }} />
+                                                        <span style={{ color: "#1d4ed8", fontSize: "13px", fontWeight: 500 }}>
+                                                            Electric vehicles are exempt from <strong>Permit, PUC &amp; Tax</strong> requirements.
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             )}
-                                        </div>
+                                            {dateFields.map(({ label, field, placeholder }) => {
+                                                const status = getExpiryBadge(editVehicleFormData[field]);
+                                                return (
+                                                    <div key={field} className="field col-4 mb-3">
+                                                        <label style={status ? { color: status.color, fontWeight: 600 } : {}}>
+                                                            {label}
+                                                        </label>
+                                                        <div className="custom-calendar-wrapper" style={status ? { border: `1.5px solid ${status.dot}`, borderRadius: "6px" } : {}}>
+                                                            <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+                                                            <Calendar
+                                                                className="w-100 custom-calendar-input"
+                                                                placeholder={placeholder}
+                                                                value={editVehicleFormData[field]}
+                                                                onChange={(e) => setEditVehicleFormData({ ...editVehicleFormData, [field]: e.value })}
+                                                                appendTo="self"
+                                                            />
+                                                        </div>
+                                                        {status && (
+                                                            <small style={{ color: status.color, fontWeight: 600, fontSize: "11px", marginTop: "3px", display: "block" }}>
+                                                                ● {status.label}
+                                                            </small>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </>
                                     );
-                                })}
+                                })()}
                                 <div className="field col-4 mb-3">
                                     <label>Cab Induction</label>
                                     <div className="custom-calendar-wrapper">
@@ -2072,7 +2136,7 @@ console.log("Derived VehicleTypeId:", vehicleTypeId, "vehicleTypeObj:", vehicleT
 
                             </div>
                     )}
-                    {activeSidebarTab === "documents" && renderVehicleDocumentCards(editVehicleFormData)}
+                    {activeSidebarTab === "documents" && renderVehicleDocumentCards(editVehicleFormData, editFuelType.some(f => f.value === editVehicleFormData.FuleType && f.name?.trim().toLowerCase() === "electric"))}
                         </div>
             </MasterSidebar>
         </>
