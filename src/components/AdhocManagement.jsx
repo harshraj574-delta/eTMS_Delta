@@ -936,8 +936,22 @@ const AdhocManagement = () => {
                 rowClassName={(data, props) => props.rowIndex % 2 !== 0 ? "ota-row-odd" : ""}
               >
                 <Column sortable field="adhocid" header="Adhoc ID"   mobile={{ hidden: true }} />
-                <Column field="empCode"      header="Employee ID"    mobile={{ subtitle: true }} />
-                <Column field="empName"      header="Employee"       mobile={{ primary: true }} />
+                <Column
+                  header="Employee"
+                  mobile={{ primary: true }}
+                  body={(r) => {
+                    const g = r.gender?.toString().trim().toUpperCase();
+                    const isMale = g === "M" || g === "MALE";
+                    const isFemale = g === "F" || g === "FEMALE";
+                    return (
+                      <div className="d-flex align-items-center gap-2">
+                        <span>{r.empCode ? `${r.empCode} - ${r.empName}` : r.empName}</span>
+                        {isMale && <span className="badge bg-primary-subtle rounded-pill text-dark">M</span>}
+                        {isFemale && <span className="badge bg-danger-subtle rounded-pill text-dark">F</span>}
+                      </div>
+                    );
+                  }}
+                />
                 <Column field="AdhocDate"    header="Shift Date"     body={(r) => new Date(r.AdhocDate).toLocaleDateString()} />
                 <Column field="ShiftTime"    header="Shift" />
                 <Column field="TripType"     header="Trip"           body={(r) => <TripTypeBadge type={r.TripType} />} />
@@ -1161,7 +1175,21 @@ const AdhocManagement = () => {
                           </div>
                         )}
                       ></Column>
-                      <Column field="empName" header="Employee"></Column>
+                      <Column
+                        header="Employee"
+                        body={(rowData) => {
+                          const g = rowData.gender?.toString().trim().toUpperCase();
+                          const isMale = g === "M" || g === "MALE";
+                          const isFemale = g === "F" || g === "FEMALE";
+                          return (
+                            <div className="d-flex align-items-center gap-2">
+                              <span>{rowData.empName}</span>
+                              {isMale && <span className="badge bg-primary-subtle rounded-pill text-dark">M</span>}
+                              {isFemale && <span className="badge bg-danger-subtle rounded-pill text-dark">F</span>}
+                            </div>
+                          );
+                        }}
+                      ></Column>
                       <Column field="processName" header="Project"></Column>
                       <Column
                         field="facilityName"

@@ -561,6 +561,77 @@ const HelpDesk = () => {
             setLoading(false);
         }
     };
+
+    const handleRowSave = async (rowData) => {
+        if (!rowData) {
+            toastService.warn("No row selected for saving");
+            return;
+        }
+
+        setLoading(true);
+        setLoadingRows((prev) => ({ ...prev, [rowData.RouteID || rowData.id || "row"]: true }));
+
+        try {
+            let updated = false;
+
+            const vehiclePayload = {
+                RouteID: rowData.RouteID || "",
+                VehicleNo: rowData.VehicleNo || rowData.vehicleNo || "",
+                Remark: rowData.remark || rowData.Remark || "",
+                Driver: rowData.DriverName || rowData.Driver || rowData.driverName || "",
+                DriverContact: rowData.DriverContact || rowData.drivercontact || "",
+                DelayReason: rowData.DelayReason || "",
+                UpdateBy: UserId || ""
+            };
+
+            if (vehiclePayload.RouteID && vehiclePayload.VehicleNo) {
+                await HelpDeskService.sprUpdateVehicleRemark(vehiclePayload);
+                updated = true;
+            }
+
+            const employeeId = rowData.EmployeeID || rowData.id || rowData.ID;
+            if (employeeId) {
+                const trackingPayload = {
+                    RouteID: rowData.RouteID || "",
+                    EmployeeID: employeeId,
+                    ActTripStartDate: formattedDate ? new Date(formattedDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+                    TrackingAction: rowData.trackingStatus || rowData.TripStatus || "",
+                    ActETAhh: rowData.ActETAhh || "",
+                    ActETAmm: rowData.ActETAmm || "",
+                    TrackingRemark: rowData.remark || rowData.Remark || "",
+                    UpdateBy: UserId || ""
+                };
+                await HelpDeskService.UpdateTrackingStatus(trackingPayload);
+                updated = true;
+            }
+
+            if (!updated) {
+                toastService.warn("Nothing to update for this row");
+                return;
+            }
+
+            setRouteList((prev) =>
+                prev.map((item) =>
+                    item.RouteID === rowData.RouteID
+                        ? { ...item, ...rowData }
+                        : item
+                )
+            );
+
+            toastService.success("Row updated successfully");
+        } catch (error) {
+            console.error("Error saving row:", error);
+            toastService.error("Error while saving row: " + (error?.response?.data?.message || error.message));
+        } finally {
+            setLoading(false);
+            setLoadingRows((prev) => {
+                const next = { ...prev };
+                delete next[rowData.RouteID || rowData.id || "row"];
+                return next;
+            });
+        }
+    };
+
     const handleTabChange = (value) => {
         setActiveTab(value);
         // Employee → Route
@@ -642,6 +713,57 @@ const HelpDesk = () => {
             setLoadingRoutes({ ...loadingRoutes, [routeId]: false });
         }
     };
+
+    const handleExpandedRouteCancel = (routeId) => {
+        setExpandedRoutes(expandedRoutes.filter((r) => r.RouteID !== routeId));
+    };
+
+    const handleSaveExpandedRouteDetails = async (routeId) => {
+        const employeeDetails = routeEmployeeDetailsMap[routeId] || [];
+        if (employeeDetails.length === 0) {
+            toastService.warn("No employee details to save.");
+            return;
+        }
+
+        const missingStatusRows = employeeDetails.filter((row) => !row.trackingStatus);
+        if (missingStatusRows.length > 0) {
+            toastService.warn("Please select action for all employees.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const promises = employeeDetails.map((row) => {
+                const hh = parseInt(row.ActETAhh, 10) || "";
+                const mm = parseInt(row.ActETAmm, 10) || "";
+                return HelpDeskService.UpdateTrackingStatus({
+                    RouteID: routeId,
+                    EmployeeID:
+                        row.id ||
+                        row.ID ||
+                        row.EmployeeID ||
+                        row.employeeID ||
+                        row.EmpID ||
+                        row.EmpCode ||
+                        "",
+                    ActTripStartDate: formattedDate,
+                    TrackingAction: row.trackingStatus || "",
+                    ActETAhh: hh,
+                    ActETAmm: mm,
+                    TrackingRemark: row.remark || row.Remark || row.TripRemark || "",
+                    UpdateBy: UserId || ""
+                });
+            });
+            await Promise.all(promises);
+            toastService.success("Route details updated successfully.");
+        } catch (error) {
+            console.error("Error saving expanded route details:", error);
+            toastService.error("Error while saving route employee details.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleRouteSubmit = async () => {
         try {
             if (!routeDate || !selectedFacility || !tripType || !selectedShiftTime) {
@@ -1235,126 +1357,148 @@ const HelpDesk = () => {
                                                         {loading ? (
                                                             <div className="text-center p-2">Loading employee details...</div>
                                                         ) : empDetails.length > 0 ? (
-                                                            <div style={{ overflowX: "auto" }}>
-                                                                <table className="table table-sm mb-0" style={{ width: "100%" }}>
-                                                                    <thead>
-                                                                        <tr style={{ backgroundColor: "#e9ecef" }}>
-                                                                            <th>Stop No</th>
-                                                                            <th>Employee Detail</th>
-                                                                            <th>Address</th>
-                                                                            <th>Location</th>
-                                                                            <th>Mobile</th>
-                                                                            <th>Shift</th>
-                                                                            <th>ETA</th>
-                                                                            <th>Action</th>
-                                                                            <th>Time(HH:MM)</th>
-                                                                            <th>Remark</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {empDetails.map((emp, idx) => (
-                                                                            <tr key={idx}>
-                                                                                <td>{emp.stopNo || emp.StopNo || "-"}</td>
-                                                                                <td>
-                                                                                    <div>
-                                                                                        <strong>{emp.empCode || emp.EmpCode || "-"}</strong>
-                                                                                        <br />
-                                                                                        <span>{emp.empName || emp.EmpName || "-"}</span>
-                                                                                    </div>
-                                                                                </td>
-                                                                                <td style={{ maxWidth: "150px" }}>
-                                                                                    {emp.address || emp.Address || "-"}
-                                                                                </td>
-                                                                                <td>{emp.location || emp.Location || "-"}</td>
-                                                                                <td>{emp.mobile || emp.Mobile || emp.helpdeskMobile || "-"}</td>
-                                                                                <td>{emp.shift || emp.Shift || "-"}</td>
-                                                                                <td>{emp.eta || emp.ETA || emp.PickUpTime || "-"}</td>
-                                                                                <td>
-                                                                                    <Dropdown
-                                                                                        placeholder="Select"
-                                                                                        className="w-100"
-                                                                                        value={emp.trackingStatus || ""}
-                                                                                        options={actionOptions}
-                                                                                        optionLabel="label"
-                                                                                        optionValue="value"
-                                                                                        onChange={(e) => {
-                                                                                            const updatedEmpDetails = [...empDetails];
-                                                                                            updatedEmpDetails[idx] = {
-                                                                                                ...updatedEmpDetails[idx],
-                                                                                                trackingStatus: e.value
-                                                                                            };
-                                                                                            setRouteEmployeeDetailsMap({
-                                                                                                ...routeEmployeeDetailsMap,
-                                                                                                [routeId]: updatedEmpDetails
-                                                                                            });
-                                                                                        }}
-                                                                                    />
-                                                                                </td>
-                                                                                <td style={{ minWidth: "120px" }}>
-                                                                                    <div className="d-flex align-items-center gap-1">
-                                                                                        <InputText
-                                                                                            placeholder="HH"
-                                                                                            className="form-control text-center"
-                                                                                            value={emp.ActETAhh ?? ""}
-                                                                                            style={{ width: "50px", padding: "5px" }}
-                                                                                            maxLength={2}
-                                                                                            onChange={(e) => {
-                                                                                                let value = e.target.value.replace(/\D/g, "");
-
-                                                                                                setRouteEmployeeDetailsMap((prev) => {
-                                                                                                    const updated = { ...prev };
-                                                                                                    updated[rowData.RouteID] = updated[rowData.RouteID].map((item, i) =>
-                                                                                                        i === idx ? { ...item, ActETAhh: value } : item
-                                                                                                    );
-                                                                                                    return updated;
-                                                                                                });
-                                                                                            }}
-                                                                                        />
-
-                                                                                        <span>:</span>
-
-                                                                                        <InputText
-                                                                                            placeholder="MM"
-                                                                                            className="form-control text-center"
-                                                                                            value={emp.ActETAmm ?? ""}
-                                                                                            style={{ width: "50px", padding: "5px" }}
-                                                                                            maxLength={2}
-                                                                                            onChange={(e) => {
-                                                                                                let value = e.target.value.replace(/\D/g, "");
-
-                                                                                                setRouteEmployeeDetailsMap((prev) => {
-                                                                                                    const updated = { ...prev };
-                                                                                                    updated[rowData.RouteID] = updated[rowData.RouteID].map((item, i) =>
-                                                                                                        i === idx ? { ...item, ActETAmm: value } : item
-                                                                                                    );
-                                                                                                    return updated;
-                                                                                                });
-                                                                                            }}
-                                                                                        />
-                                                                                    </div>
-                                                                                </td>
-                                                                                <td>
-                                                                                    <InputText
-                                                                                        value={emp.remark || emp.Remark || emp.TripRemark || ""}
-                                                                                        onChange={(e) => {
-                                                                                            const updatedEmpDetails = [...empDetails];
-                                                                                            updatedEmpDetails[idx] = {
-                                                                                                ...updatedEmpDetails[idx],
-                                                                                                remark: e.target.value
-                                                                                            };
-                                                                                            setRouteEmployeeDetailsMap({
-                                                                                                ...routeEmployeeDetailsMap,
-                                                                                                [routeId]: updatedEmpDetails
-                                                                                            });
-                                                                                        }}
-                                                                                        className="form-control"
-                                                                                    />
-                                                                                </td>
+                                                            <>
+                                                                <div style={{ overflowX: "auto" }}>
+                                                                    <table className="table table-sm mb-0" style={{ width: "100%", tableLayout: "fixed" }}>
+                                                                        <thead>
+                                                                            <tr style={{ backgroundColor: "#e9ecef" }}>
+                                                                                <th>Stop No</th>
+                                                                                <th>Employee Detail</th>
+                                                                                <th>Address</th>
+                                                                                <th>Location</th>
+                                                                                <th>Mobile</th>
+                                                                                <th>Shift</th>
+                                                                                <th>ETA</th>
+                                                                                <th>Action</th>
+                                                                                <th>Time(HH:MM)</th>
+                                                                                <th>Remark</th>
                                                                             </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {empDetails.map((emp, idx) => (
+                                                                                <tr key={idx}>
+                                                                                    <td style={{ width: "80px" }}>{emp.stopNo || emp.StopNo || "-"}</td>
+                                                                                    <td style={{ width: "170px", whiteSpace: "normal", wordBreak: "break-word" }}>
+                                                                                        <div>
+                                                                                            <strong>{emp.empCode || emp.EmpCode || "-"}</strong>
+                                                                                            <br />
+                                                                                            <span>{emp.empName || emp.EmpName || "-"}</span>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    <td style={{ width: "260px", whiteSpace: "normal", wordBreak: "break-word" }}>
+                                                                                        {emp.address || emp.Address || "-"}
+                                                                                    </td>
+                                                                                    <td style={{ width: "180px", whiteSpace: "normal", wordBreak: "break-word" }}>
+                                                                                        {emp.location || emp.Location || "-"}
+                                                                                    </td>
+                                                                                    <td style={{ width: "140px", whiteSpace: "normal", wordBreak: "break-word" }}>
+                                                                                        {emp.mobile || emp.Mobile || emp.helpdeskMobile || "-"}
+                                                                                    </td>
+                                                                                    <td style={{ width: "100px" }}>{emp.shift || emp.Shift || "-"}</td>
+                                                                                    <td style={{ width: "110px" }}>{emp.eta || emp.ETA || emp.PickUpTime || "-"}</td>
+                                                                                    <td>
+                                                                                        <Dropdown
+                                                                                            placeholder="Select"
+                                                                                            className="w-100"
+                                                                                            value={emp.trackingStatus || ""}
+                                                                                            options={actionOptions}
+                                                                                            optionLabel="label"
+                                                                                            optionValue="value"
+                                                                                            onChange={(e) => {
+                                                                                                const updatedEmpDetails = [...empDetails];
+                                                                                                updatedEmpDetails[idx] = {
+                                                                                                    ...updatedEmpDetails[idx],
+                                                                                                    trackingStatus: e.value
+                                                                                                };
+                                                                                                setRouteEmployeeDetailsMap({
+                                                                                                    ...routeEmployeeDetailsMap,
+                                                                                                    [routeId]: updatedEmpDetails
+                                                                                                });
+                                                                                            }}
+                                                                                        />
+                                                                                    </td>
+                                                                                    <td style={{ minWidth: "120px" }}>
+                                                                                        <div className="d-flex align-items-center gap-1">
+                                                                                            <InputText
+                                                                                                placeholder="HH"
+                                                                                                className="form-control text-center"
+                                                                                                value={emp.ActETAhh ?? ""}
+                                                                                                style={{ width: "50px", padding: "5px" }}
+                                                                                                maxLength={2}
+                                                                                                onChange={(e) => {
+                                                                                                    let value = e.target.value.replace(/\D/g, "");
+
+                                                                                                    setRouteEmployeeDetailsMap((prev) => {
+                                                                                                        const updated = { ...prev };
+                                                                                                        updated[rowData.RouteID] = updated[rowData.RouteID].map((item, i) =>
+                                                                                                            i === idx ? { ...item, ActETAhh: value } : item
+                                                                                                        );
+                                                                                                        return updated;
+                                                                                                    });
+                                                                                                }}
+                                                                                            />
+
+                                                                                            <span>:</span>
+
+                                                                                            <InputText
+                                                                                                placeholder="MM"
+                                                                                                className="form-control text-center"
+                                                                                                value={emp.ActETAmm ?? ""}
+                                                                                                style={{ width: "50px", padding: "5px" }}
+                                                                                                maxLength={2}
+                                                                                                onChange={(e) => {
+                                                                                                    let value = e.target.value.replace(/\D/g, "");
+
+                                                                                                    setRouteEmployeeDetailsMap((prev) => {
+                                                                                                        const updated = { ...prev };
+                                                                                                        updated[rowData.RouteID] = updated[rowData.RouteID].map((item, i) =>
+                                                                                                            i === idx ? { ...item, ActETAmm: value } : item
+                                                                                                        );
+                                                                                                        return updated;
+                                                                                                    });
+                                                                                                }}
+                                                                                            />
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    <td>
+                                                                                        <InputText
+                                                                                            value={emp.remark || emp.Remark || emp.TripRemark || ""}
+                                                                                            onChange={(e) => {
+                                                                                                const updatedEmpDetails = [...empDetails];
+                                                                                                updatedEmpDetails[idx] = {
+                                                                                                    ...updatedEmpDetails[idx],
+                                                                                                    remark: e.target.value
+                                                                                                };
+                                                                                                setRouteEmployeeDetailsMap({
+                                                                                                    ...routeEmployeeDetailsMap,
+                                                                                                    [routeId]: updatedEmpDetails
+                                                                                                });
+                                                                                            }}
+                                                                                            className="form-control"
+                                                                                        />
+                                                                                    </td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                                <div className="d-flex justify-content-end gap-2 mt-3">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-outline-secondary btn-sm"
+                                                                        onClick={() => handleExpandedRouteCancel(routeId)}
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-success btn-sm"
+                                                                        onClick={() => handleSaveExpandedRouteDetails(routeId)}
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                </div>
+                                                            </>
                                                         ) : (
                                                             <div className="text-center p-2 text-muted">No employee details found for this route</div>
                                                         )}
@@ -1470,7 +1614,7 @@ const HelpDesk = () => {
                                                     <button
                                                         className="btn btn-sm btn-success"
                                                         style={{ padding: "4px 10px", fontSize: "12px" }}
-                                                    // onClick={() => handleRowSave(rowData)}
+                                                        onClick={() => handleRowSave(rowData)}
                                                     >
                                                         Save
                                                     </button>

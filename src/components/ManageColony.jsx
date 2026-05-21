@@ -1,5 +1,6 @@
 import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { ToastContainer } from "react-toastify";
+import { toastService } from "../services/toastService";
 import Loader from "./common/Loader";
 import Header from "./Master/Header";
 import SidebarMenu from "./Master/SidebarMenu";
@@ -652,6 +653,10 @@ const FloatingColonyPanel = React.memo(
 const ManageColony = () => {
   const { data, state, actions } = useManageColonyLogic();
 
+  // ─── Route Edit Sidebar State ───
+  const [showRouteEditSidebar, setShowRouteEditSidebar] = useState(false);
+  const [editingRoute, setEditingRoute] = useState(null);
+
   // ─── Drag State (Lifted to allow cross-route drops) ───
   const [activeRowData, setActiveRowData] = useState(null);
   const [pendingDragOp, setPendingDragOp] = useState(null);
@@ -713,6 +718,31 @@ const ManageColony = () => {
     setPendingDragOp(null);
   }, []);
 
+
+  // ── Route Number — clickable link opens edit sidebar ──
+  const routeNumberBodyTemplate = useCallback(
+    (rowData) => (
+      <a
+        href="#!"
+        className="fw-semibold"
+        style={{ textDecoration: "none", color: "#1d4ed8" }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setEditingRoute({
+            RouteID: rowData.RouteID,
+            ZoneName: rowData.ZoneName,
+            City: rowData.City,
+            Colony: rowData.Colony,
+          });
+          setShowRouteEditSidebar(true);
+        }}
+      >
+        {rowData.RouteID}
+      </a>
+    ),
+    [],
+  );
 
   // ── Expand/Collapse toggle icon ──
   const actionTemplate = useCallback(
@@ -901,7 +931,7 @@ const ManageColony = () => {
                       header=""
                       style={{ width: "50px" }}
                     />
-                    <Column field="RouteID" header="Route No" />
+                    <Column header="Route No" body={routeNumberBodyTemplate} />
                     <Column field="ZoneName" header="Zone" />
                     <Column field="City" header="City" />
                     <Column field="Colony" header="Colony" />
@@ -1370,6 +1400,148 @@ const ManageColony = () => {
         }
         onConfirm={handleConfirmDrag}
       />
+
+      {/* ── Route Edit Sidebar ── */}
+      <MasterSidebar
+        title={`Edit Route — ${editingRoute?.RouteID ?? ""}`}
+        show={showRouteEditSidebar}
+        onClose={() => setShowRouteEditSidebar(false)}
+        className="sidebar-responsive"
+        footer={
+          <div className="offcanvas-footer">
+            <Button
+              label="Cancel"
+              className="btn btn-outline-secondary"
+              onClick={() => setShowRouteEditSidebar(false)}
+            />
+            <Button
+              label="Update"
+              className="btn btn-success ms-3"
+              onClick={() => {
+                toastService.success("Route updated successfully!");
+                setShowRouteEditSidebar(false);
+              }}
+            />
+          </div>
+        }
+      >
+        <div className="p-3">
+          {editingRoute && (
+            <>
+              <div className="mb-3">
+                <label className="form-label fw-semibold">
+                  Route No <span className="text-danger">*</span>
+                </label>
+                <style>{`
+                  .route-stepper { display: flex; align-items: center; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; height: 40px; background: #fff; transition: border-color 0.2s, box-shadow 0.2s; }
+                  .route-stepper:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+                  .route-stepper-btn { width: 40px; height: 100%; border: none; background: #f8fafc; color: #475569; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background 0.15s, color 0.15s; font-size: 0.8rem; user-select: none; }
+                  .route-stepper-btn:hover { background: #e2e8f0; color: #1e293b; }
+                  .route-stepper-btn:active { background: #cbd5e1; }
+                  .route-stepper-divider { width: 1px; height: 20px; background: #e2e8f0; flex-shrink: 0; }
+                  .route-stepper-input { flex: 1; height: 100%; border: none; outline: none; text-align: center; font-size: 0.9rem; font-weight: 600; color: #1e293b; background: transparent; }
+                  input[type=number]::-webkit-inner-spin-button,
+                  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+                  input[type=number] { -moz-appearance: textfield; }
+                `}</style>
+                <div className="route-stepper">
+                  <button
+                    type="button"
+                    className="route-stepper-btn"
+                    onClick={() =>
+                      setEditingRoute((prev) => ({
+                        ...prev,
+                        RouteID: Math.max(1, Number(prev.RouteID) - 1),
+                      }))
+                    }
+                  >
+                    <i className="pi pi-minus" />
+                  </button>
+                  <div className="route-stepper-divider" />
+                  <input
+                    type="number"
+                    className="route-stepper-input"
+                    value={editingRoute.RouteID}
+                    min={1}
+                    onChange={(e) =>
+                      setEditingRoute((prev) => ({
+                        ...prev,
+                        RouteID: e.target.value === "" ? "" : Number(e.target.value),
+                      }))
+                    }
+                  />
+                  <div className="route-stepper-divider" />
+                  <button
+                    type="button"
+                    className="route-stepper-btn"
+                    onClick={() =>
+                      setEditingRoute((prev) => ({
+                        ...prev,
+                        RouteID: Number(prev.RouteID) + 1,
+                      }))
+                    }
+                  >
+                    <i className="pi pi-plus" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold">
+                  Zone <span className="text-danger">*</span>
+                </label>
+                <Dropdown
+                  className="w-100"
+                  value={editingRoute.ZoneName}
+                  options={(data.zones || []).map((z) => ({
+                    label: z.zoneName || z.ZoneName,
+                    value: z.zoneName || z.ZoneName,
+                  }))}
+                  onChange={(e) =>
+                    setEditingRoute((prev) => ({ ...prev, ZoneName: e.value }))
+                  }
+                  placeholder="Select Zone"
+                  filter
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold">
+                  City <span className="text-danger">*</span>
+                </label>
+                <Dropdown
+                  className="w-100"
+                  value={editingRoute.City}
+                  options={(data.cities || []).map((c) => ({
+                    label: c.City || c.city,
+                    value: c.City || c.city,
+                  }))}
+                  onChange={(e) =>
+                    setEditingRoute((prev) => ({ ...prev, City: e.value }))
+                  }
+                  placeholder="Select City"
+                  filter
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold">
+                  Colony <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editingRoute.Colony || ""}
+                  onChange={(e) =>
+                    setEditingRoute((prev) => ({ ...prev, Colony: e.target.value }))
+                  }
+                  placeholder="Enter colony name"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </MasterSidebar>
 
       {/* ── Responsive Sidebar + Utility Styles ── */}
       <style>{`
