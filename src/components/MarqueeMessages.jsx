@@ -1,4 +1,4 @@
-import React from 'react'; // eslint-disable-line
+import React from 'react';
 import './MarqueeMessages.css';
 
 const ALIGNMENT_MAP = {
@@ -8,10 +8,10 @@ const ALIGNMENT_MAP = {
   'Bottom to Top': { cls: 'marquee-btu', vertical: true },
 };
 
-// Returns light or dark background so the user's text color is always readable
 function getContrastBg(hex) {
   try {
-    const h = hex.replace('#', '');
+    const h = (hex || '').replace('#', '');
+    if (h.length < 6) return '#1e293b';
     const r = parseInt(h.substring(0, 2), 16);
     const g = parseInt(h.substring(2, 4), 16);
     const b = parseInt(h.substring(4, 6), 16);
@@ -24,26 +24,29 @@ function getContrastBg(hex) {
 
 const MarqueeMessages = ({ messages = [], style = {}, className = '' }) => {
   const active = messages.filter((m) => m.Status === 'Activated');
-
   if (!active.length) return null;
 
-  const alignment = active[0]?.Alignment || 'Right to Left';
-  const color = active[0]?.color || active[0]?.Color || '#ffffff';
-  const movement = active[0]?.movement || active[0]?.Movement || 'Scroll';
-  const bg = getContrastBg(color);
-
-  const { cls, vertical } = ALIGNMENT_MAP[alignment] || ALIGNMENT_MAP['Right to Left'];
-  const text = active.map((m) => m.Message).join('     •     ');
-
-  const isBlink = movement === 'Blink';
-  const animationClass = isBlink ? 'marquee-blink' : cls;
-
   return (
-    <div
-      className={`marquee-banner ${vertical && !isBlink ? 'marquee-vertical' : 'marquee-horizontal'} ${className}`}
-      style={{ ...style, color, backgroundColor: bg }}
-    >
-      <span className={`marquee-track ${animationClass}`}>{text}</span>
+    <div className={className} style={style}>
+      {active.map((m, i) => {
+        const alignment = m.Alignment || 'Right to Left';
+        const color = m.color || m.Color || '#ffffff';
+        const movement = m.movement || m.Movement || 'Scroll';
+        const bg = getContrastBg(color);
+        const { cls, vertical } = ALIGNMENT_MAP[alignment] || ALIGNMENT_MAP['Right to Left'];
+        const isBlink = movement === 'Blink';
+        const animationClass = isBlink ? 'marquee-blink' : cls;
+
+        return (
+          <div
+            key={m.id ?? m.MessageId ?? i}
+            className={`marquee-banner ${vertical && !isBlink ? 'marquee-vertical' : 'marquee-horizontal'}`}
+            style={{ color, backgroundColor: bg, marginBottom: i < active.length - 1 ? '4px' : 0 }}
+          >
+            <span className={`marquee-track ${animationClass}`}>{m.Message}</span>
+          </div>
+        );
+      })}
     </div>
   );
 };

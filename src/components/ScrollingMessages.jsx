@@ -7,8 +7,15 @@ import "react-toastify/dist/ReactToastify.css";
 import { CustomDataTable } from "./common/CustomDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
+import { Calendar } from "primereact/calendar";
 import ScrollingMessagesService from "../services/compliance/ScrollingMessagesService";
 import sessionManager from "../utils/SessionManager";
+import calendarIcon from "../assets/calendar.png";
+
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 const ScrollingMessages = () => {
   const [messages, setMessages] = useState([]);
@@ -27,6 +34,8 @@ const ScrollingMessages = () => {
   const [newAlignment, setNewAlignment] = useState("Right to Left");
   const [newColor, setNewColor] = useState("#ffffff");
   const [newMovement, setNewMovement] = useState("Scroll");
+  const [newStartDate, setNewStartDate] = useState(todayStr());
+  const [newEndDate, setNewEndDate] = useState(todayStr());
 
   const UserID = sessionStorage.getItem("ID");
 
@@ -109,6 +118,8 @@ const ScrollingMessages = () => {
     setNewAlignment(rowData.Alignment || "Right to Left");
     setNewColor(rowData.color || rowData.Color || "#ffffff");
     setNewMovement(rowData.movement || rowData.Movement || "Scroll");
+    setNewStartDate(normalizeDate(rowData.startdate));
+    setNewEndDate(normalizeDate(rowData.enddate));
     setSidebarVisible(true);
   };
 
@@ -145,6 +156,8 @@ const ScrollingMessages = () => {
         Alignment: newAlignment,
         color: newColor,
         movement: newMovement,
+        startdate: newStartDate || null,
+        enddate: newEndDate || null,
         UserId: parseInt(sessionManager.getUserSession()?.ID) || 0,
       };
       if (editMode) {
@@ -177,6 +190,8 @@ const ScrollingMessages = () => {
     setNewAlignment("Right to Left");
     setNewColor("#ffffff");
     setNewMovement("Scroll");
+    setNewStartDate(todayStr());
+    setNewEndDate(todayStr());
     setEditMode(false);
     setSelectedMessageId(null);
   };
@@ -187,9 +202,35 @@ const ScrollingMessages = () => {
   };
 
   const openAddForm = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     resetForm();
     setSidebarVisible(true);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "—";
+    try {
+      let y, m, d;
+      if (dateStr.includes("/")) {
+        [m, d, y] = dateStr.split("/"); // MM/DD/YYYY from API
+      } else {
+        [y, m, d] = dateStr.split("-"); // YYYY-MM-DD from calendar picker
+      }
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${d} ${months[parseInt(m, 10) - 1]} ${y}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Normalize API date (MM/DD/YYYY) to YYYY-MM-DD for the calendar value
+  const normalizeDate = (dateStr) => {
+    if (!dateStr) return todayStr();
+    if (dateStr.includes("/")) {
+      const [m, d, y] = dateStr.split("/");
+      return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+    return dateStr;
   };
 
   const actionBodyTemplate = (rowData) => (
@@ -240,7 +281,11 @@ const ScrollingMessages = () => {
 
   return (
     <div className="container-fluid p-0">
-      <Header pageTitle={"Message Master"} />
+      <Header
+        pageTitle={"Message Master"}
+        showNewButton={true}
+        onNewButtonClick={openAddForm}
+      />
       <Sidebar />
       <ToastContainer position="top-right" autoClose={3000} />
 
@@ -303,9 +348,19 @@ const ScrollingMessages = () => {
                 style={{ width: "110px" }}
               />
               <Column
-                field="Movement"
                 header="Movement"
                 style={{ width: "100px" }}
+                body={(rowData) => rowData.movement || rowData.Movement || "—"}
+              />
+              <Column
+                header="Start Date"
+                style={{ width: "110px" }}
+                body={(rowData) => formatDate(rowData.startdate)}
+              />
+              <Column
+                header="End Date"
+                style={{ width: "110px" }}
+                body={(rowData) => formatDate(rowData.enddate)}
               />
               <Column
                 body={statusBodyTemplate}
@@ -326,20 +381,6 @@ const ScrollingMessages = () => {
               onPageChange={onPageChange}
             />
 
-            <div className="text-center py-3">
-              <a
-                href="#!"
-                className="text-decoration-underline"
-                style={{
-                  color: "#4a36ec",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                }}
-                onClick={openAddForm}
-              >
-                + Add New Message
-              </a>
-            </div>
           </div>
         </div>
       </div>
@@ -440,6 +481,52 @@ const ScrollingMessages = () => {
               <option value="Scroll">Scroll</option>
               <option value="Blink">Blink</option>
             </select>
+          </div>
+
+          <div className="mb-3 filter-item date-select">
+            <label className="form-label fw-semibold" style={{ fontSize: "13px", color: "#545557" }}>
+              Start Date
+            </label>
+            <div className="custom-calendar-wrapper">
+              <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+              <Calendar
+                id="startDate"
+                className="w-100 custom-calendar-input"
+                value={newStartDate ? new Date(newStartDate) : null}
+                onChange={(e) => {
+                  if (e.value) {
+                    const d = e.value;
+                    setNewStartDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+                  } else {
+                    setNewStartDate("");
+                  }
+                }}
+                dateFormat="mm/dd/yy"
+              />
+            </div>
+          </div>
+
+          <div className="mb-3 filter-item date-select">
+            <label className="form-label fw-semibold" style={{ fontSize: "13px", color: "#545557" }}>
+              End Date
+            </label>
+            <div className="custom-calendar-wrapper">
+              <img src={calendarIcon} alt="calendar" className="custom-calendar-icon" />
+              <Calendar
+                id="endDate"
+                className="w-100 custom-calendar-input"
+                value={newEndDate ? new Date(newEndDate) : null}
+                onChange={(e) => {
+                  if (e.value) {
+                    const d = e.value;
+                    setNewEndDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+                  } else {
+                    setNewEndDate("");
+                  }
+                }}
+                dateFormat="mm/dd/yy"
+              />
+            </div>
           </div>
 
           <div className="mb-3">

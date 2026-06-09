@@ -83,7 +83,7 @@ import ExportRoster from "./components/ExportRoster";
 import ExportRouteDetail from "./components/ExportRouteDetail";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { clearAnnouncementSession } from "./hooks/useAnnouncementToasts.jsx";
+import AnnouncementBar from "./components/common/AnnouncementBar";
 
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
@@ -98,9 +98,10 @@ function App() {
     isAuthenticated &&
     (Number(disclaimerStatus) === 0 || Number(disclaimerStatus) === 2);
 
-  // Clear announcement toasts and session state on logout
   useEffect(() => {
-    if (!isAuthenticated) clearAnnouncementSession();
+    if (!isAuthenticated) {
+      sessionStorage.removeItem("etms_dismissed_announcements");
+    }
   }, [isAuthenticated]);
 
   const handleConsentAgree = () => {
@@ -132,15 +133,7 @@ function App() {
         pauseOnHover
         theme="light"
       />
-      {/* Dedicated container for announcement toasts — never unmounts on navigation */}
-      <ToastContainer
-        containerId="announcements"
-        position="top-right"
-        autoClose={false}
-        closeOnClick={false}
-        draggable={false}
-        newestOnTop={false}
-      />
+      {isAuthenticated && <AnnouncementBar />}
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/PrivateRoute" element={<PrivateRoute />} />

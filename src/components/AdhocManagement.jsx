@@ -68,6 +68,7 @@ const AdhocManagement = () => {
 
   const [confirmDialogVisible, setConfirmDialogVisible] = useState(false);
   const [selectedItemToDelete, setSelectedItemToDelete] = useState(null);
+  const [adhocCostConfirmVisible, setAdhocCostConfirmVisible] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
 
   const [filters, setFilters] = useState({
@@ -441,28 +442,31 @@ const AdhocManagement = () => {
     fetchEmployeeData();
     setVisibleLeft(false);
   };
-  const handleSaveChanges = async () => {
-    try {
-      if (!shiftData || shiftData.length === 0) {
-        toastService.warn(
-          "No shifts available for selected date and trip type"
-        );
-        return;
-      }
-      if (!selectedShift || selectedShift.length === 0) {
-        setSelectedShift(null);
-        toastService.warn("Please Select Shift Time *");
-        return;
-      }
+  const handleSaveChanges = () => {
+    if (!shiftData || shiftData.length === 0) {
+      toastService.warn("No shifts available for selected date and trip type");
+      return;
+    }
+    if (!selectedShift || selectedShift.length === 0) {
+      setSelectedShift(null);
+      toastService.warn("Please Select Shift Time *");
+      return;
+    }
+    if (!selectedReason) {
+      toastService.warn("Please Select Reason *");
+      return;
+    }
+    if (!selectedEmployees || selectedEmployees.length === 0) {
+      toastService.warn("Please Select Employee *");
+      return;
+    }
+    // Validation passed — show cost warning before proceeding
+    setAdhocCostConfirmVisible(true);
+  };
 
-      if (!selectedReason) {
-        toastService.warn("Please Select Reason *");
-        return;
-      }
-      if (!selectedEmployees || selectedEmployees.length === 0) {
-        toastService.warn("Please Select Employee *");
-        return;
-      }
+  const executeAdhocSave = async () => {
+    setAdhocCostConfirmVisible(false);
+    try {
       // Get employee IDs from selected employees
       const employeeIds = selectedEmployees
         .map((emp) => emp.employeeid)
@@ -711,6 +715,17 @@ const AdhocManagement = () => {
             if (selectedItemToDelete) handleDeleteRequest(selectedItemToDelete);
             setConfirmDialogVisible(false);
           }}
+        />
+        <AppConfirmDialog
+          visible={adhocCostConfirmVisible}
+          onHide={() => setAdhocCostConfirmVisible(false)}
+          title="Additional Cost Warning"
+          variant="warning"
+          message="Raising an adhoc request will incur additional transport cost."
+          detail="Are you sure you want to proceed with this request?"
+          confirmLabel="Yes, Raise Request"
+          cancelLabel="Go Back"
+          onConfirm={executeAdhocSave}
         />
       </div>
       <div className="middle">
@@ -987,7 +1002,7 @@ const AdhocManagement = () => {
                 onClick: handleSidebarClose,
               },
               {
-                label: "Save Changes",
+                label: "Raise Adhoc",
                 className: "btn btn-success",
                 onClick: handleSaveChanges,
               },

@@ -764,6 +764,7 @@ label {
     display: flex;
     justify-content: start;
     position: fixed;
+    top: var(--ann-bar-height, 0px);
     width: 100%;
     background: #fff;
     z-index: 1200;
@@ -918,11 +919,11 @@ label {
 
 .sidebar {
     width: 268px;
-    /* height: calc(100vh - 69px); */
-    height: 100vh;
+    height: calc(100vh - var(--ann-bar-height, 0px));
     border: 1px solid var(--grey-1);
     padding: 90px 18px 30px 18px;
     position: fixed;
+    top: var(--ann-bar-height, 0px);
     background: #fff;
     transition: 0.3s;
     overflow-y: auto;
@@ -1323,7 +1324,7 @@ body.sidebar-collapsed .middle {
 
 .offcanvas-backdrop,
 .offcanvas.offcanvas-end {
-    top: 68px;
+    top: calc(68px + var(--ann-bar-height, 0px));
 }
 
 .offcanvas-header .btn-close {
@@ -1429,7 +1430,7 @@ body.sidebar-collapsed .middle {
     width: calc(100% - 268px);
     margin-left: 268px;
     transition: 0.3s;
-    padding-top: 74px;
+    padding-top: calc(74px + var(--ann-bar-height, 0px));
 }
 
 .middle-full {
@@ -3013,7 +3014,7 @@ label>span {
 .filterFix,
 .buttonFix {
     position: fixed;
-    top: 58px;
+    top: calc(58px + var(--ann-bar-height, 0px));
     z-index: 99;
     background-color: white;
     transition: box-shadow 0.3s ease, transform 0.3s ease;
@@ -4581,7 +4582,7 @@ input[type="date"],
     /* ── Page container ── */
     .middle {
         padding: 10px !important;
-        padding-top: 78px !important; /* 68px fixed header + 10px breathing room */
+        padding-top: calc(78px + var(--ann-bar-height, 0px)) !important; /* 68px fixed header + 10px breathing room */
     }
 
     /* ── Card / table wrapper ── */
