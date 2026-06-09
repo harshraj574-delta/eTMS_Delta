@@ -133,7 +133,7 @@ function App() {
         pauseOnHover
         theme="light"
       />
-      {isAuthenticated && <AnnouncementBar />}
+      {isAuthenticated && !showConsentModal && <AnnouncementBar />}
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/PrivateRoute" element={<PrivateRoute />} />
