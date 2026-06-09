@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useSessionStore from "./store/useSessionStore";
 import ConsentModal from "./components/ConsentModal";
 import reactLogo from "./assets/react.svg";
@@ -83,6 +83,7 @@ import ExportRoster from "./components/ExportRoster";
 import ExportRouteDetail from "./components/ExportRouteDetail";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { clearAnnouncementSession } from "./hooks/useAnnouncementToasts.jsx";
 
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
@@ -96,6 +97,11 @@ function App() {
   const showConsentModal =
     isAuthenticated &&
     (Number(disclaimerStatus) === 0 || Number(disclaimerStatus) === 2);
+
+  // Clear announcement toasts and session state on logout
+  useEffect(() => {
+    if (!isAuthenticated) clearAnnouncementSession();
+  }, [isAuthenticated]);
 
   const handleConsentAgree = () => {
     // Capture the original status BEFORE updating it.
@@ -125,6 +131,15 @@ function App() {
         draggable
         pauseOnHover
         theme="light"
+      />
+      {/* Dedicated container for announcement toasts — never unmounts on navigation */}
+      <ToastContainer
+        containerId="announcements"
+        position="top-right"
+        autoClose={false}
+        closeOnClick={false}
+        draggable={false}
+        newestOnTop={false}
       />
       <Routes>
         <Route path="/" element={<Login />} />

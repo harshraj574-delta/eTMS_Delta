@@ -90,11 +90,25 @@ const ScrollingMessages = () => {
   const handleEdit = (rowData) => {
     setEditMode(true);
     setSelectedMessageId(rowData.id || rowData.MessageId);
-    setSelectedFacility(rowData.FacilityId ?? rowData.facilityId ?? null);
+
+    // Try every known casing for the facility ID field
+    const facilityId =
+      rowData.FacilityId ?? rowData.facilityId ?? rowData.FacilityID ??
+      rowData.facilityID ?? rowData.facilityid ?? undefined;
+
+    if (facilityId != null) {
+      setSelectedFacility(facilityId);
+    } else {
+      // Fall back: match by facility name (case-insensitive) against the loaded dropdown list
+      const name = (rowData.facility || rowData.facilityName || "").trim().toLowerCase();
+      const matched = facilities.find((f) => f.label?.trim().toLowerCase() === name);
+      setSelectedFacility(matched ? matched.value : null);
+    }
+
     setNewMessageText(rowData.Message || rowData.MessageText || "");
     setNewAlignment(rowData.Alignment || "Right to Left");
-    setNewColor(rowData.Color || "#ffffff");
-    setNewMovement(rowData.Movement || "Scroll");
+    setNewColor(rowData.color || rowData.Color || "#ffffff");
+    setNewMovement(rowData.movement || rowData.Movement || "Scroll");
     setSidebarVisible(true);
   };
 
@@ -116,6 +130,10 @@ const ScrollingMessages = () => {
   };
 
   const handleSave = async () => {
+    if (!selectedFacility && selectedFacility !== 0) {
+      toast.warn("Please select a facility");
+      return;
+    }
     if (!newMessageText.trim()) {
       toast.warn("Please enter a message");
       return;
@@ -125,14 +143,21 @@ const ScrollingMessages = () => {
         FacilityId: selectedFacility,
         Message: newMessageText,
         Alignment: newAlignment,
-        Color: newColor,
-        Movement: newMovement,
-        UserId: sessionManager.getUserSession()?.ID || 0,
+        color: newColor,
+        movement: newMovement,
+        UserId: parseInt(sessionManager.getUserSession()?.ID) || 0,
       };
       if (editMode) {
-        params.id = selectedMessageId;
-        await ScrollingMessagesService.UpdateMessage(params);
-        toast.success("Message updated successfully");
+        params.Id = selectedMessageId;
+        const updateResp = await ScrollingMessagesService.UpdateMessage(params);
+        const updateData = typeof updateResp === "string" ? JSON.parse(updateResp) : updateResp;
+        const result = Array.isArray(updateData) ? updateData[0]?.Result : updateData?.Result;
+        if (result === 1) {
+          toast.success("Message updated successfully");
+        } else {
+          toast.warn("No changes were saved. The message content and facility are unchanged. Update the message text or facility to save.");
+          return;
+        }
       } else {
         await ScrollingMessagesService.InsertNewMessage(params);
         toast.success("Message inserted successfully");
@@ -187,20 +212,15 @@ const ScrollingMessages = () => {
     </span>
   );
 
-  const colorBodyTemplate = (rowData) => (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <div
-        style={{
-          width: "16px",
-          height: "16px",
-          borderRadius: "4px",
-          backgroundColor: rowData.Color || "#ffffff",
-          border: "1px solid #ccc",
-        }}
-      />
-      <span>{rowData.Color || "#ffffff"}</span>
-    </div>
-  );
+  const colorBodyTemplate = (rowData) => {
+    const c = rowData.color || rowData.Color || "#ffffff";
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ width: "16px", height: "16px", borderRadius: "4px", backgroundColor: c, border: "1px solid #ccc" }} />
+        <span>{c}</span>
+      </div>
+    );
+  };
 
   const statusBodyTemplate = (rowData) => (
     <span

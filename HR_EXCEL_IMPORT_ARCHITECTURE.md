@@ -1,11 +1,6 @@
 # HR Employee Data Import — System Architecture & Implementation Guide
 
 **Project:** eTMS — HR Bulk Employee Import  
-**Author:** eTMS Engineering Team  
-**Date:** May 2026  
-**Status:** Design Phase → Ready for Implementation
-
----
 
 ## Table of Contents
 
@@ -804,5 +799,3 @@ A 5,000-row Excel file takes ~30 seconds to fully process and save to DB. HTTP r
 Lambda's `/tmp` directory is limited to 512 MB (configurable up to 10 GB, but adds cost). More importantly, downloading first means waiting for the full download before processing begins. Streaming starts processing at row 1 while bytes are still arriving from S3 — faster and memory-efficient.
 
 ---
-
-*Document prepared by eTMS Engineering. Last updated: May 2026.*

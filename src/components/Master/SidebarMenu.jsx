@@ -316,7 +316,7 @@ const SidebarMenu = () => {
             <p className="overline_text_sm">Updates</p>
             <MarqueeMessages
               messages={scrollingMessages}
-              style={{ width: '100%', borderRadius: '6px' }}
+              style={{ width: '100%', borderRadius: '6px', marginTop: '8px' }}
             />
           </div>
         )}

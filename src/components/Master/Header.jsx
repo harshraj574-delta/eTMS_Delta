@@ -11,6 +11,7 @@ import { OverlayPanel } from 'primereact/overlaypanel';
 import useSOSPoller from '../../hooks/useSOSPoller';
 import useSOSStore from '../../store/useSOSStore';
 import NotificationPanel from '../NotificationPanel';
+import useAnnouncementToasts from '../../hooks/useAnnouncementToasts.jsx';
 const ETMS_DOC_URLS = {
   FAQs: "https://res.cloudinary.com/dnzzrvbdz/raw/upload/v1777458153/etms_docs/FAQs.pdf",
   HelpDocuments: "https://res.cloudinary.com/dnzzrvbdz/raw/upload/v1777458154/etms_docs/HelpDocuments.pdf",
@@ -40,6 +41,7 @@ const Header = ({
   const logout = useSessionStore((state) => state.logout);
   const sosCount = useSOSStore((state) => state.sosAlerts.length);
   useSOSPoller();
+  useAnnouncementToasts();
 
   const prevWidth = useRef(typeof window !== 'undefined' ? window.innerWidth : 0);
 
