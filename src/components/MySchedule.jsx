@@ -10,13 +10,14 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import { Offcanvas } from "bootstrap";
-import { ToastContainer } from "react-toastify";
 import { Paginator } from "primereact/paginator";
 import "primereact/resources/themes/saga-blue/theme.css";
 import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
 import TableToolbar from "./common/TableToolbar.jsx";
 import Loader from "./common/Loader.jsx";
+import { CustomDataTable } from "./common/CustomDataTable";
+import { Column } from "primereact/column";
 import { Calendar } from "primereact/calendar";
 import CustomPaginator from "./common/CustomPaginator";
 import calendarIcon from "../assets/calendar.png";
@@ -404,6 +405,39 @@ const MySchedule = () => {
     mgrFirst,
     mgrFirst + mgrRows
   );
+
+  // PrimeReact selection derived from the canonical Set of ids (used by handleSubmit)
+  const selectedAssociates = useMemo(
+    () =>
+      mgrassociate.filter((a) => selectedAssociateIds.has(String(a.EmployeeID))),
+    [mgrassociate, selectedAssociateIds]
+  );
+
+  const onAssociateSelectionChange = (e) => {
+    setSelectedAssociateIds((prev) => {
+      const next = new Set(prev);
+      // Reconcile only the visible page so selections on other pages survive
+      displayedMgrAssociate.forEach((row) => next.delete(String(row.EmployeeID)));
+      (e.value || []).forEach((row) => next.add(String(row.EmployeeID)));
+      return next;
+    });
+  };
+
+  // Header checkbox = every employee across all pages (of the current search)
+  const allAssociatesSelected =
+    filteredData.length > 0 &&
+    filteredData.every((a) => selectedAssociateIds.has(String(a.EmployeeID)));
+
+  const onAssociateSelectAllChange = (e) => {
+    setSelectedAssociateIds((prev) => {
+      const next = new Set(prev);
+      filteredData.forEach((row) => {
+        if (e.checked) next.add(String(row.EmployeeID));
+        else next.delete(String(row.EmployeeID));
+      });
+      return next;
+    });
+  };
 
   const isMobile = useIsMobile(768);
 
@@ -1130,7 +1164,6 @@ const MySchedule = () => {
         onNewButtonClick={handleNewButtonClick}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row mt-3">
@@ -2060,7 +2093,7 @@ const MySchedule = () => {
           <div className="row mb-4">
             <div className="col-12">
               <div id="tour-cutoff-timings" className="card border-warning">
-                <div className="card-body d-flex justify-content-start align-items-center cutoff p-0">
+                <div className="card-body d-flex flex-wrap gap-2 justify-content-start align-items-center cutoff p-0">
                   <div className="overline_textB">Cut Off Timings </div>
                   <div>
                     <small className="fw-bold fs-11 me-2">Weekday</small>
@@ -2073,7 +2106,7 @@ const MySchedule = () => {
                       {lockDetails?.lockdrophrs || "0"} Mins
                     </span>
                   </div>
-                  <div className="ms-5">
+                  <div className="ms-md-5">
                     <small className="fw-bold fs-11 me-2">Weekend</small>
                     <small className="fs-11">Pick </small>
                     <span className="overline_textB text-danger me-4">
@@ -2090,8 +2123,8 @@ const MySchedule = () => {
           </div>
 
           {/* Schedule Form */}
-          <div className="row mb-4">
-            <div id="tour-process" className="col">
+          <div className="row mb-4 gy-3">
+            <div id="tour-process" className="col-12 col-md-6 col-lg-4">
               <label className="form-label">Process Name</label>
               <select
                 id="ddlProcess"
@@ -2108,7 +2141,7 @@ const MySchedule = () => {
               </select>
             </div>
             {/* Wrap From + To in one element so the tour can highlight both together */}
-            <div id="tour-date-range" className="col d-flex gap-2">
+            <div id="tour-date-range" className="col-12 col-md-6 col-lg-4 d-flex gap-2">
               <div className="flex-fill">
                 <label className="form-label">From</label>
                 <div className="custom-calendar-wrapper">
@@ -2149,7 +2182,7 @@ const MySchedule = () => {
               </div>
             </div>
             {/* Wrap Login + Logout facility in one element so the tour can highlight both together */}
-            <div id="tour-facilities" className="col d-flex gap-2">
+            <div id="tour-facilities" className="col-12 col-md-6 col-lg-4 d-flex gap-2">
               <div className="flex-fill">
                 <label className="form-label">Login Facility</label>
                 <select
@@ -2192,7 +2225,7 @@ const MySchedule = () => {
                   Weekly Off
                 </button>
               </div>
-              <div className="form-check form-check-inline me-5">
+              <div className="form-check form-check-inline me-3 me-md-5">
                 <input
                   className="form-check-input"
                   type="checkbox"
@@ -2205,7 +2238,7 @@ const MySchedule = () => {
                   Mon
                 </label>
               </div>
-              <div className="form-check form-check-inline me-5">
+              <div className="form-check form-check-inline me-3 me-md-5">
                 <input
                   className="form-check-input"
                   type="checkbox"
@@ -2218,7 +2251,7 @@ const MySchedule = () => {
                   Tue
                 </label>
               </div>
-              <div className="form-check form-check-inline me-5">
+              <div className="form-check form-check-inline me-3 me-md-5">
                 <input
                   className="form-check-input"
                   type="checkbox"
@@ -2231,7 +2264,7 @@ const MySchedule = () => {
                   Wed
                 </label>
               </div>
-              <div className="form-check form-check-inline me-5">
+              <div className="form-check form-check-inline me-3 me-md-5">
                 <input
                   className="form-check-input"
                   type="checkbox"
@@ -2244,7 +2277,7 @@ const MySchedule = () => {
                   Thu
                 </label>
               </div>
-              <div className="form-check form-check-inline me-5">
+              <div className="form-check form-check-inline me-3 me-md-5">
                 <input
                   className="form-check-input"
                   type="checkbox"
@@ -2257,7 +2290,7 @@ const MySchedule = () => {
                   Fri
                 </label>
               </div>
-              <div className="form-check form-check-inline me-5">
+              <div className="form-check form-check-inline me-3 me-md-5">
                 <input
                   className="form-check-input"
                   type="checkbox"
@@ -2275,7 +2308,7 @@ const MySchedule = () => {
                   Sat
                 </label>
               </div>
-              <div className="form-check form-check-inline me-5">
+              <div className="form-check form-check-inline me-3 me-md-5">
                 <input
                   className="form-check-input"
                   type="checkbox"
@@ -2296,8 +2329,8 @@ const MySchedule = () => {
             </div>
           </div>
 
-          <div id="tour-shifts-section" className="row mb-4">
-            <div className="col-4">
+          <div id="tour-shifts-section" className="row mb-4 gy-3">
+            <div className="col-12 col-md-6 col-lg-4">
               <div className="card form_card border-0">
                 <div className="card-header">Weekdays</div>
                 <div className="card-body">
@@ -2346,7 +2379,7 @@ const MySchedule = () => {
                 </div>
               </div>
             </div>
-            <div className="col-4">
+            <div className="col-12 col-md-6 col-lg-4">
               <div className="card form_card border-0">
                 <div className="card-header">Weekends</div>
                 <div className="card-body">
@@ -2407,7 +2440,7 @@ const MySchedule = () => {
           {selectedProcess &&
             selectedProcess !== "0" &&
             mgrassociate.length > 0 && (
-              <>
+              <div className="card_tb p-3">
                 <TableToolbar
                   search={globalFilter}
                   onSearch={(e) => setGlobalFilter(e.target.value)}
@@ -2428,99 +2461,50 @@ const MySchedule = () => {
                     </p>
                   </div>
                 </TableToolbar>
-                <div className="table-responsive">
-                    <table
-                    className="tb_raiseAdhoc table table-borderless table-hover"
-                    id="tblMgrAssociate"
-                    >
-                    <thead>
-                        <tr>
-                        <th width="4%">
-                            <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="flexCheckDefault"
-                            checked={
-                                mgrassociate.length > 0 && 
-                                mgrassociate.every((item) => selectedAssociateIds.has(String(item.EmployeeID)))
-                            }
-                            onChange={(e) => {
-                                const isChecked = e.target.checked;
-                                setSelectedAssociateIds(prev => {
-                                    const next = new Set(prev);
-                                    if (isChecked) {
-                                        mgrassociate.forEach(item => next.add(String(item.EmployeeID)));
-                                    } else {
-                                        // Unselect all? Or just current list?
-                                        // Usually unselect all in list.
-                                        mgrassociate.forEach(item => next.delete(String(item.EmployeeID)));
-                                    }
-                                    return next;
-                                });
-                            }}
-                            />
-                        </th>
-                        <th>Employee</th>
-                        <th>Gender</th>
-                        <th>Process</th>
-                        <th>Manager</th>
-                        <th>Facility</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {displayedMgrAssociate.map((assoc) => (
-                        <tr key={assoc.EmployeeID}>
-                            <td>
-                            <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={selectedAssociateIds.has(String(assoc.EmployeeID))}
-                                onChange={() => {
-                                    setSelectedAssociateIds(prev => {
-                                        const next = new Set(prev);
-                                        const id = String(assoc.EmployeeID);
-                                        if (next.has(id)) {
-                                            next.delete(id);
-                                        } else {
-                                            next.add(id);
-                                        }
-                                        return next;
-                                    });
-                                }}
-                            />
-                            </td>
-                            <td>
-                            {assoc.EmpName}
-                            {assoc.geoCode !== "Y" && (
-                                <span className="material-icons md-18 text-danger mx-2">
-                                location_off
-                                </span>
-                            )}
-                            {assoc.tptReq !== "Y" && (
-                                <span className="material-icons md-18 text-danger">
-                                no_transfer
-                                </span>
-                            )}
-                            </td>
-                            <td>{assoc.Gender}</td>
-                            <td>{assoc.processName}</td>
-                            <td>{assoc.Manager}</td>
-                            <td>{assoc.facility}</td>
-                        </tr>
-                        ))}
-                    </tbody>
-                    </table>
-                </div>
-                <div className="mt-2">
-                  <CustomPaginator
-                    first={mgrFirst}
-                    rows={mgrRows}
-                    totalRecords={mgrTotal}
-                    rowsPerPageOptions={[50, 150, 250, 350, 450]}
-                    onPageChange={onMgrPageChange}
-                  />
-                </div>
-              </>
+                <CustomDataTable
+                  value={displayedMgrAssociate}
+                  dataKey="EmployeeID"
+                  loading={associateLoading}
+                  selection={selectedAssociates}
+                  onSelectionChange={onAssociateSelectionChange}
+                  selectAll={allAssociatesSelected}
+                  onSelectAllChange={onAssociateSelectAllChange}
+                >
+                  <Column
+                    selectionMode="multiple"
+                    headerStyle={{ width: "3rem" }}
+                  ></Column>
+                  <Column
+                    header="Employee"
+                    body={(assoc) => (
+                      <div className="d-flex align-items-center">
+                        <span>{assoc.EmpName}</span>
+                        {assoc.geoCode !== "Y" && (
+                          <span className="material-icons md-18 text-danger mx-2">
+                            location_off
+                          </span>
+                        )}
+                        {assoc.tptReq !== "Y" && (
+                          <span className="material-icons md-18 text-danger">
+                            no_transfer
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  ></Column>
+                  <Column field="Gender" header="Gender"></Column>
+                  <Column field="processName" header="Process"></Column>
+                  <Column field="Manager" header="Manager"></Column>
+                  <Column field="facility" header="Facility"></Column>
+                </CustomDataTable>
+                <CustomPaginator
+                  first={mgrFirst}
+                  rows={mgrRows}
+                  totalRecords={mgrTotal}
+                  rowsPerPageOptions={[50, 150, 250, 350, 450]}
+                  onPageChange={onMgrPageChange}
+                />
+              </div>
             )}
         </div>
 

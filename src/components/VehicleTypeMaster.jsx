@@ -12,7 +12,6 @@ import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import MasterSidebar from "./Master/MasterSidebar";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import { InputNumber } from 'primereact/inputnumber';
 import CustomPaginator from "./common/CustomPaginator";
 import Loader from "./common/Loader";
@@ -326,7 +325,6 @@ const VehicleTypeMaster = () => {
             <Loader isVisible={isSubmitting} fullScreen={true} />
             <Header pageTitle="Vehicle Type Master" showNewButton={true} onNewButtonClick={setVehicleType} />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
             <div className="middle">
                 <div className="row">
                     <div className="col-12">

@@ -18,7 +18,6 @@ import { toastService } from "../services/toastService";
 import { apiService } from "../services/api";
 import calendarIcon from "../assets/calendar.png";
 import ReportButton from "./common/ReportButton";
-import { ToastContainer } from "react-toastify";
 
 // Helper to get 7 days from selectedDate
 // const month = date.toLocaleString("default", { month: "long" });
@@ -499,7 +498,6 @@ const AdminSchedule = () => {
         onNewButtonClick={() => setAddNewCost(false)}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">

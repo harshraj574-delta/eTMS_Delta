@@ -10,7 +10,6 @@ import { set } from "lodash";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
@@ -813,7 +812,6 @@ const EmployeeMaster = () => {
 
     return (
         <div className="container-fluid p-0">
-            <ToastContainer position="top-right" autoClose={3000} />
             <Loader isVisible={loading} fullScreen={true} />
             <Header pageTitle={"Employee Master"} mainTitle={"Transport"} showNewButton={true} onNewButtonClick={handleNewClick} />
             <Sidebar />

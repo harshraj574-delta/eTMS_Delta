@@ -20,7 +20,6 @@ import { toastService } from "../services/toastService";
 import { InputNumber } from "primereact/inputnumber";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
-import { ToastContainer } from "react-toastify";
 import CustomPaginator from "./common/CustomPaginator";
 import Loader from "./common/Loader";
 
@@ -394,7 +393,6 @@ const VendorMaster = () => {
         onNewButtonClick={() => setVisibleLeftAdd(true)}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">

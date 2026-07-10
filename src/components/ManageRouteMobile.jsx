@@ -12,7 +12,6 @@ import AppDialog from './common/AppDialog';
 import AppConfirmDialog from './common/AppConfirmDialog';
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
-import { ToastContainer } from 'react-toastify';
 
 // DnD Kit
 import {
@@ -1557,7 +1556,6 @@ const ManageRouteMobile = ({
                 
                 <div style={{ paddingBottom: '100px', backgroundColor: '#f1f5f9', minHeight: '100vh' }}>
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
             <Toast ref={toast} position="top-center" />
             
             <div className="middle">

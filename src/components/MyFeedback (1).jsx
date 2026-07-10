@@ -25,7 +25,6 @@ import Loader from "./common/Loader.jsx";
 import TableToolbar from "./common/TableToolbar.jsx";
 import { set } from "lodash";
 import { CustomDataTable } from "./common/CustomDataTable";
-import { ToastContainer } from "react-toastify";
 const MyFeedback = () => {
   const [feedbackData, setFeedbackData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -446,7 +445,6 @@ const MyFeedback = () => {
 
       {/* Sidebar */}
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       {/* Middle Content */}
       <div className="middle">

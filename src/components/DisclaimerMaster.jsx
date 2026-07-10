@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "../components/Master/SidebarMenu";
 import Header from "../components/Master/Header";
 import MasterSidebar from "../components/Master/MasterSidebar";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { CustomDataTable } from "./common/CustomDataTable";
 import ResponsiveDataTable from "./common/ResponsiveDataTable";
@@ -734,7 +734,6 @@ const DisclaimerMaster = () => {
     <div className="container-fluid p-0">
       <Header pageTitle={"Compliance Center"} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle" style={{ backgroundColor: "#f9f9f9", minHeight: "100vh" }}>
         <div style={{ padding: "20px" }}>

@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback } from "react";
 import * as XLSX from "xlsx";
 import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
-import { ToastContainer } from "react-toastify";
 import { toastService } from "../services/toastService";
 import Loader from "./common/Loader";
 import sessionManager from "../utils/SessionManager";
@@ -331,7 +330,6 @@ const HrImportExcel = () => {
             <Loader isVisible={isUploading} fullScreen />
             <Header pageTitle="HR Employee Data Import" />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
 
             <div className="middle hr-import-page">
                 <div className="row">

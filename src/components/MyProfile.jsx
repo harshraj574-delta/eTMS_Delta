@@ -11,7 +11,6 @@ import Alert from '@mui/material/Alert';
 import locationIcon from '../assets/location.png';
 import calendarIcon from '../assets/calendar.png';
 import Loader from "./common/Loader";
-import { ToastContainer } from "react-toastify";
 import { useProfileTour } from "../hooks/useGuidedTour";
 
 const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dnzzrvbdz/image/upload";
@@ -190,7 +189,6 @@ const MyProfile = () => {
         onNewButtonClick={() => {}}
       />
       <Loader isVisible={loading || updatingAddress || updatingMedical} fullScreen={true} />
-      <ToastContainer position="top-right" autoClose={3000} />
       <Sidebar />
       <div class="middle">
         <div class="row mt-3">

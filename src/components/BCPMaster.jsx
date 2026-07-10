@@ -13,7 +13,6 @@ import PerEmployeeBillingService from "../services/compliance/PerEmployeeBilling
 import { vendorAllocationService } from "../services/compliance/VendorAllocationService";
 import MasterSidebar from "./Master/MasterSidebar";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 import "./common/CustomDataTable.css";
@@ -395,7 +394,6 @@ const BCPMaster = () => {
             <Loader isVisible={isSubmitting} fullScreen={true} />
             <Header pageTitle="BCPMaster" showNewButton={true} onNewButtonClick={openAddBCP} />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
 
             <div className="middle">
                 <div className="row">

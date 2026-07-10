@@ -7,7 +7,6 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import RepVehUsgVenService from "../services/compliance/RepVehUsgVenService";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
 import "./common/CustomDataTable.css";
 import { MultiSelect } from "primereact/multiselect";
@@ -423,7 +422,6 @@ const VehicleUtilizationReport = () => {
       <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header pageTitle="Vehicle Utilization" showNewButton={false} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">

@@ -3,7 +3,6 @@ import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import TabSwitcher from "./common/TabSwitcher";
 import ReportButton from "./common/ReportButton";
-import { ToastContainer } from "react-toastify";
 import { toastService } from "../services/toastService";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
@@ -650,7 +649,6 @@ const RoutingConfig = () => {
         <div>
             <Header pageTitle="Routing Configuration" />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
 
             <Dialog
                 visible={confirmModal.open}

@@ -13,7 +13,6 @@ import CostMasterService from "../services/compliance/CostMasterService";
 import sessionManager from "../utils/SessionManager.js";
 import { vendorAllocationService } from "../services/compliance/VendorAllocationService.js";
 import { toastService } from "../services/toastService.js";
-import { ToastContainer } from "react-toastify";
 
 
 import ReportButton from "./common/ReportButton";
@@ -336,7 +335,6 @@ const VendorAllocation = () => {
         onNewButtonClick={() => setAddNewCost(false)}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="card_tb p-3">

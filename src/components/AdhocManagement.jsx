@@ -19,7 +19,6 @@ import { toastService } from "../services/toastService";
 import AppConfirmDialog from "./common/AppConfirmDialog";
 import Loader from "./common/Loader";
 import TableToolbar from "./common/TableToolbar";
-import { ToastContainer } from "react-toastify";
 import { CustomDataTable } from "./common/CustomDataTable";
 import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import CustomPaginator from "./common/CustomPaginator";
@@ -703,7 +702,6 @@ const AdhocManagement = () => {
         onNewButtonClick={() => setVisibleLeft(true)}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="container-fluid p-0">
         <AppConfirmDialog
           visible={confirmDialogVisible}

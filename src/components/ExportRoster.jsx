@@ -4,7 +4,6 @@ import Sidebar from "./Master/SidebarMenu";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
-import { ToastContainer } from "react-toastify";
 import Loader from "./common/Loader";
 import ReportButton from "./common/ReportButton";
 import sessionManager from "../utils/SessionManager";
@@ -157,7 +156,6 @@ const ExportRoster = () => {
       <Loader isVisible={loading} fullScreen={true} />
       <Header pageTitle="Export Roster" />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">

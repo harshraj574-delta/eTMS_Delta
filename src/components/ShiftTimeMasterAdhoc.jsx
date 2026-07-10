@@ -16,7 +16,6 @@ import CustomPaginator from "./common/CustomPaginator";
 import ShiftTimeMasterAdhocService from "../services/compliance/ShiftTimeMasterAdhocService";
 import { toastService } from "../services/toastService";
 import ReportButton from "./common/ReportButton";
-import { ToastContainer } from "react-toastify";
 
 const ShiftTimeMasterAdhoc = () => {
   const [addAdhocSidebar, setAddAdhocSidebar] = useState(false);
@@ -311,7 +310,6 @@ const ShiftTimeMasterAdhoc = () => {
         onNewButtonClick={setAddAdhocSidebar}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <AppConfirmDialog
         visible={deleteConfirm.visible}
         onHide={closeDeleteConfirm}

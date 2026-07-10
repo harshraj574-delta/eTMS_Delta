@@ -10,7 +10,6 @@ import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import PerEmployeeBillingService from "../services/compliance/PerEmployeeBillingService";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import noReportImage from "../assets/no_report.png";
@@ -446,7 +445,6 @@ const PerEmployeeBilling = () => {
       <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header pageTitle="Cost Allocation Report" showNewButton={false} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">

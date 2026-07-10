@@ -680,54 +680,10 @@ h6 strong {
 }
 
 
-#loginBg {
-    position: relative;
-}
-
-#loginBg:before {
-    content: '';
-    background: url(../images/loginBg.png) center center no-repeat;
-    background-size: cover;
-    width: 50%;
-    height: 100vh;
-    position: absolute;
-    top: 0;
-    right: 0;
-    border-bottom-left-radius: 20px;
-    z-index: -1;
-}
-
-.loginLeft {
-    max-width: 346px;
-    margin-left: 7px;
-}
-
-.loginRight {
-    margin-left: 134px;
-    max-width: 290px;
-}
-
-.loginRight h2 {
-    margin-top: 35px;
-}
-
-.loginMiddle {
-    height: calc(100vh - 200px);
-    display: grid;
-    align-items: center;
-}
-
-/* .menu_mb{ margin-bottom: 200px;} */
-
-/* #menu{ border-radius: 15px; padding: 12px 20px; margin-top: 24px;
-    -webkit-backdrop-filter: blur(21px);
-    backdrop-filter: blur(21px);
-    box-shadow: 0 7px 23px 0 rgba(0, 0, 0, 0.05);
-    border: solid 1.5px var(--white);
-    background-image: linear-gradient(94deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.8) 109%);
-}
- #menu  ul > a{ font-size: 11px; font-weight: 600; color: var(--grey-5); padding:0 31px;}
- #menu  ul > a:hover{ color: var(--primary-color);} */
+/* Login page layout moved to a co-located, mobile-first stylesheet:
+   src/components/Login.css (all rules scoped under `.login-page`).
+   Shared utilities used by the login markup (.overline_text, .form-label,
+   .btn-nor, .text1-body) remain global in this file. */
 
 .form-label,
 label {
@@ -1287,6 +1243,40 @@ body.sidebar-collapsed .middle {
     }
 }
 
+/* ========== MOBILE: OVERLAY SIDEBAR (YouTube-style drawer) ==========
+   Below 768px the expanded sidebar floats above the page content
+   instead of pushing it. A backdrop dims the page and closes the
+   drawer on tap (rendered by Header.jsx). */
+.sidebar-backdrop {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .sidebar:not(.collapsed) {
+        z-index: 1100; /* above content and backdrop, below .header (1200) */
+        box-shadow: 12px 0 32px rgba(17, 12, 34, 0.18);
+    }
+
+    /* Content stays parked at the mini-rail offset while the drawer is open */
+    body:not(.sidebar-collapsed) .middle:not(.middle-full) {
+        margin-left: 64px !important;
+        width: calc(100% - 64px) !important;
+    }
+
+    .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 1090;
+    }
+
+    /* Lock page scroll while the drawer is open */
+    body.sidebar-drawer-open {
+        overflow: hidden;
+    }
+}
+
 
 
 
@@ -1345,6 +1335,14 @@ body.sidebar-collapsed .middle {
     width: calc(100% - 270px) !important;
     margin-left: 270px;
     min-height: calc(100% - 70px);
+}
+
+/* Wide panels take the full viewport on small screens */
+@media (max-width: 768px) {
+    .offcanvas_long {
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
 }
 
 .offcanvas-footer {

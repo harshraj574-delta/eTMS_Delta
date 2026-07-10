@@ -10,7 +10,6 @@ import { result } from "lodash";
 import { CustomDataTable } from "./common/CustomDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
-import { ToastContainer } from 'react-toastify';
 // const addDay = (dateString, days) => {
 //   if (!dateString) return "";
 //   const date = new Date(dateString);
@@ -359,7 +358,6 @@ const ReplicateSchedule = () => {
     <div className="container-fluid p-0">
       <Header pageTitle="ReplicateSchedule" />
       <SidebarMenu />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="card_tb p-3">
           <div className="row">

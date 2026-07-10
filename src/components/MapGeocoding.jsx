@@ -5,7 +5,6 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
-import { ToastContainer } from "react-toastify";
 import PlaceIcon from "@mui/icons-material/Place";
 
 import MapGeocodingService from "../services/compliance/MapGeocodingService";
@@ -749,7 +748,6 @@ const MapGeocoding = () => {
     <div className="container-fluid p-0">
       <Header pageTitle="Map Geocoding" />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">

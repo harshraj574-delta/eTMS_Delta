@@ -97,6 +97,10 @@ const Header = ({
     if (middle) {
       middle.classList.toggle('expanded', isSidebarCollapsed);
     }
+
+    // Scroll lock while the mobile drawer is open (see .sidebar-drawer-open in style.css)
+    document.body.classList.toggle('sidebar-drawer-open', !isSidebarCollapsed);
+    return () => document.body.classList.remove('sidebar-drawer-open');
   }, [isSidebarCollapsed]);
 
   useEffect(() => {
@@ -132,6 +136,14 @@ const Header = ({
   };
 
   return (
+    <>
+    {!isSidebarCollapsed && (
+      <div
+        className="sidebar-backdrop"
+        onClick={() => setIsSidebarCollapsed(true)}
+        aria-hidden="true"
+      />
+    )}
     <div className="header" ref={headerRef}>
       <style>{`
         .header {
@@ -617,6 +629,7 @@ const Header = ({
         </ul>
       </div>
     </div>
+    </>
   );
 };
 

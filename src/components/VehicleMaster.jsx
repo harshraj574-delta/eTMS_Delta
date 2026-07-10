@@ -20,7 +20,6 @@ import { toastService } from "../services/toastService.js";
 import ReportButton from "./common/ReportButton";
 import Loader from "./common/Loader";
 import CustomPaginator from "./common/CustomPaginator";
-import { ToastContainer } from "react-toastify";
 
 const VEHICLE_DOCS_STORAGE_KEY = "vehicle_docs";
 const VEHICLE_STATUS_KEY = "vehicle_status_data";
@@ -1125,7 +1124,6 @@ const fetchSelectVehicleTypeEditDirect = async (vendorId) => {
                 setAddVehicle(true);
             }} />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
             <div className="middle">
                 <div className="row">
                     <div className="col-12">

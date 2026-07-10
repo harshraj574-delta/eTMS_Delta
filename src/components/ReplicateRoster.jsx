@@ -10,7 +10,6 @@ import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { MultiSelect } from "primereact/multiselect";
 import { RadioButton } from "primereact/radiobutton";
-import { ToastContainer } from "react-toastify";
 import { toastService } from "../services/toastService";
 import ReplicateRosterService from "../services/compliance/ReplicateRosterService";
 import sessionManager from "../utils/SessionManager";
@@ -237,7 +236,6 @@ const ReplicateRoster = () => {
 
     return (
         <div className="container-fluid p-0">
-             <ToastContainer position="top-right" autoClose={3000} />
              <Loader isVisible={loading} fullScreen={true} />
              <Header pageTitle="Replicate Roster" mainTitle="Compliance" />
              <Sidebar />

@@ -5,7 +5,6 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import noReportImage from "../assets/no_report.png";
 import AdhocchangeService from "../services/compliance/AdhocchangeService";
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Header from "./Master/Header";
 import Loader from "./common/Loader";
@@ -132,7 +131,6 @@ const AdhocChange = () => {
     };
     return (
         <>
-            <ToastContainer position="top-right" autoClose={3000} />
             <Loader isVisible={loading} fullScreen={true} />
             <Header pageTitle="Adhoc Change" mainTitle="Admin" />
             <SidebarMenu />

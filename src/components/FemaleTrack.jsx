@@ -16,7 +16,6 @@ import calendarIcon from "../assets/calendar.png";
 import noReportImage from "../assets/no_report.png";
 import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import useIsMobile from "./common/useIsMobile";
 import * as XLSX from "xlsx";
 import AnimatedCounter from "./common/AnimatedCounter";
@@ -344,7 +343,6 @@ const FemaleTrack = () => {
       <Loader isVisible={isLoading || isFetching || updateMutation.isPending} fullScreen={true} />
       <Header pageTitle="Female Track" />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle female-track-page">
         <div className="row">
           <div className="col-12">

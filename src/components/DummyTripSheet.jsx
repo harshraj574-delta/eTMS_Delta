@@ -4,7 +4,6 @@ import { useDummyTripSheetLogic } from '../hooks/compliance/useDummyTripSheetLog
 import DummyTripSheetDesktop from './DummyTripSheetDesktop';
 import DummyTripSheetMobile from './DummyTripSheetMobile';
 import Loader from './common/Loader';
-import { ToastContainer } from 'react-toastify';
 
 const DummyTripSheet = () => {
     const isMobile = useIsMobile();
@@ -13,7 +12,6 @@ const DummyTripSheet = () => {
 
     return (
         <>
-            <ToastContainer position="top-right" autoClose={3000} />
             <Loader isVisible={isDataLoading} fullScreen={true} />
             
             {isMobile ? (

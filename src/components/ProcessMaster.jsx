@@ -3,7 +3,7 @@ import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import Loader from "./common/Loader";
 import ProcessMasterService from '../services/compliance/ProcessMasterService';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import sessionManager from '../utils/SessionManager';
 import TableToolbar from "./common/TableToolbar";
@@ -404,7 +404,6 @@ const ProcessMaster = () => {
         onNewButtonClick={handleNewButtonClick}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">

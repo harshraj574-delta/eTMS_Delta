@@ -10,7 +10,6 @@ import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import TrackingReportService from "../services/compliance/TrackingReportService";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import noReportImage from "../assets/no_report.png";
@@ -219,7 +218,6 @@ const TrackingReport = () => {
       <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header pageTitle="Transport Tracking Report" showNewButton={false} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">

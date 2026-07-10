@@ -10,7 +10,6 @@ import * as XLSX from "xlsx";
 import ExcelJS from 'exceljs';
 import { toastService } from "../services/toastService";
 import ReportButton from "./common/ReportButton";
-import { ToastContainer } from "react-toastify";
 
 const EmpDump = () => {
     const userID = sessionStorage.getItem("ID")
@@ -159,7 +158,6 @@ const EmpDump = () => {
             )}
             <Header pageTitle={"Employee Dump"} />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
             <div className="middle">
                 <div className="card_tb p-3">
                     <div className="row">

@@ -7,7 +7,6 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import RepFeedbackReportService from "../services/compliance/RepFeedbackReportService";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import TableToolbar from "./common/TableToolbar";
 import "./common/CustomDataTable.css";
 import { MultiSelect } from "primereact/multiselect";
@@ -480,7 +479,6 @@ const FeedbackReport = () => {
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
       />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className={`middle ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="row">
           <div className="col-12">

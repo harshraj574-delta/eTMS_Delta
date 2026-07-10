@@ -8,6 +8,8 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { MultiSelect } from "primereact/multiselect";
 import { Checkbox } from "primereact/checkbox";
+import { Dialog as PrimeDialog } from "primereact/dialog";
+import { ProgressBar } from "primereact/progressbar";
 import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from "primereact/column";
 import CustomPaginator from "./common/CustomPaginator";
@@ -16,12 +18,11 @@ import TableToolbar from "./common/TableToolbar";
 import ReportButton from "./common/ReportButton";
 import ReplicationExceptionService from "../services/compliance/ReplicationExceptionService";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 import "./common/CustomDataTable.css";
 import AutoAllocationService from "../services/compliance/AutoAllocationService";
-import ManageRouteService from "../services/compliance/ManageRouteService";
+import AppConfirmDialog from "./common/AppConfirmDialog";
 
 
 const ReplicationException = () => {
@@ -44,6 +45,11 @@ const ReplicationException = () => {
 
   // UI state
   const [loading, setLoading] = useState(false);
+  // Async auto-allocation job (runs on the routing engine; we only poll)
+  const [allocationJob, setAllocationJob] = useState(null);
+  const [showAllocationDialog, setShowAllocationDialog] = useState(false);
+  const [showAutoAllocConfirm, setShowAutoAllocConfirm] = useState(false);
+  const allocationPollRef = useRef(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [isRouteFinalized, setIsRouteFinalized] = useState(false);
   const [routeFinalizedMessage, setRouteFinalizedMessage] = useState("");
@@ -67,6 +73,8 @@ const ReplicationException = () => {
   const [routeEmpLoading, setRouteEmpLoading] = useState({});
   const [editingEmpData, setEditingEmpData] = useState({});
   const [cutEmployee, setCutEmployee] = useState(null);
+  const [pendingAssign, setPendingAssign] = useState(null); // { routeId, rows: [{ id, empCode, empName, stopNo, included }] }
+  const [completedAlignEmpIds, setCompletedAlignEmpIds] = useState(new Set());
 
   const deleteTableRef = useRef(null);
   const addTableRef = useRef(null);
@@ -91,6 +99,13 @@ const ReplicationException = () => {
   useEffect(() => {
     fetchFacilities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Stop job polling when the page unmounts (the job keeps running server-side)
+  useEffect(() => {
+    return () => {
+      if (allocationPollRef.current) clearInterval(allocationPollRef.current);
+    };
   }, []);
 
   // Fetch shifts when facility or trip type changes
@@ -282,6 +297,55 @@ const ReplicationException = () => {
     }
   };
 
+  const startAllocationPolling = (jobId) => {
+    if (allocationPollRef.current) clearInterval(allocationPollRef.current);
+
+    allocationPollRef.current = setInterval(async () => {
+      try {
+        const job = await AutoAllocationService.getAllocationJobStatus(jobId);
+
+        if (job.status === "completed") {
+          clearInterval(allocationPollRef.current);
+          allocationPollRef.current = null;
+          setAllocationJob({
+            jobId,
+            status: "completed",
+            isError: false,
+            message: job.progressMessage || "Auto allocation completed successfully!",
+            percent: 100,
+            result: job.result || null,
+          });
+          setShowAllocationDialog(true); // reopen if closed so the summary is visible
+          toastService.success(job.progressMessage || "Auto allocation completed successfully!");
+          handleSubmit(); // Refresh data
+        } else if (job.status === "failed") {
+          clearInterval(allocationPollRef.current);
+          allocationPollRef.current = null;
+          setAllocationJob((prev) => ({
+            ...(prev || {}),
+            jobId,
+            status: "failed",
+            isError: true,
+            errorMessage: job.errorMessage || "Auto allocation failed. Please try again.",
+          }));
+          toastService.error(job.errorMessage || "Auto allocation failed");
+        } else {
+          setAllocationJob((prev) => ({
+            ...(prev || {}),
+            jobId,
+            status: "running",
+            isError: false,
+            message: job.progressMessage || "Processing...",
+            percent: job.progressPercent || 0,
+          }));
+        }
+      } catch (pollError) {
+        // Network hiccup — keep polling, the job is still running server-side
+        console.error("[AutoAllocation] Polling error:", pollError);
+      }
+    }, 4000);
+  };
+
   const handleAutoAllocation = async () => {
     if (addExceptionData.length === 0) {
       toastService.error("No exception employees to allocate");
@@ -289,188 +353,59 @@ const ReplicationException = () => {
     }
 
     try {
-      setLoading(true);
-
-      // Helper to format date as YYYY-MM-DD for API
-      const formatApiDate = (date) => {
-        const d = new Date(date);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      };
-
-      // Step 1: Get existing routes with space from sp_getrouteforAdhoc
-      const routesResponse = await ReplicationExceptionService.sp_getrouteforAdhoc({
+      // If another admin already started a job for this shift, attach to it
+      const existing = await AutoAllocationService.checkInProgressJob({
+        facilityid: selectedFacility,
         sDate: formatDate(selectedDate),
-        FacilityID: selectedFacility,
-        Shifttimes: getShiftString(),
-        TripType: tripType,
+        triptype: tripType,
       });
 
-      const existingRoutes =
-        typeof routesResponse === "string"
-          ? JSON.parse(routesResponse)
-          : routesResponse;
-
-      // If no existing routes, generate fresh routes for all employees
-      if (!existingRoutes || existingRoutes.length === 0) {
-        console.log("[AutoAllocation] No existing routes, generating fresh routes for all employees");
-        
-        // Get input JSON for all exception employees
-        const empCodes = addExceptionData.map(e => e.empCode).join(",");
-        const inputJsonResponse = await ReplicationExceptionService.GetInputJsonAutoAllocation({
-          facilityid: selectedFacility,
-          empcode: empCodes,
-          sDate: formatDate(selectedDate),
-          triptype: tripType,
-          shifttime: getShiftString().split(",")[0]
+      if (existing.inProgress) {
+        toastService.info("A route job is already running for this shift — showing its progress.");
+        setAllocationJob({
+          jobId: existing.jobId,
+          status: "running",
+          isError: false,
+          message: existing.progressMessage || "Job in progress...",
+          percent: existing.progressPercent || 0,
         });
-
-        const inputJson = typeof inputJsonResponse === "string"
-          ? JSON.parse(inputJsonResponse) : inputJsonResponse;
-
-        // Generate routes using routing engine
-        const generatedRoutes = await AutoAllocationService.callGenerateApi(inputJson);
-
-        // Save new routes
-        await ManageRouteService.save_routesMapBasedNew({
-          facilityid: selectedFacility,
-          sDate: formatApiDate(selectedDate),
-          triptype: tripType,
-          shifttime: getShiftString(),
-          jsonstring: JSON.stringify(generatedRoutes),
-          updatedBy: UserID,
-          IsNewAdded: true
-        });
-
-        toastService.success(`New routes generated for ${addExceptionData.length} employee(s).`);
-        handleSubmit();
+        setShowAllocationDialog(true);
+        startAllocationPolling(existing.jobId);
         return;
       }
 
-      console.log("[AutoAllocation] Existing routes fetched:", existingRoutes.length, "employees");
+      // If rows are checked, allocate only those; otherwise allocate the whole table
+      const empCodes = selectedAddRows.length > 0
+        ? selectedAddRows.map((r) => r.empCode).join(",")
+        : "";
 
-      // Extract facility coordinates from the first record (same for all)
-      const facilityGeo = existingRoutes.length > 0 
-        ? { 
-            geoX: existingRoutes[0].FacilitygeoX, 
-            geoY: existingRoutes[0].FacilitygeoY 
-          }
-        : { geoX: 77.0871, geoY: 28.4624 }; // Fallback to NCR if no routes
-
-      console.log("[AutoAllocation] Using facility coordinates:", facilityGeo);
-
-      // Step 2: Allocate exception employees to existing routes (with actual facility geo for direction matching)
-      const {
-        allocatedRoutes,
-        allocatedEmployees,
-        unallocatedEmployees,
-        allocationDetails,
-      } = AutoAllocationService.allocateEmployeesToRoutes(
-        existingRoutes,
-        addExceptionData,
-        facilityGeo,  // Pass actual facility coordinates for sector/direction calculations
-        tripType
-      );
-
-      console.log("[AutoAllocation] Allocation results:", {
-        allocated: allocatedEmployees.length,
-        unallocated: unallocatedEmployees.length,
-        details: allocationDetails,
+      const { jobId } = await AutoAllocationService.startAsyncAutoAllocation({
+        facilityid: selectedFacility,
+        sDate: formatDate(selectedDate),
+        triptype: tripType,
+        shifttime: getShiftString(),
+        updatedBy: UserID,
+        empCodes,
       });
 
-      // Track if any routes were modified
-      let allocatedToExisting = false;
-
-      // Step 3: Handle allocated employees (recalculate existing routes)
-      const recalculateJson = AutoAllocationService.buildRecalculateJson(
-        allocatedRoutes,
-        facilityGeo,
-        getShiftString().split(",")[0],
-        existingRoutes[0]?.locationName || "ncr",
-        tripType
+      toastService.info(
+        empCodes
+          ? `Auto allocation started for ${selectedAddRows.length} selected employee(s).`
+          : `Auto allocation started for all ${addExceptionData.length} exception employee(s).`
       );
 
-      if (recalculateJson && recalculateJson.routes.length > 0) {
-        console.log("[AutoAllocation] Recalculating routes for allocated employees");
-        
-        const recalculateResult = await AutoAllocationService.callRecalculateApi(
-          recalculateJson
-        );
-
-        // Save the recalculated routes
-        await ReplicationExceptionService.Save_AutoAllocationRoute({
-          facilityid: selectedFacility,
-          sDate: formatApiDate(selectedDate),
-          triptype: tripType,
-          shifttime: getShiftString(),
-          jsonstring: JSON.stringify(recalculateResult),
-          updatedBy: UserID,
-          IsNewAdded: true
-        });
-
-        allocatedToExisting = true;
-        console.log("[AutoAllocation] Allocated employees saved to existing routes");
-      }
-
-      // Step 4: Handle unallocated employees (generate new routes)
-      if (unallocatedEmployees.length > 0) {
-        console.log("[AutoAllocation] Generating new routes for", unallocatedEmployees.length, "unallocated employees");
-        
-        // Get employee codes for unallocated employees
-        const empCodes = unallocatedEmployees.map(e => e.empCode).join(",");
-        
-        // Call GetInputJsonAutoAllocation API
-        const inputJsonResponse = await ReplicationExceptionService.GetInputJsonAutoAllocation({
-          facilityid: selectedFacility,
-          empcode: empCodes,
-          sDate: formatDate(selectedDate),
-          triptype: tripType,
-          shifttime: getShiftString().split(",")[0]
-        });
-
-        const inputJson = typeof inputJsonResponse === "string"
-          ? JSON.parse(inputJsonResponse) : inputJsonResponse;
-
-        console.log("[AutoAllocation] Input JSON for generate API:", inputJson);
-
-        // Generate routes using routing engine
-        const generatedRoutes = await AutoAllocationService.callGenerateApi(inputJson);
-
-        console.log("[AutoAllocation] Generated routes:", generatedRoutes);
-
-        // Save new routes
-        await ManageRouteService.save_routesMapBasedNew({
-          facilityid: selectedFacility,
-          sDate: formatApiDate(selectedDate),
-          triptype: tripType,
-          shifttime: getShiftString(),
-          jsonstring: JSON.stringify(generatedRoutes),
-          updatedBy: UserID,
-          IsNewAdded: true
-        });
-
-        console.log("[AutoAllocation] New routes saved for unallocated employees");
-      }
-
-      // Build success message
-      let successMessage = "";
-      if (allocatedToExisting && unallocatedEmployees.length > 0) {
-        successMessage = `Auto allocation complete! ${allocatedEmployees.length} employee(s) added to existing routes. ${unallocatedEmployees.length} employee(s) got new routes.`;
-      } else if (allocatedToExisting) {
-        successMessage = `Auto allocation complete! All ${allocatedEmployees.length} employee(s) added to existing routes.`;
-      } else if (unallocatedEmployees.length > 0) {
-        successMessage = `Auto allocation complete! ${unallocatedEmployees.length} employee(s) got new routes.`;
-      } else {
-        successMessage = "No employees were allocated. Please check employee coordinates.";
-      }
-
-      toastService.success(successMessage);
-
-      // Refresh data to show updated state
-      handleSubmit();
+      setAllocationJob({
+        jobId,
+        status: "running",
+        isError: false,
+        message: "Auto allocation queued...",
+        percent: 5,
+      });
+      setShowAllocationDialog(true);
+      startAllocationPolling(jobId);
     } catch (err) {
-      console.error("[AutoAllocation] Error in auto allocation:", err);
-      setLoading(false);
-      toastService.error("Error in auto allocation: " + (err.message || "Unknown error"));
+      console.error("[AutoAllocation] Error starting auto allocation:", err);
+      toastService.error("Error starting auto allocation: " + (err.message || "Unknown error"));
     }
   };
 
@@ -523,6 +458,8 @@ const ReplicationException = () => {
     setRouteEmployees({});
     setCutEmployee(null);
     setAlignRouteSearch("");
+    setPendingAssign(null);
+    setCompletedAlignEmpIds(new Set());
     try {
       const response = await ReplicationExceptionService.GetRoutesByOrder({
         sDate: formatDate(selectedDate),
@@ -582,22 +519,95 @@ const ReplicationException = () => {
     }
   };
 
-  const handleAssignToRoute = async (routeId) => {
-    const empIds = selectedAddRows.map((r) => r.id).join(",");
+  const handleBeginAssign = (routeId) => {
+    // Only show employees not yet assigned
+    const available = selectedAddRows.filter((r) => !completedAlignEmpIds.has(r.id));
+    if (available.length === 0) return;
+    setPendingAssign({
+      routeId,
+      rows: available.map((r) => ({
+        id: r.id,
+        empCode: r.empCode,
+        empName: r.empName || r.EmpName || "",
+        stopNo: "",
+        included: true,
+      })),
+    });
+    if (!expandedRouteIds[routeId]) toggleRouteExpand(routeId);
+  };
+
+  const handleCancelAssign = () => setPendingAssign(null);
+
+  const handlePendingIncludeToggle = (empId) => {
+    setPendingAssign((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r) => (r.id === empId ? { ...r, included: !r.included } : r)),
+    }));
+  };
+
+  const handlePendingStopChange = (empId, value) => {
+    setPendingAssign((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r) => (r.id === empId ? { ...r, stopNo: value } : r)),
+    }));
+  };
+
+  const handleConfirmAssign = async () => {
+    if (!pendingAssign) return;
+    const { routeId, rows } = pendingAssign;
+    const toAssign = rows.filter((r) => r.included);
+    if (toAssign.length === 0) {
+      toastService.error("Select at least one employee to assign to this route");
+      return;
+    }
+    if (toAssign.some((r) => !r.stopNo?.toString().trim())) {
+      toastService.error("Please enter a stop number for every selected employee");
+      return;
+    }
+    setAlignLoading(true);
     try {
-      setAlignLoading(true);
-      await ReplicationExceptionService.AddEmpToRoute({
-        empId: empIds,
-        routeId: routeId,
-        stopNo: 1,
-        isDelete: 0,
-        IsNewAdded: 1,
-        updatedby: UserID,
-      });
-      toastService.success("Employees assigned to route successfully!");
-      setShowAlignSidebar(false);
-      setSelectedAddRows([]);
-      handleSubmit();
+      // Group by stop number — one API call per unique stop
+      const byStop = toAssign.reduce((acc, r) => {
+        const s = r.stopNo.toString().trim();
+        if (!acc[s]) acc[s] = [];
+        acc[s].push(r.id);
+        return acc;
+      }, {});
+      for (const [stopNo, empIds] of Object.entries(byStop)) {
+        await ReplicationExceptionService.AddEmpToRoute({
+          empId: empIds.join(","),
+          routeId,
+          stopNo: parseInt(stopNo, 10),
+          isDelete: 0,
+          IsNewAdded: 1,
+          updatedby: UserID,
+        });
+      }
+
+      // Mark these employees as done
+      const newCompleted = new Set(completedAlignEmpIds);
+      toAssign.forEach((r) => newCompleted.add(r.id));
+      setCompletedAlignEmpIds(newCompleted);
+      setPendingAssign(null);
+
+      // Reload this route's employee list so the new stops appear in context
+      if (expandedRouteIds[routeId]) {
+        loadRouteEmployees(routeId);
+      }
+
+      const remaining = selectedAddRows.length - newCompleted.size;
+      if (remaining === 0) {
+        // All employees placed — close and refresh
+        toastService.success("All employees assigned successfully!");
+        setShowAlignSidebar(false);
+        setSelectedAddRows([]);
+        setCompletedAlignEmpIds(new Set());
+        handleSubmit();
+      } else {
+        toastService.success(
+          `${toAssign.length} employee(s) added to Route ${routeId}. ${remaining} remaining — pick another route.`
+        );
+      }
     } catch (err) {
       console.error("Error assigning to route:", err);
       toastService.error("Error assigning employees to route");
@@ -862,7 +872,6 @@ const ReplicationException = () => {
       <Loader isVisible={loading} fullScreen={true} />
       <Header pageTitle="Routing Exception" showNewButton={false} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">
@@ -1054,6 +1063,27 @@ const ReplicationException = () => {
           </div>
         )}
 
+        {/* Auto allocation running with the dialog dismissed — slim reopen bar */}
+        {allocationJob && !showAllocationDialog && allocationJob.status === "running" && (
+          <div className="row mt-3">
+            <div className="col-12">
+              <div className="alert alert-info mb-0 d-flex align-items-center" style={{ gap: "12px", padding: "8px 14px" }}>
+                <i className="pi pi-spin pi-spinner" style={{ fontSize: "1rem", flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: "0.85rem" }}>
+                  Auto allocation running in background — {allocationJob.message} ({allocationJob.percent || 0}%)
+                </span>
+                <button
+                  className="btn btn-sm btn-outline-primary"
+                  style={{ flexShrink: 0 }}
+                  onClick={() => setShowAllocationDialog(true)}
+                >
+                  View Progress
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* No Data Placeholder */}
         {!hasSearched && (
           <div className="row mt-3">
@@ -1139,22 +1169,22 @@ const ReplicationException = () => {
                       <ReportButton
                         label="Auto Allocation"
                         icon="pi pi-sync"
-                        onClick={handleAutoAllocation}
-                        disabled={addExceptionData.length === 0 || loading}
+                        onClick={() => setShowAutoAllocConfirm(true)}
+                        disabled={selectedAddRows.length === 0 || loading || !!allocationJob}
                         fullWidth={false}
                       />
                       <ReportButton
                         label="Align"
                         icon="pi pi-sitemap"
                         onClick={handleAlign}
-                        disabled={selectedAddRows.length === 0 || loading}
+                        disabled={selectedAddRows.length === 0 || loading || (allocationJob && !allocationJob.isError)}
                         fullWidth={false}
                       />
                       <ReportButton
                         label="New Route"
                         icon="pi pi-plus"
                         onClick={handleMakeNewRoute}
-                        disabled={selectedAddRows.length === 0 || loading}
+                        disabled={selectedAddRows.length === 0 || loading || (allocationJob && !allocationJob.isError)}
                         fullWidth={false}
                       />
                     </>
@@ -1366,7 +1396,7 @@ const ReplicationException = () => {
       {/* Align Sidebar */}
       <MasterSidebar
         show={showAlignSidebar}
-        onClose={() => { setShowAlignSidebar(false); setCutEmployee(null); }}
+        onClose={() => { setShowAlignSidebar(false); setCutEmployee(null); setPendingAssign(null); setCompletedAlignEmpIds(new Set()); }}
         title="Align Employees to Route"
         width="78%"
         id="alignSidebar"
@@ -1376,7 +1406,7 @@ const ReplicationException = () => {
           {
             label: "Close",
             className: "btn btn-outline-secondary",
-            onClick: () => { setShowAlignSidebar(false); setCutEmployee(null); },
+            onClick: () => { setShowAlignSidebar(false); setCutEmployee(null); setPendingAssign(null); setCompletedAlignEmpIds(new Set()); },
           },
         ]}
       >
@@ -1660,15 +1690,32 @@ const ReplicationException = () => {
               <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e40af" }}>
                 {selectedAddRows.length} employee{selectedAddRows.length !== 1 ? "s" : ""}
               </span>
-              <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>— select a route below to assign</span>
+              {completedAlignEmpIds.size > 0 ? (
+                <span style={{ fontSize: "0.72rem", color: "#16a34a", fontWeight: 600 }}>
+                  · {completedAlignEmpIds.size} assigned
+                  {completedAlignEmpIds.size < selectedAddRows.length && `, ${selectedAddRows.length - completedAlignEmpIds.size} remaining`}
+                </span>
+              ) : (
+                <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>— select a route below to assign</span>
+              )}
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {selectedAddRows.map((r) => (
-                <span key={r.empCode} className="align-emp-chip">
-                  <span className="chip-code">{r.empCode}</span>
-                  <span style={{ color: "#475569" }}>{r.empName}</span>
-                </span>
-              ))}
+              {selectedAddRows.map((r) => {
+                const done = completedAlignEmpIds.has(r.id);
+                return (
+                  <span
+                    key={r.empCode}
+                    className="align-emp-chip"
+                    style={done ? { background: "#f0fdf4", border: "1px solid #86efac", color: "#15803d" } : {}}
+                  >
+                    {done
+                      ? <i className="pi pi-check" style={{ fontSize: "0.65rem", color: "#16a34a" }} />
+                      : null}
+                    <span style={{ fontWeight: 700, color: done ? "#166534" : "#1d4ed8" }}>{r.empCode}</span>
+                    <span style={{ color: done ? "#15803d" : "#475569" }}>{r.empName}</span>
+                  </span>
+                );
+              })}
             </div>
 
             {/* Cut/move banner */}
@@ -1779,12 +1826,91 @@ const ReplicationException = () => {
                             Paste Here
                           </button>
                         )}
-                        <button className="btn-assign" onClick={() => handleAssignToRoute(routeId)} disabled={alignLoading}>
-                          <i className="pi pi-check-circle" style={{ fontSize: "0.75rem" }} />
-                          Assign Here
-                        </button>
+                        {!cutEmployee && (
+                          pendingAssign?.routeId === routeId ? (
+                            <button
+                              onClick={handleCancelAssign}
+                              style={{ background: "none", border: "1px solid #cbd5e1", color: "#64748b", padding: "6px 14px", borderRadius: "7px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
+                            >
+                              Cancel
+                            </button>
+                          ) : (
+                            <button
+                              className="btn-assign"
+                              onClick={() => handleBeginAssign(routeId)}
+                              disabled={alignLoading || pendingAssign !== null || completedAlignEmpIds.size >= selectedAddRows.length}
+                            >
+                              <i className="pi pi-check-circle" style={{ fontSize: "0.75rem" }} />
+                              Assign Here
+                            </button>
+                          )
+                        )}
                       </div>
                     </div>
+
+                    {/* Incoming assignment staging panel */}
+                    {pendingAssign?.routeId === routeId && (
+                      <div style={{ borderTop: "2px solid #3b82f6", background: "#f0f7ff", padding: "14px 16px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <i className="pi pi-plus-circle" style={{ color: "#2563eb", fontSize: "0.9rem" }} />
+                            <span style={{ fontWeight: 700, fontSize: "0.75rem", color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                              {(() => { const n = pendingAssign.rows.filter(r => r.included).length; return `Adding ${n} employee${n !== 1 ? "s" : ""} to this route — set stop numbers`; })()}
+                            </span>
+                          </div>
+                          <button
+                            onClick={handleConfirmAssign}
+                            disabled={alignLoading}
+                            style={{ background: "#2563eb", color: "#fff", border: "none", padding: "7px 18px", borderRadius: "7px", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", opacity: alignLoading ? 0.6 : 1 }}
+                          >
+                            <i className="pi pi-check" style={{ fontSize: "0.75rem" }} />
+                            Confirm & Add
+                          </button>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {pendingAssign.rows.map((r) => (
+                            <div
+                              key={r.id}
+                              style={{ display: "flex", alignItems: "center", background: r.included ? "#fff" : "#f8fafc", border: `1px solid ${r.included ? "#bfdbfe" : "#e2e8f0"}`, borderRadius: "8px", padding: "10px 14px", gap: "12px", opacity: r.included ? 1 : 0.55, transition: "opacity 0.15s" }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={r.included}
+                                onChange={() => handlePendingIncludeToggle(r.id)}
+                                style={{ width: "16px", height: "16px", flexShrink: 0, cursor: "pointer", accentColor: "#2563eb" }}
+                              />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 600, fontSize: "0.83rem", color: "#0f172a" }}>{r.empName}</div>
+                                <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>{r.empCode}</div>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                                <label style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" }}>Stop #</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="—"
+                                  value={r.stopNo}
+                                  onChange={(e) => handlePendingStopChange(r.id, e.target.value)}
+                                  disabled={!r.included}
+                                  className="align-stop-input"
+                                  style={{ borderColor: r.included ? "#93c5fd" : "#e2e8f0", background: r.included ? "#eff6ff" : "#f1f5f9", fontWeight: 600 }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {pendingAssign.rows.length > 1 && (
+                          <p style={{ fontSize: "0.72rem", color: "#64748b", margin: "10px 0 0", display: "flex", alignItems: "center", gap: "5px" }}>
+                            <i className="pi pi-info-circle" style={{ fontSize: "0.72rem" }} />
+                            Uncheck employees you want to assign to a different route — they'll stay available after you confirm.
+                          </p>
+                        )}
+                        <p style={{ fontSize: "0.72rem", color: "#64748b", margin: "10px 0 0", display: "flex", alignItems: "center", gap: "5px" }}>
+                          <i className="pi pi-info-circle" style={{ fontSize: "0.72rem" }} />
+                          Expand the route below to see existing stops and pick the right stop numbers.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Expanded employee table */}
                     {isExpanded && (
@@ -1912,6 +2038,167 @@ const ReplicationException = () => {
           </div>
         </div>
       </MasterSidebar>
+
+      <AppConfirmDialog
+        visible={showAutoAllocConfirm}
+        onHide={() => setShowAutoAllocConfirm(false)}
+        title="Auto Allocate Employees"
+        message={
+          <>
+            This will auto-allocate{" "}
+            <strong style={{ color: "#2196F3" }}>{selectedAddRows.length} selected</strong>{" "}
+            exception employee(s) to the nearest available routes for the selected shift.
+          </>
+        }
+        variant="info"
+        confirmLabel="Auto Allocate"
+        onConfirm={() => {
+          setShowAutoAllocConfirm(false);
+          handleAutoAllocation();
+        }}
+      />
+
+      {/* Auto Allocation Progress / Summary Dialog */}
+      <PrimeDialog
+        visible={showAllocationDialog && !!allocationJob}
+        onHide={() => { }}
+        closable={false}
+        draggable={false}
+        resizable={false}
+        header={
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "2px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <img src="/images/logo.svg" alt="eTMS" style={{ height: "26px" }} />
+              <div style={{ lineHeight: 1.25 }}>
+                <div style={{ fontWeight: 700, fontSize: "12px", letterSpacing: "0.06em", color: "#0f172a" }}>OPTIMAR</div>
+                <div style={{ fontSize: "10px", color: "#94a3b8", letterSpacing: "0.03em", marginTop: "1px" }}>Routing Engine</div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowAllocationDialog(false);
+                if (allocationJob?.status !== "running") {
+                  setAllocationJob(null);
+                }
+              }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 6px", borderRadius: "4px", color: "#94a3b8", fontSize: "15px", lineHeight: 1, display: "flex", alignItems: "center" }}
+              title="Close"
+              aria-label="Close"
+            >
+              <i className="pi pi-times" />
+            </button>
+          </div>
+        }
+        style={{ width: !allocationJob?.isError && allocationJob?.status === "completed" ? "620px" : "420px" }}
+        className="p-2 rounded-5 bg-white"
+      >
+        {/* Running state */}
+        {!allocationJob?.isError && allocationJob?.status !== "completed" && (
+          <div style={{ padding: "32px 32px 28px", textAlign: "center" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "58px", height: "58px", borderRadius: "50%", background: "#eff6ff", border: "1.5px solid #bfdbfe", marginBottom: "18px" }}>
+              <i className="pi pi-spin pi-spinner" style={{ fontSize: "22px", color: "#2563eb" }} />
+            </div>
+            <h5 style={{ fontWeight: 600, fontSize: "15px", color: "#0f172a", margin: "0 0 6px" }}>Allocating Employees</h5>
+            <p style={{ color: "#64748b", fontSize: "13px", margin: "0 0 22px" }}>{allocationJob?.message}</p>
+            <ProgressBar value={allocationJob?.percent || 0} showValue={false} />
+            <p style={{ color: "#94a3b8", fontSize: "12px", marginTop: "14px", marginBottom: 0 }}>
+              Allocation continues in the background — you can close this dialog and keep working.
+            </p>
+          </div>
+        )}
+
+        {/* Completed state */}
+        {!allocationJob?.isError && allocationJob?.status === "completed" && (
+          <div style={{ padding: "28px 28px 24px" }}>
+            <div style={{ textAlign: "center", marginBottom: "16px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "54px", height: "54px", borderRadius: "50%", background: "#f0fdf4", border: "1.5px solid #bbf7d0" }}>
+                <i className="pi pi-check" style={{ fontSize: "20px", color: "#16a34a" }} />
+              </div>
+            </div>
+            <h5 style={{ textAlign: "center", fontWeight: 600, fontSize: "15px", color: "#0f172a", margin: "0 0 20px" }}>Auto Allocation Complete</h5>
+
+            {allocationJob?.result && (
+              <>
+                <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+                  <div style={{ flex: 1, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "14px 12px", textAlign: "center" }}>
+                    <div style={{ fontSize: "28px", fontWeight: 700, color: "#16a34a", lineHeight: 1 }}>{allocationJob.result.allocatedCount ?? 0}</div>
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "5px" }}>added to existing routes</div>
+                  </div>
+                  <div style={{ flex: 1, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "14px 12px", textAlign: "center" }}>
+                    <div style={{ fontSize: "28px", fontWeight: 700, color: "#2563eb", lineHeight: 1 }}>{allocationJob.result.newRouteEmployeeCount ?? 0}</div>
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "5px" }}>on {allocationJob.result.newRouteCount ?? 0} new route(s)</div>
+                  </div>
+                </div>
+
+                {Array.isArray(allocationJob.result.details) && allocationJob.result.details.length > 0 && (
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden", maxHeight: "220px", overflowY: "auto", marginBottom: "14px" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
+                      <thead>
+                        <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                          <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", position: "sticky", top: 0, background: "#f8fafc" }}>Employee</th>
+                          <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: "10px", color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", position: "sticky", top: 0, background: "#f8fafc" }}>Route</th>
+                          <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600, fontSize: "10px", color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", position: "sticky", top: 0, background: "#f8fafc" }}>Stop</th>
+                          <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600, fontSize: "10px", color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", position: "sticky", top: 0, background: "#f8fafc" }}>Distance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allocationJob.result.details.map((d, idx) => (
+                          <tr key={d.empCode} style={{ borderBottom: "1px solid #f1f5f9", background: idx % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                            <td style={{ padding: "8px 12px" }}>
+                              <div style={{ fontWeight: 600, color: "#0f172a" }}>{d.empName || d.empCode}</div>
+                              <div style={{ fontSize: "10px", color: "#94a3b8" }}>{d.empCode}</div>
+                            </td>
+                            <td style={{ padding: "8px 12px", fontWeight: 600, color: "#2563eb" }}>{d.assignedToRoute}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "center", color: "#475569" }}>{d.newStopNo}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "center", color: "#475569" }}>{d.proximityKm != null ? `${d.proximityKm} km` : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {(allocationJob.result.newRouteEmployeeCount ?? 0) > 0 && (
+                  <p style={{ color: "#94a3b8", fontSize: "11.5px", margin: "0 0 16px", textAlign: "center" }}>
+                    Employees who didn't fit existing routes were placed on newly generated routes — find them in Manage Routes.
+                  </p>
+                )}
+              </>
+            )}
+
+            <div style={{ textAlign: "center", marginTop: "4px" }}>
+              <button
+                onClick={() => { setShowAllocationDialog(false); setAllocationJob(null); }}
+                style={{ background: "#0f172a", color: "#fff", border: "none", padding: "8px 32px", borderRadius: "6px", fontWeight: 600, fontSize: "13px", cursor: "pointer", letterSpacing: "0.02em" }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Error state */}
+        {allocationJob?.isError && (
+          <div style={{ padding: "32px 32px 28px", textAlign: "center" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "54px", height: "54px", borderRadius: "50%", background: "#fef2f2", border: "1.5px solid #fecaca", marginBottom: "18px" }}>
+              <i className="pi pi-times" style={{ fontSize: "20px", color: "#dc2626" }} />
+            </div>
+            <h5 style={{ fontWeight: 600, fontSize: "15px", color: "#0f172a", margin: "0 0 8px" }}>Auto Allocation Failed</h5>
+            <p style={{ color: "#64748b", fontSize: "13px", margin: "0 0 14px" }}>The allocation job could not be completed.</p>
+            {allocationJob?.errorMessage && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "6px", padding: "10px 14px", marginBottom: "20px", textAlign: "left" }}>
+                <p style={{ color: "#dc2626", fontSize: "12px", margin: 0 }}>{allocationJob.errorMessage}</p>
+              </div>
+            )}
+            <button
+              onClick={() => { setShowAllocationDialog(false); setAllocationJob(null); }}
+              style={{ background: "none", color: "#475569", border: "1px solid #cbd5e1", padding: "8px 28px", borderRadius: "6px", fontWeight: 500, fontSize: "13px", cursor: "pointer" }}
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </PrimeDialog>
     </>
   );
 };

@@ -13,7 +13,6 @@ import "./common/CustomDataTable.css";
 import { Column } from "primereact/column";
 import { MultiSelect } from "primereact/multiselect";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 import TableToolbar from "./common/TableToolbar";
@@ -527,7 +526,6 @@ const RepScheduleSummery = () => {
       <Loader isVisible={loading} fullScreen={true} />
       <Header pageTitle={"Detailed & Vendor Billing Report"} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <style>
         {`

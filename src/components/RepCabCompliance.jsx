@@ -9,7 +9,6 @@ import { CustomDataTable } from "./common/CustomDataTable";
 import { Column } from "primereact/column";
 import RepCabComplianceService from "../services/compliance/RepCabComplianceService";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import * as XLSX from "xlsx";
 import TableToolbar from "./common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
@@ -329,7 +328,6 @@ const RepCabCompliance = () => {
       <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header pageTitle="Cab Penalty Report" showNewButton={false} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">

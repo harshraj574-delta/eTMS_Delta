@@ -10,7 +10,6 @@ import { CustomDataTable } from "./common/CustomDataTable";
 import ReportButton from "./common/ReportButton";
 import Loader from "./common/Loader";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 import sessionManager from "../utils/SessionManager";
@@ -314,7 +313,6 @@ const ComplianceCheck = () => {
             <Loader isVisible={loadingFacilities || isBusy} fullScreen />
             <Header pageTitle="Compliance Check" />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
 
             <div className="middle compliance-page">
                 <div className="row">

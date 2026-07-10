@@ -17,7 +17,6 @@ import { set } from "lodash";
 import { CustomDataTable } from "./common/CustomDataTable";
 import CustomPaginator from "./common/CustomPaginator";
 import TableToolbar from "./common/TableToolbar";
-import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 
 const CostMasterPackage = () => {
@@ -435,7 +434,6 @@ const CostMasterPackage = () => {
         onNewButtonClick={() => setAddNewCost(true)}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">

@@ -11,7 +11,6 @@ import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import DummyTripSheetEntrySidebar from "./DummyTripSheetEntrySidebar";
 import DummyTripSheetEntryService from "../services/compliance/DummyTripSheetEntryService";
 import noReportImage from "../assets/no_report.png";
@@ -224,7 +223,6 @@ const DummyTripSheetEntryDesktop = ({
     return (
         <>
             <Loader isVisible={isLoading || isSearching || isAddingEmployee} fullScreen={true} />
-            <ToastContainer position="top-right" autoClose={3000} />
             <Header pageTitle="Spot Hire Validate" />
             <SidebarMenu />
             

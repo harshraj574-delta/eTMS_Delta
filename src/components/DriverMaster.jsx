@@ -12,7 +12,6 @@ import CustomPaginator from "./common/CustomPaginator";
 import { Column } from "primereact/column";
 import MasterSidebar from "./Master/MasterSidebar";
 import { Checkbox } from "primereact/checkbox";
-import { ToastContainer } from "react-toastify";
 
 import sessionManager from "../utils/SessionManager";
 import driverMasterService from "../services/compliance/DriverMasterService";
@@ -813,7 +812,6 @@ const DriverMaster = () => {
         onNewButtonClick={openAddSidebar}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <div className="middle">
         <div className="row">
           <div className="col-12">

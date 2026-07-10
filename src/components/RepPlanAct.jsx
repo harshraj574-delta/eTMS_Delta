@@ -18,7 +18,6 @@ import "./common/CustomDataTable.css";
 import { MultiSelect } from "primereact/multiselect";
 import calendarIcon from "../assets/calendar.png";
 import noReportImage from "../assets/no_report.png";
-import { ToastContainer } from "react-toastify";
 
 const RepPlanAct = () => {
   const [error, setError] = useState(null);
@@ -473,7 +472,6 @@ const RepPlanAct = () => {
       <Loader isVisible={loading} fullScreen={true} />
       <Header pageTitle={"Plan Vs Actual Information"} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <style>
         {`

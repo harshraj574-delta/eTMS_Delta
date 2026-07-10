@@ -6,7 +6,7 @@ import Loader from "./common/Loader";
 import TabSwitcher from "./common/TabSwitcher";
 import TableToolbar from "./common/TableToolbar";
 import FeedbackMasterService from "../services/compliance/FeedbackMasterService";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import sessionManager from "../utils/SessionManager";
 
@@ -371,7 +371,6 @@ const FeedbackMaster = () => {
         onNewButtonClick={handleNewButtonClick}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">

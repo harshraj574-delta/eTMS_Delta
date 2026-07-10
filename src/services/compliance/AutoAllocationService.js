@@ -5,6 +5,9 @@ import axios from 'axios';
 const ROUTING_ENGINE_BASE_URL = 'https://ftqbvxxmpm.ap-south-1.awsapprunner.com';
 const REOPTIMIZE_API_URL = `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/reoptimize`;
 const GENERATE_API_URL = `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/generate`;
+const ALLOCATE_ASYNC_API_URL = `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/allocate/async`;
+const JOBS_API_URL = `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/jobs`;
+const IN_PROGRESS_API_URL = `${ROUTING_ENGINE_BASE_URL}/api/v2/route-generation/in-progress`;
 const MAX_EMPLOYEES_PER_ROUTE = 12;
 const DEFAULT_RADIUS_KM = 2;
 const PICKUP_TIME_PER_EMPLOYEE = 420;
@@ -412,6 +415,60 @@ export const callRecalculateApi = async (inputJson) => {
   return response.data;
 };
 
+// --- Async Allocation Job Helpers (routing engine runs the whole pipeline) ---
+
+export const startAsyncAutoAllocation = async ({ facilityid, sDate, triptype, shifttime, updatedBy, empCodes }) => {
+  const response = await fetch(ALLOCATE_ASYNC_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    mode: 'cors',
+    credentials: 'omit',
+    // mainBackendUrl empty: the engine uses its MAIN_BACKEND_URL env var
+    // empCodes (optional, comma-separated): allocate only these employees
+    body: JSON.stringify({ facilityid, sDate, triptype, shifttime, updatedBy, mainBackendUrl: '', empCodes: empCodes || '' })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to start auto allocation: ${response.status} ${errorText}`);
+  }
+
+  return response.json();
+};
+
+export const getAllocationJobStatus = async (jobId) => {
+  const response = await fetch(`${JOBS_API_URL}/${jobId}`, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    mode: 'cors',
+    credentials: 'omit'
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch job status: ${response.status} ${errorText}`);
+  }
+
+  return response.json();
+};
+
+export const checkInProgressJob = async ({ facilityid, sDate, triptype }) => {
+  const params = new URLSearchParams({ facilityid: String(facilityid), sDate, triptype });
+  try {
+    const response = await fetch(`${IN_PROGRESS_API_URL}?${params}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      mode: 'cors',
+      credentials: 'omit'
+    });
+    if (!response.ok) return { inProgress: false };
+    return response.json();
+  } catch (_) {
+    // Non-fatal: if the check fails, let the caller proceed normally
+    return { inProgress: false };
+  }
+};
+
 export default {
   calculateDistance,
   calculateBearing,
@@ -423,6 +480,9 @@ export default {
   buildRecalculateJson,
   callGenerateApi,
   callRecalculateApi,
+  startAsyncAutoAllocation,
+  getAllocationJobStatus,
+  checkInProgressJob,
   MAX_EMPLOYEES_PER_ROUTE,
   DEFAULT_RADIUS_KM,
   NUM_SECTORS

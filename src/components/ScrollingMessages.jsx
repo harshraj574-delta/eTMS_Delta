@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Master/SidebarMenu";
 import Header from "../components/Master/Header";
 import MasterSidebar from "../components/Master/MasterSidebar";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { CustomDataTable } from "./common/CustomDataTable";
 import CustomPaginator from "./common/CustomPaginator";
@@ -287,7 +287,6 @@ const ScrollingMessages = () => {
         onNewButtonClick={openAddForm}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div
         className="middle"

@@ -38,7 +38,6 @@ import * as XLSX from "xlsx";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouteDetailsQuery, manageRouteKeys } from "../hooks/compliance/useManageRouteQueries";
 import { set, throttle } from "lodash";
-import { ToastContainer } from "react-toastify";
 
 import {
   DndContext,
@@ -3589,7 +3588,6 @@ const ManageRouteDesktop = ({
           showNewButton={false}
         />
         <Sidebar />
-        <ToastContainer position="top-right" autoClose={3000} />
         <div className="middle">
           <div className="row">
             <div className="col-12 col-lg-8 mb-3 mb-lg-0">
@@ -4204,10 +4202,13 @@ const ManageRouteDesktop = ({
           draggable={false}
           resizable={false}
           header={
-            <div className="d-flex justify-content-between align-items-center w-100">
-              <div className="d-flex align-items-center gap-2">
-                <img src="/images/logo.svg" alt="" style={{ height: '20px' }} />
-                <span style={{ fontWeight: 600, fontSize: '14px' }}>OPTIMAR Routing Engine</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '2px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <img src="/images/logo.svg" alt="eTMS" style={{ height: '26px' }} />
+                <div style={{ lineHeight: 1.25 }}>
+                  <div style={{ fontWeight: 700, fontSize: '12px', letterSpacing: '0.06em', color: '#0f172a' }}>OPTIMAR</div>
+                  <div style={{ fontSize: '10px', color: '#94a3b8', letterSpacing: '0.03em', marginTop: '1px' }}>Routing Engine</div>
+                </div>
               </div>
               <button
                 onClick={() => {
@@ -4219,18 +4220,7 @@ const ManageRouteDesktop = ({
                   logic?.actions?.clearInProgressJob?.();
                   setShowProgressDialog(false);
                 }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px 6px',
-                  borderRadius: '4px',
-                  color: '#6c757d',
-                  fontSize: '18px',
-                  lineHeight: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: '4px', color: '#94a3b8', fontSize: '15px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
                 title="Close"
                 aria-label="Close"
               >
@@ -4238,38 +4228,39 @@ const ManageRouteDesktop = ({
               </button>
             </div>
           }
-          style={{ width: "500px" }}
+          style={{ width: '420px' }}
           className="p-2 rounded-5 bg-white"
         >
-          <div className="p-4">
-            <h3 className="text-center mb-4">
-              {progressStatus.isError
-                ? "Route Generation Failed"
-                : "Generating Routes"}
-            </h3>
-
-            <div className="mb-4">
-              <ProgressBar
-                value={progressStatus.progress}
-                showValue={false}
-                className={progressStatus.isError ? "p-progressbar-error" : ""}
-              />
+          {/* Running state */}
+          {!progressStatus.isError && (
+            <div style={{ padding: '32px 32px 28px', textAlign: 'center' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '58px', height: '58px', borderRadius: '50%', background: '#eff6ff', border: '1.5px solid #bfdbfe', marginBottom: '18px' }}>
+                <i className="pi pi-spin pi-spinner" style={{ fontSize: '22px', color: '#2563eb' }} />
+              </div>
+              <h5 style={{ fontWeight: 600, fontSize: '15px', color: '#0f172a', margin: '0 0 6px' }}>Generating Routes</h5>
+              <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 22px' }}>{progressStatus.message}</p>
+              <ProgressBar value={progressStatus.progress} showValue={false} />
+              <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '14px', marginBottom: 0 }}>
+                Generation continues in the background — you can close this dialog and work on other shifts.
+              </p>
             </div>
+          )}
 
-            <div className="text-center">
-              <p className="mb-2">{progressStatus.message}</p>
-              {progressStatus.isError && (
-                <p className="text-danger mb-0" style={{ fontSize: '13px' }}>
-                  {progressStatus.errorMessage}
-                </p>
-              )}
-              {!progressStatus.isError && (
-                <p className="text-muted mb-0" style={{ fontSize: '12px' }}>
-                  Generation continues in the background — you can close this dialog and work on other shifts.
-                </p>
+          {/* Error state */}
+          {progressStatus.isError && (
+            <div style={{ padding: '32px 32px 28px', textAlign: 'center' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '54px', height: '54px', borderRadius: '50%', background: '#fef2f2', border: '1.5px solid #fecaca', marginBottom: '18px' }}>
+                <i className="pi pi-times" style={{ fontSize: '20px', color: '#dc2626' }} />
+              </div>
+              <h5 style={{ fontWeight: 600, fontSize: '15px', color: '#0f172a', margin: '0 0 8px' }}>Route Generation Failed</h5>
+              <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px' }}>{progressStatus.message}</p>
+              {progressStatus.errorMessage && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '10px 14px', marginBottom: '20px', textAlign: 'left' }}>
+                  <p style={{ color: '#dc2626', fontSize: '12px', margin: 0 }}>{progressStatus.errorMessage}</p>
+                </div>
               )}
             </div>
-          </div>
+          )}
         </PrimeDialog>
 
         <AppConfirmDialog

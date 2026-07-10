@@ -8,7 +8,6 @@ import MasterSidebar from "./Master/MasterSidebar";
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { toastService } from '../services/toastService';
-import { ToastContainer } from 'react-toastify';
 import TableToolbar from "./common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
@@ -575,7 +574,6 @@ const ManageMenu = () => {
                 onNewButtonClick={() => setShowNewSidebar(true)}
             />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
 
             <style>
                 {`

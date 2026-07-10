@@ -15,7 +15,6 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Dialog } from "primereact/dialog";
-import { ToastContainer } from "react-toastify";
 import ReportButton from "./common/ReportButton";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -381,7 +380,6 @@ const EmpSpoc = () => {
         <>
             <Header pageTitle="Manage SPOC" />
             <Sidebar />
-            <ToastContainer position="top-right" autoClose={3000} />
 
             <div className="middle">
                 <div className="row">

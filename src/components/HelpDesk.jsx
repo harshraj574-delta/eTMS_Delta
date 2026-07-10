@@ -11,7 +11,6 @@ import HelpDeskService from "../services/compliance/HelpDeskService";
 import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
 import Loader from "./common/Loader";
-import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 import { CustomDataTable } from "./common/CustomDataTable";
 import CustomPaginator from "./common/CustomPaginator";
@@ -855,7 +854,6 @@ const HelpDesk = () => {
     };
     return (
         <>
-            <ToastContainer position="top-right" autoClose={3000} />
             <Loader isVisible={loading} fullScreen={true} />
             <Header pageTitle="Online Tracking" mainTitle="HelpDesk" />
             <SidebarMenu />

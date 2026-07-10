@@ -1,0 +1,89 @@
+/* ============================================================================
+   Login page — component-scoped styles (co-located with Login.jsx)
+
+   Conventions:
+   - Every rule is scoped under `.login-page` so nothing leaks into the global
+     namespace (the root <div> in Login.jsx carries this class).
+   - Mobile-first: base rules target small screens; the `@media (min-width:992px)`
+     block layers on the desktop treatment. 992px === Bootstrap's `lg`
+     breakpoint, which is the grid the markup already uses (col-12 / col-lg-6),
+     so the CSS and the JSX share a single source of truth for "when we go wide".
+   - Fluid values + logical properties instead of hardcoded pixel offsets, which
+     is what previously caused horizontal overflow on phones.
+   ========================================================================== */
+
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  /* Guard: no decorative element or stray margin can force sideways scroll. */
+  overflow-x: hidden;
+}
+
+/* Decorative background panel — desktop-only. On mobile it would render as a
+   broken half-screen strip and hurt form contrast, so it is not shown. */
+.login-page::before {
+  content: "";
+  display: none;
+}
+
+/* Vertically centre the login block. Fluid min-height instead of a fixed
+   `calc(100vh - 200px)` so short/mobile viewports don't clip the content. */
+.login-page .loginMiddle {
+  display: grid;
+  align-items: center;
+  min-height: calc(100vh - 160px);
+  padding-block: 2rem;
+}
+
+/* Form column: full-width and centred on mobile. */
+.login-page .loginLeft {
+  width: 100%;
+  max-width: 346px;
+  margin-inline: auto;
+}
+
+/* Branding column: centred on mobile, no hardcoded left margin (the old
+   `margin-left: 134px` was what pushed content off narrow screens). */
+.login-page .loginRight {
+  width: 100%;
+  max-width: 290px;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.login-page .loginRight h2 {
+  margin-top: 1.5rem;
+}
+
+/* ── Desktop / tablet-landscape (≥ 992px = Bootstrap `lg`) ────────────────── */
+@media (min-width: 992px) {
+  /* Background becomes the fixed right-half panel from the original design. */
+  .login-page::before {
+    display: block;
+    position: absolute;
+    inset: 0 0 auto auto; /* top:0; right:0 */
+    width: 50%;
+    height: 100vh;
+    /* Asset lives in /public/images, which Vite serves from the web root. */
+    background: url(/images/loginBg.png) center center / cover no-repeat;
+    border-bottom-left-radius: 20px;
+    z-index: -1;
+  }
+
+  .login-page .loginMiddle {
+    min-height: calc(100vh - 200px);
+  }
+
+  .login-page .loginLeft {
+    margin-inline: 7px 0;
+  }
+
+  .login-page .loginRight {
+    margin-inline: 134px 0;
+    text-align: left;
+  }
+
+  .login-page .loginRight h2 {
+    margin-top: 35px;
+  }
+}

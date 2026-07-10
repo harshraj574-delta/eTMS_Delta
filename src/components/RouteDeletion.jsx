@@ -8,7 +8,6 @@ import AppConfirmDialog from "./common/AppConfirmDialog";
 import { Calendar } from "primereact/calendar";
 import calendarIcon from "../assets/calendar.png";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import ReportButton from "./common/ReportButton";
 const RouteDeletion = () => {
   const UserId = sessionStorage.getItem("ID");
@@ -165,7 +164,6 @@ const RouteDeletion = () => {
       )}
       <Header pageTitle="Route Deletion" showNewButton={false} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <AppConfirmDialog
         visible={deleteConfirmVisible}
         onHide={() => setDeleteConfirmVisible(false)}

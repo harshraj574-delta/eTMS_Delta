@@ -11,7 +11,6 @@ import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { Calendar } from "primereact/calendar";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { ToastContainer } from "react-toastify";
 import Loader from "./common/Loader";
 import TabSwitcher from "./common/TabSwitcher";
 import { CustomDataTable } from "./common/CustomDataTable";
@@ -566,7 +565,6 @@ const EmpAccessRights = () => {
     <div className="container-fluid p-0 emp-access-rights-wrapper">
       <Header pageTitle="Manage User Access Rights" />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
       <Loader isVisible={(loading && !menuAccessCounts.length) || logLoading} fullScreen={true} />
 
       <div className="middle">

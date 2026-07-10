@@ -1,5 +1,4 @@
 import React, { useCallback, useState, useEffect, useMemo } from "react";
-import { ToastContainer } from "react-toastify";
 import { toastService } from "../services/toastService";
 import Loader from "./common/Loader";
 import Header from "./Master/Header";
@@ -807,7 +806,6 @@ const ManageColony = () => {
       onDragEnd={handleDragEnd}
     >
       <div className="container-fluid p-0">
-      <ToastContainer position="top-right" autoClose={3000} />
       <Loader isVisible={data.isLoading} fullScreen={true} />
       <Header pageTitle={"Shuttle Route Master"} mainTitle={"Admin"} />
       <SidebarMenu />

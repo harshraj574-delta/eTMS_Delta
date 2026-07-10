@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Header from "./Master/Header";
 import SidebarMenu from "./Master/SidebarMenu";
-import { ToastContainer } from "react-toastify";
 import sessionManager from "../utils/SessionManager";
 import { toastService } from "../services/toastService";
 import Loader from "./common/Loader";
@@ -266,7 +265,6 @@ const ReplyFeedback = () => {
     };
     return (
         <div className="container-fluid p-0">
-            <ToastContainer position="top-right" autoClose={3000} />
             <Loader isVisible={loading} fullScreen={true} />
             <Header pageTitle={"Manage Employee Feedback"} mainTitle={"Admin"} />
             <SidebarMenu />

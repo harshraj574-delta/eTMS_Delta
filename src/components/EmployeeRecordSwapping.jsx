@@ -5,7 +5,6 @@ import { CustomDataTable } from "./common/CustomDataTable";
 import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import { Column } from "primereact/column";
 import Loader from "./common/Loader";
-import { ToastContainer } from "react-toastify";
 import { toastService } from "../services/toastService";
 import EmployeeRecordSwappingService from "../services/compliance/EmployeeRecordSwappingService";
 import sessionManager from "../utils/SessionManager";
@@ -433,7 +432,6 @@ const EmployeeRecordSwapping = () => {
 
   return (
     <div className="container-fluid p-0">
-      <ToastContainer />
       <Header pageTitle="Employee Record Swapping" mainTitle="Compliance" />
       <Sidebar />
 

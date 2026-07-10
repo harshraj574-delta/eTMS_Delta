@@ -13,7 +13,6 @@ import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
 import OTAReportService from "../services/compliance/OTAReportService";
 import { toastService } from "../services/toastService";
-import { ToastContainer } from "react-toastify";
 import noReportImage from "../assets/no_report.png";
 import calendarIcon from "../assets/calendar.png";
 import TableToolbar from "./common/TableToolbar";
@@ -680,7 +679,6 @@ const OTAReport = () => {
       <Loader isVisible={isSubmitting} fullScreen={true} />
       <Header pageTitle="OTA Reports" showNewButton={false} />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">

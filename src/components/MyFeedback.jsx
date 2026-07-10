@@ -26,7 +26,6 @@ import TableToolbar from "./common/TableToolbar.jsx";
 import { set } from "lodash";
 import { CustomDataTable } from "./common/CustomDataTable";
 import ResponsiveDataTable from "./common/ResponsiveDataTable";
-import { ToastContainer } from "react-toastify";
 import CustomPaginator from "./common/CustomPaginator";
 import ChatIcon from "./common/ChatIcon";
 import TabSwitcher from "./common/TabSwitcher";
@@ -488,7 +487,6 @@ const MyFeedback = () => {
 
       {/* Sidebar */}
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       {/* Middle Content */}
       <div className="middle">

@@ -15,7 +15,6 @@ import { InputText } from "primereact/inputtext";
 import "../common/CustomDataTable.css";
 import PlaceIcon from '@mui/icons-material/Place';
 import { Button } from "primereact/button";
-import { ToastContainer } from 'react-toastify';
 
 
 const FACILITY_CONFIG_KEY = "facilityConfig";
@@ -799,7 +798,6 @@ const FacilityMaster = () => {
         onNewButtonClick={handleNewButtonClick}
       />
       <Sidebar />
-      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="middle">
         <div className="row">

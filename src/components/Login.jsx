@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 // import '../components/css/bootstrap.min.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '../components/css/style.css';
+import './Login.css';
 import { Form, Button, Container, Alert } from 'react-bootstrap';
 import { apiService } from '../services/api';
 import sessionManager from '../utils/SessionManager';
@@ -151,7 +152,7 @@ const Login = () => {
   }
 
   return (
-    <div className="container-fluid" id="loginBg">
+    <div className="container-fluid login-page" id="loginBg">
       <div className="container">
         <div className="row menu_mb">
           <div className="col-lg-12">
