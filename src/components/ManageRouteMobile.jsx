@@ -1181,7 +1181,7 @@ const ManageRouteMobile = ({
             });
 
             toastService.success("Modified routes recalculated successfully!");
-            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routes(filters) });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
             if(onSearch) await onSearch();
         } catch (error) {
             console.error("Error recalculating routes:", error);
@@ -1260,8 +1260,8 @@ const ManageRouteMobile = ({
     // Handle successful employee addition
     const handleEmployeeAdded = useCallback(() => {
         // Refresh route data
-        queryClient.invalidateQueries({ queryKey: ['routes'] });
-        queryClient.invalidateQueries({ queryKey: ['routeDetails', targetRouteForAssign?.RouteID] });
+        queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
+        queryClient.invalidateQueries({ queryKey: manageRouteKeys.routeDetails(targetRouteForAssign?.RouteID) });
     }, [queryClient, targetRouteForAssign]);
 
     // Recalculate route handler
@@ -1293,7 +1293,7 @@ const ManageRouteMobile = ({
             });
 
             // Refresh routes data
-            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routes(filters) });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.routeDetails(route.RouteID) });
             
             toastService.success(`Route ${route.RouteID} recalculated successfully!`);

@@ -142,8 +142,8 @@ const useManageRouteLogic = () => {
                 // Trigger refetches
                 setTimeout(() => {
                     searchRoutes();
-                    queryClient.invalidateQueries(manageRouteKeys.statistics(routesQueryParams));
-                    queryClient.invalidateQueries(manageRouteKeys.vendorSummary(routesQueryParams));
+                    queryClient.invalidateQueries({ queryKey: manageRouteKeys.statisticsAll });
+                    queryClient.invalidateQueries({ queryKey: manageRouteKeys.vendorSummaryAll });
                 }, 0);
 
                 toastService.success("Route data loaded successfully.");

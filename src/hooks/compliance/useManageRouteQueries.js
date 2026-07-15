@@ -2,8 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ManageRouteService from '../../services/compliance/ManageRouteService';
 
 // Query Key Factory
+// The *All keys are prefix keys for invalidation (match every params variant).
 export const manageRouteKeys = {
     all: ['manageRoute'],
+    routesAll: ['manageRoute', 'routes'],
+    routeDetailsAll: ['manageRoute', 'routeDetails'],
+    statisticsAll: ['manageRoute', 'statistics'],
+    vendorSummaryAll: ['manageRoute', 'vendorSummary'],
     baseFacility: (userid) => ['manageRoute', 'baseFacility', userid],
     shifts: (facid, type) => ['manageRoute', 'shifts', facid, type],
     routes: (params) => ['manageRoute', 'routes', params],
@@ -125,6 +130,57 @@ export const useVendorSummaryQuery = (params, enabled = false) => {
     });
 };
 
+// Polls an async route-generation job every 5s while jobId is set.
+// Pass null to stop polling; the query cleans itself up on unmount.
+export const useRouteJobStatusQuery = (jobId) => {
+    return useQuery({
+        queryKey: [...manageRouteKeys.all, 'jobStatus', jobId],
+        queryFn: () => ManageRouteService.getRouteJobStatus(jobId),
+        enabled: !!jobId,
+        refetchInterval: 5000,
+        refetchIntervalInBackground: true,
+        retry: false, // a failed poll shouldn't burst-retry; the interval tries again
+        staleTime: 0,
+        gcTime: 0,
+    });
+};
+
+// --- Workflows ---
+
+/**
+ * Shared pipeline: fetch modified-route input for a shift → recalculate via the
+ * routing engine → persist the updated ETAs/distances.
+ * Returns true when routes were recalculated, false when nothing needed it.
+ */
+export async function recalculateModifiedRoutes(
+    { shiftDate, shifts, facilityId, tripType, userId },
+    { onBeforeRecalc } = {}
+) {
+    const inputJsonData = await ManageRouteService.GetInputJsonRecalculate({
+        shiftdate: shiftDate,
+        shifttime: shifts,
+        facilityid: facilityId,
+        triptype: tripType,
+    });
+
+    if (!inputJsonData?.routes?.length) return false;
+
+    onBeforeRecalc?.();
+
+    const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
+
+    await ManageRouteService.updateRouteMapbased({
+        facilityid: facilityId,
+        sDate: shiftDate,
+        triptype: tripType,
+        shifttime: shifts,
+        jsonstring: JSON.stringify(recalculatedRouteJson),
+        updatedBy: userId,
+    });
+
+    return true;
+}
+
 // --- Mutations ---
 
 export const useGenerateRoutesMutation = () => {
@@ -151,8 +207,8 @@ export const useGenerateRoutesMutation = () => {
 
             return saveResponse;
         },
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries(manageRouteKeys.routes(variables.inputParams)); // Approximate invalidation
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
         }
     });
 };
@@ -207,8 +263,9 @@ export const useDeleteEmployeeMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.DeleteEmployeeFromRoute(params),
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries(manageRouteKeys.routeDetails(variables.RouteID));
-            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routes }); // Invalidate list broadly
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routeDetails(variables.RouteID) });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.statisticsAll });
         }
     });
 };
@@ -218,8 +275,9 @@ export const useAddEmployeeMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.AddEmpToRoute(params),
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries(manageRouteKeys.routeDetails(variables.routeId));
-            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routes });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routeDetails(variables.routeId) });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.statisticsAll });
         }
     });
 };
@@ -240,7 +298,7 @@ export const useAutoVendorAllocationMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.AutoVendorAllocationNew(params),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: manageRouteKeys.vendorSummary });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.vendorSummaryAll });
         }
     });
 };
@@ -260,7 +318,7 @@ export const useUnlockRoutesMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.BlockTransport(params),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routes });
+            queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
         }
     });
 };

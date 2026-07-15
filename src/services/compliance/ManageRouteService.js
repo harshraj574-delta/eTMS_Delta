@@ -1,10 +1,28 @@
-import { use } from "react";
 import { api } from "../axios/api";
-import { Route } from "react-router-dom";
+import sessionManager from "../../utils/SessionManager";
 
-// Routing Engine API Configuration
-const ROUTING_ENGINE_BASE_URL = "https://ftqbvxxmpm.ap-south-1.awsapprunner.com";
-// const ROUTING_ENGINE_BASE_URL = "http://localhost:5001";
+// Routing Engine API Configuration (override via .env: VITE_ROUTING_ENGINE_URL)
+const ROUTING_ENGINE_BASE_URL =
+  import.meta.env.VITE_ROUTING_ENGINE_URL ||
+  "https://ftqbvxxmpm.ap-south-1.awsapprunner.com";
+
+// The main backend sometimes returns JSON double-encoded as a string.
+// Normalize it once here so consumers always receive parsed data.
+// Plain strings (e.g. "1", status text) pass through untouched.
+const parseMaybeJson = (data) => {
+  let result = data;
+  // Backend responses are sometimes double-encoded; unwrap at most twice.
+  for (let i = 0; i < 2 && typeof result === "string"; i++) {
+    const s = result.trim();
+    if (!s.startsWith("{") && !s.startsWith("[")) break;
+    try {
+      result = JSON.parse(s);
+    } catch {
+      break;
+    }
+  }
+  return result;
+};
 
 const ROUTING_ENGINE_ENDPOINTS = {
   V1: {
@@ -28,7 +46,7 @@ const ROUTING_ENGINE_ENDPOINTS = {
  * @returns {string} The API endpoint URL
  */
 const getRoutingEngineEndpoint = (action) => {
-  const version = sessionStorage.getItem('routingEngineVersion') || 'V1';
+  const version = sessionManager.getRoutingEngineVersion();
   const normalizedVersion = version.toUpperCase();
 
 
@@ -47,7 +65,7 @@ class ManageRouteService {
       const response = await api.post("/SelectBaseFacility", {
         userid: params.userid,
       });
-      return response.data; // Return the actual data from the response
+      return parseMaybeJson(response.data); // Return the actual data from the response
     } catch (error) {
       console.error("Error in SelectBaseFacility:", error);
       throw error;
@@ -60,7 +78,7 @@ class ManageRouteService {
         facid: params.facid,
         type: params.type,
       });
-      return response.data; // Return the actual data from the response
+      return parseMaybeJson(response.data); // Return the actual data from the response
     } catch (error) {
       console.error("Error in GetShiftByFacilityType:", error);
       throw error;
@@ -81,7 +99,7 @@ class ManageRouteService {
         Routeid: params.Routeid,
         occ_seater: params.occ_seater,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in GetRoutesByOrder:", error);
       throw error;
@@ -94,7 +112,7 @@ class ManageRouteService {
         RouteID: params.RouteID,
         isAdd: params.isAdd,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in GetRoutesDetailsnew:", error);
       throw error;
@@ -109,7 +127,7 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttime: params.shifttime,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in sp_validateEmpRoster:", error);
       throw error;
@@ -125,7 +143,7 @@ class ManageRouteService {
         facilityid: params.facilityid || params.FacilityID,
         shifttime: params.shifttime || params.Shifttimes,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in GetRoutesStatistics:", error);
       throw error;
@@ -142,9 +160,8 @@ class ManageRouteService {
         locationID: params.locationID,
         updatedBy: params.updatedBy,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (err) {
-      console.log("Error in GetRouteInputJson", err);
       throw err;
     }
   }
@@ -160,9 +177,8 @@ class ManageRouteService {
         updatedBy: params.updatedBy,
         IsNewAdded: params.IsNewAdded
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (err) {
-      console.log("Error in save_routesMapBasedNew", err);
       throw err;
     }
   }
@@ -172,9 +188,8 @@ class ManageRouteService {
       const response = await api.post("/Get_RouteGeometry", {
         RouteID: params.RouteID,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (err) {
-      console.log("this is error in Get_RouteGeometry", err);
       throw err;
     }
   }
@@ -188,9 +203,8 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttimes: params.shifttimes,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (err) {
-      console.log("this is error in GetRoutesExportExcel", err);
       throw err;
     }
   }
@@ -204,9 +218,8 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttime: params.shifttime,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (err) {
-      console.log("Error in AutoVendorAllocationNew", err);
       throw err;
     }
   }
@@ -220,7 +233,7 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttimes: params.shifttimes,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in WBS_GetBulkRouteData:", error);
       throw error;
@@ -235,7 +248,7 @@ class ManageRouteService {
         triptype: params.triptype,
         shifttimes: params.shifttimes,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in PushRouteToDashbaord:", error);
       throw error;
@@ -250,7 +263,7 @@ class ManageRouteService {
         facilityid: params.facilityid || params.FacilityID,
         shifttime: params.shifttime || params.Shifttimes,
       });
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in getvehtypeCountVendorwise:", error);
       throw error;
@@ -266,8 +279,7 @@ class ManageRouteService {
         stopno: params.stopno,
         userid: params.userid,
       });
-      console.log("UpdateCutPaste response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in UpdateCutPaste:", error);
       throw error;
@@ -280,8 +292,7 @@ class ManageRouteService {
         RouteIDs: params.RouteIDs,
         userid: params.userid,
       });
-      console.log("MergeRoute response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in MergeRoute:", error);
       throw error;
@@ -294,8 +305,7 @@ class ManageRouteService {
         RouteIDs: params.RouteIDs,
         empIDs: params.empIDs,
       });
-      console.log("SplitRoute response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in SplitRoute:", error);
       throw error;
@@ -313,8 +323,7 @@ class ManageRouteService {
         EmpID: params.EmpID,
         uname: params.uname,
       });
-      console.log("DeleteEmployeeFromRoute response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in DeleteEmployeeFromRoute:", error);
       throw error;
@@ -328,8 +337,7 @@ class ManageRouteService {
         empidname: params.empidname,
         IsAdmin: params.IsAdmin,
       });
-      console.log("EmpSearch response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in EmpSearch:", error);
       throw error;
@@ -346,8 +354,7 @@ class ManageRouteService {
         IsNewAdded: params.IsNewAdded,
         updatedby: params.updatedby,
       });
-      console.log("AddEmpToRoute response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in AddEmpToRoute:", error);
       throw error;
@@ -362,8 +369,7 @@ class ManageRouteService {
         facilityid: params.facilityid,
         triptype: params.triptype,
       });
-      console.log("GetInputJsonRecalculate response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in GetInputJsonRecalculate:", error);
       throw error;
@@ -380,8 +386,7 @@ class ManageRouteService {
         jsonstring: params.jsonstring,
         updatedBy: params.updatedBy,
       });
-      console.log("updateRouteMapbased response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in updateRouteMapbased:", error);
       throw error;
@@ -393,8 +398,7 @@ class ManageRouteService {
       const response = await api.post("/getInputJsonByrouteids", {
         routeids: params.routeids,
       });
-      console.log("getInputJsonByrouteids response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
 
     }
     catch (error) {
@@ -411,8 +415,7 @@ class ManageRouteService {
         Shifts: params.Shifts,
         userid: params.userid,
       });
-      console.log("GetIsRouteFinalized response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in GetIsRouteFinalized:", error);
       throw error;
@@ -425,8 +428,7 @@ class ManageRouteService {
         RouteIDs: params.RouteIDs,
         userid: params.userid
       });
-      console.log("BlockTransport response:", response.data);
-      return response.data;
+      return parseMaybeJson(response.data);
     } catch (error) {
       console.error("Error in BlockTransport:", error);
       throw error;
@@ -437,7 +439,6 @@ class ManageRouteService {
 
   async startAsyncRouteGeneration({ facilityid, sDate, triptype, shifttime, updatedBy, mainBackendUrl }) {
     const endpoint = getRoutingEngineEndpoint('generate').replace('/generate', '/generate/async');
-    console.log(`[RoutingEngine] Starting async generation: ${endpoint}`);
 
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -503,9 +504,8 @@ class ManageRouteService {
    */
   async generateRoutes(routeInputData) {
     const endpoint = getRoutingEngineEndpoint('generate');
-    const version = sessionStorage.getItem('routingEngineVersion') || 'V1';
+    const version = sessionManager.getRoutingEngineVersion();
 
-    console.log(`[RoutingEngine] Using ${version} API for route generation: ${endpoint}`);
 
     try {
       const response = await fetch(endpoint, {
@@ -527,7 +527,6 @@ class ManageRouteService {
       }
 
       const generatedRouteJson = await response.json();
-      console.log(`[RoutingEngine] ${version} route generation successful`);
       return generatedRouteJson;
     } catch (error) {
       console.error(`[RoutingEngine] Error in generateRoutes (${version}):`, error);
@@ -542,9 +541,8 @@ class ManageRouteService {
    */
   async recalculateRoutes(inputJsonData) {
     const endpoint = getRoutingEngineEndpoint('recalculate');
-    const version = sessionStorage.getItem('routingEngineVersion') || 'V1';
+    const version = sessionManager.getRoutingEngineVersion();
 
-    console.log(`[RoutingEngine] Using ${version} API for route recalculation: ${endpoint}`);
 
     try {
       const response = await fetch(endpoint, {
@@ -564,7 +562,6 @@ class ManageRouteService {
       }
 
       const recalculatedRouteJson = await response.json();
-      console.log(`[RoutingEngine] ${version} route recalculation successful`);
       return recalculatedRouteJson;
     } catch (error) {
       console.error(`[RoutingEngine] Error in recalculateRoutes (${version}):`, error);
@@ -577,7 +574,7 @@ class ManageRouteService {
    * @returns {string} The routing engine version (V1 or V2)
    */
   getRoutingEngineVersion() {
-    return sessionStorage.getItem('routingEngineVersion') || 'V1';
+    return sessionManager.getRoutingEngineVersion();
   }
 }
 

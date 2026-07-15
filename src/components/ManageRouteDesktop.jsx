@@ -14,7 +14,6 @@ import { Button } from "primereact/button";
 import { MultiSelect } from "primereact/multiselect";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { Toast } from "primereact/toast";
 import { Calendar } from "primereact/calendar";
 import { Checkbox } from "primereact/checkbox";
 import calendarIcon from "../assets/calendar.png";
@@ -22,39 +21,45 @@ import noReportImage from "../assets/no_report.png";
 import ManageRouteService from "../services/compliance/ManageRouteService";
 import { toastService } from "../services/toastService";
 import OffcanvasRouteDetails from "./OffcanvasRouteDetails";
-import { Sidebar as PrimeSidebar } from "primereact/sidebar";
 import { ProgressBar } from "primereact/progressbar";
 import { Dialog as PrimeDialog } from "primereact/dialog";
 import AppDialog from './common/AppDialog';
 import AppConfirmDialog from './common/AppConfirmDialog';
-import { point, Point } from "leaflet";
 import axios from "axios";
-import { OverlayPanel } from "primereact/overlaypanel";
 import { Tooltip } from "primereact/tooltip";
 import { DataView } from "primereact/dataview";
 import { DataScroller } from 'primereact/datascroller';
 import { Badge } from "primereact/badge";
 import * as XLSX from "xlsx";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouteDetailsQuery, manageRouteKeys } from "../hooks/compliance/useManageRouteQueries";
-import { set, throttle } from "lodash";
+import useEmployeeSelection from "../hooks/compliance/useEmployeeSelection";
+import useUnlockRoutes from "../hooks/compliance/useUnlockRoutes";
+import useDragDropRoutes from "../hooks/compliance/useDragDropRoutes";
+import useFinalizeWorkflow from "../hooks/compliance/useFinalizeWorkflow";
+import useRouteMergeSelection from "../hooks/compliance/useRouteMergeSelection";
+import sessionManager from "../utils/SessionManager";
+import {
+  useRouteDetailsQuery,
+  useRouteJobStatusQuery,
+  recalculateModifiedRoutes,
+  manageRouteKeys,
+  useMoveEmployeeMutation,
+  useMergeRouteMutation,
+  useSplitRouteMutation,
+  useUnlockRoutesMutation,
+  useAutoVendorAllocationMutation,
+  useDeleteEmployeeMutation,
+  useAddEmployeeMutation,
+} from "../hooks/compliance/useManageRouteQueries";
 
 import {
   DndContext,
   useDraggable,
   useDroppable,
-  closestCenter,
   DragOverlay,
-  useSensor,
-  useSensors,
-  PointerSensor,
-  MouseSensor,
-  TouchSensor,
-  pointerWithin,
   MeasuringStrategy,
 } from "@dnd-kit/core";
 import SwipeToDeleteBackground from "./SwipeToDeleteBackground";
-import Draggable from 'react-draggable';
 import ReportButton from "./common/ReportButton";
 import CustomPaginator from "./common/CustomPaginator";
 
@@ -1187,15 +1192,26 @@ const ManageRouteDesktop = ({
 }) => {
   // Constants
   const SWIPE_DELETE_THRESHOLD = 150;
-  const userID = sessionStorage.getItem("ID");
+  const userID = sessionManager.getUserSession().ID;
   const queryClient = useQueryClient(); // Initialize Query Client
 
+  // Server mutations — cache invalidation is centralized in these hooks
+  const moveEmployeeMutation = useMoveEmployeeMutation();
+  const mergeRouteMutation = useMergeRouteMutation();
+  const splitRouteMutation = useSplitRouteMutation();
+  const unlockRoutesMutation = useUnlockRoutesMutation();
+  const autoVendorAllocationMutation = useAutoVendorAllocationMutation();
+  const deleteEmployeeMutation = useDeleteEmployeeMutation();
+  const addEmployeeMutation = useAddEmployeeMutation();
+
   // Refs
-  const toast = useRef(null);
   const fileInputRef = useRef(null);
   const selectedRouteForSplitRef = useRef(null);
-  const pollingIntervalRef = useRef(null);
   const prevInProgressJobIdRef = useRef(null);
+
+  // Async route-generation job being polled (null = not polling).
+  // useRouteJobStatusQuery refetches every 5s while this is set.
+  const [pollingJobId, setPollingJobId] = useState(null);
 
   // Prop Mappings (Aliasing props to match legacy state names)
   const tableData = routes || [];
@@ -1238,26 +1254,48 @@ const ManageRouteDesktop = ({
   const [showAutoVendorAllocationDialog, setShowAutoVendorAllocationDialog] = useState(false);
   const [vendorAllocated, setVendorAllocated] = useState(false);
   // vendorSummary state removed (using prop `vendorSummary`)
-  const [isFinalizing, setIsFinalizing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isAllocating, setIsAllocating] = useState(false);
-  const [activeId, setActiveId] = useState(null);
-  const [draggedEmployee, setDraggedEmployee] = useState(null);
-  const [hoveredDropZone, setHoveredDropZone] = useState(null);
 
-  // UPDATED: Employee selection states with action selection
-  const [selectedEmployees, setSelectedEmployees] = useState(new Set());
-  const [selectedAction, setSelectedAction] = useState('multiSelect'); // Default to multiSelect
-  const [selectionStartRoute, setSelectionStartRoute] = useState(null);
+  // Employee selection state + handlers (see useEmployeeSelection)
+  const {
+    selectedEmployees,
+    setSelectedEmployees,
+    selectedAction,
+    setSelectedAction,
+    selectionStartRoute,
+    setSelectionStartRoute,
+    isSelectionHeld,
+    setIsSelectionHeld,
+    showFloatingPanel,
+    setShowFloatingPanel,
+    crossPageDropMode,
+    setCrossPageDropMode,
+    handleEmployeeSelection,
+    handleActionChange,
+    handleToggleHold,
+    handleClearSelection,
+    handleCleanupStaleSelections,
+  } = useEmployeeSelection();
 
-  // Route selection states
-  const [selectedRoutes, setSelectedRoutes] = useState([]); // Use an array for the selection state
-  const [isRouteSelectMode, setIsRouteSelectMode] = useState(false);
-  const [showFloatingRoutePanel, setShowFloatingRoutePanel] = useState(false);
-  const [showRouteMergeDialog, setShowRouteMergeDialog] = useState(false);
-  const [pendingMergeOperation, setPendingMergeOperation] = useState(null);
-  const [routeSelectionOrder, setRouteSelectionOrder] = useState([]);
+  // Route-merge selection state + handlers (see useRouteMergeSelection)
+  const {
+    selectedRoutes,
+    isRouteSelectMode,
+    setIsRouteSelectMode,
+    showFloatingRoutePanel,
+    showRouteMergeDialog,
+    setShowRouteMergeDialog,
+    pendingMergeOperation,
+    setPendingMergeOperation,
+    routeSelectionOrder,
+    handleClearRouteSelection,
+    handleRouteSelectionChange,
+    toggleRouteSelectMode,
+    handleMergeRoutes,
+    cancelMergeOperation,
+  } = useRouteMergeSelection();
 
   // Split operation states (simplified)
   const [showSplitConfirmDialog, setShowSplitConfirmDialog] = useState(false);
@@ -1279,24 +1317,61 @@ const ManageRouteDesktop = ({
   const [availableStopNumbers, setAvailableStopNumbers] = useState([]);
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
 
-  // Auto-expand states
-  const [autoExpandTimer, setAutoExpandTimer] = useState(null);
-  const [hoveredRouteId, setHoveredRouteId] = useState(null);
-  const AUTO_EXPAND_DELAY = 800;
+  // Bridge drag-and-drop outcomes into the existing confirm dialogs
+  const requestDeleteEmployee = useCallback((employee, routeId) => {
+    setPendingDeleteEmployee({ employee, routeId });
+    setShowDeleteEmployeeDialog(true);
+  }, []);
 
-  // Cross-page functionality states
-  const [isSelectionHeld, setIsSelectionHeld] = useState(false);
-  const [showFloatingPanel, setShowFloatingPanel] = useState(false);
-  const [crossPageDropMode, setCrossPageDropMode] = useState(false);
+  const requestMoveEmployees = useCallback((operation) => {
+    setPendingDragOperation(operation);
+    setShowDragDropConfirmDialog(true);
+  }, []);
+
+  // Drag-and-drop mechanics (see useDragDropRoutes)
+  const {
+    activeId,
+    draggedEmployee,
+    hoveredDropZone,
+    hoveredRouteId,
+    sensors,
+    customCollisionDetection,
+    throttledHandleDragOver,
+    handleDragStart,
+    handleDragEnd,
+    handleRouteRowEnter,
+    handleRouteRowLeave,
+  } = useDragDropRoutes({
+    selectedEmployees,
+    selectedAction,
+    selectionStartRoute,
+    setSelectedEmployees,
+    setSelectionStartRoute,
+    expandedRows,
+    setExpandedRows,
+    swipeDeleteThreshold: SWIPE_DELETE_THRESHOLD,
+    onRequestDelete: requestDeleteEmployee,
+    onRequestMove: requestMoveEmployees,
+  });
 
   const [scrolled, setScrolled] = useState(false);
 
-  // Unlock feature states
-  const [isShiftLocked, setIsShiftLocked] = useState(false);
-  const [isUnlockMode, setIsUnlockMode] = useState(false);
-  const [routesToUnlock, setRoutesToUnlock] = useState(new Set());
-  const [showUnlockConfirmDialog, setShowUnlockConfirmDialog] = useState(false);
-  const [pendingUnlock, setPendingUnlock] = useState(null);
+  // Lock/unlock state machine for finalized routes (see useUnlockRoutes)
+  const {
+    isShiftLocked,
+    setIsShiftLocked,
+    isUnlockMode,
+    setIsUnlockMode,
+    routesToUnlock,
+    setRoutesToUnlock,
+    showUnlockConfirmDialog,
+    setShowUnlockConfirmDialog,
+    pendingUnlock,
+    setPendingUnlock,
+    handleSelectRouteToUnlock,
+    handleUnlockShift,
+    handleUnlockSelectedRoutes,
+  } = useUnlockRoutes(tableData);
 
   // New state for initial no data report
   // Initialize based on routes data (in case switching back from mobile view)
@@ -1356,11 +1431,7 @@ const ManageRouteDesktop = ({
       errorMessage: ''
     });
 
-    startPolling(job.jobId);
-
-    return () => {
-      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-    };
+    setPollingJobId(job.jobId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logic?.state?.inProgressJob]);
 
@@ -1391,9 +1462,28 @@ const ManageRouteDesktop = ({
   };
   const [selectedFile, setSelectedFile] = useState(null);
   const [offcanvasRefreshKey, setOffcanvasRefreshKey] = useState(0);
-  const [showRecalcBeforeFinalizeDialog, setShowRecalcBeforeFinalizeDialog] = useState(false);
-  const [showFinalizeConfirmDialog, setShowFinalizeConfirmDialog] = useState(false);
-  const [isRecalcBeforeFinalize, setIsRecalcBeforeFinalize] = useState(false);
+
+  // Finalization workflow: cutoff validation, recalc-first check, dialogs,
+  // and the finalize server pipeline (see useFinalizeWorkflow)
+  const {
+    isFinalizing,
+    isRecalcBeforeFinalize,
+    showRecalcBeforeFinalizeDialog,
+    setShowRecalcBeforeFinalizeDialog,
+    showFinalizeConfirmDialog,
+    setShowFinalizeConfirmDialog,
+    handleFinalizeRoute,
+    proceedWithFinalization,
+    handleRecalculateAndFinalize,
+  } = useFinalizeWorkflow({
+    shiftDate,
+    selectedShifts,
+    selectedFacility,
+    selectedTripType,
+    userId: userID,
+    onSearch,
+    setIsSubmitting,
+  });
   // Memoized values
   const queryParams = useMemo(() => {
     return new URLSearchParams({
@@ -1405,23 +1495,6 @@ const ManageRouteDesktop = ({
       Routeid: "",
     }).toString();
   }, [shiftDate, selectedFacility, selectedTripType, selectedShifts]);
-
-  const throttledHandleDragOver = useMemo(
-    () =>
-      throttle((event) => {
-        const { over } = event;
-        if (
-          over &&
-          over.data.current &&
-          over.data.current.type === "position"
-        ) {
-          setHoveredDropZone(over.id);
-        } else {
-          setHoveredDropZone(null);
-        }
-      }, 16),
-    []
-  );
 
   const tripTypeOptions = useMemo(
     () => [
@@ -1441,123 +1514,6 @@ const ManageRouteDesktop = ({
     }
     return tableData;
   }, [tableData, isUnlockMode, routesToUnlock]);
-
-  // Optimized sensors configuration
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 3,
-      },
-    }),
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 3,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 100,
-        tolerance: 5,
-      },
-    })
-  );
-
-  const customCollisionDetection = useCallback((args) => {
-    const pointerIntersections = pointerWithin(args);
-
-    if (pointerIntersections.length > 0) {
-      return pointerIntersections;
-    }
-
-    return closestCenter(args);
-  }, []);
-
-  // [MODIFIED] Employee selection handler to keep panel open
-  const handleEmployeeSelection = useCallback(
-    (employeeKey, routeId) => {
-      setSelectedEmployees((prev) => {
-        const newSelection = new Set(prev);
-
-        if (newSelection.has(employeeKey)) {
-          newSelection.delete(employeeKey);
-          // When selection becomes empty, reset related states but keep panel open
-          if (newSelection.size === 0) {
-            setSelectionStartRoute(null);
-            setIsSelectionHeld(false);
-            setCrossPageDropMode(false);
-            setSelectedAction('multiSelect'); // Revert to default action
-            // NOTE: The line to hide the panel `setShowFloatingPanel(false)` is intentionally removed.
-          }
-        } else {
-          newSelection.add(employeeKey);
-          if (!selectionStartRoute) {
-            setSelectionStartRoute(routeId);
-          }
-          // Always ensure the panel is visible when there's a selection
-          setShowFloatingPanel(true);
-        }
-
-        return newSelection;
-      });
-    },
-    [selectionStartRoute]
-  );
-
-
-  // Action change handler
-  const handleActionChange = useCallback((action) => {
-    setSelectedAction(action);
-    if (action === 'multiSelect') {
-      setIsSelectionHeld(false);
-      setCrossPageDropMode(false);
-    }
-  }, []);
-
-  // Toggle hold functionality
-  const handleToggleHold = useCallback(() => {
-    // This function will now also set the correct action mode.
-    setSelectedAction('multiSelect');
-
-    setIsSelectionHeld((prev) => {
-      const newHeld = !prev;
-      setCrossPageDropMode(newHeld);
-      if (newHeld) {
-        toastService.info(
-          "Selection held - click on any route to drop employees"
-        );
-      } else {
-        toastService.info("Selection released");
-      }
-      return newHeld;
-    });
-  }, []);
-
-  // Clear selection handler
-  const handleClearSelection = useCallback(() => {
-    setSelectedEmployees(new Set());
-    setSelectionStartRoute(null);
-    setShowFloatingPanel(false);
-    setIsSelectionHeld(false);
-    setCrossPageDropMode(false);
-    setSelectedAction('multiSelect');
-  }, []);
-
-  // Cleanup stale selections (called when employees no longer exist in cache)
-  const handleCleanupStaleSelections = useCallback((staleKeys) => {
-    setSelectedEmployees((prev) => {
-      const newSelection = new Set(prev);
-      staleKeys.forEach((key) => newSelection.delete(key));
-      
-      // If all selections were stale, hide the panel
-      if (newSelection.size === 0) {
-        setShowFloatingPanel(false);
-        setIsSelectionHeld(false);
-        setCrossPageDropMode(false);
-      }
-      
-      return newSelection;
-    });
-  }, []);
 
   // Handle split route with updated logic
   const handleSplitRoute = useCallback(() => {
@@ -1616,11 +1572,6 @@ const ManageRouteDesktop = ({
     setShowSplitConfirmDialog(true);
   }, [selectedEmployees, queryClient]);
 
-  const handleClearRouteSelection = useCallback(() => {
-    setSelectedRoutes([]); // Clear the array
-    setRouteSelectionOrder([]);
-  }, []);
-
   // Cross-page drop handler
   const handleCrossPageDrop = useCallback(
     async (targetRouteId, targetPosition) => {
@@ -1672,53 +1623,12 @@ const ManageRouteDesktop = ({
     [isSelectionHeld, selectedEmployees, queryClient]
   );
 
-  // Auto-expand handlers
-  const handleRouteRowEnter = useCallback(
-    (event) => {
-      if (!activeId) return;
-
-      const routeId = event.data.RouteID;
-      setHoveredRouteId(routeId);
-
-      if (autoExpandTimer) {
-        clearTimeout(autoExpandTimer);
-      }
-
-      if (expandedRows && expandedRows[routeId]) {
-        return;
-      }
-
-      const timer = setTimeout(() => {
-        setExpandedRows((prev) => ({
-          ...prev,
-          [routeId]: true,
-        }));
-
-        toastService.info(`Route ${routeId} expanded for dropping`);
-      }, AUTO_EXPAND_DELAY);
-
-      setAutoExpandTimer(timer);
-    },
-    [activeId, expandedRows, autoExpandTimer]
-  );
-
-  const handleRouteRowLeave = useCallback(
-    (event) => {
-      if (autoExpandTimer) {
-        clearTimeout(autoExpandTimer);
-        setAutoExpandTimer(null);
-      }
-      setHoveredRouteId(null);
-    },
-    [autoExpandTimer]
-  );
-
   // Fetch functions
   // fetchFacilities and fetchShifts removed (data provided via props)
 
   const refreshRouteDetails = useCallback(async (routeId) => {
-    // Deprecated: RouteDetails now managed by React Query
-    queryClient.invalidateQueries(manageRouteKeys.routeDetails(routeId));
+    // RouteDetails is managed by React Query; invalidate the specific route's cache
+    queryClient.invalidateQueries({ queryKey: manageRouteKeys.routeDetails(routeId) });
   }, [queryClient]);
 
   const getRowClassName = useCallback(
@@ -1777,43 +1687,6 @@ const ManageRouteDesktop = ({
   // Effects
   // Initial data fetch effects removed
 
-  useEffect(() => {
-    return () => {
-      if (autoExpandTimer) {
-        clearTimeout(autoExpandTimer);
-      }
-    };
-  }, [autoExpandTimer]);
-
-  useEffect(() => {
-    if (isRouteSelectMode) {
-      setShowFloatingRoutePanel(selectedRoutes.length > 0);
-    } else {
-      setShowFloatingRoutePanel(false);
-    }
-  }, [selectedRoutes.length, isRouteSelectMode]);
-
-  // Update locked state based on route finalization status
-  useEffect(() => {
-    if (tableData?.length > 0) {
-      const hasFinalizedRoutes = tableData.some((route) => route.isRouteFinalized === 1);
-      setIsShiftLocked(hasFinalizedRoutes);
-
-      // Best Practice: Ensure we exit unlock mode if no finalized routes exist
-      // to prevents UI from being in an invalid state
-      if (!hasFinalizedRoutes && isUnlockMode) {
-        setIsUnlockMode(false);
-        setRoutesToUnlock(new Set());
-      }
-    } else {
-      setIsShiftLocked(false);
-      if (isUnlockMode) {
-        setIsUnlockMode(false);
-        setRoutesToUnlock(new Set());
-      }
-    }
-  }, [tableData, isUnlockMode]);
-  
   // handleSortChange and sort useEffect removed (auto-handled by hook)
   
   const handleSort = useCallback((e) => {
@@ -2007,138 +1880,6 @@ const ManageRouteDesktop = ({
       selectedAction
     ]
   );
-  // Drag and Drop Handlers
-  const handleDragStart = useCallback(
-    (event) => {
-      setActiveId(event.active.id);
-      const activeData = event.active.data.current;
-
-      if (activeData && activeData.type === "employee") {
-        setDraggedEmployee(activeData.employee);
-
-        const employeeKey = `${activeData.sourceRouteId}-${activeData.employee.id}`;
-
-        if (selectedAction === 'multiSelect') {
-          if (!selectedEmployees.has(employeeKey)) {
-            setSelectedEmployees((prev) => {
-              const newSelection = new Set(prev);
-              newSelection.add(employeeKey);
-              return newSelection;
-            });
-            if (!selectionStartRoute) {
-              setSelectionStartRoute(activeData.sourceRouteId);
-            }
-          }
-        } else {
-          setSelectedEmployees(new Set([employeeKey]));
-          setSelectionStartRoute(activeData.sourceRouteId);
-        }
-      }
-    },
-    [selectedEmployees, selectedAction, selectionStartRoute]
-  );
-
-  const handleDragEnd = useCallback(
-    async (event) => {
-      const { active, over, delta } = event;
-
-      if (autoExpandTimer) {
-        clearTimeout(autoExpandTimer);
-        setAutoExpandTimer(null);
-      }
-      setHoveredRouteId(null);
-      setActiveId(null);
-      setDraggedEmployee(null);
-      setHoveredDropZone(null);
-
-      const activeData = active.data.current;
-
-      // Swipe to delete logic
-      if (
-        delta.x > SWIPE_DELETE_THRESHOLD &&
-        activeData.type === "employee" &&
-        selectedAction !== 'split'
-      ) {
-        const employeeToDelete = activeData.employee;
-        const sourceRouteId = activeData.sourceRouteId;
-
-        setPendingDeleteEmployee({
-          employee: employeeToDelete,
-          routeId: sourceRouteId,
-        });
-        setShowDeleteEmployeeDialog(true);
-        return;
-      }
-
-      if (!over) {
-        return;
-      }
-
-      const overData = over.data.current;
-
-      if (
-        activeData &&
-        overData &&
-        activeData.type === "employee" &&
-        overData.type === "position"
-      ) {
-        const employeesToMove =
-          selectedEmployees.size > 0
-            ? Array.from(selectedEmployees)
-            : [`${activeData.sourceRouteId}-${activeData.employee.id}`];
-
-        const targetRouteId = overData.targetRouteId;
-        const targetPosition = overData.targetPosition;
-        const sourceRoutes = [
-          ...new Set(employeesToMove.map((key) => key.split("-")[0])),
-        ];
-
-        let shouldShowConfirmation = false;
-        let isSameRouteReorder = false;
-
-        if (sourceRoutes.some((routeId) => routeId !== targetRouteId)) {
-          shouldShowConfirmation = true;
-        } else if (
-          sourceRoutes.length === 1 &&
-          sourceRoutes[0] === targetRouteId
-        ) {
-          const routeEmployees = queryClient.getQueryData(manageRouteKeys.routeDetails(targetRouteId)) || [];
-          const currentPositions = employeesToMove.map((employeeKey) => {
-            const [, employeeId] = employeeKey.split("-");
-            const employeeIndex = routeEmployees.findIndex(
-              (emp) => String(emp.id || emp.empID || emp.empId) === employeeId
-            );
-            return employeeIndex + 1;
-          });
-
-          const isSingleEmployee = employeesToMove.length === 1;
-          const isSamePosition =
-            isSingleEmployee && currentPositions[0] === targetPosition;
-          const isNoOp = isSingleEmployee && isSamePosition;
-
-          if (!isNoOp) {
-            shouldShowConfirmation = true;
-            isSameRouteReorder = true;
-          }
-        }
-
-        if (shouldShowConfirmation) {
-          setPendingDragOperation({
-            employeeKeys: employeesToMove,
-            targetRouteId: targetRouteId,
-            targetPosition: targetPosition,
-            activeData,
-            overData,
-            isCrossPageDrop: false,
-            isSameRouteReorder: isSameRouteReorder,
-          });
-          setShowDragDropConfirmDialog(true);
-        }
-      }
-    },
-    [selectedEmployees, autoExpandTimer, queryClient, selectedAction]
-  );
-
   // Confirmation handlers
   const confirmDragDropOperation = useCallback(async () => {
     if (!pendingDragOperation) return;
@@ -2173,7 +1914,7 @@ const ManageRouteDesktop = ({
         userid: Number(parseInt(userID) || 0),
       };
 
-      const response = await ManageRouteService.UpdateCutPaste(requestPayload);
+      await moveEmployeeMutation.mutateAsync(requestPayload);
 
       let moveMessage;
       if (pendingDragOperation.isSameRouteReorder) {
@@ -2211,33 +1952,14 @@ const ManageRouteDesktop = ({
       setIsSubmitting(false);
       setPendingDragOperation(null);
     }
-  }, [pendingDragOperation, userID, queryClient, handleClearSelection, handleSubmit]);
+  }, [pendingDragOperation, userID, queryClient, handleClearSelection, handleSubmit, moveEmployeeMutation]);
 
   const cancelDragDropOperation = useCallback(() => {
     setShowDragDropConfirmDialog(false);
     setPendingDragOperation(null);
   }, []);
 
-  // Route merge handlers
-  const handleMergeRoutes = useCallback(() => {
-    if (selectedRoutes.length < 2) {
-      toastService.warn("Please select at least 2 routes to merge");
-      return;
-    }
-
-    const routeArray = Array.from(routeSelectionOrder);
-    const targetRoute = routeArray[0];
-    const sourceRoutes = routeArray.slice(1);
-
-    setPendingMergeOperation({
-      sourceRoutes,
-      targetRoute,
-      routeArray,
-    });
-
-    setShowRouteMergeDialog(true);
-  }, [routeSelectionOrder, selectedRoutes.length]);
-
+  // Merge server workflow (selection state lives in useRouteMergeSelection)
   const confirmMergeOperation = useCallback(async () => {
     if (!pendingMergeOperation) return;
 
@@ -2250,7 +1972,7 @@ const ManageRouteDesktop = ({
         userid: Number(parseInt(userID) || 0),
       };
 
-      const response = await ManageRouteService.MergeRoute(requestPayload);
+      await mergeRouteMutation.mutateAsync(requestPayload);
 
       toastService.success(
         `Routes merged successfully! All routes merged into Route ${pendingMergeOperation.targetRoute} (first selected)`
@@ -2265,12 +1987,7 @@ const ManageRouteDesktop = ({
       setIsSubmitting(false);
       setPendingMergeOperation(null);
     }
-  }, [pendingMergeOperation, userID, handleClearRouteSelection, handleSubmit]);
-
-  const cancelMergeOperation = useCallback(() => {
-    setShowRouteMergeDialog(false);
-    setPendingMergeOperation(null);
-  }, []);
+  }, [pendingMergeOperation, userID, handleClearRouteSelection, handleSubmit, mergeRouteMutation]);
 
   // Split operation handlers
   const confirmSplitOperation = useCallback(async () => {
@@ -2285,7 +2002,7 @@ const ManageRouteDesktop = ({
         empIDs: pendingSplitOperation.employeeIds.join(","),
       };
 
-      const response = await ManageRouteService.SplitRoute(requestPayload);
+      const response = await splitRouteMutation.mutateAsync(requestPayload);
 
       let result;
       if (typeof response === "string") {
@@ -2324,39 +2041,12 @@ const ManageRouteDesktop = ({
       setIsSubmitting(false);
       setPendingSplitOperation(null);
     }
-  }, [pendingSplitOperation, handleClearSelection, handleSubmit]);
+  }, [pendingSplitOperation, handleClearSelection, handleSubmit, splitRouteMutation]);
 
   const cancelSplitOperation = useCallback(() => {
     setShowSplitConfirmDialog(false);
     setPendingSplitOperation(null);
   }, []);
-
-  // Recalculation handlers
-  const checkIfRecalculationNeeded = useCallback(async () => {
-    try {
-      const inputJsonResponse =
-        await ManageRouteService.GetInputJsonRecalculate({
-          shiftdate: shiftDate,
-          shifttime: selectedShifts,
-          facilityid: selectedFacility,
-          triptype: selectedTripType,
-        });
-
-      const inputJsonData =
-        typeof inputJsonResponse === "string"
-          ? JSON.parse(inputJsonResponse)
-          : inputJsonResponse;
-
-      return !!(
-        inputJsonData &&
-        inputJsonData.routes &&
-        inputJsonData.routes.length > 0
-      );
-    } catch (error) {
-      console.error("Error checking recalculation status:", error);
-      return true;
-    }
-  }, [shiftDate, selectedShifts, selectedFacility, selectedTripType]);
 
   const handleRecalculateModifiedRoutes = useCallback(async () => {
     setIsSubmitting(true);
@@ -2364,42 +2054,21 @@ const ManageRouteDesktop = ({
     toastService.info("Fetching data for all modified routes...");
 
     try {
-      const inputJsonResponse =
-        await ManageRouteService.GetInputJsonRecalculate({
-          shiftdate: shiftDate,
-          shifttime: selectedShifts,
-          facilityid: selectedFacility,
-          triptype: selectedTripType,
-        });
+      const updated = await recalculateModifiedRoutes(
+        {
+          shiftDate,
+          shifts: selectedShifts,
+          facilityId: selectedFacility,
+          tripType: selectedTripType,
+          userId: userID,
+        },
+        { onBeforeRecalc: () => toastService.info("Sending data for recalculation...") }
+      );
 
-      const inputJsonData =
-        typeof inputJsonResponse === "string"
-          ? JSON.parse(inputJsonResponse)
-          : inputJsonResponse;
-
-      if (
-        !inputJsonData ||
-        !inputJsonData.routes ||
-        inputJsonData.routes.length === 0
-      ) {
+      if (!updated) {
         toastService.info("No routes to be recalculated.");
-        setIsSubmitting(false);
-        setIsRecalculating(false); // Stop specific loading
         return;
       }
-
-      toastService.info("Sending data for recalculation...");
-
-      const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
-
-      await ManageRouteService.updateRouteMapbased({
-        facilityid: selectedFacility,
-        sDate: shiftDate,
-        triptype: selectedTripType,
-        shifttime: selectedShifts,
-        jsonstring: JSON.stringify(recalculatedRouteJson),
-        updatedBy: userID,
-      });
 
       toastService.success("Modified routes recalculated! Refreshing table...");
       
@@ -2433,48 +2102,7 @@ const ManageRouteDesktop = ({
     refreshRouteDetails // Added dependency
   ]);
 
-  // Unlock handlers
-  const handleSelectRouteToUnlock = useCallback((routeId) => {
-    setRoutesToUnlock((prev) => {
-      const newSelection = new Set(prev);
-      if (newSelection.has(routeId)) {
-        newSelection.delete(routeId);
-      } else {
-        newSelection.add(routeId);
-      }
-      return newSelection;
-    });
-  }, []);
-
-  const handleUnlockShift = () => {
-    const finalizedRoutes = tableData
-      .filter(route => route.isRouteFinalized === 1)
-      .map(route => route.RouteID);
-
-    if (finalizedRoutes.length === 0) {
-      toastService.info("No finalized routes to unlock in this shift.");
-      return;
-    }
-
-    setPendingUnlock({
-      routeIds: finalizedRoutes,
-      type: 'shift',
-    });
-    setShowUnlockConfirmDialog(true);
-  };
-
-  const handleUnlockSelectedRoutes = () => {
-    if (routesToUnlock.size === 0) {
-      toastService.warn("Please select routes to unlock.");
-      return;
-    }
-    setPendingUnlock({
-      routeIds: Array.from(routesToUnlock),
-      type: 'routes',
-    });
-    setShowUnlockConfirmDialog(true);
-  };
-
+  // Unlock server workflow (selection state lives in useUnlockRoutes)
   const confirmUnlockOperation = async () => {
     if (!pendingUnlock) return;
 
@@ -2482,7 +2110,7 @@ const ManageRouteDesktop = ({
     setShowUnlockConfirmDialog(false);
 
     try {
-      const response = await ManageRouteService.BlockTransport({
+      const response = await unlockRoutesMutation.mutateAsync({
         RouteIDs: pendingUnlock.routeIds.join(','),
         userid: userID,
       });
@@ -2530,143 +2158,6 @@ const ManageRouteDesktop = ({
     }
   };
 
-  const handleFinalizeRoute = useCallback(async () => {
-    // Cutoff validation: Pick Up = 4 h before shift, Drop = 1 h before shift
-    if (selectedShifts) {
-      const raw = String(selectedShifts).replace(":", "");
-      if (raw.length === 4) {
-        const shiftHH = parseInt(raw.slice(0, 2), 10);
-        const shiftMM = parseInt(raw.slice(2, 4), 10);
-        const now = new Date();
-        const shiftTime = shiftDate ? new Date(shiftDate) : new Date();
-        shiftTime.setHours(shiftHH, shiftMM, 0, 0);
-        const cutoffMs = selectedTripType === "P" ? 4 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000;
-        const cutoffTime = new Date(shiftTime.getTime() - cutoffMs);
-        if (now >= cutoffTime) {
-          const tripLabel = selectedTripType === "P" ? "Pick Up" : "Drop";
-          const cutoffLabel = selectedTripType === "P" ? "4 hours" : "1 hour";
-          const shiftLabel = `${String(shiftHH).padStart(2, "0")}:${String(shiftMM).padStart(2, "0")}`;
-          toastService.warn(
-            `${tripLabel} routes must be finalized at least ${cutoffLabel} before shift time (${shiftLabel}). Finalization window has closed.`
-          );
-          return;
-        }
-      }
-    }
-
-    const needsRecalculation = await checkIfRecalculationNeeded();
-
-    if (needsRecalculation) {
-      setShowRecalcBeforeFinalizeDialog(true);
-      return;
-    }
-
-    setShowFinalizeConfirmDialog(true);
-  }, [checkIfRecalculationNeeded, selectedShifts, selectedTripType]);
-
-  const proceedWithFinalization = useCallback(async () => {
-    setIsSubmitting(true);
-    setIsFinalizing(true);
-    try {
-      const params = {
-        sDate: shiftDate,
-        eDate: shiftDate,
-        facilityid: selectedFacility,
-        triptype: selectedTripType,
-        shifttimes: selectedShifts,
-      };
-
-      const bulkRouteData = await ManageRouteService.PushRouteToDashbaord(
-        params
-      );
-
-      if (bulkRouteData && bulkRouteData.length > 0) {
-        //await pushDataToUpdateTripsheetDetail(bulkRouteData);
-        toastService.success(
-          "Route finalization  completed successfully."
-        );
-        await onSearch();
-      } else {
-        toastService.warn("No route data available to finalize.");
-      }
-    } catch (error) {
-      console.error("Error finalizing routes:", error);
-      toastService.error(
-        "Finalization  data  failed. Please try again."
-      );
-    } finally {
-      setIsFinalizing(false);
-      setIsSubmitting(false);
-    }
-  }, [shiftDate, selectedFacility, selectedTripType, selectedShifts]);
-
-  const handleRecalculateAndFinalize = useCallback(async () => {
-    setIsRecalcBeforeFinalize(true);
-    setShowRecalcBeforeFinalizeDialog(false);
-
-    try {
-      toastService.info("Recalculating routes before finalization...");
-
-      const inputJsonResponse =
-        await ManageRouteService.GetInputJsonRecalculate({
-          shiftdate: shiftDate,
-          shifttime: selectedShifts,
-          facilityid: selectedFacility,
-          triptype: selectedTripType,
-        });
-
-      const inputJsonData =
-        typeof inputJsonResponse === "string"
-          ? JSON.parse(inputJsonResponse)
-          : inputJsonResponse;
-
-      if (
-        !inputJsonData ||
-        !inputJsonData.routes ||
-        inputJsonData.routes.length === 0
-      ) {
-        toastService.info(
-          "No routes need recalculation. Proceeding with finalization..."
-        );
-        await proceedWithFinalization();
-        return;
-      }
-
-      toastService.info("Sending data for recalculation...");
-
-      const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
-
-      await ManageRouteService.updateRouteMapbased({
-        facilityid: selectedFacility,
-        sDate: shiftDate,
-        triptype: selectedTripType,
-        shifttime: selectedShifts,
-        jsonstring: JSON.stringify(recalculatedRouteJson),
-        updatedBy: userID,
-      });
-
-      toastService.success(
-        "Routes recalculated successfully! Now finalizing..."
-      );
-
-      await onSearch();
-      await proceedWithFinalization();
-    } catch (error) {
-      console.error("Error during recalculation before finalize:", error);
-      toastService.error(`Failed to recalculate routes: ${error.message}`);
-    } finally {
-      setIsRecalcBeforeFinalize(false);
-    }
-  }, [
-    selectedFacility,
-    shiftDate,
-    selectedTripType,
-    selectedShifts,
-    userID,
-    handleSubmit,
-    proceedWithFinalization,
-  ]);
-
   const pushDataToUpdateTripsheetDetail = async (data) => {
     try {
       // Change the URL to use the new proxy path
@@ -2711,7 +2202,7 @@ const ManageRouteDesktop = ({
         shifttime: selectedShifts,
       };
 
-      const response = await ManageRouteService.AutoVendorAllocationNew(params);
+      await autoVendorAllocationMutation.mutateAsync(params);
       toastService.success("Vendor allocation process completed successfully.");
       setVendorAllocated(true);
       await onSearch();
@@ -2737,7 +2228,7 @@ const ManageRouteDesktop = ({
         shifttimes: selectedShifts,
       });
 
-      const data = JSON.parse(response);
+      const data = typeof response === "string" ? JSON.parse(response) : response;
 
       const processedData = data.map((row) => {
         const div = document.createElement("div");
@@ -2868,7 +2359,7 @@ const ManageRouteDesktop = ({
     try {
       const { employee, routeId } = pendingDeleteEmployee;
 
-      const response = await ManageRouteService.DeleteEmployeeFromRoute({
+      const response = await deleteEmployeeMutation.mutateAsync({
         sDate: shiftDate,
         FacilityID: selectedFacility,
         TripType: selectedTripType,
@@ -3036,7 +2527,7 @@ const ManageRouteDesktop = ({
 
     setIsAddingEmployee(true);
     try {
-      const response = await ManageRouteService.AddEmpToRoute({
+      const response = await addEmployeeMutation.mutateAsync({
         empId: selectedEmployee.id,
         stopNo: selectedStopNo,
         routeId: selectedRouteId,
@@ -3102,7 +2593,8 @@ const ManageRouteDesktop = ({
     selectedShifts,
     handleCloseAddEmployeeModal,
     onSearch, // Added dependency
-    refreshRouteDetails // Already available in scope
+    refreshRouteDetails, // Already available in scope
+    addEmployeeMutation
   ]);
 
   const handleSaveFile = async () => {
@@ -3129,51 +2621,45 @@ const ManageRouteDesktop = ({
     }
   };
 
-  const startPolling = (jobId) => {
-    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
+  // Declarative job polling: the query refetches every 5s while pollingJobId
+  // is set and stops itself on unmount. This effect reacts to status changes.
+  const { data: jobStatus } = useRouteJobStatusQuery(pollingJobId);
 
-    pollingIntervalRef.current = setInterval(async () => {
-      try {
-        const job = await ManageRouteService.getRouteJobStatus(jobId);
+  useEffect(() => {
+    if (!jobStatus || !pollingJobId) return;
 
-        setProgressStatus((prev) => ({
-          ...prev,
-          message: job.progressMessage || prev.message,
-          progress: job.progressPercent ?? prev.progress,
-          isError: false,
-          errorMessage: ''
-        }));
+    setProgressStatus((prev) => ({
+      ...prev,
+      message: jobStatus.progressMessage || prev.message,
+      progress: jobStatus.progressPercent ?? prev.progress,
+      isError: false,
+      errorMessage: ''
+    }));
 
-        if (job.status === 'completed') {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-          prevInProgressJobIdRef.current = null;
-          logic?.actions?.clearInProgressJob?.();
+    if (jobStatus.status === 'completed') {
+      setPollingJobId(null);
+      prevInProgressJobIdRef.current = null;
+      logic?.actions?.clearInProgressJob?.();
 
-          setProgressStatus((prev) => ({ ...prev, message: 'Routes generated successfully!', progress: 100 }));
-          setTimeout(async () => {
-            setShowProgressDialog(false);
-            await onSearch();
-            toastService.success('Route generation completed successfully.');
-          }, 1500);
-        } else if (job.status === 'failed') {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-          prevInProgressJobIdRef.current = null;
-          logic?.actions?.clearInProgressJob?.();
+      setProgressStatus((prev) => ({ ...prev, message: 'Routes generated successfully!', progress: 100 }));
+      setTimeout(async () => {
+        setShowProgressDialog(false);
+        await onSearch();
+        toastService.success('Route generation completed successfully.');
+      }, 1500);
+    } else if (jobStatus.status === 'failed') {
+      setPollingJobId(null);
+      prevInProgressJobIdRef.current = null;
+      logic?.actions?.clearInProgressJob?.();
 
-          setProgressStatus((prev) => ({
-            ...prev,
-            isError: true,
-            errorMessage: job.errorMessage || 'Route generation failed. Please try again.'
-          }));
-        }
-      } catch (pollError) {
-        console.error('Polling error:', pollError);
-        // Don't stop polling on network error — retry next tick
-      }
-    }, 5000);
-  };
+      setProgressStatus((prev) => ({
+        ...prev,
+        isError: true,
+        errorMessage: jobStatus.errorMessage || 'Route generation failed. Please try again.'
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobStatus, pollingJobId]);
 
   const handleGenerateRoute = async () => {
     // Close confirm dialog
@@ -3204,7 +2690,7 @@ const ManageRouteDesktop = ({
       });
 
       setProgressStatus((prev) => ({ ...prev, message: 'Job queued. Generating routes...', progress: 10 }));
-      startPolling(jobId);
+      setPollingJobId(jobId);
     } catch (error) {
       console.error('Error starting route generation:', error);
       setProgressStatus((prev) => ({
@@ -3742,8 +3228,7 @@ const ManageRouteDesktop = ({
                       raised
                       rounded
                       onClick={() => {
-                        setIsRouteSelectMode(!isRouteSelectMode);
-                        if (isRouteSelectMode) handleClearRouteSelection();
+                        toggleRouteSelectMode();
                         setIsUnlockMode(false);
                       }}
                     />
@@ -3911,7 +3396,6 @@ const ManageRouteDesktop = ({
                     <Tooltip target="[data-pr-tooltip]" />
                   </div>
                 </div>
-                <Toast ref={toast} />
                 <DataTable
                   value={memoizedTableData.slice(first, first + rows)}
                   expandedRows={expandedRows}
@@ -3920,12 +3404,7 @@ const ManageRouteDesktop = ({
                   dataKey="RouteID"
                   selectionMode={isRouteSelectMode ? "checkbox" : null}
                   selection={selectedRoutes}
-                  onSelectionChange={(e) => {
-                    // Only allow selection if the route is not finalized
-                    const selectableRoutes = e.value.filter(route => route.isRouteFinalized !== 1);
-                    setSelectedRoutes(selectableRoutes);
-                    setRouteSelectionOrder(selectableRoutes.map(r => r.RouteID));
-                  }}
+                  onSelectionChange={(e) => handleRouteSelectionChange(e.value)}
                   onRowExpand={(e) =>
                     console.log("Expanded RouteID:", e.data.RouteID)
                   }
@@ -4212,10 +3691,7 @@ const ManageRouteDesktop = ({
               </div>
               <button
                 onClick={() => {
-                  if (pollingIntervalRef.current) {
-                    clearInterval(pollingIntervalRef.current);
-                    pollingIntervalRef.current = null;
-                  }
+                  setPollingJobId(null); // stops the job-status polling query
                   prevInProgressJobIdRef.current = null;
                   logic?.actions?.clearInProgressJob?.();
                   setShowProgressDialog(false);
