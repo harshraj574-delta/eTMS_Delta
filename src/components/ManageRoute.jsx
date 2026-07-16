@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import useManageRouteLogic from '../hooks/compliance/useManageRouteLogic';
-import ManageRouteDesktop from './ManageRouteDesktop';
-import ManageRouteMobile from './ManageRouteMobile';
 import useIsMobile from './common/useIsMobile';
+import Loader from './common/Loader';
+
+// Each variant is its own chunk so phones don't download the desktop
+// view (and vice versa). The shared logic hook lives in this container,
+// so filters/search survive a viewport switch.
+const ManageRouteDesktop = lazy(() => import('./ManageRouteDesktop'));
+const ManageRouteMobile = lazy(() => import('./ManageRouteMobile'));
 
 /**
  * ManageRoute (Container)
@@ -19,7 +24,8 @@ const ManageRoute = () => {
     // Mobile View
     if (isMobile) {
         return (
-            <ManageRouteMobile 
+            <Suspense fallback={<Loader fullScreen />}>
+            <ManageRouteMobile
                 routes={data.routes}
                 facilities={data.facilities}
                 shifts={data.shifts}
@@ -35,12 +41,14 @@ const ManageRoute = () => {
                 
                 logic={{ data, actions, state }}
             />
+            </Suspense>
         );
     }
-    
+
     // Desktop View
     return (
-        <ManageRouteDesktop 
+        <Suspense fallback={<Loader fullScreen />}>
+        <ManageRouteDesktop
             // Spread return values or pass explicitly
             routes={data.routes}
             facilities={data.facilities}
@@ -60,6 +68,7 @@ const ManageRoute = () => {
             // Pass full objects if Desktop needs specific access to things we didn't explicitly map above
             logic={{ data, actions, state }}
         />
+        </Suspense>
     );
 };
 

@@ -7,6 +7,33 @@ import {
 } from './useManageRouteQueries';
 
 /**
+ * Returns a user-facing warning when finalization is inside the cutoff
+ * window (Pick Up = 4h before shift, Drop = 1h), or null when allowed.
+ * Shared by the desktop workflow hook and ManageRouteMobile.
+ */
+export function getFinalizeCutoffWarning({ shiftDate, shifts, tripType }) {
+    if (!shifts) return null;
+    const raw = String(shifts).replace(':', '');
+    if (raw.length !== 4) return null;
+
+    const shiftHH = parseInt(raw.slice(0, 2), 10);
+    const shiftMM = parseInt(raw.slice(2, 4), 10);
+    const now = new Date();
+    const shiftTime = shiftDate ? new Date(shiftDate) : new Date();
+    shiftTime.setHours(shiftHH, shiftMM, 0, 0);
+    const cutoffMs = tripType === 'P' ? 4 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000;
+    const cutoffTime = new Date(shiftTime.getTime() - cutoffMs);
+
+    if (now >= cutoffTime) {
+        const tripLabel = tripType === 'P' ? 'Pick Up' : 'Drop';
+        const cutoffLabel = tripType === 'P' ? '4 hours' : '1 hour';
+        const shiftLabel = `${String(shiftHH).padStart(2, '0')}:${String(shiftMM).padStart(2, '0')}`;
+        return `${tripLabel} routes must be finalized at least ${cutoffLabel} before shift time (${shiftLabel}). Finalization window has closed.`;
+    }
+    return null;
+}
+
+/**
  * Finalization workflow for Manage Route.
  *
  * Owns: the cutoff-window validation, the "recalculate first?" check and
@@ -61,27 +88,14 @@ const useFinalizeWorkflow = ({
     // Entry point from the Finalize button: validates the cutoff window,
     // then routes to either the recalc-first dialog or the confirm dialog.
     const handleFinalizeRoute = useCallback(async () => {
-        // Cutoff validation: Pick Up = 4 h before shift, Drop = 1 h before shift
-        if (selectedShifts) {
-            const raw = String(selectedShifts).replace(':', '');
-            if (raw.length === 4) {
-                const shiftHH = parseInt(raw.slice(0, 2), 10);
-                const shiftMM = parseInt(raw.slice(2, 4), 10);
-                const now = new Date();
-                const shiftTime = shiftDate ? new Date(shiftDate) : new Date();
-                shiftTime.setHours(shiftHH, shiftMM, 0, 0);
-                const cutoffMs = selectedTripType === 'P' ? 4 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000;
-                const cutoffTime = new Date(shiftTime.getTime() - cutoffMs);
-                if (now >= cutoffTime) {
-                    const tripLabel = selectedTripType === 'P' ? 'Pick Up' : 'Drop';
-                    const cutoffLabel = selectedTripType === 'P' ? '4 hours' : '1 hour';
-                    const shiftLabel = `${String(shiftHH).padStart(2, '0')}:${String(shiftMM).padStart(2, '0')}`;
-                    toastService.warn(
-                        `${tripLabel} routes must be finalized at least ${cutoffLabel} before shift time (${shiftLabel}). Finalization window has closed.`
-                    );
-                    return;
-                }
-            }
+        const cutoffWarning = getFinalizeCutoffWarning({
+            shiftDate,
+            shifts: selectedShifts,
+            tripType: selectedTripType,
+        });
+        if (cutoffWarning) {
+            toastService.warn(cutoffWarning);
+            return;
         }
 
         const needsRecalculation = await checkIfRecalculationNeeded();

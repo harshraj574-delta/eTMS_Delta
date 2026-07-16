@@ -27,8 +27,6 @@ import AppDialog from './common/AppDialog';
 import AppConfirmDialog from './common/AppConfirmDialog';
 import axios from "axios";
 import { Tooltip } from "primereact/tooltip";
-import { DataView } from "primereact/dataview";
-import { DataScroller } from 'primereact/datascroller';
 import { Badge } from "primereact/badge";
 import * as XLSX from "xlsx";
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,7 +37,6 @@ import useFinalizeWorkflow from "../hooks/compliance/useFinalizeWorkflow";
 import useRouteMergeSelection from "../hooks/compliance/useRouteMergeSelection";
 import sessionManager from "../utils/SessionManager";
 import {
-  useRouteDetailsQuery,
   useRouteJobStatusQuery,
   recalculateModifiedRoutes,
   manageRouteKeys,
@@ -54,14 +51,16 @@ import {
 
 import {
   DndContext,
-  useDraggable,
-  useDroppable,
   DragOverlay,
   MeasuringStrategy,
 } from "@dnd-kit/core";
-import SwipeToDeleteBackground from "./SwipeToDeleteBackground";
 import ReportButton from "./common/ReportButton";
 import CustomPaginator from "./common/CustomPaginator";
+import FloatingSelectionPanel from "./manageRoute/FloatingSelectionPanel";
+import FloatingRouteSelectionPanel from "./manageRoute/FloatingRouteSelectionPanel";
+import RouteExpansionDetails from "./manageRoute/RouteExpansionDetails";
+import AddressColumnTemplate from "./manageRoute/AddressColumnTemplate";
+import "./css/ManageRoute.css";
 
 // Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
 const getOrdinalSuffix = (num) => {
@@ -78,1104 +77,6 @@ const getOrdinalSuffix = (num) => {
   }
   return "th";
 };
-
-const PanelContent = React.memo(function PanelContent({
-  selectedEmployees,
-  selectedEmployeeDetails,
-  onClearSelection,
-  onToggleHold,
-  isHeld,
-  onSplitRoute,
-  onDeleteEmployee,
-  allFromSameRoute,
-}) {
-  const employeeItemTemplate = useCallback(
-    (employee) => {
-      const key = `${employee.sourceRouteId}-${employee.id || employee.empID}`;
-      return (
-        <div
-          key={key}
-          className="d-flex align-items-center p-2 border-bottom"
-          style={{ background: "white" }}
-        >
-          <div className="flex-grow-1 d-flex align-items-center justify-content-between">
-            <div>
-              <p className="fw-bold mb-0">
-                {employee.empCode} - {employee.empName}
-              </p>
-              <p className="mb-0" style={{ fontSize: "11px", color: "#666" }}>
-                {employee.Location}
-              </p>
-            </div>
-            <div className="d-flex align-items-center">
-              <p
-                className="ms-3 mb-0"
-                style={{ fontSize: "11px", color: "#555" }}
-              >
-                {employee.routeid}
-              </p>
-              <Button
-                icon="pi pi-trash"
-                className="p-button-sm p-button-danger p-button-text ms-2"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteEmployee(employee, employee.sourceRouteId);
-                }}
-                tooltip="Remove from Route"
-                tooltipOptions={{ position: "top" }}
-              />
-            </div>
-          </div>
-        </div>
-      );
-    },
-    [onDeleteEmployee]
-  );
-
-  return (
-    <>
-      {/* Sticky Header */}
-      <div
-        className="draggable-panel-header"
-        style={{
-          background: "linear-gradient(90deg, #f5f7fa, #e4e7ec)",
-          padding: "12px 16px",
-          borderBottom: "1px solid #ddd",
-          cursor: "move",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          position: "sticky", // 👈 makes it sticky
-          top: 0,
-          zIndex: 5,
-        }}
-      >
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button
-            className={`btn btn-sm ${isHeld ? "btn-primary" : "btn-outline-primary"} d-flex align-items-center gap-2`}
-            onClick={onToggleHold}
-            disabled={selectedEmployees.size === 0}
-          >
-            <i className={isHeld ? "pi pi-lock" : "pi pi-arrows-alt"}></i>
-            Move Employees
-          </button>
-          <button
-            className="btn btn-sm btn-primary d-flex align-items-center gap-2"
-            onClick={onSplitRoute}
-            disabled={!allFromSameRoute || selectedEmployees.size === 0}
-          >
-            <i className="pi pi-sitemap"></i>
-            Split Route
-          </button>
-        </div>
-
-        <button
-          className="btn btn-danger btn-sm rounded-circle d-flex align-items-center justify-content-center p-0"
-          onClick={onClearSelection}
-          title="Close"
-          style={{ width: '30px', height: '30px' }}
-        >
-          <i className="pi pi-times"></i>
-        </button>
-      </div>
-
-      {/* Scrollable Content */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          background: "#fafafa",
-          padding: "8px 12px",
-        }}
-      >
-        <DataScroller
-          value={selectedEmployeeDetails}
-          itemTemplate={employeeItemTemplate}
-          emptyMessage="No employees selected."
-          rows={100}
-          buffer={0.4}
-          inline
-          scrollHeight="100%"
-        />
-      </div>
-    </>
-  );
-});
-
-const FloatingSelectionPanel = React.memo(
-  ({
-    selectedEmployees,
-    queryClient,
-    onClearSelection,
-    onToggleHold,
-    isHeld,
-    isVisible,
-    selectedAction,
-    onSplitRoute,
-    onDeleteEmployee,
-    onCleanupStaleSelections,
-  }) => {
-    // ✅ Move ALL hooks to the top - before any early returns
-    const [position, setPosition] = useState({ x: 100, y: 150 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const elementRef = useRef(null);
-
-    // ✅ Move useMemo here too - always call it
-    // Note: We don't do automatic stale cleanup here - it's handled explicitly by delete handlers
-    const selectedEmployeeDetails = useMemo(() => {
-      const details = [];
-      
-      if (selectedEmployees) {
-        selectedEmployees.forEach((employeeKey) => {
-          const lastHyphenIndex = employeeKey.lastIndexOf("-");
-          if (lastHyphenIndex === -1) return;
-
-          const routeId = employeeKey.slice(0, lastHyphenIndex);
-          const employeeId = employeeKey.slice(lastHyphenIndex + 1);
-
-          const routeEmployees = queryClient.getQueryData(manageRouteKeys.routeDetails(routeId)) || [];
-          const employee = routeEmployees.find(
-            (e) => String(e.id || e.empID || e.empId) === employeeId
-          );
-
-          if (employee) {
-            details.push({ ...employee, sourceRouteId: routeId });
-          }
-        });
-      }
-      return details;
-    }, [selectedEmployees, queryClient]);
-
-    const allFromSameRoute = useMemo(() => {
-      const routeIds = selectedEmployeeDetails.map((emp) => emp.sourceRouteId);
-      return routeIds.length > 0 && new Set(routeIds).size === 1;
-    }, [selectedEmployeeDetails]);
-
-    // ✅ Custom drag handlers - define these always too
-    const handleMouseDown = (e) => {
-      // Only drag if clicked on the header
-      if (e.target.closest('.draggable-panel-header')) {
-        setIsDragging(true);
-        setDragStart({
-          x: e.clientX - position.x,
-          y: e.clientY - position.y
-        });
-      }
-    };
-
-    const handleMouseMove = React.useCallback((e) => {
-      if (!isDragging) return;
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }, [isDragging, dragStart]);
-
-    const handleMouseUp = React.useCallback(() => {
-      setIsDragging(false);
-    }, []);
-
-    // ✅ useEffect must also always be called
-    React.useEffect(() => {
-      if (isDragging) {
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-        return () => {
-          document.removeEventListener('mousemove', handleMouseMove);
-          document.removeEventListener('mouseup', handleMouseUp);
-        };
-      }
-    }, [isDragging, handleMouseMove, handleMouseUp]);
-
-    // ✅ NOW do the early return - after all hooks
-    if (!isVisible) return null;
-
-    return (
-      <div
-        ref={elementRef}
-        onMouseDown={handleMouseDown}
-        style={{
-          position: "fixed",
-          top: `${position.y}px`,
-          left: `${position.x}px`,
-          width: "520px",
-          height: "30vh", // 👈 fixed height
-          zIndex: 1201,
-          borderRadius: "12px",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          background: "white",
-          boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
-          willChange: "transform",
-          transition: "box-shadow 0.2s ease-in-out",
-          userSelect: 'none', // ✅ Prevent text selection while dragging
-          cursor: isDragging ? "grabbing" : "default"
-        }}
-      >
-        <PanelContent
-          selectedEmployees={selectedEmployees}
-          selectedEmployeeDetails={selectedEmployeeDetails}
-          onClearSelection={onClearSelection}
-          onToggleHold={onToggleHold}
-          isHeld={isHeld}
-          onSplitRoute={onSplitRoute}
-          onDeleteEmployee={onDeleteEmployee}
-          allFromSameRoute={allFromSameRoute}
-        />
-      </div>
-    );
-  }
-);
-
-// Route Selection Panel Component (This component was not part of the request and remains unchanged)
-const FloatingRouteSelectionPanel = React.memo(
-  ({
-    selectedRoutes,
-    tableData,
-    onClearSelection,
-    onMergeRoutes,
-    isVisible,
-    routeSelectionOrder,
-  }) => {
-    // ✅ Move ALL hooks to the top - before any early returns
-    const [position, setPosition] = useState({ x: 100, y: 100 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const elementRef = useRef(null);
-
-    // ✅ Move useMemo here too - always call it
-    const selectedRouteDetails = useMemo(() => {
-      return routeSelectionOrder.map((routeId) => {
-        const route = tableData.find((r) => r.RouteID === routeId);
-        return route || { RouteID: routeId };
-      });
-    }, [routeSelectionOrder, tableData]);
-
-    // ✅ Custom drag handlers - define these always too
-    const handleMouseDown = (e) => {
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y
-      });
-    };
-
-    const handleMouseMove = React.useCallback((e) => {
-      if (!isDragging) return;
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }, [isDragging, dragStart]);
-
-    const handleMouseUp = React.useCallback(() => {
-      setIsDragging(false);
-    }, []);
-
-    // ✅ useEffect must also always be called
-    React.useEffect(() => {
-      if (isDragging) {
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-        return () => {
-          document.removeEventListener('mousemove', handleMouseMove);
-          document.removeEventListener('mouseup', handleMouseUp);
-        };
-      }
-    }, [isDragging, handleMouseMove, handleMouseUp]);
-
-    // Route item template - matching employee item template structure
-    const routeItemTemplate = useCallback((route, index) => {
-      const isTarget = index === 0 && selectedRoutes.size >= 2;
-      return (
-        <div
-          key={route.RouteID}
-          className="d-flex align-items-center p-2 border-bottom"
-          style={{ background: "white" }}
-        >
-          <div className="flex-grow-1 d-flex align-items-center justify-content-between">
-            <div>
-              <p className="fw-bold mb-0">
-                Route {route.RouteID} {isTarget && <span className="badge bg-success ms-2">TARGET</span>}
-                {!isTarget && selectedRoutes.size >= 2 && <span className="badge bg-danger ms-2">SOURCE</span>}
-              </p>
-              <p className="mb-0" style={{ fontSize: "11px", color: "#666" }}>
-                {route.totalStop || 0} stops • {route.vendorname || "No vendor"}
-                {route.totaldist && <span> • {route.totaldist}km</span>}
-              </p>
-            </div>
-            <div className="d-flex align-items-center">
-              <div className="d-flex gap-1">
-                {route.isPWDRoute && (
-                  <img
-                    src="images/icons/pwd.png"
-                    alt="PWD"
-                    style={{ width: "12px", height: "12px" }}
-                  />
-                )}
-                {route.isOOBRoute && (
-                  <img
-                    src="images/icons/oob.png"
-                    alt="OOB"
-                    style={{ width: "12px", height: "12px" }}
-                  />
-                )}
-                {route.isNMTRoute && (
-                  <img
-                    src="images/icons/non-motorable.png"
-                    alt="NMT"
-                    style={{ width: "12px", height: "12px" }}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }, [selectedRoutes.size]);
-
-    // ✅ NOW do the early return - after all hooks
-    if (!isVisible || selectedRoutes.size === 0) {
-      return null;
-    }
-
-    return (
-      <div
-        ref={elementRef}
-        style={{
-          position: "fixed",
-          top: `${position.y}px`,
-          left: `${position.x}px`,
-          width: "520px",
-          height: "30vh", // 👈 fixed height same as FloatingSelectionPanel
-          zIndex: 1201,
-          borderRadius: "12px",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          background: "white",
-          boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
-          willChange: "transform",
-          transition: "box-shadow 0.2s ease-in-out",
-          userSelect: 'none'
-        }}
-      >
-        {/* Sticky Header - Same styling as FloatingSelectionPanel */}
-        <div
-          className="draggable-panel-header"
-          onMouseDown={handleMouseDown}
-          style={{
-            background: "linear-gradient(90deg, #f5f7fa, #e4e7ec)",
-            padding: "12px 16px",
-            borderBottom: "1px solid #ddd",
-            cursor: isDragging ? "grabbing" : "move",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            position: "sticky", // 👈 makes it sticky
-            top: 0,
-            zIndex: 5,
-          }}
-        >
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              className="btn btn-sm btn-success d-flex align-items-center gap-2"
-              onClick={onMergeRoutes}
-              disabled={selectedRoutes.size < 2}
-            >
-              <i className="pi pi-sitemap"></i>
-              Merge Routes
-            </button>
-          </div>
-
-          <button
-            className="btn btn-danger btn-sm rounded-circle d-flex align-items-center justify-content-center p-0"
-            onClick={onClearSelection}
-            title="Close"
-            style={{ width: '30px', height: '30px' }}
-          >
-            <i className="pi pi-times"></i>
-          </button>
-        </div>
-
-        {/* Scrollable Content - Same styling as FloatingSelectionPanel */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            background: "#fafafa",
-            padding: "8px 12px",
-          }}
-        >
-          <DataView
-            value={selectedRouteDetails}
-            itemTemplate={(route, index) => routeItemTemplate(route, index)}
-            emptyMessage="No routes selected."
-            rows={100}
-            scrollHeight="100%"
-          />
-          
-          {selectedRoutes.size === 1 && (
-            <div className="text-center text-muted py-3">
-              <small>Select at least one more route to enable merging</small>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-);
-
-// Enhanced Drop Zone Component for cross-page drops (Enterprise Styling)
-const CrossPageDropZone = React.memo(
-  ({ routeId, position, isActive, onDrop, selectedEmployees }) => {
-    const [isHovered, setIsHovered] = useState(false);
-
-    const handleClick = useCallback(() => {
-      if (isActive) {
-        onDrop(routeId, position);
-      }
-    }, [isActive, onDrop, routeId, position]);
-
-    const handleMouseEnter = useCallback(() => setIsHovered(true), []);
-    const handleMouseLeave = useCallback(() => setIsHovered(false), []);
-
-    const style = useMemo(
-      () => ({
-        height: isHovered ? "44px" : "10px",
-        backgroundColor: isActive
-          ? isHovered
-            ? "rgba(13, 110, 253, 0.12)" // Slightly deeper blue on hover
-            : "rgba(13, 110, 253, 0.04)" // Very subtle blue when idle
-          : "transparent",
-        border: isActive
-          ? isHovered
-            ? "2px dashed #0d6efd" // Primary blue border on hover
-            : "2px dashed rgba(13, 110, 253, 0.3)" // Soft dashed border when idle
-          : "2px dashed transparent",
-        borderRadius: "6px",
-        margin: "4px 0",
-        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "13px",
-        color: "#0d6efd",
-        letterSpacing: "0.2px",
-        fontWeight: "600",
-        cursor: isActive ? "pointer" : "default",
-        boxShadow: isHovered ? "0 2px 6px rgba(13, 110, 253, 0.1)" : "none",
-        overflow: "hidden",
-      }),
-      [isActive, isHovered]
-    );
-
-    if (!isActive) return null;
-
-    return (
-      <div
-        className="cross-page-drop-zone"
-        style={style}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-      >
-        <div style={{ opacity: isHovered ? 1 : 0, transition: "opacity 0.2s", display: "flex", alignItems: "center" }}>
-          <i className="material-icons me-2" style={{ fontSize: "18px" }}>arrow_downward</i>
-          Drop {selectedEmployees?.size || 0} employee(s) here
-        </div>
-      </div>
-    );
-  }
-);
-
-
-
-// Optimized Drop Zone Indicator Component
-const DropZoneIndicator = React.memo(({ routeId, position, isOver }) => {
-  const { setNodeRef } = useDroppable({
-    id: `dropzone-${routeId}-${position}`,
-    data: {
-      targetRouteId: routeId,
-      targetPosition: position,
-      type: "position",
-    },
-  });
-
-  const style = useMemo(
-    () => ({
-      height: isOver ? "44px" : "8px",
-      backgroundColor: isOver ? "rgba(13, 110, 253, 0.12)" : "transparent",
-      border: isOver ? "2px dashed #0d6efd" : "2px dashed transparent",
-      borderRadius: "6px",
-      margin: "4px 0",
-      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: "13px",
-      color: "#0d6efd",
-      fontWeight: "600",
-      willChange: "height, background-color, border-color",
-      transform: "translateZ(0)",
-      overflow: "hidden",
-    }),
-    [isOver]
-  );
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`drop-zone ${isOver ? "drop-zone-active" : ""}`}
-      style={style}
-    >
-      <div style={{ opacity: isOver ? 1 : 0, transition: "opacity 0.2s", display: "flex", alignItems: "center" }}>
-        <i className="material-icons me-2" style={{ fontSize: "18px" }}>move_to_inbox</i>
-        Drop here
-      </div>
-    </div>
-  );
-});
-
-// [MODIFIED] DraggableEmployeeRow now returns a DIV instead of a TR
-const DraggableEmployeeRow = React.memo(
-  ({
-    employee,
-    routeId,
-    index,
-    isSelected,
-    onSelectionChange,
-    selectedCount,
-    activeId,
-    selectedEmployees,
-    isDragInProgress,
-    selectedAction,
-    onDeleteEmployee,
-    isEditable,
-  }) => {
-    const employeeKey = `${routeId}-${employee.id || employee.empID}`;
-
-    const { attributes, listeners, setNodeRef, transform, isDragging } =
-      useDraggable({
-        id: `employee-${routeId}-${employee.id || employee.empID}-${index}`,
-        data: {
-          employee: {
-            ...employee,
-            id: employee.id || employee.empID || employee.empId,
-          },
-          sourceRouteId: routeId,
-          type: "employee",
-          isMultiSelect: isSelected && selectedCount > 1,
-          selectedCount: isSelected ? selectedCount : 1,
-        },
-        disabled: !isEditable || selectedAction === 'split',
-      });
-
-    const shouldAppearDragged =
-      isDragging ||
-      (isDragInProgress && isSelected && selectedEmployees.size > 1);
-
-    const swipeTranslateX = transform ? transform.x : 0;
-
-    const foregroundStyle = useMemo(
-      () => ({
-        transform: `translateX(${swipeTranslateX}px)`,
-        backgroundColor: employee.isNewAdded
-          ? "#e8f5e9" // Light green for newly added employees
-          : isSelected
-            ? selectedAction === 'split'
-              ? "#d1ecf1"
-              : "#e3f2fd"
-            : "#fff",
-        position: "relative",
-        zIndex: 2,
-        transition: isDragging ? "none" : "transform 0.3s ease",
-        willChange: "transform",
-        borderLeft: employee.isNewAdded ? "4px solid #4caf50" : "none",
-      }),
-      [swipeTranslateX, isSelected, selectedAction, isDragging, employee.isNewAdded]
-    );
-
-    const rowStyle = useMemo(
-      () => ({
-        position: "relative",
-        opacity: shouldAppearDragged ? 0.3 : 1,
-        cursor: "default",
-        border: isSelected
-          ? selectedAction === 'split'
-            ? "2px solid #17a2b8"
-            : "2px solid #2196F3"
-          : "1px solid transparent",
-        transition: shouldAppearDragged
-          ? "none"
-          : "opacity 0.2s ease-out, border-color 0.2s ease-out",
-        boxShadow: isSelected
-          ? selectedAction === 'split'
-            ? "0 2px 8px rgba(23, 162, 184, 0.3)"
-            : "0 2px 8px rgba(33, 150, 243, 0.3)"
-          : "none",
-      }),
-      [isDragging, isSelected, shouldAppearDragged, selectedAction]
-    );
-
-    const handleCheckboxChange = useCallback(
-      (e) => {
-        e.stopPropagation();
-        onSelectionChange(employeeKey, routeId);
-      },
-      [onSelectionChange, employeeKey, routeId]
-    );
-
-    return (
-      <div
-        style={rowStyle}
-        className={`draggable-row ${shouldAppearDragged ? "dragging-multi" : ""
-          } ${isSelected ? "selected" : ""}`}
-      >
-        <SwipeToDeleteBackground
-          isActive={isDragging}
-          swipeProgress={swipeTranslateX}
-        />
-        <div
-          ref={setNodeRef}
-          style={foregroundStyle}
-          className="row d-flex align-items-center justify-content-start py-2"
-        >
-          {/* Column 1: Actions - Always show checkbox */}
-          <div className="col-1">
-            <div className="d-flex align-items-center">
-              {/* Always show checkbox */}
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={handleCheckboxChange}
-                className="form-check-input me-2"
-                onClick={(e) => e.stopPropagation()}
-                style={{ cursor: isEditable ? 'pointer' : 'not-allowed' }}
-                disabled={!isEditable}
-              />
-
-              {/* Show drag handle only when not in split mode */}
-              {selectedAction !== 'split' && (
-                <span
-                  className="material-icons drag-handle"
-                  style={{ fontSize: "20px", cursor: isEditable ? "grab" : "not-allowed" }}
-                  {...attributes}
-                  {...listeners}
-                >
-                  drag_indicator
-                </span>
-              )}
-
-              {/* Icons */}
-              <div className="d-flex gap-1">
-                {employee.isPWD && (
-                  <img
-                    src="images/icons/pwd.png"
-                    alt="PWD"
-                    style={{ width: "16px", height: "16px" }}
-                    title="PWD"
-                  />
-                )}
-                {employee.isOOB && (
-                  <img
-                    src="images/icons/oob.png"
-                    alt="OOB"
-                    style={{ width: "16px", height: "16px" }}
-                    title="OOB"
-                  />
-                )}
-                {employee.isNMT && (
-                  <img
-                    src="images/icons/non-motorable.png"
-                    alt="NMT"
-                    style={{ width: "16px", height: "16px" }}
-                    title="Non Motorable"
-                  />
-                )}
-                {employee.isMedical && (
-                  <img
-                    src="images/icons/medical.png"
-                    alt="Medical"
-                    style={{ width: "16px", height: "16px" }}
-                    title="Medical Required"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Column 2: Employee */}
-          <div className="col-2">
-            {`${employee.empCode} - ${employee.empName}`}
-            {employee.isNewAdded && (
-              <span 
-                className="badge ms-2" 
-                style={{
-                  backgroundColor: '#4caf50',
-                  color: 'white',
-                  fontSize: '10px',
-                  padding: '2px 6px',
-                  borderRadius: '10px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-                data-pr-tooltip="Added via Replication Exception"
-                data-pr-position="top"
-              >
-                NEW
-              </span>
-            )}
-          </div>
-
-          {/* Column 3: Gender */}
-          <div className="col-1">
-            <span className="me-2">
-              {employee.Gender === "M" ? (
-                <span className="badge bg-primary-subtle rounded-pill text-dark">
-                  M
-                </span>
-              ) : employee.Gender === "F" ? (
-                <span className="badge bg-danger-subtle rounded-pill text-dark">
-                  F
-                </span>
-              ) : null}
-            </span>
-          </div>
-
-          {/* Column 4 & 5: Address & Location */}
-          <div className="col-2">
-            <span 
-              data-pr-tooltip={employee.address || ""} 
-              data-pr-position="top"
-              style={{
-                width: "100%",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                display: "inline-block",
-                cursor: "pointer",
-              }}>
-              {employee.address || ""}
-            </span>
-          </div>
-          <div className="col-2">
-            <span 
-              data-pr-tooltip={employee.Location || ""} 
-              data-pr-position="top"
-              style={{
-                width: "100%",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                display: "inline-block",
-                cursor: "pointer",
-              }}>
-              {employee.Location || ""}
-            </span>
-          </div>
-
-          {/* Column 6 & 7: Shift & Trip */}
-          <div className="col-1">{employee.Shift}</div>
-          <div className="col-1">{employee.tripType}</div>
-
-          {/* Column 8: Stop */}
-          <div className="col-1">
-            <InputText
-              value={employee.stopNo} className="w-100"
-              readOnly
-            />
-          </div>
-
-          {/* Column 9: ETA */}
-          <div className="col-1">
-            <InputText
-              value={`${employee.ETAhh || "00"}:${employee.ETAmm || "00"}`}
-              style={{ width: "85px" }}
-              readOnly
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-);
-
-// Memoize template functions outside the component
-const AddressColumnTemplate = React.memo((rowData) => {
-  const maxLength = 40;
-  const fullText = rowData.Address || "";
-  const trimmedText =
-    fullText.length > maxLength
-      ? fullText.slice(0, maxLength) + "..."
-      : fullText;
-
-  return (
-    <span
-      data-pr-tooltip={fullText}
-      data-pr-position="top"
-      style={{
-        cursor: "pointer",
-        display: "inline-block",
-        maxWidth: 200,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        verticalAlign: "middle",
-      }}
-    >
-      {trimmedText}
-    </span>
-  );
-});
-
-const addressColumnTemplate = React.memo((rowData) => {
-  const maxLength = 40;
-  const fullText = rowData.address || "";
-  const trimmedText =
-    fullText.length > maxLength
-      ? fullText.slice(0, maxLength) + "..."
-      : fullText;
-
-  return (
-    <span
-      data-pr-tooltip={fullText}
-      data-pr-position="top"
-      style={{
-        cursor: "pointer",
-        display: "inline-block",
-        maxWidth: 200,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        verticalAlign: "middle",
-      }}
-    >
-      {trimmedText}
-    </span>
-  );
-});
-const RouteExpansionDetails = React.memo(({
-  routeId,
-  isEditable,
-  crossPageDropMode,
-  selectedEmployees,
-  selectedAction,
-  activeId,
-  hoveredDropZone,
-  onCrossPageDrop,
-  onEmployeeSelection,
-  onDeleteEmployee,
-  onAddEmployee,
-}) => {
-  const { data: employees = [], isLoading, isError } = useRouteDetailsQuery(routeId);
-
-  // Memoize empty check to prevent flickering
-  const hasEmployees = employees && employees.length > 0;
-
-  if (isLoading) {
-      return (
-        <div className="bg-custom">
-          <div className="p-4 text-center">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <p className="mt-2 text-muted">Loading route details...</p>
-          </div>
-        </div>
-      );
-  }
-
-  if (isError) {
-      return (
-        <div className="bg-custom p-3">
-          <div className="alert alert-danger">Failed to load route details.</div>
-        </div>
-      );
-  }
-    
-  return (
-        <div className="bg-custom">
-          {!isEditable && (
-            <div className="alert alert-warning text-center small p-2 mb-0">
-              This route is finalized and is now view-only. All operations are disabled.
-            </div>
-          )}
-          <div className="p-0">
-            {/* Flexbox Header - Replaces <thead> */}
-            <div className="row" style={{ fontSize: '12px', background: '#f8f9fa', padding: '8px 0', fontWeight: 'bold' }}>
-              <div className="col-1">Select/Actions</div>
-              <div className="col-2">Employee</div>
-              <div className="col-1"></div>
-              <div className="col-2">Address</div>
-              <div className="col-2">Location</div>
-              <div className="col-1">Shift</div>
-              <div className="col-1">Trip</div>
-              <div className="col-1">Stop</div>
-              <div className="col-1">ETA</div>
-            </div>
-
-            {/* Body Container - Replaces <tbody> */}
-            <div>
-              {!hasEmployees ? (
-                <>
-                  <div>
-                    {isEditable && (
-                      <CrossPageDropZone
-                        routeId={routeId}
-                        position={1}
-                        isActive={crossPageDropMode}
-                        onDrop={onCrossPageDrop}
-                        selectedEmployees={selectedEmployees}
-                      />
-                    )}
-                    {isEditable && selectedAction !== 'split' && (
-                      <DropZoneIndicator
-                        routeId={routeId}
-                        position={1}
-                        isOver={
-                          activeId &&
-                          hoveredDropZone ===
-                          `dropzone-${routeId}-1`
-                        }
-                      />
-                    )}
-                  </div>
-                  <div
-                    className="text-center p-4"
-                    style={{ color: "#666" }}
-                  >
-                    No employees in this route.
-                    {isEditable && crossPageDropMode ? (
-                      <span className="text-primary">
-                        {" "}
-                        Click above to drop employees here.
-                      </span>
-                    ) : isEditable && selectedAction === 'split' ? (
-                      <span>
-                        {" "}
-                        Select another route with employees to split.
-                      </span>
-                    ) : isEditable ? (
-                      <span>
-                        {" "}
-                        Drag employees from other routes to add them here.
-                      </span>
-                    ) : null}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    {isEditable && (
-                      <CrossPageDropZone
-                        routeId={routeId}
-                        position={1}
-                        isActive={crossPageDropMode}
-                        onDrop={onCrossPageDrop}
-                        selectedEmployees={selectedEmployees}
-                      />
-                    )}
-                    {isEditable && selectedAction !== 'split' && (
-                      <DropZoneIndicator
-                        routeId={routeId}
-                        position={1}
-                        isOver={
-                          activeId &&
-                          hoveredDropZone ===
-                          `dropzone-${routeId}-1`
-                        }
-                      />
-                    )}
-                  </div>
-
-                  {employees.map((employee, index) => {
-                    const employeeKey = `${routeId}-${employee.id || employee.empID}`;
-                    const isSelected = selectedEmployees.has(employeeKey);
-
-                    return (
-                      <React.Fragment key={employeeKey}>
-                        <DraggableEmployeeRow
-                          employee={employee}
-                          routeId={routeId}
-                          index={index}
-                          isSelected={isSelected}
-                          onSelectionChange={onEmployeeSelection}
-                          selectedCount={selectedEmployees.size}
-                          activeId={activeId}
-                          selectedEmployees={selectedEmployees}
-                          isDragInProgress={!!activeId}
-                          selectedAction={selectedAction}
-                          isEditable={isEditable}
-                          onDeleteEmployee={onDeleteEmployee}
-                        />
-                        {isEditable && selectedAction !== 'split' && (
-                          <div>
-                            <CrossPageDropZone
-                              routeId={routeId}
-                              position={index + 2}
-                              isActive={crossPageDropMode}
-                              onDrop={onCrossPageDrop}
-                              selectedEmployees={selectedEmployees}
-                            />
-                            <DropZoneIndicator
-                              routeId={routeId}
-                              position={index + 2}
-                              isOver={
-                                activeId &&
-                                hoveredDropZone ===
-                                `dropzone-${routeId}-${index + 2}`
-                              }
-                            />
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-
-            {/* Footer with Add Employee Button */}
-            <div
-              className="d-flex justify-content-between align-items-center p-3 border-top"
-              style={{ backgroundColor: "#f8f9fa" }}
-            >
-              <div className="d-flex gap-2">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-                  onClick={() => onAddEmployee(routeId)}
-                  style={{
-                    borderRadius: "20px",
-                    padding: "6px 12px",
-                    fontSize: "12px",
-                    fontWeight: "500",
-                    transition: "all 0.3s ease",
-                  }}
-                  disabled={!isEditable}
-                >
-                  <i className="material-icons" style={{ fontSize: "16px" }}>
-                    person_add
-                  </i>
-                  Add Employee
-                </button>
-              </div>
-
-              <div className="text-muted" style={{ fontSize: "12px" }}>
-                <i className="material-icons me-1" style={{ fontSize: "14px" }}>
-                  info
-                </i>
-                {employees.length} employee{employees.length !== 1 ? "s" : ""}{" "}
-                in this route
-              </div>
-            </div>
-          </div>
-        </div>
-  );
-});
 
 const ManageRouteDesktop = ({
   routes,
@@ -1797,9 +698,8 @@ const ManageRouteDesktop = ({
     (rowData) => {
       return (
         <span
-          className="cursor-pointer text-primary"
+          className="cursor-pointer text-primary mr-route-link"
           onClick={() => handleRouteIdClick(rowData.RouteID)}
-          style={{ cursor: "pointer", color: "#4285F4", fontWeight: "bold" }}
         >
           {rowData.RouteID}
         </span>
@@ -2702,335 +1602,6 @@ const ManageRouteDesktop = ({
   };
   return (
     <>
-      <style>
-        {`
-
-          .p-datatable .p-datatable-thead > tr > th.p-selection-column .p-checkbox {
-            display: none !important;
-          }
-
-          .route-is-finalized {
-            background-color: #f8f9fa !important;
-            opacity: 0.7;
-            cursor: not-allowed;
-          }
-
-          .route-is-finalized > td {
-            color: #6c757d !important;
-          }
-
-          .route-is-finalized .p-row-toggler {
-            cursor: pointer !important;
-            opacity: 1 !important;
-          }
-
-          .route-is-finalized .p-row-toggler:hover {
-            background: rgba(0,0,0,0.05);
-          }
-          
-          .route-selected-for-unlock {
-            background-color: #d1ecf1 !important;
-            border-left: 4px solid #17a2b8 !important;
-          }
-
-          .unlock-mode-selectable {
-            cursor: pointer !important;
-          }
-
-          .drop-zone {
-            position: relative;
-            overflow: hidden;
-            will-change: transform, background-color, border-color;
-            transform: translateZ(0);
-            height: 0 !important;
-          }
-
-          .drop-zone-active {
-            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-            animation: pulse 0.8s ease-in-out infinite;
-          }
-
-          @keyframes pulse {
-            0%, 100% {
-              background-color: #e3f2fd;
-              transform: scale(1);
-            }
-            50% {
-              background-color: #bbdefb;
-              transform: scale(1.02);
-            }
-          }
-
-          .draggable-row {
-            will-change: transform;
-            transform: translateZ(0);
-            transition: opacity 0.2s ease-out, background-color 0.2s ease-out, border-color 0.2s ease-out;
-          }
-
-          .draggable-row.dragging {
-            opacity: 0.5;
-            transform: translateZ(10px);
-          }
-
-          .draggable-row.selected {
-            animation: selectPulse 0.3s ease-out;
-          }
-
-          .dragging-multi {
-            animation: multiDragPulse 0.6s ease-in-out infinite alternate;
-          }
-
-          @keyframes multiDragPulse {
-            from {
-              background-color: #e3f2fd;
-              transform: scale(1);
-            }
-            to {
-              background-color: #bbdefb;
-              transform: scale(0.98);
-            }
-          }
-
-          @keyframes selectPulse {
-            0% {
-              transform: scale(1);
-              box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
-            }
-            50% {
-              transform: scale(1.02);
-              box-shadow: 0 0 0 10px rgba(33, 150, 243, 0);
-            }
-            100% {
-              transform: scale(1);
-              box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
-            }
-          }
-
-          .route-hover-drag {
-            background-color: #f3e5f5 !important;
-            border-left: 4px solid #9c27b0 !important;
-            transition: all 0.3s ease;
-            position: relative;
-          }
-
-          .route-hover-drag::after {
-            content: "Hover to expand route...";
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #9c27b0;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            z-index: 10;
-            animation: expandHint 0.8s ease-in-out infinite;
-          }
-
-          @keyframes expandHint {
-            0%, 100% { opacity: 0.8; }
-            50% { opacity: 1; }
-          }
-
-          .drag-in-progress .p-datatable-tbody tr:not(.route-is-finalized):hover {
-            background-color: rgba(156, 39, 176, 0.1) !important;
-            cursor: pointer;
-          }
-
-          .floating-selection-panel {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 12px 16px;
-          }
-
-          .floating-selection-panel.held {
-            border-color: #ff9800;
-            box-shadow: 0 8px 32px rgba(255, 152, 0, 0.3);
-          }
-
-          .cross-page-drop-zone {
-            position: relative;
-          }
-
-          .cross-page-mode .p-datatable-tbody tr {
-            position: relative;
-          }
-
-          .cross-page-mode .p-datatable-tbody tr:hover::after {
-            content: 'Click to drop employees here';
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #2196F3;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            z-index: 10;
-            pointer-events: none;
-          }
-
-          .held-selection-active {
-            background: linear-gradient(45deg, #fff3e0, #ffe0b2);
-            border-left: 4px solid #ff9800;
-          }
-
-          .route-selected {
-            background-color: #fff3e0 !important;
-            border-left: 4px solid #ff9800 !important;
-          }
-
-          .route-selected:hover {
-            background-color: #ffe0b2 !important;
-          }
-
-          .route-selected.first-selected {
-            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
-            border-left: 8px solid #28a745 !important;
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-            position: relative;
-          }
-
-          .route-selected:not(.first-selected)::after {
-            content: 'SOURCE - Will be deleted';
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: linear-gradient(135deg, #dc3545, #e74c3c);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-            z-index: 10;
-            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
-          }
-
-          .floating-route-panel {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-          }
-
-          .route-merge-mode .p-datatable-tbody tr:not(.route-is-finalized) {
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-          }
-
-          .route-merge-mode .p-datatable-tbody tr:not(.route-is-finalized):hover {
-            background-color: rgba(255, 152, 0, 0.1) !important;
-          }
-
-          .bg-success-subtle {
-            background: linear-gradient(135deg, #d1edcc 0%, #c3e6ba 100%) !important;
-          }
-
-          .bg-danger-subtle {
-            background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%) !important;
-          }
-
-          .bg-info-subtle {
-            background: linear-gradient(135deg, #d1ecf1 0%, #b8daff 100%) !important;
-          }
-
-          .bg-primary-subtle {
-            background: linear-gradient(135deg, #cce7ff 0%, #b3d9ff 100%) !important;
-          }
-
-          .route-merge-table-active .p-datatable-thead > tr > th {
-            white-space: normal;
-            font-size: 12px;
-            padding: 0.6rem 0.4rem;
-            text-align: center;
-            vertical-align: middle;
-          }
-
-          .route-merge-table-active .p-datatable-tbody > tr > td {
-            padding: 0.6rem 0.4rem;
-            font-size: 13px;
-          }
-
-          .route-merge-table-active .p-column-header-content {
-            justify-content: center;
-          }
-
-          .modern-modal .p-dialog-content {
-            border-radius: 0 0 8px 8px;
-            padding: 0;
-            max-height: 70vh;
-            overflow-y: auto;
-          }
-
-          .modern-modal .p-dialog-footer {
-            background: #f8f9fa;
-            border-radius: 0 0 8px 8px;
-            padding: 0.75rem 1rem;
-            border-top: 1px solid #dee2e6;
-          }
-
-          .modern-modal .table thead th{ font-size: 12px; }
-          .modern-modal .table tbody td{ vertical-align: middle; }
-
-          .modern-modal .card {
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-            border: 1px solid #e9ecef;
-          }
-
-          .modern-modal .alert {
-            border-radius: 6px;
-            border: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 0;
-          }
-
-          .modern-modal .form-control {
-            border-radius: 6px;
-            border: 1px solid #ced4da;
-            transition: all 0.2s ease;
-            font-size: 14px;
-          }
-
-          .modern-modal .form-control:focus {
-            border-color: #28a745;
-            box-shadow: 0 0 0 0.15rem rgba(40, 167, 69, 0.25);
-          }
-
-          .modern-modal .badge {
-            font-size: 11px;
-            padding: 0.25rem 0.5rem;
-          }
-
-          .modern-modal .text-muted {
-            color: #6c757d !important;
-          }
-
-          .modern-modal .fw-semibold {
-            font-weight: 600 !important;
-          }
-          
-          /* --- Style for Active Route Merge Button --- */
-          .route-merge-toggle-btn.p-button-warning {
-            background: #343a40 !important;
-            border-color: #343a40 !important;
-            color: #fff !important;
-          }
-
-          .route-merge-toggle-btn.p-button-warning:hover {
-            background: #495057 !important;
-            border-color: #495057 !important;
-          }
-        `}
-      </style>
       <DndContext
         sensors={sensors}
         collisionDetection={customCollisionDetection}
@@ -3044,23 +1615,9 @@ const ManageRouteDesktop = ({
         }}
       >
         {isSubmitting && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              background: "rgba(255,255,255,0.7)",
-              zIndex: 9999,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+          <div className="mr-busy-overlay">
             <div
-              className="spinner-border text-primary"
-              style={{ width: 60, height: 60, fontSize: 32 }}
+              className="spinner-border text-primary mr-busy-spinner"
               role="status"
             >
               <span className="visually-hidden">Loading...</span>
@@ -3074,7 +1631,7 @@ const ManageRouteDesktop = ({
           showNewButton={false}
         />
         <Sidebar />
-        <div className="middle">
+        <div className="middle mr-page">
           <div className="row">
             <div className="col-12 col-lg-8 mb-3 mb-lg-0">
               <div className="card_tb p-3">
@@ -3165,10 +1722,7 @@ const ManageRouteDesktop = ({
                         <h3>
                           <strong>{routeStats.AvgOccupancy}</strong>
                         </h3>
-                        <span
-                          className="subtitle_sm text-warning"
-                          style={{ whiteSpace: "nowrap" }}
-                        >
+                        <span className="subtitle_sm text-warning text-nowrap">
                           Avg. Occupancy
                         </span>
                       </div>
@@ -3195,8 +1749,7 @@ const ManageRouteDesktop = ({
                           <img src="/images/icons/fold_map.png" alt="Map" />
                         </a>
                         <a
-                          className="subtitle_sm text-primary d-block"
-                          style={{ marginTop: "8px", cursor: "pointer" }}
+                          className="subtitle_sm text-primary d-block mr-stats-link"
                           onClick={() => setShowDetailsSidebar(true)}
                           data-pr-tooltip="View Route Statistics"
                           data-pr-position="left"
@@ -3350,23 +1903,13 @@ const ManageRouteDesktop = ({
             <div className="col-12">
               <div className="card_tb">
                 {!hasSearched ? (
-                  <div
-                    className="d-flex flex-column align-items-center justify-content-center p-5"
-                    style={{ minHeight: "70vh" }}
-                  >
+                  <div className="d-flex flex-column align-items-center justify-content-center p-5 mr-empty-state">
                     <img
                       src={noReportImage}
                       alt="No Report Selected"
-                      style={{
-                        maxWidth: "100px",
-                        opacity: 0.5,
-                        marginBottom: "1rem",
-                      }}
+                      className="mr-empty-img"
                     />
-                    <p
-                      className="text-muted mb-0"
-                      style={{ fontSize: "0.9rem" }}
-                    >
+                    <p className="text-muted mb-0 mr-empty-text">
                       Please select above parameters to Generate Routes
                     </p>
                   </div>
@@ -3382,7 +1925,7 @@ const ManageRouteDesktop = ({
                         data-pr-tooltip={isAllExpanded ? "Collapse All" : "Expand All"}
                         data-pr-position="left"
                     >
-                         <i className={`pi ${isAllExpanded ? "pi-angle-double-up" : "pi-angle-double-down"}`} style={{ fontSize: "1.5rem" }}></i>
+                         <i className={`pi mr-expand-icon ${isAllExpanded ? "pi-angle-double-up" : "pi-angle-double-down"}`}></i>
                     </a>
                     <a
                       href="#!"
@@ -3464,11 +2007,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/pwd.png"
                             alt="PWD"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="PWD"
                           />
                         )}
@@ -3476,11 +2015,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/oob.png"
                             alt="OOB"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="OOB"
                           />
                         )}
@@ -3488,11 +2023,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/non-motorable.png"
                             alt="NMT"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="Non Motorable"
                           />
                         )}
@@ -3500,11 +2031,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/add_guard.png"
                             alt="Guard"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="Guard Required"
                           />
                         )}
@@ -3512,11 +2039,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/medical.png"
                             alt="Medical"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="Medical Required"
                           />
                         )}
@@ -3524,11 +2047,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/swap.png"
                             alt="Swap"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="Swap"
                           />
                         )}
@@ -3536,11 +2055,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/transport.png"
                             alt="Fleet Exhausted"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="Created after fleet exhausted"
                           />
                         )}
@@ -3592,11 +2107,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/letter-s.png"
                             alt="Small"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="Small"
                           />
                         )}
@@ -3604,11 +2115,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/letter-m.png"
                             alt="Medium"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="Medium"
                           />
                         )}
@@ -3616,11 +2123,7 @@ const ManageRouteDesktop = ({
                           <img
                             src="images/icons/letter-l.png"
                             alt="Large"
-                            style={{
-                              cursor: "pointer",
-                              width: "20px",
-                              height: "20px",
-                            }}
+                            className="mr-icon-20"
                             title="Large"
                           />
                         )}
@@ -3681,12 +2184,12 @@ const ManageRouteDesktop = ({
           draggable={false}
           resizable={false}
           header={
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '2px 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src="/images/logo.svg" alt="eTMS" style={{ height: '26px' }} />
-                <div style={{ lineHeight: 1.25 }}>
-                  <div style={{ fontWeight: 700, fontSize: '12px', letterSpacing: '0.06em', color: '#0f172a' }}>OPTIMAR</div>
-                  <div style={{ fontSize: '10px', color: '#94a3b8', letterSpacing: '0.03em', marginTop: '1px' }}>Routing Engine</div>
+            <div className="mr-progress-header">
+              <div className="mr-progress-brand">
+                <img src="/images/logo.svg" alt="eTMS" className="mr-progress-logo" />
+                <div className="mr-progress-brand-text">
+                  <div className="mr-progress-title">OPTIMAR</div>
+                  <div className="mr-progress-sub">Routing Engine</div>
                 </div>
               </div>
               <button
@@ -3696,7 +2199,7 @@ const ManageRouteDesktop = ({
                   logic?.actions?.clearInProgressJob?.();
                   setShowProgressDialog(false);
                 }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: '4px', color: '#94a3b8', fontSize: '15px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+                className="mr-progress-close"
                 title="Close"
                 aria-label="Close"
               >
@@ -3709,14 +2212,14 @@ const ManageRouteDesktop = ({
         >
           {/* Running state */}
           {!progressStatus.isError && (
-            <div style={{ padding: '32px 32px 28px', textAlign: 'center' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '58px', height: '58px', borderRadius: '50%', background: '#eff6ff', border: '1.5px solid #bfdbfe', marginBottom: '18px' }}>
-                <i className="pi pi-spin pi-spinner" style={{ fontSize: '22px', color: '#2563eb' }} />
+            <div className="mr-progress-body">
+              <div className="mr-progress-icon">
+                <i className="pi pi-spin pi-spinner" />
               </div>
-              <h5 style={{ fontWeight: 600, fontSize: '15px', color: '#0f172a', margin: '0 0 6px' }}>Generating Routes</h5>
-              <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 22px' }}>{progressStatus.message}</p>
+              <h5 className="mr-progress-h">Generating Routes</h5>
+              <p className="mr-progress-msg">{progressStatus.message}</p>
               <ProgressBar value={progressStatus.progress} showValue={false} />
-              <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '14px', marginBottom: 0 }}>
+              <p className="mr-progress-note">
                 Generation continues in the background — you can close this dialog and work on other shifts.
               </p>
             </div>
@@ -3724,15 +2227,15 @@ const ManageRouteDesktop = ({
 
           {/* Error state */}
           {progressStatus.isError && (
-            <div style={{ padding: '32px 32px 28px', textAlign: 'center' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '54px', height: '54px', borderRadius: '50%', background: '#fef2f2', border: '1.5px solid #fecaca', marginBottom: '18px' }}>
-                <i className="pi pi-times" style={{ fontSize: '20px', color: '#dc2626' }} />
+            <div className="mr-progress-body">
+              <div className="mr-progress-icon mr-progress-icon--error">
+                <i className="pi pi-times" />
               </div>
-              <h5 style={{ fontWeight: 600, fontSize: '15px', color: '#0f172a', margin: '0 0 8px' }}>Route Generation Failed</h5>
-              <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px' }}>{progressStatus.message}</p>
+              <h5 className="mr-progress-h">Route Generation Failed</h5>
+              <p className="mr-progress-msg mr-progress-msg--tight">{progressStatus.message}</p>
               {progressStatus.errorMessage && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '10px 14px', marginBottom: '20px', textAlign: 'left' }}>
-                  <p style={{ color: '#dc2626', fontSize: '12px', margin: 0 }}>{progressStatus.errorMessage}</p>
+                <div className="mr-progress-errbox">
+                  <p className="mr-progress-errtext">{progressStatus.errorMessage}</p>
                 </div>
               )}
             </div>
@@ -3749,7 +2252,7 @@ const ManageRouteDesktop = ({
             }
           }}
           title="Generate Routes"
-          message={<>This will generate routes for <strong style={{ color: '#2196F3' }}>{shiftDate}</strong>.</>}
+          message={<>This will generate routes for <strong className="mr-accent">{shiftDate}</strong>.</>}
           variant="info"
           confirmLabel="Generate"
           onConfirm={handleGenerateRoute}
@@ -3886,7 +2389,7 @@ const ManageRouteDesktop = ({
               </p>
               <div className="bg-light p-3 rounded">
                 <h6 className="fw-bold mb-2">Warning</h6>
-                <ul className="mb-0 ps-3 text-muted" style={{ fontSize: '13px' }}>
+                <ul className="mb-0 ps-3 text-muted mr-fs-13">
                   <li><strong>Route {pendingMergeOperation.targetRoute}</strong> will receive all employees.</li>
                   <li>Source routes ({pendingMergeOperation.sourceRoutes.join(', ')}) will be deleted.</li>
                   <li className="text-danger">This action cannot be undone.</li>
@@ -4178,10 +2681,7 @@ const ManageRouteDesktop = ({
                     </li>
                   </ol>
                 </div>
-                <div
-                  className="col-12"
-                  style={{ maxHeight: "220px", overflowY: "auto" }}
-                >
+                <div className="col-12 mr-vendor-scroll">
                   <table className="table table-bordered mt-4 shadow">
                     <thead>
                       <tr>
@@ -4282,19 +2782,10 @@ const ManageRouteDesktop = ({
         >
           <div className="p-3">
             {selectedRouteId && (
-              <div
-                className="mb-3 p-2 rounded"
-                style={{
-                  backgroundColor: "#e3f2fd",
-                  border: "1px solid #bbdefb",
-                }}
-              >
+              <div className="mb-3 p-2 rounded mr-route-banner">
                 <div className="d-flex align-items-center justify-content-between">
                   <div className="d-flex align-items-center">
-                    <i
-                      className="material-icons me-2"
-                      style={{ color: "#1976d2", fontSize: "18px" }}
-                    >
+                    <i className="material-icons me-2 mr-route-banner-icon">
                       route
                     </i>
                     <span className="fw-bold">{selectedRouteId}</span>
@@ -4313,7 +2804,7 @@ const ManageRouteDesktop = ({
             )}
 
             <div className="mb-3">
-              <span className="fw-semibold" style={{ fontSize: "14px" }}>
+              <span className="fw-semibold mr-fs-14">
                 Search Employee
               </span>
               <div className="input-group">
@@ -4321,8 +2812,7 @@ const ManageRouteDesktop = ({
                   value={employeeSearchQuery}
                   onChange={(e) => setEmployeeSearchQuery(e.target.value)}
                   placeholder="Enter employee ID or name..."
-                  className="form-control"
-                  style={{ fontSize: "14px" }}
+                  className="form-control mr-fs-14"
                   onKeyPress={(e) =>
                     e.key === "Enter" && handleSearchEmployees()
                   }
@@ -4341,16 +2831,16 @@ const ManageRouteDesktop = ({
                 {searchResults.length > 0 && (
                   <div>
                     <div className="d-flex align-items-center justify-content-between mb-2">
-                      <span className="fw-semibold" style={{ fontSize: "14px" }}>
+                      <span className="fw-semibold mr-fs-14">
                         Search Results
                       </span>
                       <span className="badge bg-primary">
                         {searchResults.length} &nbsp; Found
                       </span>
                     </div>
-                    <div className="table-responsive" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                    <div className="table-responsive mr-results-scroll">
                       <table className="table table-hover table-bordered">
-                        <thead className="table-dark" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                        <thead className="table-dark mr-thead-sticky">
                           <tr>
                             <th>ID</th>
                             <th>Name</th>
@@ -4363,22 +2853,14 @@ const ManageRouteDesktop = ({
                             <tr
                               key={employee.id}
                               onClick={() => handleSelectEmployee(employee)}
-                              style={{
-                                cursor: 'pointer',
-                                background: selectedEmployee?.id === employee.id ? '#d1ecf1' : 'transparent'
-                              }}
+                              className={`mr-row-selectable ${selectedEmployee?.id === employee.id ? "mr-row-selected" : ""}`}
                             >
                               <td>
                                 <strong>{employee.empCode}</strong>
                               </td>
                               <td>{employee.empName}</td>
                               <td
-                                style={{
-                                  maxWidth: "150px",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: 'nowrap'
-                                }}
+                                className="mr-ellipsis-150"
                                 title={employee.address}
                               >
                                 {employee.address}
@@ -4386,8 +2868,7 @@ const ManageRouteDesktop = ({
                               <td>
                                 <Button
                                   label={selectedEmployee?.id === employee.id ? "Selected" : "Select"}
-                                  className={`btn ${selectedEmployee?.id === employee.id ? 'btn-success' : 'btn-outline-secondary'}`}
-                                  style={{ fontSize: "12px", padding: "4px 8px" }}
+                                  className={`btn mr-btn-xs ${selectedEmployee?.id === employee.id ? 'btn-success' : 'btn-outline-secondary'}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleSelectEmployee(employee);
@@ -4406,7 +2887,7 @@ const ManageRouteDesktop = ({
               <div className="col-md-4">
                 {selectedEmployee && availableStopNumbers.length > 0 && (
                   <div className="mb-3">
-                    <span className="fw-semibold" style={{ fontSize: "14px" }}>
+                    <span className="fw-semibold mr-fs-14">
                       Select Stop Position
                     </span>
                     <Dropdown
@@ -4414,31 +2895,21 @@ const ManageRouteDesktop = ({
                       onChange={(e) => setSelectedStopNo(e.value)}
                       options={availableStopNumbers}
                       placeholder="Choose stop number..."
-                      className="w-100"
+                      className="w-100 mr-fs-14"
                       optionLabel="label"
                       optionValue="value"
-                      style={{ fontSize: "14px" }}
                     />
-                    <div className="text-muted mt-2" style={{ fontSize: "11px" }}>
-                      <i
-                        className="material-icons me-1"
-                        style={{ fontSize: "12px", verticalAlign: 'middle' }}
-                      >
+                    <div className="text-muted mt-2 mr-fs-11">
+                      <i className="material-icons me-1 mr-icon-12">
                         info
                       </i>
                       Insert at this position in the route.
                     </div>
 
                     {selectedStopNo && (
-                      <div
-                        className="alert alert-success py-2 mt-3"
-                        style={{ fontSize: "13px" }}
-                      >
+                      <div className="alert alert-success py-2 mt-3 mr-fs-13">
                         <div className="d-flex align-items-center">
-                          <i
-                            className="material-icons me-2"
-                            style={{ fontSize: "16px" }}
-                          >
+                          <i className="material-icons me-2 mr-icon-16">
                             check_circle
                           </i>
                           <span>
@@ -4493,25 +2964,16 @@ const ManageRouteDesktop = ({
                   }).map((_, index) => (
                     <div
                       key={index}
-                      className="employee-card-stack"
+                      className="employee-card-stack mr-drag-card"
                       style={{
-                        position: "absolute",
+                        // Per-card offsets/rotation are index-derived — stay inline
                         top: -index * 4,
                         left: -index * 4,
-                        padding: "8px 16px",
-                        backgroundColor: "#fff",
-                        border: "2px solid #2196F3",
-                        borderRadius: "8px",
                         boxShadow: `0 ${4 + index * 2}px ${16 + index * 4
                           }px rgba(0,0,0,${0.1 + index * 0.05})`,
-                        fontSize: "14px",
-                        fontWeight: "bold",
                         transform: `rotate(${3 + index * 1}deg)`,
                         zIndex: 10 - index,
                         opacity: 1 - index * 0.15,
-                        willChange: "transform",
-                        minWidth: "200px",
-                        textAlign: "center",
                       }}
                     >
                       {index === 0 && (
@@ -4528,21 +2990,7 @@ const ManageRouteDesktop = ({
                   ))}
                 </div>
               ) : (
-                <div
-                  className="single-employee-drag"
-                  style={{
-                    padding: "8px 16px",
-                    backgroundColor: "#fff",
-                    border: "2px solid #2196F3",
-                    borderRadius: "8px",
-                    cursor: "grabbing",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    transform: "rotate(0deg)",
-                    willChange: "transform",
-                  }}
-                >
+                <div className="single-employee-drag mr-drag-single">
                   {draggedEmployee.empCode} - {draggedEmployee.empName}
                 </div>
               )}
@@ -4609,27 +3057,6 @@ const ManageRouteDesktop = ({
           <p className="app-dialog-body-detail">Finalized routes are locked against further changes unless unlocked.</p>
         </AppConfirmDialog>
       </DndContext>
-      <style>
-        {`
-          .custom-calendar-wrapper {
-            position: relative;
-            width: 100%;
-          }
-          .custom-calendar-icon {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 22px;
-            height: 22px;
-            z-index: 2;
-            pointer-events: none;
-          }
-          .custom-calendar-input .p-inputtext {
-            padding-left: 35px !important;
-          }
-        `}
-      </style>
     </>
   );
 };

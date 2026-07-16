@@ -1,0 +1,955 @@
+/* ============================================================
+   ManageRoute.css — all static styling for the Manage Route page
+   (desktop view). Imported by ManageRouteDesktop.jsx.
+
+   Conventions:
+   - New classes are prefixed `mr-` to avoid collisions with the
+     global stylesheet and Bootstrap/PrimeReact.
+   - State is expressed as `--modifier` classes toggled from JSX.
+   - Only genuinely dynamic values stay inline in the component:
+     drag transforms, panel drag positions, and the per-index
+     math of the multi-drag card stack.
+   ============================================================ */
+
+/* ---------- Table row states / drag feedback (moved verbatim
+   from the component's embedded <style> block) ---------- */
+
+/* Hide the header "select all" checkbox only in route-merge mode —
+   scoped to this page's table so other pages' select-all stays visible. */
+.route-merge-table-active .p-datatable-thead > tr > th.p-selection-column .p-checkbox {
+    display: none !important;
+}
+
+.route-is-finalized {
+    background-color: #f8f9fa !important;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.route-is-finalized > td {
+    color: #6c757d !important;
+}
+
+.route-is-finalized .p-row-toggler {
+    cursor: pointer !important;
+    opacity: 1 !important;
+}
+
+.route-is-finalized .p-row-toggler:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.route-selected-for-unlock {
+    background-color: #d1ecf1 !important;
+    border-left: 4px solid #17a2b8 !important;
+}
+
+.unlock-mode-selectable {
+    cursor: pointer !important;
+}
+
+.drop-zone {
+    position: relative;
+    overflow: hidden;
+    will-change: transform, background-color, border-color;
+    transform: translateZ(0);
+    height: 0 !important;
+}
+
+.drop-zone-active {
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+    animation: pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        background-color: #e3f2fd;
+        transform: scale(1);
+    }
+    50% {
+        background-color: #bbdefb;
+        transform: scale(1.02);
+    }
+}
+
+.draggable-row {
+    will-change: transform;
+    transform: translateZ(0);
+    transition: opacity 0.2s ease-out, background-color 0.2s ease-out, border-color 0.2s ease-out;
+}
+
+.draggable-row.dragging {
+    opacity: 0.5;
+    transform: translateZ(10px);
+}
+
+.draggable-row.selected {
+    animation: selectPulse 0.3s ease-out;
+}
+
+.dragging-multi {
+    animation: multiDragPulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes multiDragPulse {
+    from {
+        background-color: #e3f2fd;
+        transform: scale(1);
+    }
+    to {
+        background-color: #bbdefb;
+        transform: scale(0.98);
+    }
+}
+
+@keyframes selectPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 0 10px rgba(33, 150, 243, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+    }
+}
+
+.route-hover-drag {
+    background-color: #f3e5f5 !important;
+    border-left: 4px solid #9c27b0 !important;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.route-hover-drag::after {
+    content: "Hover to expand route...";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #9c27b0;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 10;
+    animation: expandHint 0.8s ease-in-out infinite;
+}
+
+@keyframes expandHint {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
+.drag-in-progress .p-datatable-tbody tr:not(.route-is-finalized):hover {
+    background-color: rgba(156, 39, 176, 0.1) !important;
+    cursor: pointer;
+}
+
+.floating-selection-panel {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 12px 16px;
+}
+
+.floating-selection-panel.held {
+    border-color: #ff9800;
+    box-shadow: 0 8px 32px rgba(255, 152, 0, 0.3);
+}
+
+.cross-page-drop-zone {
+    position: relative;
+}
+
+.cross-page-mode .p-datatable-tbody tr {
+    position: relative;
+}
+
+.cross-page-mode .p-datatable-tbody tr:hover::after {
+    content: 'Click to drop employees here';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #2196F3;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.held-selection-active {
+    background: linear-gradient(45deg, #fff3e0, #ffe0b2);
+    border-left: 4px solid #ff9800;
+}
+
+.route-selected {
+    background-color: #fff3e0 !important;
+    border-left: 4px solid #ff9800 !important;
+}
+
+.route-selected:hover {
+    background-color: #ffe0b2 !important;
+}
+
+.route-selected.first-selected {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+    border-left: 8px solid #28a745 !important;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    position: relative;
+}
+
+.route-selected:not(.first-selected)::after {
+    content: 'SOURCE - Will be deleted';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, #dc3545, #e74c3c);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.floating-route-panel {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.route-merge-mode .p-datatable-tbody tr:not(.route-is-finalized) {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.route-merge-mode .p-datatable-tbody tr:not(.route-is-finalized):hover {
+    background-color: rgba(255, 152, 0, 0.1) !important;
+}
+
+/* Gradient variants of Bootstrap's bg-*-subtle, scoped to this page so
+   they don't restyle badges app-wide. */
+.mr-page .bg-success-subtle {
+    background: linear-gradient(135deg, #d1edcc 0%, #c3e6ba 100%) !important;
+}
+
+.mr-page .bg-danger-subtle {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%) !important;
+}
+
+.mr-page .bg-info-subtle {
+    background: linear-gradient(135deg, #d1ecf1 0%, #b8daff 100%) !important;
+}
+
+.mr-page .bg-primary-subtle {
+    background: linear-gradient(135deg, #cce7ff 0%, #b3d9ff 100%) !important;
+}
+
+.route-merge-table-active .p-datatable-thead > tr > th {
+    white-space: normal;
+    font-size: 12px;
+    padding: 0.6rem 0.4rem;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.route-merge-table-active .p-datatable-tbody > tr > td {
+    padding: 0.6rem 0.4rem;
+    font-size: 13px;
+}
+
+.route-merge-table-active .p-column-header-content {
+    justify-content: center;
+}
+
+.modern-modal .p-dialog-content {
+    border-radius: 0 0 8px 8px;
+    padding: 0;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.modern-modal .p-dialog-footer {
+    background: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.modern-modal .table thead th { font-size: 12px; }
+.modern-modal .table tbody td { vertical-align: middle; }
+
+.modern-modal .card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
+}
+
+.modern-modal .alert {
+    border-radius: 6px;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0;
+}
+
+.modern-modal .form-control {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.modern-modal .form-control:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.15rem rgba(40, 167, 69, 0.25);
+}
+
+.modern-modal .badge {
+    font-size: 11px;
+    padding: 0.25rem 0.5rem;
+}
+
+.modern-modal .text-muted {
+    color: #6c757d !important;
+}
+
+.modern-modal .fw-semibold {
+    font-weight: 600 !important;
+}
+
+/* --- Style for Active Route Merge Button --- */
+.route-merge-toggle-btn.p-button-warning {
+    background: #343a40 !important;
+    border-color: #343a40 !important;
+    color: #fff !important;
+}
+
+.route-merge-toggle-btn.p-button-warning:hover {
+    background: #495057 !important;
+    border-color: #495057 !important;
+}
+
+/* ---------- Calendar input with custom icon ---------- */
+
+.custom-calendar-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.custom-calendar-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.custom-calendar-input .p-inputtext {
+    padding-left: 35px !important;
+}
+
+/* ---------- Utilities (sizes repeated across the page) ---------- */
+
+.mr-fs-11 { font-size: 11px; }
+.mr-fs-12 { font-size: 12px; }
+.mr-fs-13 { font-size: 13px; }
+.mr-fs-14 { font-size: 14px; }
+
+.mr-icon-12 { font-size: 12px; vertical-align: middle; }
+.mr-icon-14 { font-size: 14px; }
+.mr-icon-16 { font-size: 16px; }
+.mr-icon-18 { font-size: 18px; }
+
+.mr-text-dim { color: #666; }
+
+.mr-checkbox { cursor: pointer; }
+.mr-checkbox--disabled { cursor: not-allowed; }
+
+/* Row/table icon images (PWD, OOB, NMT, guard, vehicle letters, …) */
+.mr-icon-20 {
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+}
+
+.mr-icon-img-16 {
+    width: 16px;
+    height: 16px;
+}
+
+/* Truncate with ellipsis; width variants for table cells */
+.mr-ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    cursor: pointer;
+    width: 100%;
+}
+
+.mr-ellipsis-200 {
+    max-width: 200px;
+    vertical-align: middle;
+    width: auto;
+}
+
+.mr-ellipsis-150 {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------- Page-level bits ---------- */
+
+/* Full-screen busy overlay while a server operation runs */
+.mr-busy-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.7);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mr-busy-spinner {
+    width: 60px;
+    height: 60px;
+    font-size: 32px;
+}
+
+.mr-stats-link {
+    margin-top: 8px;
+    cursor: pointer;
+}
+
+.mr-empty-state {
+    min-height: 70vh;
+}
+
+.mr-empty-img {
+    max-width: 100px;
+    opacity: 0.5;
+    margin-bottom: 1rem;
+}
+
+.mr-empty-text {
+    font-size: 0.9rem;
+}
+
+.mr-expand-icon {
+    font-size: 1.5rem;
+}
+
+.mr-accent {
+    color: #2196F3;
+}
+
+.mr-route-link {
+    cursor: pointer;
+    color: #4285F4;
+    font-weight: bold;
+}
+
+/* ---------- Floating panels (selection + route merge) ---------- */
+
+.mr-floating-panel {
+    position: fixed;
+    width: 520px;
+    height: 30vh;
+    z-index: 1201;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    will-change: transform;
+    transition: box-shadow 0.2s ease-in-out;
+    user-select: none;
+    cursor: default;
+}
+
+.mr-floating-panel--dragging {
+    cursor: grabbing;
+}
+
+.mr-panel-header {
+    background: linear-gradient(90deg, #f5f7fa, #e4e7ec);
+    padding: 12px 16px;
+    border-bottom: 1px solid #ddd;
+    cursor: move;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.mr-panel-header--dragging {
+    cursor: grabbing;
+}
+
+.mr-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    background: #fafafa;
+    padding: 8px 12px;
+}
+
+.mr-panel-close {
+    width: 30px;
+    height: 30px;
+}
+
+.mr-panel-item {
+    background: #fff;
+}
+
+.mr-panel-item-sub {
+    font-size: 11px;
+    color: #666;
+}
+
+.mr-panel-item-route {
+    font-size: 11px;
+    color: #555;
+}
+
+/* Small route-type icons inside the route panel items */
+.mr-icon-img-12 {
+    width: 12px;
+    height: 12px;
+}
+
+/* ---------- Drop zones ---------- */
+
+/* Cross-page drop target: expands on CSS :hover (no JS hover state) */
+.mr-cross-drop {
+    height: 10px;
+    background-color: rgba(13, 110, 253, 0.04);
+    border: 2px dashed rgba(13, 110, 253, 0.3);
+    border-radius: 6px;
+    margin: 4px 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #0d6efd;
+    letter-spacing: 0.2px;
+    font-weight: 600;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.mr-cross-drop:hover {
+    height: 44px;
+    background-color: rgba(13, 110, 253, 0.12);
+    border-color: #0d6efd;
+    box-shadow: 0 2px 6px rgba(13, 110, 253, 0.1);
+}
+
+/* dnd-kit droppable indicator: expands while a drag hovers over it */
+.mr-drop-indicator {
+    height: 8px;
+    background-color: transparent;
+    border: 2px dashed transparent;
+    border-radius: 6px;
+    margin: 4px 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #0d6efd;
+    font-weight: 600;
+    will-change: height, background-color, border-color;
+    transform: translateZ(0);
+    overflow: hidden;
+}
+
+.mr-drop-indicator--over {
+    height: 44px;
+    background-color: rgba(13, 110, 253, 0.12);
+    border-color: #0d6efd;
+}
+
+/* Inner label fades in when its zone is active */
+.mr-drop-content {
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.mr-cross-drop:hover .mr-drop-content,
+.mr-drop-indicator--over .mr-drop-content {
+    opacity: 1;
+}
+
+/* ---------- Draggable employee rows (route expansion) ---------- */
+
+.mr-exp-header {
+    font-size: 12px;
+    background: #f8f9fa;
+    padding: 8px 0;
+    font-weight: bold;
+}
+
+.mr-exp-footer {
+    background-color: #f8f9fa;
+}
+
+.mr-emp-row {
+    position: relative;
+    cursor: default;
+    border: 1px solid transparent;
+    transition: opacity 0.2s ease-out, border-color 0.2s ease-out;
+}
+
+.mr-emp-row--selected {
+    border: 2px solid #2196F3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+.mr-emp-row--split {
+    border: 2px solid #17a2b8;
+    box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+}
+
+/* Row is being dragged (or part of a multi-drag): ghost it out */
+.mr-emp-row--ghost {
+    opacity: 0.3;
+    transition: none;
+}
+
+/* Foreground layer that slides during swipe-to-delete.
+   transform + drag-time transition stay inline (dynamic). */
+.mr-emp-row-fg {
+    background-color: #fff;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.3s ease;
+    will-change: transform;
+}
+
+.mr-emp-row-fg--selected { background-color: #e3f2fd; }
+.mr-emp-row-fg--split    { background-color: #d1ecf1; }
+
+.mr-emp-row-fg--new {
+    background-color: #e8f5e9;
+    border-left: 4px solid #4caf50;
+}
+
+.mr-drag-handle {
+    font-size: 20px;
+    cursor: grab;
+}
+
+.mr-drag-handle--disabled {
+    cursor: not-allowed;
+}
+
+.mr-checkbox--disabled {
+    cursor: not-allowed;
+}
+
+.mr-badge-new {
+    background-color: #4caf50;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.mr-eta-input {
+    width: 85px;
+}
+
+.mr-btn-pill-sm {
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+/* ---------- Route generation progress dialog ---------- */
+
+.mr-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 2px 0;
+}
+
+.mr-progress-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mr-progress-logo {
+    height: 26px;
+}
+
+.mr-progress-brand-text {
+    line-height: 1.25;
+}
+
+.mr-progress-title {
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: #0f172a;
+}
+
+.mr-progress-sub {
+    font-size: 10px;
+    color: #94a3b8;
+    letter-spacing: 0.03em;
+    margin-top: 1px;
+}
+
+.mr-progress-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    color: #94a3b8;
+    font-size: 15px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.mr-progress-body {
+    padding: 32px 32px 28px;
+    text-align: center;
+}
+
+.mr-progress-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    margin-bottom: 18px;
+}
+
+.mr-progress-icon .pi {
+    font-size: 22px;
+    color: #2563eb;
+}
+
+.mr-progress-icon--error {
+    width: 54px;
+    height: 54px;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.mr-progress-icon--error .pi {
+    font-size: 20px;
+    color: #dc2626;
+}
+
+.mr-progress-h {
+    font-weight: 600;
+    font-size: 15px;
+    color: #0f172a;
+    margin: 0 0 6px;
+}
+
+.mr-progress-msg {
+    color: #64748b;
+    font-size: 13px;
+    margin: 0 0 22px;
+}
+
+.mr-progress-msg--tight {
+    margin: 0 0 14px;
+}
+
+.mr-progress-note {
+    color: #94a3b8;
+    font-size: 12px;
+    margin-top: 14px;
+    margin-bottom: 0;
+}
+
+.mr-progress-errbox {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.mr-progress-errtext {
+    color: #dc2626;
+    font-size: 12px;
+    margin: 0;
+}
+
+/* ---------- Add Employee dialog ---------- */
+
+.mr-route-banner {
+    background-color: #e3f2fd;
+    border: 1px solid #bbdefb;
+}
+
+.mr-route-banner-icon {
+    color: #1976d2;
+    font-size: 18px;
+}
+
+.mr-results-scroll {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.mr-thead-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.mr-row-selectable {
+    cursor: pointer;
+}
+
+.mr-row-selected {
+    background: #d1ecf1;
+}
+
+.mr-btn-xs {
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+/* ---------- Route statistics sidebar ---------- */
+
+.mr-vendor-scroll {
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+/* ---------- Drag overlay cards ----------
+   The stacked multi-drag cards keep per-index offsets/rotation
+   inline; everything static lives here. */
+
+.mr-drag-card {
+    position: absolute;
+    padding: 8px 16px;
+    background-color: #fff;
+    border: 2px solid #2196F3;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    will-change: transform;
+    min-width: 200px;
+    text-align: center;
+}
+
+.mr-drag-single {
+    padding: 8px 16px;
+    background-color: #fff;
+    border: 2px solid #2196F3;
+    border-radius: 8px;
+    cursor: grabbing;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    font-weight: bold;
+    will-change: transform;
+}
+
+/* ============================================================
+   Mobile view (ManageRouteMobile.jsx)
+   Formerly injected at runtime into document.head — moved here
+   so styles ship with the chunk and are inspectable.
+   ============================================================ */
+
+@keyframes mrm-slide-down {
+    from {
+        opacity: 0;
+        max-height: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        max-height: 1000px;
+        transform: translateY(0);
+    }
+}
+
+.route-employee-row {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease;
+}
+
+.route-employee-row:active {
+    background-color: #f8fafc;
+}
+
+/* Compact count badges (Filters button, card chips) — scoped so the
+   PrimeReact default badge sizing on other pages is untouched */
+.mrm-page .p-badge,
+.mrm-filters .p-badge {
+    min-width: 1.5rem;
+    height: 1.5rem;
+    line-height: 1.5rem;
+    padding: 0 6px;
+    font-size: 0.75rem;
+}
+
+/* Mobile filter panel calendar: smaller icon than the desktop variant */
+.mrm-filters .custom-calendar-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.mrm-filters .custom-calendar-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.mrm-filters .custom-calendar-input .p-inputtext {
+    padding-left: 36px !important;
+}
+
+@keyframes fabItemSlideIn {
+    from { opacity: 0; transform: translateX(16px) scale(0.92); }
+    to   { opacity: 1; transform: translateX(0)   scale(1);    }
+}

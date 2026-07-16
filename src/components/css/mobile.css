@@ -1,0 +1,148 @@
+/* ============================================================
+   mobile.css — shared mobile design primitives (mob- prefix)
+
+   This is the app-wide mobile look & feel. Pages should compose
+   the components in src/components/common/mobile/ (MobileToolbar,
+   MobileFilterChips, MobileStatsStrip, MobileCardList, MobileHeader)
+   instead of hand-styling their mobile views — that is what keeps
+   mobile consistent across the application.
+
+   Colors come from the design tokens in style.css (:root vars).
+   ============================================================ */
+
+/* ---------- Toolbar (page title + Filters trigger) ---------- */
+
+.mob-toolbar {
+    border-bottom: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    z-index: 10;
+}
+
+.mob-toolbar-title {
+    margin: 0 0 2px;
+    font-weight: 700;
+}
+
+.mob-toolbar-sub {
+    color: #64748b;
+    font-size: 0.78rem;
+}
+
+.mob-filter-btn {
+    border-radius: 8px;
+    color: #64748b;
+    border-color: #e2e8f0;
+}
+
+/* Count of ACTIVE filters (never the result count) — neutral, not alarming */
+.mob-filter-btn-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--grey-5, #2d3748);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0 7px;
+    height: 18px;
+    min-width: 18px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+/* ---------- Applied-filter chips ---------- */
+
+.mob-chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 2px 6px;
+    margin-bottom: 4px;
+    scrollbar-width: none;
+    cursor: pointer;
+}
+
+.mob-chips::-webkit-scrollbar {
+    display: none;
+}
+
+.mob-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 4px 11px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.mob-chip i {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* ---------- Stats strip (compact page-level numbers) ---------- */
+
+.mob-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.mob-stat {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+}
+
+.mob-stat-value {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--grey-5, #2d3748);
+    line-height: 1.2;
+}
+
+.mob-stat-label {
+    font-size: 0.68rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 1px;
+}
+
+.mob-stat--primary .mob-stat-value { color: var(--primary-color, #4a36ec); }
+.mob-stat--success .mob-stat-value { color: var(--success-color, #0baa60); }
+.mob-stat--warning .mob-stat-value { color: var(--warning-color-dark, #e18a07); }
+.mob-stat--danger  .mob-stat-value { color: var(--red-color, #f03d3d); }
+
+/* ---------- Card list ---------- */
+
+.mob-list-loading {
+    min-height: 300px;
+}
+
+.mob-list-spacer {
+    height: 20px;
+}
+
+.mob-fade-in-up {
+    animation: mob-fade-in-up 0.4s ease-out;
+}
+
+@keyframes mob-fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -2,6 +2,7 @@ import React from 'react';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Button } from 'primereact/button';
 import { Ripple } from 'primereact/ripple';
+import '../../css/mobile.css';
 
 /**
  * MobileCardList
@@ -35,7 +36,7 @@ const MobileCardList = ({
     // Aesthetic loading skeleton or spinner
     if (isLoading && data.length === 0) {
         return (
-            <div className="d-flex flex-column align-items-center justify-content-center p-5" style={{ minHeight: '300px' }}>
+            <div className="d-flex flex-column align-items-center justify-content-center p-5 mob-list-loading">
                 <ProgressSpinner style={{width: '50px', height: '50px'}} strokeWidth="4" />
                 <span className="text-muted mt-3">Loading data...</span>
             </div>
@@ -84,7 +85,7 @@ const MobileCardList = ({
             {/* List Items */}
             <div className="px-3 d-flex flex-column gap-3">
                 {data.map((item, index) => (
-                    <div key={item.id || index} className="mobile-card-item fade-in-up">
+                    <div key={item.id || index} className="mobile-card-item mob-fade-in-up">
                         {itemTemplate(item, index)}
                     </div>
                 ))}
@@ -105,23 +106,7 @@ const MobileCardList = ({
             )}
             
             {/* Bottom spacer for FABs or bottom nav */}
-            <div style={{ height: '20px' }}></div>
-
-            <style>{`
-                .fade-in-up {
-                    animation: fadeInUp 0.4s ease-out;
-                }
-                @keyframes fadeInUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-            `}</style>
+            <div className="mob-list-spacer"></div>
         </div>
     );
 };

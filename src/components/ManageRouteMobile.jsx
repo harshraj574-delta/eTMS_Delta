@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouteDetailsQuery, manageRouteKeys } from '../hooks/compliance/useManageRouteQueries';
+import { useRouteDetailsQuery, manageRouteKeys, recalculateModifiedRoutes } from '../hooks/compliance/useManageRouteQueries';
+import { getFinalizeCutoffWarning } from '../hooks/compliance/useFinalizeWorkflow';
+import useUnlockRoutes from '../hooks/compliance/useUnlockRoutes';
 
 // PrimeReact Components
 import { Button } from 'primereact/button';
@@ -10,7 +12,6 @@ import { Calendar } from 'primereact/calendar';
 import { Badge } from 'primereact/badge';
 import AppDialog from './common/AppDialog';
 import AppConfirmDialog from './common/AppConfirmDialog';
-import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
 
 // DnD Kit
@@ -33,6 +34,9 @@ import MasterSidebar from './Master/MasterSidebar';
 
 // Common Mobile Components
 import MobileCardList from './common/mobile/MobileCardList';
+import MobileToolbar from './common/mobile/MobileToolbar';
+import MobileFilterChips from './common/mobile/MobileFilterChips';
+import MobileStatsStrip from './common/mobile/MobileStatsStrip';
 
 // Route Details Component (shared with Desktop)
 import OffcanvasRouteDetails from './OffcanvasRouteDetails';
@@ -49,67 +53,8 @@ import { toastService } from '../services/toastService';
 // Assets
 import calendarIcon from '../assets/calendar.png';
 
-// ============================================================================
-// STYLES (embedded for animation keyframes)
-// ============================================================================
-const mobileStyles = `
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        max-height: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        max-height: 1000px;
-        transform: translateY(0);
-    }
-}
-.route-employee-row {
-    background-color: #ffffff;
-    transition: background-color 0.2s ease;
-}
-.route-employee-row:active {
-    background-color: #f8fafc;
-}
-.p-badge {
-    min-width: 1.5rem;
-    height: 1.5rem;
-    line-height: 1.5rem;
-    padding: 0 6px;
-    font-size: 0.75rem;
-}
-.custom-calendar-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-.custom-calendar-icon {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
-    z-index: 2;
-    pointer-events: none;
-}
-.custom-calendar-input .p-inputtext {
-    padding-left: 36px !important;
-}
-@keyframes fabItemSlideIn {
-    from { opacity: 0; transform: translateX(16px) scale(0.92); }
-    to   { opacity: 1; transform: translateX(0)   scale(1);    }
-}
-`;
-
-// Inject styles once on module load
-if (typeof document !== 'undefined' && !document.getElementById('manage-route-mobile-styles')) {
-    const styleEl = document.createElement('style');
-    styleEl.id = 'manage-route-mobile-styles';
-    styleEl.textContent = mobileStyles;
-    document.head.appendChild(styleEl);
-}
+// Styles live in css/ManageRoute.css (mobile section, mrm- prefixed)
+import './css/ManageRoute.css';
 
 // ============================================================================
 // SUB-COMPONENTS
@@ -160,7 +105,7 @@ const FilterSidebar = React.memo(({
                 }
             ]}
         >
-            <div className="d-flex flex-column gap-3 p-3">
+            <div className="d-flex flex-column gap-3 p-3 mrm-filters">
                 {/* Facility */}
                 <div>
                     <label className="form-label small fw-semibold text-muted mb-1">Facility</label>
@@ -591,7 +536,7 @@ const RouteCard = React.memo(({
                 <div 
                     style={{ 
                         borderTop: '1px solid #e2e8f0',
-                        animation: 'slideDown 0.2s ease-out'
+                        animation: 'mrm-slide-down 0.2s ease-out'
                     }}
                 >
                     {/* Route Details with Emoji Icons */}
@@ -794,15 +739,18 @@ const ManageRouteMobile = ({
     const [draggedItem, setDraggedItem] = useState(null);
     const [pendingDragOperation, setPendingDragOperation] = useState(null);
     
+    // Incremental rendering: show 30 cards, "Load More" for the rest
+    const MOBILE_PAGE_SIZE = 30;
+    const [visibleCount, setVisibleCount] = useState(MOBILE_PAGE_SIZE);
+    useEffect(() => {
+        setVisibleCount(MOBILE_PAGE_SIZE);
+    }, [routes]);
+
     // Action Buttons State
     const [isSpeedDialVisible, setIsSpeedDialVisible] = useState(false);
     const [isRouteSelectMode, setIsRouteSelectMode] = useState(false);
     const [selectedRoutes, setSelectedRoutes] = useState(new Set());
     const [routeSelectionOrder, setRouteSelectionOrder] = useState([]);
-    const [isUnlockMode, setIsUnlockMode] = useState(false);
-    const [routesToUnlock, setRoutesToUnlock] = useState(new Set());
-    const [showUnlockConfirmDialog, setShowUnlockConfirmDialog] = useState(false);
-    const [pendingUnlock, setPendingUnlock] = useState(null);
     const [showRouteMergeDialog, setShowRouteMergeDialog] = useState(false);
     const [pendingMergeOperation, setPendingMergeOperation] = useState(null);
     const [isRecalculating, setIsRecalculating] = useState(false);
@@ -811,8 +759,23 @@ const ManageRouteMobile = ({
     const [showRecalcBeforeFinalizeDialog, setShowRecalcBeforeFinalizeDialog] = useState(false);
     const [isRecalcBeforeFinalize, setIsRecalcBeforeFinalize] = useState(false);
     const [showAutoVendorAllocationDialog, setShowAutoVendorAllocationDialog] = useState(false);
-    const [isShiftLocked, setIsShiftLocked] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Lock/unlock state machine shared with desktop (see useUnlockRoutes)
+    const {
+        isShiftLocked,
+        isUnlockMode,
+        setIsUnlockMode,
+        routesToUnlock,
+        setRoutesToUnlock,
+        showUnlockConfirmDialog,
+        setShowUnlockConfirmDialog,
+        pendingUnlock,
+        setPendingUnlock,
+        handleSelectRouteToUnlock: handleToggleUnlock,
+        handleUnlockShift,
+        handleUnlockSelectedRoutes,
+    } = useUnlockRoutes(routes);
     
     // Configure sensors
     const sensors = useSensors(
@@ -831,24 +794,8 @@ const ManageRouteMobile = ({
     );
 
 
-    const toast = useRef(null);
     const queryClient = useQueryClient();
     const userID = sessionStorage.getItem('ID');
-
-    // Effect for checking if shift is locked
-    useEffect(() => {
-        if (routes && routes.length > 0) {
-            const hasFinalizedRoutes = routes.some((route) => route.isRouteFinalized === 1);
-            setIsShiftLocked(hasFinalizedRoutes);
-
-            if (!hasFinalizedRoutes && isUnlockMode) {
-                setIsUnlockMode(false);
-                setRoutesToUnlock(new Set());
-            }
-        } else {
-            setIsShiftLocked(false);
-        }
-    }, [routes, isUnlockMode]);
 
     // Handlers
     const handleClearRouteSelection = useCallback(() => {
@@ -919,35 +866,7 @@ const ManageRouteMobile = ({
         }
     }, [pendingMergeOperation, userID, handleClearRouteSelection, onSearch]);
 
-    const handleUnlockShift = useCallback(() => {
-        const finalizedRoutes = routes
-            .filter((route) => route.isRouteFinalized === 1)
-            .map((route) => route.RouteID);
-
-        if (finalizedRoutes.length === 0) {
-            toastService.info("No finalized routes to unlock in this shift.");
-            return;
-        }
-
-        setPendingUnlock({
-            routeIds: finalizedRoutes,
-            type: "shift",
-        });
-        setShowUnlockConfirmDialog(true);
-    }, [routes]);
-
-    const handleUnlockSelectedRoutes = useCallback(() => {
-        if (routesToUnlock.size === 0) {
-            toastService.warn("Please select routes to unlock.");
-            return;
-        }
-        setPendingUnlock({
-            routeIds: Array.from(routesToUnlock),
-            type: "routes",
-        });
-        setShowUnlockConfirmDialog(true);
-    }, [routesToUnlock]);
-
+    // Unlock server workflow (selection state lives in useUnlockRoutes)
     const confirmUnlockOperation = useCallback(async () => {
         if (!pendingUnlock) return;
 
@@ -1035,27 +954,15 @@ const ManageRouteMobile = ({
     }, [filters, onSearch]);
 
     const handleFinalizeRoute = useCallback(async () => {
-        // Cutoff validation: Pick Up = 4 h before shift, Drop = 1 h before shift
-        if (filters.shifts) {
-            const raw = String(filters.shifts).replace(":", "");
-            if (raw.length === 4) {
-                const shiftHH = parseInt(raw.slice(0, 2), 10);
-                const shiftMM = parseInt(raw.slice(2, 4), 10);
-                const now = new Date();
-                const shiftTime = filters.sDate ? new Date(filters.sDate) : new Date();
-                shiftTime.setHours(shiftHH, shiftMM, 0, 0);
-                const cutoffMs = filters.tripType === "P" ? 4 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000;
-                const cutoffTime = new Date(shiftTime.getTime() - cutoffMs);
-                if (now >= cutoffTime) {
-                    const tripLabel = filters.tripType === "P" ? "Pick Up" : "Drop";
-                    const cutoffLabel = filters.tripType === "P" ? "4 hours" : "1 hour";
-                    const shiftLabel = `${String(shiftHH).padStart(2, "0")}:${String(shiftMM).padStart(2, "0")}`;
-                    toastService.warn(
-                        `${tripLabel} routes must be finalized at least ${cutoffLabel} before shift time (${shiftLabel}). Finalization window has closed.`
-                    );
-                    return;
-                }
-            }
+        // Cutoff validation shared with desktop (Pick Up = 4h, Drop = 1h)
+        const cutoffWarning = getFinalizeCutoffWarning({
+            shiftDate: filters.sDate,
+            shifts: filters.shifts,
+            tripType: filters.tripType,
+        });
+        if (cutoffWarning) {
+            toastService.warn(cutoffWarning);
+            return;
         }
 
         const needsRecalculation = await checkIfRecalculationNeeded();
@@ -1064,7 +971,7 @@ const ManageRouteMobile = ({
             return;
         }
         await proceedWithFinalization();
-    }, [checkIfRecalculationNeeded, proceedWithFinalization, filters.shifts, filters.tripType]);
+    }, [checkIfRecalculationNeeded, proceedWithFinalization, filters.shifts, filters.tripType, filters.sDate]);
 
     const handleRecalculateAndFinalize = useCallback(async () => {
         setIsRecalcBeforeFinalize(true);
@@ -1073,34 +980,20 @@ const ManageRouteMobile = ({
         try {
             toastService.info("Recalculating routes before finalization...");
 
-            const inputJsonResponse = await ManageRouteService.GetInputJsonRecalculate({
-                shiftdate: filters.sDate,
-                shifttime: filters.shifts,
-                facilityid: filters.facilityId,
-                triptype: filters.tripType,
+            // Shared pipeline with desktop: fetch input → routing engine → persist
+            const updated = await recalculateModifiedRoutes({
+                shiftDate: filters.sDate,
+                shifts: filters.shifts,
+                facilityId: filters.facilityId,
+                tripType: filters.tripType,
+                userId: userID,
             });
 
-            const inputJsonData =
-                typeof inputJsonResponse === "string"
-                    ? JSON.parse(inputJsonResponse)
-                    : inputJsonResponse;
-
-            if (!inputJsonData || !inputJsonData.routes || inputJsonData.routes.length === 0) {
+            if (!updated) {
                 toastService.info("No routes need recalculation. Proceeding with finalization...");
                 await proceedWithFinalization();
                 return;
             }
-
-            const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
-
-            await ManageRouteService.updateRouteMapbased({
-                facilityid: filters.facilityId,
-                sDate: filters.sDate,
-                triptype: filters.tripType,
-                shifttime: filters.shifts,
-                jsonstring: JSON.stringify(recalculatedRouteJson),
-                updatedBy: userID,
-            });
 
             toastService.success("Routes recalculated successfully! Now finalizing...");
             if(onSearch) await onSearch();
@@ -1317,14 +1210,6 @@ const ManageRouteMobile = ({
         queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
     }, [queryClient]);
 
-    const handleToggleUnlock = useCallback((routeId) => {
-        setRoutesToUnlock((prev) => {
-            const next = new Set(prev);
-            next.has(routeId) ? next.delete(routeId) : next.add(routeId);
-            return next;
-        });
-    }, []);
-
     const isDateCurrentOrFuture = useMemo(() => {
         if (!filters.sDate) return false;
         const searchDate = new Date(filters.sDate);
@@ -1539,6 +1424,37 @@ const ManageRouteMobile = ({
     // Check if search criteria is set
     const hasSearchCriteria = filters.facilityId && filters.shifts;
 
+    // Applied-filter chips shown under the toolbar (tap re-opens the sheet)
+    const facilityLabel = useMemo(
+        () => facilities.find((f) => f.value === filters.facilityId)?.label,
+        [facilities, filters.facilityId]
+    );
+
+    const filterChips = useMemo(
+        () => [
+            facilityLabel && { icon: 'pi pi-building', label: facilityLabel },
+            {
+                icon: filters.tripType === 'P' ? 'pi pi-sign-out' : 'pi pi-sign-in',
+                label: filters.tripType === 'P' ? 'Pick' : 'Drop',
+            },
+            filters.shifts && { icon: 'pi pi-clock', label: String(filters.shifts) },
+        ].filter(Boolean),
+        [facilityLabel, filters.tripType, filters.shifts]
+    );
+
+    // Active-filter count for the Filters button (never the result count)
+    const activeFilterCount = [filters.facilityId, filters.shifts].filter(Boolean).length;
+
+    // Compact stats strip — same numbers/tones as the desktop stat cards
+    const statTiles = useMemo(() => {
+        const s = stats?.[0] || {};
+        return [
+            { label: 'Employees', value: s.TotalEmps || 0, tone: 'danger' },
+            { label: 'Avg. Occupancy', value: s.AvgOccupancy || 0, tone: 'warning' },
+            { label: 'Routes', value: s.TotalRoutes || 0, tone: 'primary' },
+        ];
+    }, [stats]);
+
     return (
         <DndContext
             sensors={sensors}
@@ -1556,43 +1472,23 @@ const ManageRouteMobile = ({
                 
                 <div style={{ paddingBottom: '100px', backgroundColor: '#f1f5f9', minHeight: '100vh' }}>
             <Sidebar />
-            <Toast ref={toast} position="top-center" />
-            
-            <div className="middle">
-                {/* Mobile Filter Bar */}
-                <div className="card_tb p-3 mb-2 shadow-sm" style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff', zIndex: 10 }}>
-                    <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 className="mb-1 fw-bold">Manage Routes</h6>
-                            <small className="text-muted">{filters.sDate || 'Select date'}</small>
-                        </div>
-                        <Button
-                            className="p-button-outlined p-button-sm d-flex align-items-center gap-2"
-                            style={{ borderRadius: '8px', color: '#64748b', borderColor: '#e2e8f0' }}
-                            onClick={() => setShowFilterSidebar(true)}
-                        >
-                            <i className="pi pi-filter" />
-                            <span>Filters</span>
-                            {hasSearchCriteria && (
-                                <span 
-                                    className="d-flex align-items-center justify-content-center text-white"
-                                    style={{ 
-                                        background: '#ef4444', // Red-500
-                                        borderRadius: '12px',
-                                        padding: '0 8px',
-                                        height: '20px',
-                                        minWidth: '20px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        marginLeft: '4px'
-                                    }}
-                                >
-                                    {routes.length}
-                                </span>
-                            )}
-                        </Button>
-                    </div>
-                </div>
+            <div className="middle mrm-page">
+                {/* Mobile Toolbar + applied filters + stats (shared primitives) */}
+                <MobileToolbar
+                    title="Manage Routes"
+                    subtitle={filters.sDate || 'Select date'}
+                    onFilterClick={() => setShowFilterSidebar(true)}
+                    filterCount={activeFilterCount}
+                />
+                {hasSearchCriteria && (
+                    <MobileFilterChips
+                        chips={filterChips}
+                        onClick={() => setShowFilterSidebar(true)}
+                    />
+                )}
+                {hasSearchCriteria && routes.length > 0 && (
+                    <MobileStatsStrip stats={statTiles} />
+                )}
 
 
                 {/* Main Content */}
@@ -1630,12 +1526,14 @@ const ManageRouteMobile = ({
                     ) : (
                         // Show routes
                         <MobileCardList
-                            data={routes}
+                            data={routes.slice(0, visibleCount)}
                             itemTemplate={routeItemTemplate}
                             isLoading={isLoading}
                             onRefresh={onSearch}
                             emptyMessage="No routes found for the selected criteria"
                             title={`${routes.length} Route${routes.length !== 1 ? 's' : ''}`}
+                            onLoadMore={() => setVisibleCount((c) => c + MOBILE_PAGE_SIZE)}
+                            hasMore={routes.length > visibleCount}
                         />
                     )}
                 </div>
