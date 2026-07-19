@@ -1,23 +1,33 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import Sidebar from "./Master/SidebarMenu";
-import Header from "./Master/Header";
-import EmpAccessRightsService from "../services/compliance/EmpAccessRightsService";
-import sessionManager from "../utils/SessionManager";
+import Sidebar from "../Master/SidebarMenu";
+import Header from "../Master/Header";
+import sessionManager from "../../utils/SessionManager";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import { toastService } from "../services/toastService";
+import { toastService } from "../../services/toastService";
+import { useQueryClient } from "@tanstack/react-query";
+import parseMaybeJson from "../../services/parseMaybeJson";
+import {
+  useMenuAccessCountsQuery,
+  fetchEmpSearch,
+  fetchUserRightsBundle,
+  fetchMenuUsers,
+  fetchAccessLog,
+  useSetUserRightsMutation,
+  useCopyAccessMutation,
+} from "./hooks/useEmpAccessRightsQueries";
 import { InputText } from "primereact/inputtext";
 import { Checkbox } from "primereact/checkbox";
 import { Button } from "primereact/button";
 import { Calendar } from "primereact/calendar";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import Loader from "./common/Loader";
-import TabSwitcher from "./common/TabSwitcher";
-import { CustomDataTable } from "./common/CustomDataTable";
-import CustomPaginator from "./common/CustomPaginator";
-import TableToolbar from "./common/TableToolbar";
-import ReportButton from "./common/ReportButton";
-import calendarIcon from "../assets/calendar.png";
+import Loader from "../common/Loader";
+import TabSwitcher from "../common/TabSwitcher";
+import { CustomDataTable } from "../common/CustomDataTable";
+import CustomPaginator from "../common/CustomPaginator";
+import TableToolbar from "../common/TableToolbar";
+import ReportButton from "../common/ReportButton";
+import calendarIcon from "../../assets/calendar.png";
 import {
   BsGrid, BsPersonGear, BsShieldCheck, BsGear, BsFileEarmarkText,
   BsPeople, BsClipboardData, BsBarChart, BsHouseDoor, BsTruck,
@@ -84,8 +94,8 @@ const AccessCard = ({ menu, index, hasAnimated, onMenuClick }) => {
     <motion.div
       className="col"
       initial={shouldAnimate ? { opacity: 0, y: 20, scale: 0.98 } : false}
-      animate={shouldAnimate ? { opacity: 1, y: 0, scale: 1 } : {}}
-      transition={shouldAnimate ? { duration: 0.5, delay: index * 0.08, ease: "easeOut" } : {}}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={shouldAnimate ? { duration: 0.5, delay: index * 0.08, ease: "easeOut" } : { duration: 0 }}
     >
       <div
         className="bg-white rounded-4 shadow-sm h-100 position-relative overflow-hidden p-3 access-stat-card-new"
@@ -104,8 +114,8 @@ const AccessCard = ({ menu, index, hasAnimated, onMenuClick }) => {
                 <strong className="fs-4 fw-bold">
                   <motion.span
                     initial={shouldAnimate ? { opacity: 0 } : false}
-                    animate={shouldAnimate ? { opacity: 1 } : {}}
-                    transition={shouldAnimate ? { duration: 0.5, delay: index * 0.08 + 0.3 } : {}}
+                    animate={{ opacity: 1 }}
+                    transition={shouldAnimate ? { duration: 0.5, delay: index * 0.08 + 0.3 } : { duration: 0 }}
                   >
                     <AnimatedNumber value={menu.TotalEmployee} duration={1.2} />
                   </motion.span>
@@ -146,20 +156,24 @@ const SkeletonCard = () => (
 // ── Main Component ────────────────────────────────────────────────────────────
 
 const EmpAccessRights = () => {
+  const queryClient = useQueryClient();
+  const session = sessionManager.getUserSession();
+  const locationId = session.LocationId || 0;
+  const isAdmin = session.ISadmin || "N";
+
   // Tab
   const [activeTab, setActiveTab] = useState("manage");
 
   // Manage Access state
-  const [menuAccessCounts, setMenuAccessCounts] = useState([]);
   const [mainMenus, setMainMenus] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [userRights, setUserRights] = useState([]);
   const [menuUsersDetails, setMenuUsersDetails] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState([]);
-  const [hasAnimated, setHasAnimated] = useState(false);
+  const hasAnimatedRef = useRef(false);
   const [showEmployeeList, setShowEmployeeList] = useState(false);
   const [showMenuAccess, setShowMenuAccess] = useState(false);
   const [showUsersList, setShowUsersList] = useState(false);
@@ -195,49 +209,25 @@ const EmpAccessRights = () => {
   useEffect(() => { logFromDateRef.current = logFromDate; }, [logFromDate]);
   useEffect(() => { logToDateRef.current = logToDate; }, [logToDate]);
 
+  // ── Manage Access data ──────────────────────────────────────────────────────
+
+  const { data: menuAccessCounts = [], isLoading: cardsLoading } = useMenuAccessCountsQuery(locationId);
+  const setUserRightsMutation = useSetUserRightsMutation();
+  const copyAccessMutation = useCopyAccessMutation();
+
   useEffect(() => {
-    fetchMenuAccessCounts();
-  }, []);
-
-  // ── Manage Access handlers ──────────────────────────────────────────────────
-
-  const fetchMenuAccessCounts = async () => {
-    try {
-      setLoading(true);
-      const response = await EmpAccessRightsService.GetMenuAccessDetails({
-        locationid: sessionManager.getUserSession().LocationId || 0,
-      });
-      if (Array.isArray(response)) {
-        setMenuAccessCounts(response);
-      } else if (response && typeof response === "string") {
-        try { setMenuAccessCounts(Array.isArray(JSON.parse(response)) ? JSON.parse(response) : []); }
-        catch { setMenuAccessCounts([]); }
-      } else {
-        setMenuAccessCounts([]);
-      }
-      if (!hasAnimated) setHasAnimated(true);
-    } catch {
-      toastService.error("Error loading menu access data");
-      setMenuAccessCounts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!cardsLoading) hasAnimatedRef.current = true;
+  }, [cardsLoading]);
 
   const handleSearch = async () => {
     if (!searchText.trim()) { toastService.warn("Please enter Employee ID or Name"); return; }
     try {
       setLoading(true);
-      const response = await EmpAccessRightsService.EmpSearch({
-        locationid: sessionManager.getUserSession().LocationId || 0,
-        empidname: searchText.trim(),
-        IsAdmin: sessionManager.getUserSession().ISadmin || "N",
+      const list = await fetchEmpSearch(queryClient, {
+        locationId,
+        text: searchText.trim(),
+        isAdmin,
       });
-      let list = [];
-      if (Array.isArray(response)) list = response;
-      else if (response && typeof response === "string") {
-        try { const p = JSON.parse(response); list = Array.isArray(p) ? p : []; } catch {}
-      }
       if (list.length > 0) { setEmployees(list); setShowEmployeeList(true); }
       else { toastService.info("No employees found"); setEmployees([]); }
     } catch { toastService.error("Error searching employees"); setEmployees([]); }
@@ -253,26 +243,8 @@ const EmpAccessRights = () => {
   const loadUserRights = async (empId) => {
     try {
       setLoading(true);
-      const menusResponse = await EmpAccessRightsService.SelectMainMenu({
-        IsAdmin: sessionManager.getUserSession().ISadmin || "N",
-      });
-      let menusList = [];
-      if (Array.isArray(menusResponse)) menusList = menusResponse;
-      else if (menusResponse && typeof menusResponse === "string") {
-        try { const p = JSON.parse(menusResponse); menusList = Array.isArray(p) ? p : []; } catch {}
-      }
+      const { menusList, allRights } = await fetchUserRightsBundle(queryClient, { empId, isAdmin });
       setMainMenus(menusList);
-
-      const rightsResponses = await Promise.all(
-        menusList.map((menu) => EmpAccessRightsService.GetUserRights({ empid: empId, menuid: menu.MenuID }))
-      );
-      let allRights = [];
-      rightsResponses.forEach((response) => {
-        if (Array.isArray(response)) allRights = [...allRights, ...response];
-        else if (response && typeof response === "string") {
-          try { const p = JSON.parse(response); if (Array.isArray(p)) allRights = [...allRights, ...p]; } catch {}
-        }
-      });
       setUserRights(allRights);
       setShowMenuAccess(true);
     } catch { toastService.error("Error loading user access rights"); }
@@ -283,15 +255,10 @@ const EmpAccessRights = () => {
     try {
       setLoading(true);
       setSelectedMenuName(menu.Menu);
-      const response = await EmpAccessRightsService.GetMenuUsersDetails({
-        locationid: sessionManager.getUserSession().LocationId || 0,
-        parentmenuid: menu.ParentID,
+      const usersList = await fetchMenuUsers(queryClient, {
+        locationId,
+        parentMenuId: menu.ParentID,
       });
-      let usersList = [];
-      if (Array.isArray(response)) usersList = response;
-      else if (response && typeof response === "string") {
-        try { const p = JSON.parse(response); usersList = Array.isArray(p) ? p : []; } catch {}
-      }
       setMenuUsersDetails(usersList);
       setShowUsersList(true);
     } catch { toastService.error("Error loading users list"); }
@@ -328,16 +295,15 @@ const EmpAccessRights = () => {
         xmlData += `<subMenu><subMenuId>${menu.MenuID}</subMenuId></subMenu>`;
       });
       xmlData += "</root>";
-      await EmpAccessRightsService.SetUserRights({
+      await setUserRightsMutation.mutateAsync({
         empid: selectedEmployee.id,
         submenuid: xmlData,
-        userid: sessionManager.getUserSession().ID,
+        userid: session.ID,
       });
       toastService.success("Access rights saved successfully");
       setShowMenuAccess(false);
       setSelectedEmployee(null);
       setUserRights([]);
-      await fetchMenuAccessCounts();
     } catch { toastService.error("Error saving access rights"); }
     finally { setLoading(false); }
   };
@@ -360,16 +326,11 @@ const EmpAccessRights = () => {
     if (!searchVal.trim()) { toastService.warn("Please enter Employee ID or Name"); return; }
     try {
       setLoading(true);
-      const response = await EmpAccessRightsService.EmpSearch({
-        locationid: sessionManager.getUserSession().LocationId || 0,
-        empidname: searchVal.trim(),
-        IsAdmin: sessionManager.getUserSession().ISadmin || "N",
+      const list = await fetchEmpSearch(queryClient, {
+        locationId,
+        text: searchVal.trim(),
+        isAdmin,
       });
-      let list = [];
-      if (Array.isArray(response)) list = response;
-      else if (response && typeof response === "string") {
-        try { const p = JSON.parse(response); list = Array.isArray(p) ? p : []; } catch {}
-      }
       if (list.length > 0) { copyEmpTargetRef.current = target; setCopyEmployees(list); setShowCopyEmpList(true); }
       else toastService.info("No employees found");
     } catch { toastService.error("Error searching employees"); }
@@ -391,14 +352,11 @@ const EmpAccessRights = () => {
     if (!copyFromEmp || !copyToEmp) { toastService.warn("Please select both source and target employees"); return; }
     try {
       setCopyLoading(true);
-      const response = await EmpAccessRightsService.CopyAccess({
+      const response = await copyAccessMutation.mutateAsync({
         FromEmpId: copyFromEmp.id,
         ToEmpId: copyToEmp.id,
       });
-      let result = response;
-      if (typeof response === "string") {
-        try { result = JSON.parse(response); } catch { result = []; }
-      }
+      const result = parseMaybeJson(response);
       const first = Array.isArray(result) ? result[0] : result;
       if (first?.Status === 1) {
         toastService.success(first.Message || "Access rights copied successfully");
@@ -406,7 +364,6 @@ const EmpAccessRights = () => {
         setCopyToEmp(null);
         setCopyFromSearch("");
         setCopyToSearch("");
-        await fetchMenuAccessCounts();
       } else {
         toastService.error(first?.Message || "Failed to copy access rights");
       }
@@ -420,16 +377,11 @@ const EmpAccessRights = () => {
     if (!logEmpSearch.trim()) { toastService.warn("Please enter Employee ID or Name"); return; }
     try {
       setLogLoading(true);
-      const response = await EmpAccessRightsService.EmpSearch({
-        locationid: 0,
-        empidname: logEmpSearch.trim(),
-        IsAdmin: sessionManager.getUserSession().ISadmin || "N",
+      const list = await fetchEmpSearch(queryClient, {
+        locationId: 0,
+        text: logEmpSearch.trim(),
+        isAdmin,
       });
-      let list = [];
-      if (Array.isArray(response)) list = response;
-      else if (response && typeof response === "string") {
-        try { const p = JSON.parse(response); list = Array.isArray(p) ? p : []; } catch {}
-      }
       if (list.length > 0) { setLogEmployees(list); setShowLogEmployeeList(true); }
       else toastService.info("No employees found");
     } catch { toastService.error("Error searching employees"); }
@@ -444,17 +396,11 @@ const EmpAccessRights = () => {
       setLogFirst(0);
       setLogTableSearch("");
       const fmt = (d) => d.toISOString().split("T")[0];
-      const response = await EmpAccessRightsService.GetUserRightLogEmpWise({
-        SDate: fmt(fromDate),
-        EDate: fmt(toDate),
-        FacilityId: 0,
-        Empid: emp.id,
+      const results = await fetchAccessLog(queryClient, {
+        empId: emp.id,
+        from: fmt(fromDate),
+        to: fmt(toDate),
       });
-      let results = [];
-      if (Array.isArray(response)) results = response;
-      else if (response && typeof response === "string") {
-        try { const p = JSON.parse(response); results = Array.isArray(p) ? p : []; } catch {}
-      }
       setLogResults(results);
       if (results.length === 0) toastService.info("No log entries found for the selected criteria");
     } catch { toastService.error("Error fetching access log"); }
@@ -565,7 +511,7 @@ const EmpAccessRights = () => {
     <div className="container-fluid p-0 emp-access-rights-wrapper">
       <Header pageTitle="Manage User Access Rights" />
       <Sidebar />
-      <Loader isVisible={(loading && !menuAccessCounts.length) || logLoading} fullScreen={true} />
+      <Loader isVisible={((loading || cardsLoading) && !menuAccessCounts.length) || logLoading} fullScreen={true} />
 
       <div className="middle">
 
@@ -597,14 +543,14 @@ const EmpAccessRights = () => {
         {activeTab === "manage" && (
           <>
             <div className="emp-access-stats-container" style={{ paddingTop: "10px", position: "relative", zIndex: 1 }}>
-              {loading && !menuAccessCounts.length ? (
+              {(loading || cardsLoading) && !menuAccessCounts.length ? (
                 <div className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-5" style={{ paddingTop: "8px" }}>
                   {[...Array(10)].map((_, index) => <SkeletonCard key={index} />)}
                 </div>
               ) : Array.isArray(menuAccessCounts) && menuAccessCounts.length > 0 ? (
                 <div className="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-5" style={{ paddingTop: "8px" }}>
                   {menuAccessCounts.map((menu, index) => (
-                    <AccessCard key={menu.ParentID || index} menu={menu} index={index} hasAnimated={hasAnimated} onMenuClick={handleMenuClick} />
+                    <AccessCard key={menu.ParentID || index} menu={menu} index={index} hasAnimated={hasAnimatedRef.current} onMenuClick={handleMenuClick} />
                   ))}
                 </div>
               ) : (

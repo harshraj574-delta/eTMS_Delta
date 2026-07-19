@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
 
 import { Checkbox } from "primereact/checkbox";
 import { FileUpload } from "primereact/fileupload";
@@ -8,20 +8,28 @@ import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
-import { CustomDataTable } from "./common/CustomDataTable";
-import TableToolbar from "./common/TableToolbar";
+import { CustomDataTable } from "../common/CustomDataTable";
+import TableToolbar from "../common/TableToolbar";
 import { Column } from "primereact/column";
-import MasterSidebar from "./Master/MasterSidebar";
-import sessionManager from "../utils/SessionManager.js";
-import { apiService } from "../services/api";
+import MasterSidebar from "../Master/MasterSidebar";
+import sessionManager from "../../utils/SessionManager.js";
 import { RadioButton } from "primereact/radiobutton";
 import { Check } from "lucide-react";
-import { toastService } from "../services/toastService";
+import { toastService } from "../../services/toastService";
 import { InputNumber } from "primereact/inputnumber";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
-import CustomPaginator from "./common/CustomPaginator";
-import Loader from "./common/Loader";
+import CustomPaginator from "../common/CustomPaginator";
+import Loader from "../common/Loader";
+import { useQueryClient } from "@tanstack/react-query";
+import parseMaybeJson from "../../services/parseMaybeJson";
+import {
+  vendorMasterKeys,
+  useFacilitiesQuery,
+  useVendorsQuery,
+  useInsertVendorMutation,
+  useUpdateVendorMutation,
+} from "./hooks/useVendorMasterQueries";
 
 const VENDOR_VEHICLE_PCT_KEY = "vendor_vehicle_pct";
 const VENDOR_ESCORT_TYPE_KEY = "vendor_escort_type";
@@ -32,11 +40,12 @@ const escortTypeOptions = [
 ];
 
 const VendorMaster = () => {
+  const queryClient = useQueryClient();
+  const session = sessionManager.getUserSession();
+
   const [selectedFacility, setSelectedfacility] = useState(null);
   const [visibleLeft, setVisibleLeft] = useState(false);
   const [visibleLeftAdd, setVisibleLeftAdd] = useState(false);
-  const [facilityList, setfacilityList] = useState([]);
-  const [VendorList, setVendorList] = useState([]);
   // selected vendor
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,7 +66,6 @@ const VendorMaster = () => {
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [filteredVendorData, setFilteredVendorData] = useState([]);
   const op = useRef(null);
   const filterButtonRef = useRef(null);
   const [addVehiclePct, setAddVehiclePct] = useState({ small: "", medium: "", large: "" });
@@ -70,20 +78,27 @@ const VendorMaster = () => {
     setRows(event.rows);
   };
 
-  useEffect(() => {
-    BindFacilityDDL();
-  }, []);
+  const { data: facilityList = [] } = useFacilitiesQuery(session.ID);
+  const { data: VendorList = [], isLoading: vendorsLoading } = useVendorsQuery(selectedFacility);
+  const insertVendorMutation = useInsertVendorMutation();
+  const updateVendorMutation = useUpdateVendorMutation();
 
+  // Default the facility to the user's own (or the first available), once
   useEffect(() => {
-    if (!globalFilter) {
-      setFilteredVendorData(VendorList);
-      return;
-    }
+    if (selectedFacility || !facilityList.length) return;
+    const userFacilityId = session.FacilityID;
+    const resolved = facilityList.some((f) => f.Id === userFacilityId)
+      ? userFacilityId
+      : facilityList[0].Id;
+    setSelectedfacility(resolved);
+    setNewVendor((prev) => ({ ...prev, facilityId: resolved }));
+  }, [facilityList, selectedFacility, session.FacilityID]);
+
+  const filteredVendorData = useMemo(() => {
+    if (!globalFilter) return VendorList;
     const lower = globalFilter.toLowerCase();
-    setFilteredVendorData(
-      VendorList.filter((v) =>
-        Object.values(v).some((val) => val && String(val).toLowerCase().includes(lower))
-      )
+    return VendorList.filter((v) =>
+      Object.values(v).some((val) => val && String(val).toLowerCase().includes(lower))
     );
   }, [VendorList, globalFilter]);
 
@@ -102,48 +117,6 @@ const VendorMaster = () => {
     a.download = "VendorMaster.csv";
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  //Bind facility dropdown List from API
-  const BindFacilityDDL = async () => {
-    try {
-      const response = await apiService.SelectFacility({
-        Userid: sessionManager.getUserSession().ID,
-      });
-      setfacilityList(response);
-
-      const userFacilityId = sessionManager.getUserSession().FacilityID;
-      let resolvedFacilityId = null;
-
-      if (response && response.some(f => f.Id === userFacilityId)) {
-        resolvedFacilityId = userFacilityId;
-      } else if (response && response.length > 0) {
-        resolvedFacilityId = response[0].Id;
-      }
-
-      if (resolvedFacilityId) {
-        setSelectedfacility(resolvedFacilityId);
-        await BindVendorGrid(resolvedFacilityId);
-        // Initialize newVendor with resolved facility
-        setNewVendor(prev => ({ ...prev, facilityId: resolvedFacilityId }));
-      }
-    } catch (error) {
-      console.error("Error fetching locationlist:", error);
-    }
-  };
-
-  //Bind Vendor List from API
-  const BindVendorGrid = async (facilityid) => {
-    try {
-      const response = await apiService.GetVendorByFacility({
-        facilityid: facilityid,
-      });
-      //console.log("VendorList", response);
-      setVendorList(response);
-      setFirst(0); // Reset pagination on data fetch
-    } catch (error) {
-      console.error("Error fetching locationlist:", error);
-    }
   };
 
   // Add this function to handle vendor selection
@@ -204,7 +177,7 @@ const VendorMaster = () => {
         return;
       }
 
-      const response = await apiService.UpdateVendor({
+      const response = await updateVendorMutation.mutateAsync({
         ID: selectedVendor.Id,
         vendorName: selectedVendor.vendorName,
         vendorStrength: selectedVendor.vendorStrength,
@@ -219,11 +192,12 @@ const VendorMaster = () => {
         Updatedby: sessionManager.getUserSession().ID,
       });
 
-      if (response[0].result === 1) {
+      const updateResult = parseMaybeJson(response);
+      if (updateResult?.[0]?.result === 1) {
         saveVehiclePct(selectedVendor.Id, editVehiclePct);
         saveEscortType(selectedVendor.Id, editEscortType);
         toastService.success("Data Updated Successfully");
-        BindVendorGrid(selectedFacility);
+        setFirst(0);
         setVisibleLeft(false);
         setSelectedVendor(null);
         setEditVehiclePct({ small: "", medium: "", large: "" });
@@ -304,7 +278,7 @@ const VendorMaster = () => {
 
 
 
-      const response = await apiService.InsertVendor({
+      const response = await insertVendorMutation.mutateAsync({
         vendorName: newVendor.vendorName,
         vendorStrength: newVendor.vendorStrength,
         vendorStrength2: newVendor.vendorStrength2,
@@ -318,12 +292,10 @@ const VendorMaster = () => {
         Updatedby: sessionManager.getUserSession().ID,
       });
 
-      if (response[0].result === 1) {
+      const insertResult = parseMaybeJson(response);
+      if (insertResult?.[0]?.result === 1) {
         toastService.success("Data Saved Successfully");
-        // Refresh the vendor grid
-        await BindVendorGrid(selectedFacility);
-        // Reset the form
-        //document.getElementById("raise_Feedback").classList.remove("show");
+        setFirst(0);
         // Reset newVendor to initial state
         setNewVendor({
           vendorName: "",
@@ -386,7 +358,7 @@ const VendorMaster = () => {
 
   return (
     <>
-      <Loader isVisible={isSubmitting} fullScreen={true} />
+      <Loader isVisible={isSubmitting || vendorsLoading} fullScreen={true} />
       <Header
         pageTitle="Vendor Master"
         showNewButton={true}
@@ -408,11 +380,9 @@ const VendorMaster = () => {
                   </label>
                   <Dropdown
                     value={selectedFacility}
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       setSelectedfacility(e.value);
-                      setIsSubmitting(true);
-                      await BindVendorGrid(e.value);
-                      setIsSubmitting(false);
+                      setFirst(0);
                     }}
                     options={facilityList}
                     optionLabel="facilityName"
@@ -433,7 +403,10 @@ const VendorMaster = () => {
               <TableToolbar
                 search={globalFilter}
                 onSearch={(e) => setGlobalFilter(e.target.value)}
-                onRefresh={() => setGlobalFilter("")}
+                onRefresh={() => {
+                  setGlobalFilter("");
+                  queryClient.invalidateQueries({ queryKey: vendorMasterKeys.all });
+                }}
                 onExport={exportExcel}
                 showFilter={false}
                 overlayRef={op}
