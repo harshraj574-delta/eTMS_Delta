@@ -128,7 +128,7 @@ const EmployeeMaster = () => {
     const [medicalRemark, setMedicalRemark] = useState("");
     const [isEditMode, setIsEditMode] = useState(false);
     const [showEditSidebar, setShowEditSidebar] = useState(false);
-    const [selectedEmployee, setSelectedEmployee] = useState(null); 4
+    const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [geoCodeId, setGeoCodeId] = useState("");
     // validation
     const [mobile, setMobile] = useState("");

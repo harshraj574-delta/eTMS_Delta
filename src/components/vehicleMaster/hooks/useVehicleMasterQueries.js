@@ -28,6 +28,7 @@ const vendorsQueryOptions = (facilityId) => ({
         return data.map((item) => ({ name: item.vendorName, value: item.Id }));
     },
     staleTime: 1000 * 60 * 5,
+    meta: { errorMessage: 'Failed to load vendor data.' },
 });
 
 const vehicleTypesQueryOptions = (vendorId) => ({
@@ -39,6 +40,7 @@ const vehicleTypesQueryOptions = (vendorId) => ({
         return data.map((item) => ({ name: item.vehicle, value: item.Id }));
     },
     staleTime: 1000 * 60 * 5,
+    meta: { errorMessage: 'Failed to load vehicle type data.' },
 });
 
 // ── Lookups ──────────────────────────────────────────────────────────────────
@@ -113,6 +115,7 @@ export const fetchVehicles = (queryClient, { facilityId, vendorId }) =>
                 })
             ),
         staleTime: 0,
+        meta: { silent: true },
     });
 
 // ── Mutations ────────────────────────────────────────────────────────────────

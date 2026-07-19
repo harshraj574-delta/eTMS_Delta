@@ -101,6 +101,7 @@ export const useRouteDetailsQuery = (routeId) => {
         },
         enabled: !!routeId,
         staleTime: 1000 * 60, // 1 minute
+        meta: { silent: true }, // expansion renders its own error state
     });
 };
 
@@ -142,6 +143,7 @@ export const useRouteJobStatusQuery = (jobId) => {
         retry: false, // a failed poll shouldn't burst-retry; the interval tries again
         staleTime: 0,
         gcTime: 0,
+        meta: { silent: true }, // polling errors are non-fatal; next tick retries
     });
 };
 

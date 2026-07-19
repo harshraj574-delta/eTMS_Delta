@@ -81,6 +81,7 @@ export const fetchEmpSearch = (queryClient, { locationId, text }) =>
                 })
             ),
         staleTime: 0,
+        meta: { silent: true },
     });
 
 // Employee profile = details + directory record merged by empCode
@@ -96,6 +97,7 @@ export const fetchEmployeeBundle = async (queryClient, empId) =>
             return { details: details.length > 0 ? details[0] : null, list: toArray(empRes) };
         },
         staleTime: 1000 * 60,
+        meta: { silent: true },
     });
 
 export const fetchEmpDayDetail = (queryClient, { empId, date }) =>
@@ -106,6 +108,7 @@ export const fetchEmpDayDetail = (queryClient, { empId, date }) =>
                 await HelpDeskService.GetHelpDeskEmployeeDetail({ sDate: date, empid: empId })
             ),
         staleTime: 1000 * 30,
+        meta: { silent: true },
     });
 
 export const fetchScheduleLog = (queryClient, { empId, date }) =>
@@ -114,6 +117,7 @@ export const fetchScheduleLog = (queryClient, { empId, date }) =>
         queryFn: async () =>
             toArray(await HelpDeskService.GetEmpScheduleLog({ sDate: date, empid: empId })),
         staleTime: 1000 * 30,
+        meta: { silent: true },
     });
 
 export const fetchRouteSummary = (queryClient, routeId) =>
@@ -122,6 +126,7 @@ export const fetchRouteSummary = (queryClient, routeId) =>
         queryFn: async () =>
             toArray(await HelpDeskService.GetRouteSummary({ routeids: routeId })),
         staleTime: 1000 * 30,
+        meta: { silent: true },
     });
 
 // Always fresh: rows become an editable tracking form
@@ -131,6 +136,7 @@ export const fetchRouteDetails = (queryClient, routeId) =>
         queryFn: async () =>
             toArray(await HelpDeskService.GetRoutesDetailsnew({ RouteID: routeId, isAdd: 1 })),
         staleTime: 0,
+        meta: { silent: true },
     });
 
 export const fetchHelpDeskRoutes = (queryClient, params) =>
@@ -138,6 +144,7 @@ export const fetchHelpDeskRoutes = (queryClient, params) =>
         queryKey: helpDeskKeys.routes(params),
         queryFn: async () => toArray(await HelpDeskService.GetRoutesHelpDesk(params)),
         staleTime: 0,
+        meta: { silent: true },
     });
 
 export const fetchRouteCounts = (queryClient, params) =>
@@ -153,6 +160,7 @@ export const fetchRouteCounts = (queryClient, params) =>
             return {};
         },
         staleTime: 0,
+        meta: { silent: true },
     });
 
 // ── Mutations ────────────────────────────────────────────────────────────────

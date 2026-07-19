@@ -169,6 +169,7 @@ export const fetchEmployeeSearch = (queryClient, { locationId, text, isAdmin }) 
                 })
             ),
         staleTime: 0,
+        meta: { silent: true },
     });
 
 // Seeds the edit form — imperative so a background refetch can't clobber edits
@@ -178,6 +179,7 @@ export const fetchEmployeeById = (queryClient, id) =>
         queryFn: async () => toArray(await EmployeeMasterService.GetEmployee({ Userid: id })),
         staleTime: 0,
         gcTime: 0,
+        meta: { silent: true },
     });
 
 // A fresh temp id per new-employee form (never cached)
@@ -191,6 +193,7 @@ export const fetchGenerateTmpId = (queryClient) =>
         },
         staleTime: 0,
         gcTime: 0,
+        meta: { silent: true },
     });
 
 // ── Mutations ────────────────────────────────────────────────────────────────

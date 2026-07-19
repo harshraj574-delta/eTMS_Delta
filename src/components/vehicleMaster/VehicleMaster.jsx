@@ -821,8 +821,8 @@ const VehicleMaster = () => {
         try {
             return await fetchVmVendors(queryClient, facilityId);
         } catch (error) {
+            // Toast comes from the global QueryCache onError (meta.errorMessage)
             console.error("Error while fetching vendor data:", error);
-            toastService.error("Failed to load vendor data.");
             return [];
         }
     };
@@ -833,7 +833,6 @@ const VehicleMaster = () => {
             return await fetchVmVehicleTypes(queryClient, vendorId);
         } catch (error) {
             console.error("Error while fetching vehicle type data:", error);
-            toastService.error("Failed to load vehicle type data.");
             return [];
         }
     };
