@@ -70,7 +70,7 @@ const PerEmployeeBilling = lazy(() => import("./components/PerEmployeeBilling"))
 const RepPlanAct = lazy(() => import("./components/RepPlanAct"));
 const RepScheduleSummery = lazy(() => import("./components/RepScheduleSummery"));
 const EmpAccessRights = lazy(() => import("./components/EmpAccessRights"));
-const ManageMenu = lazy(() => import("./components/ManageMenu"));
+const ManageMenu = lazy(() => import("./components/manageMenu/ManageMenu"));
 const EmployeeMaster = lazy(() => import("./components/employeeMaster/EmployeeMaster"));
 const MapGeocoding = lazy(() => import("./components/MapGeocoding"));
 const ReplicateRoster = lazy(() => import("./components/ReplicateRoster"));

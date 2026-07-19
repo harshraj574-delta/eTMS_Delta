@@ -1,24 +1,129 @@
 import React, { useMemo, useEffect, useState, useRef } from 'react';
-import Loader from "./common/Loader";
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
-import ManageMenuService from '../services/compliance/ManageMenuService';
-import sessionManager from "../utils/SessionManager";
-import MasterSidebar from "./Master/MasterSidebar";
+import Loader from "../common/Loader";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
+import sessionManager from "../../utils/SessionManager";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+    useMainMenuQuery,
+    useSubMenusQuery,
+    extractMenuResult,
+    manageMenuKeys,
+    useInsertMenuMutation,
+    useUpdateMenuMutation,
+    useDeleteMenuMutation,
+} from "./hooks/useManageMenuQueries";
+
+// Expanded submenu table — a live query observer, so mutation invalidation
+// refreshes it automatically after add/edit/delete.
+const SubMenuSection = ({ menuId, onAddSubMenu, onEditSubMenu, onDeleteSubmenu, trashIcon }) => {
+    const { data: childData = [], isLoading } = useSubMenusQuery(menuId);
+
+    return (
+        <div className="expanded-content">
+            <div className="d-flex justify-content-start mb-3 mt-2 ms-3">
+                <Button
+                    className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                    onClick={() => onAddSubMenu(menuId)}
+                >
+                    <span className="material-icons me-1" style={{ fontSize: "18px" }}>
+                        add_circle
+                    </span>
+                    New SubMenu
+                </Button>
+            </div>
+            {isLoading ? (
+                <p className="text-center text-muted m-3">Loading submenus...</p>
+            ) : childData.length === 0 ? (
+                <p className="text-center text-muted m-3">
+                    No submenus found
+                </p>
+            ) : (
+                <div className="table-responsive">
+                    <table className="table table-sm table-bordered mb-0 nested-menu-table custom-html-table">
+                        <thead>
+                            <tr>
+                                <th style={{ textAlign: "left" }}>SubMenu Text</th>
+                                <th style={{ textAlign: "left" }}>Description</th>
+                                <th>Parent Menu</th>
+                                <th style={{ textAlign: "left" }}>Navigate URL</th>
+                                <th style={{ width: "100px" }}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {childData.map((childRow, cIdx) => (
+                                <tr
+                                    key={cIdx}
+                                    className={`${
+                                        cIdx % 2 !== 0 ? "ota-row-odd" : ""
+                                    } ota-row-hover`}
+                                >
+                                    <td style={{ textAlign: "left" }}>
+                                        {childRow.TEXT}
+                                    </td>
+                                    <td style={{ textAlign: "left" }}>
+                                        {childRow.DESCRIPTION}
+                                    </td>
+                                    <td>
+                                        {childRow.mtext}
+                                    </td>
+                                    <td style={{ textAlign: "left" }}>
+                                        {childRow.NAVIGATEURL}
+                                    </td>
+                                    <td>
+                                        <span
+                                            className="material-icons action-icon edit"
+                                            title="Edit"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEditSubMenu(childRow);
+                                            }}
+                                        >
+                                            edit
+                                        </span>
+                                        <img
+                                            src={trashIcon}
+                                            alt="Delete"
+                                            className="action-icon delete"
+                                            title="Delete"
+                                            style={{ width: '22px', height: '22px' }}
+                                            onClick={(e) => onDeleteSubmenu(e, childRow, menuId)}
+                                        />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+};
+import MasterSidebar from "../Master/MasterSidebar";
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
-import { toastService } from '../services/toastService';
-import TableToolbar from "./common/TableToolbar";
+import { toastService } from '../../services/toastService';
+import TableToolbar from "../common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
-import "./common/CustomDataTable.css";
-import trashIcon from "../assets/trash-can-outline.png";
+import "../common/CustomDataTable.css";
+import trashIcon from "../../assets/trash-can-outline.png";
 
 const ManageMenu = () => {
+    const queryClient = useQueryClient();
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
+
+    // ── Server state ─────────────────────────────────────────────────────────
+    const {
+        data = [],
+        isLoading: menuLoading,
+        refetch: refetchMenus,
+    } = useMainMenuQuery("Y");
+    const insertMenuMutation = useInsertMenuMutation();
+    const updateMenuMutation = useUpdateMenuMutation();
+    const deleteMenuMutation = useDeleteMenuMutation();
     const [globalFilter, setGlobalFilter] = useState("");
     const [filters, setFilters] = useState({
         menuText: null
@@ -41,9 +146,9 @@ const ManageMenu = () => {
 
     // Expansion state using index array (like OTAReport/RepScheduleSummery)
     const [expandedRows, setExpandedRows] = useState([]);
-    const [subMenuData, setSubMenuData] = useState({});
     const [showEditSubMenuSidebar, setShowEditSubMenuSidebar] = useState(false);
-    const [parentMenuList, setParentMenuList] = useState([]);
+    // The parent-menu dropdown shows the same list as the table
+    const parentMenuList = data;
     const [selectedParent, setSelectedParent] = useState(null);
 
     // Responsive Sidebar Width
@@ -65,10 +170,6 @@ const ManageMenu = () => {
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
-    }, []);
-
-    useEffect(() => {
-        fetchMenuData();
     }, []);
 
     // Filter logic
@@ -112,22 +213,6 @@ const ManageMenu = () => {
         return [...new Set(values)].map((val) => ({ label: val, value: val }));
     };
 
-    const fetchMenuData = async () => {
-        try {
-            setLoading(true);
-            const isAdmin = "Y";
-            const response = await ManageMenuService.SelectMainMenu({ IsAdmin: isAdmin });
-            const parsed = typeof response === "string" ? JSON.parse(response) : response;
-            const arr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
-            setData(arr);
-        } catch (err) {
-            console.error("Error fetching menu data:", err);
-            toastService.error("Failed to load the menu data. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleSave = async () => {
         if (!newText || newText.trim() === "") {
             toastService.warn("Please enter the menu text.");
@@ -143,39 +228,17 @@ const ManageMenu = () => {
 
         try {
             setLoading(true);
-            const resp = await ManageMenuService.InsertMenu(params);
+            const resp = await insertMenuMutation.mutateAsync(params);
+            const result = extractMenuResult(resp);
 
-            let parsed;
-            if (typeof resp === "string") {
-                try {
-                    parsed = JSON.parse(resp);
-                } catch {
-                    parsed = resp;
-                }
-            } else {
-                parsed = resp;
-            }
-
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                parsed = parsed[0];
-            }
-
-            const result =
-                parsed?.result ??
-                parsed?.Result ??
-                parsed?.RESULT ??
-                parsed?.status ??
-                parsed?.Status ??
-                null;
-
-            if (String(result) === "0") {
+            if (result === "0") {
                 toastService.warn("This menu already exists.");
                 return;
             }
 
-            if (String(result) === "1") {
+            if (result === "1") {
                 toastService.success("The menu has been saved successfully.");
-                await fetchMenuData();
+                await refetchMenus();
                 setNewText("");
                 setNewDescription("");
                 setShowNewSidebar(false);
@@ -207,39 +270,17 @@ const ManageMenu = () => {
 
         try {
             setLoading(true);
-            const resp = await ManageMenuService.UpdateMenu(params);
+            const resp = await updateMenuMutation.mutateAsync(params);
+            const result = extractMenuResult(resp);
 
-            let parsed;
-            if (typeof resp === "string") {
-                try {
-                    parsed = JSON.parse(resp);
-                } catch {
-                    parsed = resp;
-                }
-            } else {
-                parsed = resp;
-            }
-
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                parsed = parsed[0];
-            }
-
-            const result =
-                parsed?.result ??
-                parsed?.Result ??
-                parsed?.RESULT ??
-                parsed?.status ??
-                parsed?.Status ??
-                null;
-
-            if (String(result) === "0") {
+            if (result === "0") {
                 toastService.warn("This menu already exists");
                 return;
             }
 
-            if (String(result) === "1") {
+            if (result === "1") {
                 toastService.success("The menu has been updated successfully");
-                await fetchMenuData();
+                await refetchMenus();
                 setEditText("");
                 setEditDescription("");
                 setEditingRow(null);
@@ -268,41 +309,11 @@ const ManageMenu = () => {
         return String(row?.MenuID ?? row?.menuid ?? row?.id ?? "");
     };
 
-    // Toggle row expansion (like OTAReport/RepScheduleSummery)
-    const toggleRowExpansion = async (index, rowData) => {
-        const newExpandedRows = [...expandedRows];
-        const rowIndex = newExpandedRows.indexOf(index);
-
-        if (rowIndex > -1) {
-            // Collapse
-            newExpandedRows.splice(rowIndex, 1);
-            setExpandedRows(newExpandedRows);
-            return;
-        }
-
-        // Expand
-        const menuId = extractMenuId(rowData);
-
-        // Fetch submenu data if not cached
-        if (menuId && !subMenuData[menuId]) {
-            try {
-                setLoading(true);
-                const resp = await ManageMenuService.SelectSubMenu({ menuid: menuId });
-                const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
-                const childArr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
-                setSubMenuData((prev) => ({ ...prev, [menuId]: childArr }));
-            } catch (err) {
-                console.error("Error fetching submenu data:", err);
-                toastService.error("Could not load submenu data");
-                setLoading(false);
-                return;
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        newExpandedRows.push(index);
-        setExpandedRows(newExpandedRows);
+    // Toggle row expansion — data loads via useSubMenusQuery in SubMenuSection
+    const toggleRowExpansion = (index) => {
+        setExpandedRows((prev) =>
+            prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+        );
     };
 
     const handleDeleteSubmenu = async (e, rowData, parentMenuId) => {
@@ -317,17 +328,9 @@ const ManageMenu = () => {
 
         try {
             setLoading(true);
-            await ManageMenuService.DeleteMenu({ menuid: submenuId });
+            await deleteMenuMutation.mutateAsync({ menuid: submenuId });
+            // The expanded submenu query refetches via the mutation's invalidation
             toastService.success("Submenu deleted successfully");
-
-            try {
-                const resp = await ManageMenuService.SelectSubMenu({ menuid: parentMenuId });
-                const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
-                const childArr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
-                setSubMenuData((prev) => ({ ...prev, [parentMenuId]: childArr }));
-            } catch (refreshErr) {
-                console.error("Error refreshing submenu after delete:", refreshErr);
-            }
         } catch (err) {
             console.error("Error deleting submenu:", err);
             toastService.error("Submenu deletion failed");
@@ -336,41 +339,19 @@ const ManageMenu = () => {
         }
     };
 
-    const handleEditSubMenu = async (rowData) => {
+    // Parent-menu options come from the cached main-menu query (same data
+    // as the table) — no refetch needed to open the submenu editors.
+    const handleEditSubMenu = (rowData) => {
         setEditingSubMenu(rowData);
         setEditSubMenuText(rowData?.TEXT || '');
         setEditSubMenuDescription(rowData?.DESCRIPTION || '');
         setEditSubMenuNavigateUrl(rowData?.NAVIGATEURL || '');
-
-        try {
-            const resp = await ManageMenuService.SelectMainMenu({ IsAdmin: "Y" });
-            const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
-            const arr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
-            setParentMenuList(arr);
-
-            const parentId = rowData?.PARENTID ?? rowData?.parentid ?? null;
-            setSelectedParent(parentId);
-        } catch (err) {
-            console.error("Error loading parent menus:", err);
-            toastService.error("Could not fetch parent menus");
-        }
-
+        setSelectedParent(rowData?.PARENTID ?? rowData?.parentid ?? null);
         setShowEditSubMenuSidebar(true);
     };
 
-    const handleAddSubMenu = async (parentMenuId) => {
-        try {
-            const resp = await ManageMenuService.SelectMainMenu({ IsAdmin: "Y" });
-            const parsed = typeof resp === "string" ? JSON.parse(resp) : resp;
-            const arr = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
-            setParentMenuList(arr);
-            setSelectedParent(parentMenuId);
-        } catch (err) {
-            console.error("Error loading parent menus:", err);
-            toastService.error("Unable to load parent menus. Please try again.");
-            return;
-        }
-
+    const handleAddSubMenu = (parentMenuId) => {
+        setSelectedParent(parentMenuId);
         setEditingSubMenu(null);
         setEditSubMenuText('');
         setEditSubMenuDescription('');
@@ -413,51 +394,18 @@ const ManageMenu = () => {
         try {
             setLoading(true);
 
-            let apiResponse;
-            if (isUpdate) {
-                apiResponse = await ManageMenuService.UpdateMenu(params);
-            } else {
-                apiResponse = await ManageMenuService.InsertMenu(params);
-            }
+            const apiResponse = isUpdate
+                ? await updateMenuMutation.mutateAsync(params)
+                : await insertMenuMutation.mutateAsync(params);
+            const result = extractMenuResult(apiResponse);
 
-            let parsed;
-            if (typeof apiResponse === "string") {
-                try {
-                    parsed = JSON.parse(apiResponse);
-                } catch {
-                    parsed = apiResponse;
-                }
-            } else {
-                parsed = apiResponse;
-            }
-
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                parsed = parsed[0];
-            }
-
-            const result =
-                parsed?.result ??
-                parsed?.Result ??
-                parsed?.RESULT ??
-                parsed?.status ??
-                parsed?.Status ??
-                null;
-
-            if (String(result) === "0") {
+            if (result === "0") {
                 toastService.warn("This submenu item already exists.");
                 return;
             }
 
+            // Expanded submenu tables refetch via the mutation's invalidation
             toastService.success(isUpdate ? "Submenu item updated successfully." : "Submenu item added successfully.");
-
-            try {
-                const resp = await ManageMenuService.SelectSubMenu({ menuid: normalizedParent });
-                let parsedChild = typeof resp === "string" ? JSON.parse(resp) : resp;
-                const childArr = Array.isArray(parsedChild) ? parsedChild : parsedChild ? [parsedChild] : [];
-                setSubMenuData((prev) => ({ ...prev, [String(normalizedParent)]: childArr }));
-            } catch (refreshErr) {
-                console.error("Error refreshing submenu list:", refreshErr);
-            }
 
             setEditSubMenuText("");
             setEditSubMenuDescription("");
@@ -523,7 +471,10 @@ const ManageMenu = () => {
             <TableToolbar
                 search={globalFilter}
                 onSearch={(e) => setGlobalFilter(e.target.value)}
-                onRefresh={() => fetchMenuData()}
+                onRefresh={() =>
+                    // Refreshes the main table AND any expanded submenu tables
+                    queryClient.invalidateQueries({ queryKey: manageMenuKeys.all })
+                }
                 onExport={exportExcel}
                 showFilter={true}
                 activeFilterCount={
@@ -566,7 +517,7 @@ const ManageMenu = () => {
 
     return (
         <div>
-            <Loader isVisible={loading} fullScreen={true} />
+            <Loader isVisible={loading || menuLoading} fullScreen={true} />
             <Header
                 mainTitle="Super Admin"
                 pageTitle={"Manage Menu"}
@@ -852,7 +803,6 @@ const ManageMenu = () => {
                                                 filteredData.map((row, index) => {
                                                     const menuId = extractMenuId(row);
                                                     const isExpanded = expandedRows.includes(index);
-                                                    const childData = subMenuData[menuId] || [];
 
                                                     return (
                                                         <React.Fragment key={index}>
@@ -866,7 +816,7 @@ const ManageMenu = () => {
                                                                         href="#!"
                                                                         onClick={(e) => {
                                                                             e.preventDefault();
-                                                                            toggleRowExpansion(index, row);
+                                                                            toggleRowExpansion(index);
                                                                         }}
                                                                     >
                                                                         {isExpanded ? (
@@ -903,81 +853,13 @@ const ManageMenu = () => {
                                                             {isExpanded && (
                                                                 <tr>
                                                                     <td colSpan={4} className="leftStrip p-2">
-                                                                        <div className="expanded-content">
-                                                                            <div className="d-flex justify-content-start mb-3 mt-2 ms-3">
-                                                                                <Button
-                                                                                    className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-                                                                                    onClick={() => handleAddSubMenu(menuId)}
-                                                                                >
-                                                                                    <span className="material-icons me-1" style={{ fontSize: "18px" }}>
-                                                                                        add_circle
-                                                                                    </span>
-                                                                                    New SubMenu
-                                                                                </Button>
-                                                                            </div>
-                                                                            {childData.length === 0 ? (
-                                                                                <p className="text-center text-muted m-3">
-                                                                                    No submenus found
-                                                                                </p>
-                                                                            ) : (
-                                                                                <div className="table-responsive">
-                                                                                    <table className="table table-sm table-bordered mb-0 nested-menu-table custom-html-table">
-                                                                                        <thead>
-                                                                                            <tr>
-                                                                                                <th style={{ textAlign: "left" }}>SubMenu Text</th>
-                                                                                                <th style={{ textAlign: "left" }}>Description</th>
-                                                                                                <th>Parent Menu</th>
-                                                                                                <th style={{ textAlign: "left" }}>Navigate URL</th>
-                                                                                                <th style={{ width: "100px" }}>Actions</th>
-                                                                                            </tr>
-                                                                                        </thead>
-                                                                                        <tbody>
-                                                                                            {childData.map((childRow, cIdx) => (
-                                                                                                <tr
-                                                                                                    key={cIdx}
-                                                                                                    className={`${
-                                                                                                        cIdx % 2 !== 0 ? "ota-row-odd" : ""
-                                                                                                    } ota-row-hover`}
-                                                                                                >
-                                                                                                    <td style={{ textAlign: "left" }}>
-                                                                                                        {childRow.TEXT}
-                                                                                                    </td>
-                                                                                                    <td style={{ textAlign: "left" }}>
-                                                                                                        {childRow.DESCRIPTION}
-                                                                                                    </td>
-                                                                                                    <td>
-                                                                                                        {childRow.mtext}
-                                                                                                    </td>
-                                                                                                    <td style={{ textAlign: "left" }}>
-                                                                                                        {childRow.NAVIGATEURL}
-                                                                                                    </td>
-                                                                                                    <td>
-                                                                                                        <span
-                                                                                                            className="material-icons action-icon edit"
-                                                                                                            title="Edit"
-                                                                                                            onClick={(e) => {
-                                                                                                                e.stopPropagation();
-                                                                                                                handleEditSubMenu(childRow);
-                                                                                                            }}
-                                                                                                        >
-                                                                                                            edit
-                                                                                                        </span>
-                                                                                                        <img
-                                                                                                            src={trashIcon}
-                                                                                                            alt="Delete"
-                                                                                                            className="action-icon delete"
-                                                                                                            title="Delete"
-                                                                                                            style={{ width: '22px', height: '22px' }}
-                                                                                                            onClick={(e) => handleDeleteSubmenu(e, childRow, menuId)}
-                                                                                                        />
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            ))}
-                                                                                        </tbody>
-                                                                                    </table>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
+                                                                        <SubMenuSection
+                                                                            menuId={menuId}
+                                                                            onAddSubMenu={handleAddSubMenu}
+                                                                            onEditSubMenu={handleEditSubMenu}
+                                                                            onDeleteSubmenu={handleDeleteSubmenu}
+                                                                            trashIcon={trashIcon}
+                                                                        />
                                                                     </td>
                                                                 </tr>
                                                             )}
