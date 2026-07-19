@@ -1,11 +1,12 @@
 import { api } from "../axios/api";
+import parseMaybeJson from "../parseMaybeJson";
 class ViewMyRoutesService {
     async GetEmployeeForAdhoc(params) {
         try {
             const response = await api.post("/getemployeeforadhoc", {
                 mgrid: params.mgrid,
             });
-            return response.data; // Return the actual data from the response
+            return parseMaybeJson(response.data);
             // console.log("SelectBaseFacility response:", response.data); // Log the response data
         } catch (error) {
             console.error("Error in getemployeeforadhoc:", error);
@@ -21,7 +22,7 @@ class ViewMyRoutesService {
                 eDate: params.eDate
             });
             // console.log("GetShiftByFacilityType response:", response.data); // Log the response data
-            return response.data; // Return the actual data from the response
+            return parseMaybeJson(response.data);
         } catch (error) {
             console.error("Error in GetMyTrips:", error);
             throw error;
@@ -37,7 +38,7 @@ class ViewMyRoutesService {
                 routeid: params.routeid
             });
             // console.log("GetShiftByFacilityType response:", response.data); // Log the response data
-            return response.data; // Return the actual data from the response
+            return parseMaybeJson(response.data);
         } catch (error) {
             console.error("Error in GetMyRoutesDetails:", error);
             throw error;
@@ -48,7 +49,7 @@ class ViewMyRoutesService {
         try {
             const response = await api.post("/SPRCancelationReason", {});
             // console.log("GetShiftByFacilityType response:", response.data); // Log the response data
-            return response.data; // Return the actual data from the response
+            return parseMaybeJson(response.data);
         } catch (error) {
             console.error("Error in SPRCancelationReason:", error);
             throw error;
@@ -66,7 +67,7 @@ class ViewMyRoutesService {
                 Reason: params.Reason,
             });
             // console.log("GetShiftByFacilityType response:", response.data); // Log the response data
-            return response.data; // Return the actual data from the response
+            return parseMaybeJson(response.data);
         } catch (error) {
             console.error("Error in CancelTrip:", error);
             throw error;

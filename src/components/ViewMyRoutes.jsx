@@ -3,123 +3,45 @@ import Header from "./Master/Header";
 import Sidebar from "./Master/SidebarMenu";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
-import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import ResponsiveDataTable from "./common/ResponsiveDataTable";
 import TripTypeBadge from "./common/TripTypeBadge";
-import ViewMyRoutesService from "../services/compliance/ViewMyRoutesService";
-const userID = sessionStorage.getItem("ID");
+import sessionManager from "../utils/SessionManager";
+import {
+  useAdhocEmployeesQuery,
+  useMyTripsQuery,
+  useTripDetailsQuery,
+} from "../hooks/compliance/useViewMyRoutesQueries";
 
 const ViewMyRoutes = () => {
+  const userID = sessionManager.getUserSession().ID;
+
   const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date().toISOString().split("T")[0];
-    return today;
+    return new Date().toISOString().split("T")[0];
+  });
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedRouteId, setSelectedRouteId] = useState(null);
+
+  // Data (declarative: trips refetch when employee OR date changes)
+  const { data: employees = [] } = useAdhocEmployeesQuery(userID);
+  const { data: tripData = [], isLoading: tripsLoading } = useMyTripsQuery(
+    selectedEmployee,
+    selectedDate
+  );
+  const { data: tripDetails = [] } = useTripDetailsQuery({
+    empId: selectedEmployee,
+    date: selectedDate,
+    routeId: selectedRouteId,
   });
 
-  const [employees, setEmployees] = useState([]);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [tripData, setTripData] = useState([]);
-  const [tripDetails, setTripDetails] = useState([]);
-  const [cancelationReason, setCancelationReason] = useState([]);
-
+  // Preselect the logged-in user once the employee list loads
   useEffect(() => {
-    const fetchEmployees = async () => {
-      console.log("userID: ", userID);
-      try {
-        const response = await ViewMyRoutesService.GetEmployeeForAdhoc({
-          mgrid: userID,
-        }); // replace with your actual endpoint
-
-        // Parse response if it's a string
-        const parsedResponse =
-          typeof response === "string" ? JSON.parse(response) : response;
-
-        const formattedData = Array.isArray(parsedResponse)
-          ? parsedResponse.map((item) => ({
-              id: item.EmployeeID, // Using facility or facilityName from your API response
-              name: item.EmployeeName, // Using Id from your API response
-            }))
-          : [];
-
-        setEmployees(formattedData);
-
-        // ✅ Preselect employee matching userID
-        const defaultSelected = formattedData.find(
-          (emp) => emp.EmployeeID == userID
-        );
-        if (defaultSelected) {
-          setSelectedEmployee(defaultSelected.EmployeeID); // if Dropdown uses optionValue="id"
-        }
-
-        console.log("Fetched employees:", parsedResponse);
-      } catch (error) {
-        console.error("Error fetching employees:", error);
-      }
-    };
-
-    fetchEmployees();
-  }, []);
-
-  const fetchTripData = async (employeeId) => {
-    try {
-      const response = await ViewMyRoutesService.GetMyTrips({
-        empid: employeeId,
-        sDate: selectedDate,
-        eDate: "", // include date if needed
-      });
-
-      const parsedData =
-        typeof response === "string" ? JSON.parse(response) : response;
-
-      // Format or validate data as needed
-      setTripData(parsedData);
-      console.log("Fetched trips:", parsedData);
-    } catch (error) {
-      console.error("Error fetching trip data:", error);
-      setTripData([]); // fallback to empty
+    if (!selectedEmployee && employees.length > 0) {
+      const self = employees.find((emp) => String(emp.id) === String(userID));
+      if (self) setSelectedEmployee(self.id);
     }
-  };
-
-  const fetchTripDetails = async (routeId) => {
-    try {
-      const response = await ViewMyRoutesService.GetMyRoutesDetails({
-        empid: selectedEmployee,
-        sDate: selectedDate,
-        triptype: "",
-        routeid: routeId, // include date if needed
-      });
-
-      const parsedData =
-        typeof response === "string" ? JSON.parse(response) : response;
-
-      // Format or validate data as needed
-      setTripDetails(parsedData);
-      console.log("Fetched trips details:", parsedData);
-    } catch (error) {
-      console.error("Error fetching trip details:", error);
-      setTripDetails([]); // fallback to empty
-    }
-  };
-
-  useEffect(() => {
-    const fetchCancelationReason = async () => {
-      try {
-        const response = await ViewMyRoutesService.SPRCancelationReason({});
-
-        const parsedData =
-          typeof response === "string" ? JSON.parse(response) : response;
-
-        // Format or validate data as needed
-        setCancelationReason(parsedData);
-        console.log("Fetched reasons:", parsedData);
-      } catch (error) {
-        console.error("Error fetching reasons:", error);
-        setCancelationReason([]); // fallback to empty
-      }
-    };
-    fetchCancelationReason();
-  }, []);
+  }, [employees, selectedEmployee, userID]);
 
   return (
     <>
@@ -154,10 +76,7 @@ const ViewMyRoutes = () => {
                     filter
                     value={selectedEmployee}
                     options={employees}
-                    onChange={(e) => {
-                      setSelectedEmployee(e.value);
-                      fetchTripData(e.value);
-                    }}
+                    onChange={(e) => setSelectedEmployee(e.value)}
                     optionLabel="name"
                     optionValue="id"
                   />
@@ -169,27 +88,9 @@ const ViewMyRoutes = () => {
         <div className="row">
           <div className="col-12">
             <div className="card_tb">
-              {/* <DataTable value={[
-                { tripId: '023838R0016', tripDate: 'Jul 05, 24', tripType: 'PickUp', shift: '18:30', facility: 'Noida' },
-                { tripId: '023838R0016', tripDate: 'Jul 05, 24', tripType: 'Drop', shift: '18:30', facility: 'Noida' },
-                { tripId: 'Trip Not Generated', tripDate: 'Jul 05, 24', tripType: 'PickUp', shift: '18:30', facility: 'Noida' }
-              ]} paginator rows={10} emptyMessage="No data available">
-                <Column field="tripId" header="Trip ID" />
-                <Column field="tripDate" header="Trip Date" />
-                <Column field="tripType" header="Trip Type" body={(rowData) => (
-                    <span className={`badge ${rowData.tripType === 'Drop' ? 'text-bg-danger' : 'text-bg-primary'} rounded-pill text-uppercase`}>
-                        {rowData.tripType}
-                    </span>
-                )} />
-                <Column field="shift" header="Shift" />
-                <Column field="facility" header="Facility" />
-                <Column field="action" header="Action" body={(rowData) => (
-                //   <Button icon="pi pi-trash" className="p-button-danger" />
-                  <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(rowData)}>Delete</button>
-                )} />
-              </DataTable> */}
               <ResponsiveDataTable
                 value={tripData}
+                loading={tripsLoading}
                 paginator
                 rows={10}
                 emptyMessage="No data available"
@@ -211,7 +112,7 @@ const ViewMyRoutes = () => {
                         data-bs-toggle="offcanvas"
                         data-bs-target="#routeDetails"
                         aria-controls="offcanvasRight"
-                        onClick={() => fetchTripDetails(fetchId)}
+                        onClick={() => setSelectedRouteId(fetchId)}
                       >
                         <span>{cleanTripId}</span>
                       </a>
@@ -240,28 +141,13 @@ const ViewMyRoutes = () => {
                 />
                 <Column field="shifttime" header="Shift" />
                 <Column field="facility" header="Facility" />
-                <Column
-                  field="action"
-                  header="Action"
-                  mobile={{ hidden: true }}
-                  style={{ display: "none" }}
-                  body={(rowData) => (
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => handleDelete(rowData)}
-                    >
-                      Delete
-                    </button>
-                  )}
-                />
               </ResponsiveDataTable>
             </div>
           </div>
         </div>
       </div>
 
-      {/* <!-- Raise Feedback Rightbar  --> */}
-      {/* <!-- Ticket Number Rightbar  --> */}
+      {/* Route details offcanvas */}
       <div
         className="offcanvas offcanvas-end"
         tabIndex="-1"

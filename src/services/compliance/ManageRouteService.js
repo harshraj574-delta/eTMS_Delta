@@ -6,23 +6,7 @@ const ROUTING_ENGINE_BASE_URL =
   import.meta.env.VITE_ROUTING_ENGINE_URL ||
   "https://ftqbvxxmpm.ap-south-1.awsapprunner.com";
 
-// The main backend sometimes returns JSON double-encoded as a string.
-// Normalize it once here so consumers always receive parsed data.
-// Plain strings (e.g. "1", status text) pass through untouched.
-const parseMaybeJson = (data) => {
-  let result = data;
-  // Backend responses are sometimes double-encoded; unwrap at most twice.
-  for (let i = 0; i < 2 && typeof result === "string"; i++) {
-    const s = result.trim();
-    if (!s.startsWith("{") && !s.startsWith("[")) break;
-    try {
-      result = JSON.parse(s);
-    } catch {
-      break;
-    }
-  }
-  return result;
-};
+import parseMaybeJson from "../parseMaybeJson";
 
 const ROUTING_ENGINE_ENDPOINTS = {
   V1: {
