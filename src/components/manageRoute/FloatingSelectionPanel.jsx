@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useCallback } from "react";
 import { Button } from "primereact/button";
 import { DataScroller } from "primereact/datascroller";
-import { manageRouteKeys } from "../../hooks/compliance/useManageRouteQueries";
+import { manageRouteKeys } from "./hooks/useManageRouteQueries";
 
 const PanelContent = React.memo(function PanelContent({
   selectedEmployees,

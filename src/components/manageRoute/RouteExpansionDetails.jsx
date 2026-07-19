@@ -1,5 +1,5 @@
 import React from "react";
-import { useRouteDetailsQuery } from "../../hooks/compliance/useManageRouteQueries";
+import { useRouteDetailsQuery } from "./hooks/useManageRouteQueries";
 import { CrossPageDropZone, DropZoneIndicator } from "./DropZones";
 import DraggableEmployeeRow from "./DraggableEmployeeRow";
 

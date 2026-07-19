@@ -8,7 +8,13 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 3,
+      // Retry network/server errors; fail fast on 4xx (a client error will
+      // not succeed on retry, and 401 already triggered the logout interceptor)
+      retry: (failureCount, error) => {
+        const status = error?.response?.status
+        if (status >= 400 && status < 500) return false
+        return failureCount < 3
+      },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
