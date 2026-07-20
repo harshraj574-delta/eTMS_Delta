@@ -22,11 +22,11 @@ import Loader from "./components/common/Loader";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 
 // ── Lazily loaded route pages (each becomes its own on-demand chunk) ──────────
-const MyFeedback = lazy(() => import("./components/MyFeedback"));
+const MyFeedback = lazy(() => import("./components/myFeedback/MyFeedback"));
 const MyNoShow = lazy(() => import("./components/MyNoShow"));
 const Dashboard = lazy(() => import("./components/Dashboard"));
 const MySchedule = lazy(() => import("./components/mySchedule/MySchedule"));
-const ManageEmployee = lazy(() => import("./components/ManageEmployee"));
+const ManageEmployee = lazy(() => import("./components/manageEmployee/ManageEmployee"));
 const ReplicateSchedule = lazy(() => import("./components/ReplicateSchedule"));
 const DriverMaster = lazy(() => import("./components/driverMaster/DriverMaster"));
 const VehicleMaster = lazy(() => import("./components/vehicleMaster/VehicleMaster"));
@@ -74,7 +74,7 @@ const ManageMenu = lazy(() => import("./components/manageMenu/ManageMenu"));
 const EmployeeMaster = lazy(() => import("./components/employeeMaster/EmployeeMaster"));
 const MapGeocoding = lazy(() => import("./components/mapGeocoding/MapGeocoding"));
 const ReplicateRoster = lazy(() => import("./components/ReplicateRoster"));
-const ReplicationException = lazy(() => import("./components/ReplicationException"));
+const ReplicationException = lazy(() => import("./components/replicationException/ReplicationException"));
 const ReplyFeedback = lazy(() => import("./components/ReplyFeedback"));
 const ManageColony = lazy(() => import("./components/manageColony/ManageColony"));
 const FemaleTrack = lazy(() => import("./components/femaleTrack/FemaleTrack"));

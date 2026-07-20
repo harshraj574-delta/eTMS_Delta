@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
-import MasterSidebar from "./Master/MasterSidebar";
-import Loader from "./common/Loader";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
+import MasterSidebar from "../Master/MasterSidebar";
+import Loader from "../common/Loader";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
@@ -10,28 +10,43 @@ import { MultiSelect } from "primereact/multiselect";
 import { Checkbox } from "primereact/checkbox";
 import { Dialog as PrimeDialog } from "primereact/dialog";
 import { ProgressBar } from "primereact/progressbar";
-import { CustomDataTable } from "./common/CustomDataTable";
+import { CustomDataTable } from "../common/CustomDataTable";
 import { Column } from "primereact/column";
-import CustomPaginator from "./common/CustomPaginator";
-import TabSwitcher from "./common/TabSwitcher";
-import TableToolbar from "./common/TableToolbar";
-import ReportButton from "./common/ReportButton";
-import ReplicationExceptionService from "../services/compliance/ReplicationExceptionService";
-import { toastService } from "../services/toastService";
-import noReportImage from "../assets/no_report.png";
-import calendarIcon from "../assets/calendar.png";
-import "./common/CustomDataTable.css";
-import AutoAllocationService from "../services/compliance/AutoAllocationService";
-import AppConfirmDialog from "./common/AppConfirmDialog";
+import CustomPaginator from "../common/CustomPaginator";
+import TabSwitcher from "../common/TabSwitcher";
+import TableToolbar from "../common/TableToolbar";
+import ReportButton from "../common/ReportButton";
+import { toastService } from "../../services/toastService";
+import parseMaybeJson from "../../services/parseMaybeJson";
+import noReportImage from "../../assets/no_report.png";
+import calendarIcon from "../../assets/calendar.png";
+import "../common/CustomDataTable.css";
+import AutoAllocationService from "../../services/compliance/AutoAllocationService";
+import AppConfirmDialog from "../common/AppConfirmDialog";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useFacilitiesQuery,
+  useShiftsQuery,
+  fetchIsRouteFinalized,
+  fetchDeleteException,
+  fetchAddException,
+  fetchAlignRoutes,
+  fetchRouteEmployees,
+  useDeleteExceptionEmpMutation,
+  useMakeNewRouteMutation,
+  useAddEmpToRouteMutation,
+  useUpdateRouteMutation,
+  useCutPasteMutation,
+} from "./hooks/useReplicationExceptionQueries";
 
 
 const ReplicationException = () => {
+  const queryClient = useQueryClient();
+
   // Form state
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [facilities, setFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [tripType, setTripType] = useState("P");
-  const [shifts, setShifts] = useState([]);
   const [selectedShifts, setSelectedShifts] = useState([]);
 
   // Data state
@@ -81,6 +96,14 @@ const ReplicationException = () => {
 
   const UserID = sessionStorage.getItem("ID");
 
+  const { data: facilities = [] } = useFacilitiesQuery(UserID);
+  const { data: shifts = [] } = useShiftsQuery(selectedFacility, tripType);
+  const deleteExceptionEmpMutation = useDeleteExceptionEmpMutation();
+  const makeNewRouteMutation = useMakeNewRouteMutation();
+  const addEmpToRouteMutation = useAddEmpToRouteMutation();
+  const updateRouteMutation = useUpdateRouteMutation();
+  const cutPasteMutation = useCutPasteMutation();
+
   const tripTypes = [
     { label: "Pick", value: "P" },
     { label: "Drop", value: "D" },
@@ -95,12 +118,6 @@ const ReplicationException = () => {
     { label: "Add Exception", value: "add", count: addExceptionData.length },
   ];
 
-  // Fetch facilities on mount
-  useEffect(() => {
-    fetchFacilities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Stop job polling when the page unmounts (the job keeps running server-side)
   useEffect(() => {
     return () => {
@@ -108,57 +125,11 @@ const ReplicationException = () => {
     };
   }, []);
 
-  // Fetch shifts when facility or trip type changes
+  // Shift options follow facility/trip type via useShiftsQuery;
+  // clear the previous selection whenever either changes
   useEffect(() => {
-    if (selectedFacility) {
-      fetchShifts();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedShifts([]);
   }, [selectedFacility, tripType]);
-
-  const fetchFacilities = async () => {
-    try {
-      const response = await ReplicationExceptionService.SelectFacility({
-        Userid: UserID,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.facility || item.facilityName,
-            value: item.Id,
-          }))
-        : [];
-      setFacilities(formattedData);
-    } catch (err) {
-      console.error("Error fetching facilities:", err);
-      toastService.error("Error fetching facilities");
-    }
-  };
-
-  const fetchShifts = async () => {
-    try {
-      const response = await ReplicationExceptionService.GetShiftByFacilityType(
-        {
-          facid: selectedFacility,
-          type: tripType,
-        }
-      );
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.shiftTime,
-            value: item.shiftTime,
-          }))
-        : [];
-      setShifts(formattedData);
-      setSelectedShifts([]);
-    } catch (err) {
-      console.error("Error fetching shifts:", err);
-      toastService.error("Error fetching shifts");
-    }
-  };
 
   const formatDate = (date) => {
     if (!date) return "";
@@ -194,19 +165,13 @@ const ReplicationException = () => {
       const shiftString = getShiftString();
 
       // Check if route is finalized
-      const finalizedResponse =
-        await ReplicationExceptionService.GetIsRouteFinalized({
-          sDate: formattedDate,
-          FacilityID: selectedFacility,
-          TripType: tripType,
-          Shifts: shiftString,
-          UserID: UserID,
-        });
-
-      const finalizedResult =
-        typeof finalizedResponse === "string"
-          ? JSON.parse(finalizedResponse)
-          : finalizedResponse;
+      const finalizedResult = await fetchIsRouteFinalized(queryClient, {
+        sDate: formattedDate,
+        FacilityID: selectedFacility,
+        TripType: tripType,
+        Shifts: shiftString,
+        UserID: UserID,
+      });
 
       if (
         finalizedResult &&
@@ -222,41 +187,28 @@ const ReplicationException = () => {
         setRouteFinalizedMessage("");
       }
 
-      // Fetch delete exception data
-      const deleteResponse =
-        await ReplicationExceptionService.GetDeleteException({
-          sDate: formattedDate,
-          eDate: formattedDate,
-          FacilityID: selectedFacility,
-          TripType: tripType,
-          Shifttimes: shiftString,
-        });
-
-      const deleteData =
-        typeof deleteResponse === "string"
-          ? JSON.parse(deleteResponse)
-          : deleteResponse;
-      setDeleteExceptionData(Array.isArray(deleteData) ? deleteData : []);
-
-      // Fetch add exception data
-      const addResponse = await ReplicationExceptionService.GetAddException({
+      // Fetch delete + add exception data
+      const deleteData = await fetchDeleteException(queryClient, {
         sDate: formattedDate,
         eDate: formattedDate,
         FacilityID: selectedFacility,
         TripType: tripType,
         Shifttimes: shiftString,
       });
+      setDeleteExceptionData(deleteData);
 
-      const addData =
-        typeof addResponse === "string" ? JSON.parse(addResponse) : addResponse;
-      setAddExceptionData(Array.isArray(addData) ? addData : []);
+      const addData = await fetchAddException(queryClient, {
+        sDate: formattedDate,
+        eDate: formattedDate,
+        FacilityID: selectedFacility,
+        TripType: tripType,
+        Shifttimes: shiftString,
+      });
+      setAddExceptionData(addData);
 
       setLoading(false);
 
-      if (
-        (Array.isArray(deleteData) && deleteData.length > 0) ||
-        (Array.isArray(addData) && addData.length > 0)
-      ) {
+      if (deleteData.length > 0 || addData.length > 0) {
         toastService.success("Exception data fetched successfully");
       } else {
         toastService.warn("No exception data found");
@@ -278,7 +230,7 @@ const ReplicationException = () => {
 
     try {
       setLoading(true);
-      await ReplicationExceptionService.SprDeleteExceptionEmp({
+      await deleteExceptionEmpMutation.mutateAsync({
         sDate: formatDate(selectedDate),
         FacilityID: selectedFacility,
         TripType: tripType,
@@ -420,18 +372,16 @@ const ReplicationException = () => {
 
     try {
       setLoading(true);
-      const response =
-        await ReplicationExceptionService.MakeRouteReplicateException({
-          sDate: formatDate(selectedDate),
-          FacilityID: selectedFacility,
-          TripType: tripType,
-          Shifttimes: shiftList,
-          userid: UserID,
-          empid: empIdList,
-        });
+      const response = await makeNewRouteMutation.mutateAsync({
+        sDate: formatDate(selectedDate),
+        FacilityID: selectedFacility,
+        TripType: tripType,
+        Shifttimes: shiftList,
+        userid: UserID,
+        empid: empIdList,
+      });
 
-      const result =
-        typeof response === "string" ? JSON.parse(response) : response;
+      const result = parseMaybeJson(response);
       const newRouteId =
         result && result[0] && result[0].NewRouteID
           ? result[0].NewRouteID
@@ -461,7 +411,7 @@ const ReplicationException = () => {
     setPendingAssign(null);
     setCompletedAlignEmpIds(new Set());
     try {
-      const response = await ReplicationExceptionService.GetRoutesByOrder({
+      const data = await fetchAlignRoutes(queryClient, {
         sDate: formatDate(selectedDate),
         eDate: formatDate(selectedDate),
         FacilityID: selectedFacility,
@@ -472,8 +422,7 @@ const ReplicationException = () => {
         Routeid: "",
         occ_seater: "",
       });
-      const data = typeof response === "string" ? JSON.parse(response) : response;
-      setAlignRoutes(Array.isArray(data) ? data : []);
+      setAlignRoutes(data);
     } catch (err) {
       console.error("Error loading routes for align:", err);
       toastService.error("Error loading routes");
@@ -485,12 +434,7 @@ const ReplicationException = () => {
   const loadRouteEmployees = async (routeId) => {
     setRouteEmpLoading((prev) => ({ ...prev, [routeId]: true }));
     try {
-      const response = await ReplicationExceptionService.GetRoutesDetailsnew({
-        Routeid: routeId,
-        isAdd: 0,
-      });
-      const data = typeof response === "string" ? JSON.parse(response) : response;
-      const emps = Array.isArray(data) ? data : [];
+      const emps = await fetchRouteEmployees(queryClient, routeId);
       setRouteEmployees((prev) => ({ ...prev, [routeId]: emps }));
       const editing = {};
       emps.forEach((e) => {
@@ -574,7 +518,7 @@ const ReplicationException = () => {
         return acc;
       }, {});
       for (const [stopNo, empIds] of Object.entries(byStop)) {
-        await ReplicationExceptionService.AddEmpToRoute({
+        await addEmpToRouteMutation.mutateAsync({
           empId: empIds.join(","),
           routeId,
           stopNo: parseInt(stopNo, 10),
@@ -620,7 +564,7 @@ const ReplicationException = () => {
     const empId = emp.id || emp.empID || emp.empId || emp.EmpId || emp.EmployeeID;
     const data = editingEmpData[routeId]?.[empId] || {};
     try {
-      await ReplicationExceptionService.UpdateRoute({
+      await updateRouteMutation.mutateAsync({
         RouteID: routeId,
         EmployeeID: empId,
         Shiftdate: formatDate(selectedDate),
@@ -650,7 +594,7 @@ const ReplicationException = () => {
     const fromRouteId = cutEmployee.fromRouteId;
     try {
       setAlignLoading(true);
-      await ReplicationExceptionService.UpdateCutPaste({
+      await cutPasteMutation.mutateAsync({
         OldRouteid: fromRouteId,
         oldemployeeid: cutEmployee.empId,
         newrouteid: toRouteId,

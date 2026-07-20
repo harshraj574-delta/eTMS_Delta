@@ -1,55 +1,79 @@
 import React, { useState, useEffect, useRef } from "react";
-import Sidebar from "./Master/SidebarMenu";
-import Notifications from "./Master/Notifications";
+import Sidebar from "../Master/SidebarMenu";
+import Notifications from "../Master/Notifications";
 import "bootstrap/dist/css/bootstrap.min.css"; // Import Bootstrap CSS
 import "bootstrap/dist/js/bootstrap.bundle.min.js"; // Import Bootstrap JS
-import * as bootstrap from "bootstrap"; // Add this line to import Bootstrap as a namespace
-import "../components/css/style.css";
-import Header from "./Master/Header";
-import { apiService } from "../services/api";
-import sessionManager from "../utils/SessionManager.js";
-import { toastService } from "../services/toastService";
+import "../css/style.css";
+import Header from "../Master/Header";
+import sessionManager from "../../utils/SessionManager.js";
+import { toastService } from "../../services/toastService";
 import { MultiSelect } from "primereact/multiselect";
-import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import "primereact/resources/themes/lara-light-blue/theme.css"; // Theme
 import "primereact/resources/primereact.min.css"; // Core CSS
 import "primeicons/primeicons.css"; // Icons
-import { Sidebar as PrimeSidebar } from "primereact/sidebar"; // Renamed to avoid conflict with your Sidebar component
 import { Button } from "primereact/button"; // Import Button component from PrimeReact
-import { InputText } from "primereact/inputtext"; // Import InputText component from PrimeReact
-import { InputTextarea } from "primereact/inputtextarea"; // Import InputTextarea component from PrimeReact
 import { Offcanvas } from "bootstrap";
-import { api } from "../services/axios/api.js";
-import Loader from "./common/Loader.jsx";
-import TableToolbar from "./common/TableToolbar.jsx";
-import { set } from "lodash";
-import { CustomDataTable } from "./common/CustomDataTable";
-import ResponsiveDataTable from "./common/ResponsiveDataTable";
-import CustomPaginator from "./common/CustomPaginator";
-import ChatIcon from "./common/ChatIcon";
-import TabSwitcher from "./common/TabSwitcher";
-import AnimatedCounter from "./common/AnimatedCounter";
+import Loader from "../common/Loader.jsx";
+import TableToolbar from "../common/TableToolbar.jsx";
+import ResponsiveDataTable from "../common/ResponsiveDataTable";
+import CustomPaginator from "../common/CustomPaginator";
+import ChatIcon from "../common/ChatIcon";
+import TabSwitcher from "../common/TabSwitcher";
+import AnimatedCounter from "../common/AnimatedCounter";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  myFeedbackKeys,
+  useFeedbackListQuery,
+  useTicketRepliesQuery,
+  useCategoriesQuery,
+  useComplaintTypesQuery,
+  useTripIdsQuery,
+  useFeedbackCountsQuery,
+  useSubmitFeedbackMutation,
+  useReopenTicketMutation,
+} from "./hooks/useMyFeedbackQueries";
 const MyFeedback = () => {
-  const [feedbackData, setFeedbackData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [ticketReplies, setTicketReplies] = useState([]);
+  const queryClient = useQueryClient();
+  const empId = sessionManager.getUserSession()?.ID;
+
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [categoryDropDown, setCategoryDropDown] = useState([]);
-  const [complaintTypeDropDown, setComplaintTypeDropDown] = useState([]);
   const [isOffcanvasOpen, setIsOffcanvasOpen] = useState(false);
   const [isRaiseFeedbackOpen, setIsRaiseFeedbackOpen] = useState(false); // State for Raise Feedback offcanvas
   const [feedbackText, setFeedbackText] = useState(""); // State for feedback text
   const [reopenRemark, setReopenRemark] = useState(""); // State for the remark entered in the offcanvas
   const [feedbackFilter, setFeedbackFilter] = useState("total"); // "all", "open", "closed", "total"
-  const [feedbackCount, setFeedbackCount] = useState({
-    total: 0,
-    open: 0,
-    closed: 0,
-  });
   const [addRaiseFeedback, setAddRaiseFeedback] = useState(false);
-  const [tripIdDropDown, setTripIdDropDown] = useState([]);
+  // Raise Feedback form selections the option queries cascade from
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [travelDate, setTravelDate] = useState("");
   const [globalFilter, setGlobalFilter] = useState(null);
+
+  const { data: feedbackData = [], isFetching: listFetching } = useFeedbackListQuery();
+  const { data: ticketReplies = [], isFetching: repliesFetching } =
+    useTicketRepliesQuery(selectedTicket);
+  const { data: categoryDropDown = [] } = useCategoriesQuery(
+    sessionStorage.getItem("FacilityID")
+  );
+  const { data: complaintTypeDropDown = [] } = useComplaintTypesQuery(selectedCategoryId);
+  const { data: tripIdDropDown = [] } = useTripIdsQuery(travelDate, empId);
+  const { data: feedbackCount = { total: 0, open: 0, closed: 0 } } =
+    useFeedbackCountsQuery(empId);
+  const submitFeedbackMutation = useSubmitFeedbackMutation();
+  const reopenTicketMutation = useReopenTicketMutation();
+
+  const loading =
+    listFetching ||
+    repliesFetching ||
+    submitFeedbackMutation.isPending ||
+    reopenTicketMutation.isPending;
+
+  // Preserve the legacy side effect: first category id is kept in sessionStorage
+  useEffect(() => {
+    if (categoryDropDown.length > 0) {
+      sessionStorage.setItem("ComplaintCategoryId", categoryDropDown[0].id);
+    }
+  }, [categoryDropDown]);
   const [filters, setFilters] = useState({
     TypeName: null,
     Status: null,
@@ -89,177 +113,58 @@ const MyFeedback = () => {
     setIsOffcanvasOpen(true); // Open the offcanvas
   };
   useEffect(() => {
-    fetchFeedbackData();
-    fetchCategories();
-    fetchFeedbackCount();
+    // Refetch on offcanvas close, matching the legacy behavior
+    const invalidateAll = () =>
+      queryClient.invalidateQueries({ queryKey: myFeedbackKeys.all });
 
-    // Add event listeners for Bootstrap offcanvas events
-    const reopenOffcanvas = document.getElementById("raise_Reopen");
-    if (reopenOffcanvas) {
-      reopenOffcanvas.addEventListener("hidden.bs.offcanvas", () => {
-        setIsOffcanvasOpen(false);
-        refreshData();
-      });
-    }
-
-    const feedbackOffcanvas = document.getElementById("raise_Feedback");
-    if (feedbackOffcanvas) {
-      feedbackOffcanvas.addEventListener("hidden.bs.offcanvas", () => {
-        setIsRaiseFeedbackOpen(false);
-        refreshData();
-      });
-    }
-
-    const ticketOffcanvas = document.getElementById("ticketNumber");
-    if (ticketOffcanvas) {
-      ticketOffcanvas.addEventListener("hidden.bs.offcanvas", () => {
-        // Reset ticket replies when the offcanvas is closed
-        setTicketReplies([]);
-      });
-    }
-
-    // Cleanup event listeners on component unmount
-    return () => {
-      if (reopenOffcanvas) {
-        reopenOffcanvas.removeEventListener("hidden.bs.offcanvas", () => { });
-      }
-      if (feedbackOffcanvas) {
-        feedbackOffcanvas.removeEventListener("hidden.bs.offcanvas", () => { });
-      }
-      if (ticketOffcanvas) {
-        ticketOffcanvas.removeEventListener("hidden.bs.offcanvas", () => { });
-      }
+    const onReopenHidden = () => {
+      setIsOffcanvasOpen(false);
+      invalidateAll();
     };
-  }, []);
+    const onFeedbackHidden = () => {
+      setIsRaiseFeedbackOpen(false);
+      invalidateAll();
+    };
 
-  const fetchFeedbackData = async () => {
-    setLoading(true);
-    try {
-      setLoading(true);
-      const data = await apiService.Spr_sprSelectFeedBack({});
-      setFeedbackData(data);
-    } catch (error) {
-      console.error("Error fetching feedback:", error);
-      // You might want to show an error message to the user
-    } finally {
-      setLoading(false);
-    }
-  };
+    const reopenOffcanvas = document.getElementById("raise_Reopen");
+    const feedbackOffcanvas = document.getElementById("raise_Feedback");
+    reopenOffcanvas?.addEventListener("hidden.bs.offcanvas", onReopenHidden);
+    feedbackOffcanvas?.addEventListener("hidden.bs.offcanvas", onFeedbackHidden);
 
-  const fetchTicketReplies = async (ticketNo) => {
-    setLoading(true);
-    try {
-      // console.log("Fetching replies for ticket:", ticketNo); // Added log
-      const replies = await apiService.Spr_sprSelectReply({
-        ticketNo: ticketNo,
-      });
-      // console.log("Received replies:", replies); // Added log
-      setTicketReplies(replies);
-      setSelectedTicket(ticketNo);
-    } catch (error) {
-      console.error("Error fetching replies:", error);
-    }
-    finally {
-      setLoading(false);
-    }
-  };
-  const fetchCategories = async () => {
-    setLoading(true);
-    try {
-      const facID = sessionStorage.getItem("FacilityID"); // assuming facID is stored in sessionStorage
-      const result = await apiService.Spr_GetComplaintCategory({ facID });
-      //console.log("Category DropDown Data:", result);
-      setCategoryDropDown(result);
-      // Set the first category ID as ComplaintCategoryID
-      if (result.length > 0) {
-        const ComplaintCategoryID = result[0].id; // Get the ID of the first category
-        sessionStorage.setItem("ComplaintCategoryId", ComplaintCategoryID); // Store it in session storage
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const fetchComplaintType = async (selectedCategoryId) => {
-    setLoading(true);
-    try {
-      const ComplaintCategoryID = selectedCategoryId; // Use the selected category ID directly
+    return () => {
+      reopenOffcanvas?.removeEventListener("hidden.bs.offcanvas", onReopenHidden);
+      feedbackOffcanvas?.removeEventListener("hidden.bs.offcanvas", onFeedbackHidden);
+    };
+  }, [queryClient]);
 
-      // Check if ComplaintCategoryID is valid
-      if (!ComplaintCategoryID) {
-        throw new Error(
-          "ComplaintCategoryID is not available. Please select a category first."
-        );
-      }
-
-      const result = await apiService.Spr_GetComplaintType({
-        ComplaintCategoryID,
-      });
-      //console.log("Complaint Type DropDown Data:", result);
-      setComplaintTypeDropDown(result); // Update the complaint type dropdown
-    } catch (error) {
-      console.error("Error fetching complaint types:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const fetchTripIds = async (date) => {
-    if (!date) { setTripIdDropDown([]); return; }
-    try {
-      const empid = sessionManager.getUserSession()?.ID;
-      const result = await apiService.sprSearchRouteId({ raiseddate: date, empid });
-      setTripIdDropDown(result);
-    } catch (error) {
-      console.error("Error fetching trip IDs:", error);
-      setTripIdDropDown([]);
-    }
+  // Ticket link click — the replies query follows the selected ticket
+  const fetchTicketReplies = (ticketNo) => {
+    setSelectedTicket(ticketNo);
   };
 
   const handleTravelDateChange = (e) => {
-    const date = e.target.value;
-    if (date) {
-      fetchTripIds(date);
-    } else {
-      setTripIdDropDown([]);
-    }
+    setTravelDate(e.target.value);
   };
 
   const handleCategorySelect = (categoryId) => {
-    if (categoryId) {
-      fetchComplaintType(categoryId);
-      const dateVal = document.getElementById("travelDate")?.value;
-      if (dateVal) fetchTripIds(dateVal);
-    } else {
-      setComplaintTypeDropDown([]);
-      setTripIdDropDown([]);
-    }
-  };
-  // Function to refresh data
-  const refreshData = () => {
-    fetchFeedbackData(); // Refresh feedback data
-    fetchCategories(); // Refresh categories
+    setSelectedCategoryId(categoryId || null);
   };
   const handleSubmitFeedback = async () => {
-    setLoading(true);
     // Check if required fields are filled
     const selectedCategory = document.getElementById("categorySelect").value;
     if (!selectedCategory) {
       toastService.warn("Please select a category type");
-      setLoading(false);
       return;
     }
 
     if (!feedbackText) {
       toastService.warn("Please enter feedback text");
-      setLoading(false);
       return;
     }
 
     const FeedTypeId = document.getElementById("complaintTypeSelect").value;
     if (!FeedTypeId || FeedTypeId === "0") {
       toastService.warn("Please select a complaint type");
-      setLoading(false);
       return;
     }
 
@@ -276,7 +181,8 @@ const MyFeedback = () => {
     document.getElementById("travelDate").value = "";
     document.getElementById("tripIdSelect").value = "";
     setFeedbackText("");
-    setTripIdDropDown([]);
+    setTravelDate("");
+    setSelectedCategoryId(null);
     setIsRaiseFeedbackOpen(false);
     const offcanvasElement = document.getElementById("raise_Feedback");
     const closeButton = offcanvasElement.querySelector(
@@ -297,8 +203,7 @@ const MyFeedback = () => {
     };
 
     try {
-      const response = await apiService.sprInsertFeedBackDetails(params);
-      //console.log("Feedback submitted successfully:", response);
+      await submitFeedbackMutation.mutateAsync(params);
       toastService.success("Feedback submitted successfully!");
       const offcanvasElement = document.getElementById("raise_Reopen");
       const closeButton = offcanvasElement.querySelector(
@@ -307,17 +212,12 @@ const MyFeedback = () => {
       if (closeButton) {
         closeButton.click();
       }
-      refreshData(); // Refresh data if needed
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      // Optionally, show an error message to the user
       toastService.error("Error submitting feedback. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
   const handleReopenSave = async () => {
-    setLoading(true);
     const params = {
       ticketNo: selectedTicket, // Assuming you have the selected ticket number
       desc: reopenRemark, // Use the remark entered by the user
@@ -326,81 +226,21 @@ const MyFeedback = () => {
     };
 
     try {
-      const response = await apiService.Spr_sprInsertReopen(params);
-      //console.log("Reopen Remark submitted successfully:", response);
+      await reopenTicketMutation.mutateAsync(params);
+      toastService.success("Ticket reopened successfully.");
       // Reset the remark state
       setReopenRemark("");
       setIsOffcanvasOpen(false); // Close the offcanvas
       document.getElementById("reopenRemark").value = ""; // Clear the textarea
-      refreshData(); // Refresh data if needed
-
-      // Optionally, refresh data or show a success message
     } catch (error) {
       console.error("Error submitting reopen remark:", error);
-      // Optionally, show an error message to the user
-    } finally {
-      setLoading(false);
+      toastService.error("Error reopening the ticket. Please try again.");
     }
   };
 
   // Add this function to handle opening the Raise Feedback offcanvas
   const handleOpenRaiseFeedback = () => {
     setIsRaiseFeedbackOpen(true);
-  };
-  // Function to fetch feedback count
-  const fetchFeedbackCount = async (credentials = {}) => {
-    setLoading(true);
-    try {
-      const empid = sessionManager.getUserSession()?.ID;
-
-      // Set endDate and startDate from credentials or defaults
-      const endDate = credentials.endDate
-        ? new Date(credentials.endDate)
-        : new Date();
-      let startDate = credentials.startDate
-        ? new Date(credentials.startDate)
-        : new Date(endDate);
-
-      if (!credentials.startDate) {
-        startDate.setFullYear(endDate.getFullYear() - 1);
-      }
-
-      // Format dates as "YYYY-MM-DD 00:00:00.000"
-      const sDate = `${startDate.toISOString().split("T")[0]} 00:00:00.000`;
-      const eDate = `${endDate.toISOString().split("T")[0]} 00:00:00.000`;
-
-      let resultArr = await apiService.getFeedbackcount({
-        empid,
-        sdate: sDate,
-        edate: eDate,
-      });
-
-      // If response is a string, parse it
-      if (typeof resultArr === "string") {
-        try {
-          resultArr = JSON.parse(resultArr);
-          //console.log("Parsed Feedback Count Result:", resultArr);
-        } catch (parseError) {
-          console.error("Error parsing feedback count JSON:", parseError);
-          resultArr = [];
-        }
-      }
-
-      // resultArr is an array, so get the first object
-      const result =
-        Array.isArray(resultArr) && resultArr.length > 0 ? resultArr[0] : {};
-
-      setFeedbackCount({
-        total: result.Totolfeedback || 0, // spelling exactly as in API response
-        open: result.OpenCount || 0,
-        closed: result.ClosedCount || 0,
-      });
-    } catch (error) {
-      setFeedbackCount({ total: 0, open: 0, closed: 0 });
-    }
-    finally {
-      setLoading(false);
-    }
   };
   const handleNewButtonClick = () => {
     const offcanvasElement = document.getElementById("raise_Feedback");
@@ -462,16 +302,8 @@ const MyFeedback = () => {
   }, [filteredByAdvanced, globalFilter]);
 
   // Refresh data function
-  const handleRefresh = () => {
-    setLoading(true);
-    fetchFeedbackCount({
-      endDate: new Date().toISOString().split("T")[0],
-      startDate: new Date(new Date().setFullYear(new Date().getFullYear() - 1))
-        .toISOString()
-        .split("T")[0],
-    });
-    fetchFeedbackData();
-    fetchTicketReplies(selectedTicket);
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: myFeedbackKeys.all });
     toastService.success("Data has been successfully refreshed.");
   };
   return (
@@ -937,9 +769,10 @@ const MyFeedback = () => {
               document.querySelector("#travelDate").value = "";
               document.querySelector("#tripIdSelect").value = "";
               setFeedbackText("");
-              setTripIdDropDown([]);
+              setTravelDate("");
+              setSelectedCategoryId(null);
               setIsRaiseFeedbackOpen(false);
-              refreshData();
+              queryClient.invalidateQueries({ queryKey: myFeedbackKeys.all });
             }}
             aria-label="Close"
           ></button>
@@ -1022,9 +855,10 @@ const MyFeedback = () => {
             className="btn btn-outline-secondary"
             data-bs-dismiss="offcanvas"
             onClick={() => {
-              setTripIdDropDown([]);
+              setTravelDate("");
+              setSelectedCategoryId(null);
               setIsRaiseFeedbackOpen(false);
-              refreshData();
+              queryClient.invalidateQueries({ queryKey: myFeedbackKeys.all });
             }}
           >
             Cancel

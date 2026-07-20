@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
-import Sidebar from "./Master/SidebarMenu";
-import Header from "./Master/Header";
-import { apiService } from "../services/api";
+import React, { useState, useCallback, useRef } from "react";
+import Sidebar from "../Master/SidebarMenu";
+import Header from "../Master/Header";
 
 import { Calendar } from "primereact/calendar";
-import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import ResponsiveDataTable from "./common/ResponsiveDataTable";
+import ResponsiveDataTable from "../common/ResponsiveDataTable";
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 import { Badge } from "primereact/badge";
@@ -15,8 +13,20 @@ import { InputText } from "primereact/inputtext";
 import { RadioButton } from 'primereact/radiobutton';
 import { FilterMatchMode } from "primereact/api";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
-import sessionManager from "../utils/SessionManager";
-import { Landmark } from "lucide-react";
+import sessionManager from "../../utils/SessionManager";
+import { toastService } from "../../services/toastService";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  manageEmployeeKeys,
+  useEmployeesQuery,
+  useEmpSearchQuery,
+  useManagersQuery,
+  useProcessesQuery,
+  useSubProcessesQuery,
+  useCitiesQuery,
+  useFacilityOptionsQuery,
+  useUpdateEmployeeMutation,
+} from "./hooks/useManageEmployeeQueries";
 
 // Move constants to a separate file
 const CONSTANTS = {
@@ -30,262 +40,45 @@ const CONSTANTS = {
 };
 
 function ManageEmployee() {
+    const queryClient = useQueryClient();
+    const session = sessionManager.getUserSession();
+    const facilityId = session.FacilityID;
+    const isAdmin = session.ISadmin;
+
     const [selectedEmployee, setSelectedEmployee] = useState({});
     const [addEmployee, setAddEmployee] = useState(false);
-    const [employees, setEmployees] = useState([]);
-    const [managers, setManagers] = useState([]);
     const [visibleLeft, setVisibleLeft] = useState(false);
     const [filters, setFilters] = useState({
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
     });
-    const [loading, setLoading] = useState(false);
     const [searchKeyword, setSearchKeyword] = useState('');
+    // Keyword frozen at search click; null = show the full facility list
+    const [committedSearch, setCommittedSearch] = useState(null);
     const dt = useRef(null);
-    const [processes, setProcesses] = useState([]);
-    const [subProcesses, setSubProcesses] = useState([]);
-    const [locations, setLocations] = useState(null);
-    const [facilitys, setFacilitys] = useState(null);
-    const [allFacilitys, setAllFacilitys] = useState(null);
-    // Add the missing renderTime state
-    const [renderTime, setRenderTime] = useState(0);
-    const renderStartTime = useRef(null);
-    
-    useEffect(() => {
-        // Start timing when component mounts
-        renderStartTime.current = performance.now();
-        
-        // Load data
-        getEmployeeData();
-        getManagersList();
-        GetProcessByFacility();
-        
-        // Measure render time when component is mounted
-        const endTime = performance.now();
-        setRenderTime(endTime - renderStartTime.current);
-    }, []);
 
-    // Get ProcessBy Facility
-    const GetProcessByFacility = async () => {
-        try {
-            setLoading(true);
-            const facilityid = sessionManager.getUserSession().FacilityID;
-            const response = await apiService.GetProcessByFacility({
-                facilityid: facilityid.toString()
-            });
+    const { data: employeeList = [], isFetching: listFetching } = useEmployeesQuery(facilityId);
+    const { data: searchResults = [], isFetching: searchFetching } = useEmpSearchQuery(
+        session.locationId,
+        committedSearch,
+        isAdmin
+    );
+    const { data: managers = [] } = useManagersQuery();
+    const { data: processes = [] } = useProcessesQuery(facilityId);
+    const { data: subProcesses = [] } = useSubProcessesQuery(selectedEmployee?.processId);
+    const { data: locations = [] } = useCitiesQuery(selectedEmployee?.id);
+    const { data: facilitys = [] } = useFacilityOptionsQuery(selectedEmployee?.id, isAdmin);
+    const updateEmployeeMutation = useUpdateEmployeeMutation();
 
-            if (Array.isArray(response)) {
-                const formattedProcesses = response.map(process => ({
-                    label: process.ProcessName || process.processName,
-                    value: process.Id
-                }));
-                setProcesses(formattedProcesses);
-            } else {
-                setProcesses([]);
-            }
-        } catch (error) {
-            console.error("Error fetching process data:", error);
-            setProcesses([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const employees = committedSearch !== null ? searchResults : employeeList;
+    const loading = listFetching || searchFetching || updateEmployeeMutation.isPending;
 
-    // Get Sub Process
-    const GetSubProcess = async (processId) => {
-        try {
-            setLoading(true);
-            const response = await apiService.GetSubProcess({
-                processid: processId,
-            });
-
-            if (Array.isArray(response)) {
-                const formattedSubProcesses = response.map(subprocess => ({
-                    label: subprocess.subProcessName,
-                    value: subprocess.Id
-                }));
-                setSubProcesses(formattedSubProcesses);
-            } else {
-                setSubProcesses([]);
-            }
-        } catch (error) {
-            console.error("Error fetching subprocess data:", error);
-            setSubProcesses([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Get Geo City By RS
-    const locationid = async (id) => {
-        try {
-            setLoading(true);
-            const response = await apiService.locationid({
-                locationid: id
-            });
-
-            if (Array.isArray(response)) {
-                const formattedCities = response.map(locations => ({
-                    label: locations.City,
-                    value: locations.City
-                }));
-                setLocations(formattedCities);
-            } else {
-                setLocations([]);
-            }
-        } catch (error) {
-            console.error("Error fetching location data:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // selectFacility
-    const selectFacility = async (id) => {
-        try {
-            setLoading(true);
-            const response = await apiService.selectFacility({
-                Userid: id
-            });
-
-            if (Array.isArray(response)) {
-                const formattedFacility = response.map(facility => ({
-                    label: facility.facilityName,
-                    value: facility.Id
-                }));
-                setFacilitys(formattedFacility);
-            } else {
-                setFacilitys([]);
-            }
-        } catch (error) {
-            console.error("Error fetching facility data:", error);
-            setFacilitys([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // selectFacility
-    const selectAllFacility = async (id) => {
-        try {
-            setLoading(true);
-            const response = await apiService.selectAllFacility({
-                Userid: id
-            });
-
-            if (Array.isArray(response)) {
-                const formattedAllFacility = response.map(allFacility => ({
-                    label: allFacility.facilityName,
-                    value: allFacility.Id
-                }));
-                setAllFacilitys(formattedAllFacility);
-            } else {
-                setAllFacilitys([]);
-            }
-        } catch (error) {
-            console.error("Error fetching facility data:", error);
-            setAllFacilitys([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Add this function to fetch managers
-    const getManagersList = async () => {
-        try {
-            const response = await apiService.GetManagerList({
-                locationid: "",
-                empidname: "",
-                IsAdmin: ""
-            });
-
-            if (Array.isArray(response)) {
-                const formattedManagers = response.map(manager => ({
-                    label: manager.empName || manager.EmpName || manager.userName || manager.UserName || manager.id,
-                    value: manager.id || manager.Id || manager.empId || manager.EmpId
-                }));
-                setManagers(formattedManagers);
-            } else if (typeof response === 'string') {
-                try {
-                    const parsedData = JSON.parse(response);
-                    if (Array.isArray(parsedData)) {
-                        const formattedManagers = parsedData.map(manager => ({
-                            label: manager.empName || manager.EmpName || manager.userName || manager.UserName || manager.id,
-                            value: manager.id || manager.Id || manager.empId || manager.EmpId
-                        }));
-                        setManagers(formattedManagers);
-                    }
-                } catch (e) {
-                    console.error("Error parsing managers data:", e);
-                    setManagers([]);
-                }
-            } else {
-                setManagers([]);
-            }
-        } catch (error) {
-            console.error("Error fetching managers:", error);
-            setManagers([]);
-        }
-    };
-    
-    // Get Employee Data
-    const getEmployeeData = async () => {
-        try {
-            setLoading(true);
-            const facilityid = sessionManager.getUserSession().FacilityID;
-            const response = await apiService.GetEmployeeList({
-                facilityid: facilityid
-            });
-            if (Array.isArray(response)) {
-                setEmployees(response);
-            } else {
-                console.error("Unexpected response format:", response);
-            }
-        } catch (error) {
-            console.error("Error fetching employee data:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Add this function to handle search
-    const handleEmpSearch = async () => {
-        try {
-            setLoading(true);
-            const response = await apiService.EmpSearch({
-                locationid: sessionManager.getUserSession().locationId,
-                empidname: searchKeyword,
-                IsAdmin: sessionManager.getUserSession().ISadmin,
-            });
-
-            if (Array.isArray(response)) {
-                setEmployees(response);
-            } else if (response && typeof response === 'string') {
-                try {
-                    const parsedResponse = JSON.parse(response);
-                    if (Array.isArray(parsedResponse)) {
-                        setEmployees(parsedResponse);
-                    } else {
-                        setEmployees([]);
-                    }
-                } catch (e) {
-                    console.error("Error parsing response:", e);
-                    setEmployees([]);
-                }
-            } else {
-                setEmployees([]);
-            }
-        } catch (error) {
-            console.error("Error searching employees:", error);
-            setEmployees([]);
-        } finally {
-            setLoading(false);
-        }
+    const handleEmpSearch = () => {
+        setCommittedSearch(searchKeyword);
     };
 
     const handleUpdateEmployee = async (e) => {
         if(e) e.preventDefault();
         try {
-            setLoading(true);
             const employeeData = {
               id: selectedEmployee.id || "",
               empCode: selectedEmployee.empCode || "",
@@ -325,42 +118,24 @@ function ManageEmployee() {
               SecondDoesDate: selectedEmployee.SecondDoesDate || "",
             };
 
-            const response = await apiService.UpdateEmployee(employeeData);
+            const response = await updateEmployeeMutation.mutateAsync(employeeData);
 
             if(response){
-               // alert("Employee Updated Successfully");
-                getEmployeeData();
+                toastService.success("Employee updated successfully.");
+                setCommittedSearch(null);
                 setVisibleLeft(false);
             }
         }catch(error){
             console.error("Error updating employee:", error);
-            alert("Error updating employee");
-        }finally{
-            setLoading(false);
-        };
+            toastService.error("Error updating employee. Please try again.");
+        }
     }
 
-    // Open sidebar with employee data
+    // Open sidebar with employee data; the sub-process/city/facility option
+    // queries cascade off selectedEmployee automatically
     const openEditSidebar = (employee) => {
         setSelectedEmployee(employee);
         setVisibleLeft(true);
-
-        if (employee.processId) {
-            GetSubProcess(employee.processId);
-        }
-        if (employee.id) {
-            locationid(employee.id);
-        }
-        if (sessionManager.getUserSession().ISadmin === 'Y') {
-            if (employee.id) {
-                selectAllFacility(employee.id);
-            }
-        }
-        else {
-            if (employee.id) {
-                selectFacility(employee.id);
-            }
-        }
     };
 
     // Handle input changes
@@ -385,15 +160,15 @@ function ManageEmployee() {
         }
     };
 
-    const paginatorLeft = <Button type="button" icon="pi pi-refresh" text onClick={() => getEmployeeData()} />;
-    const paginatorRight = <Button type="button" icon="pi pi-download" text onClick={exportExcel} />;
+    const handleRefresh = async () => {
+        setCommittedSearch(null);
+        setSearchKeyword('');
+        await queryClient.invalidateQueries({ queryKey: manageEmployeeKeys.all });
+        toastService.success("Data refreshed successfully.");
+    };
 
-    // Memoize expensive computations and callbacks
-    const memoizedProcesses = useMemo(() => 
-        processes.map(process => ({
-            label: process.ProcessName,
-            value: process.Id
-        })), [processes]);
+    const paginatorLeft = <Button type="button" icon="pi pi-refresh" text onClick={handleRefresh} />;
+    const paginatorRight = <Button type="button" icon="pi pi-download" text onClick={exportExcel} />;
 
     return (
         <>
@@ -402,12 +177,7 @@ function ManageEmployee() {
             <div className="middle">
                 <div className="row">
                     <div className="col-12">
-                        <h6 className="pageTitle">Manage Emplyoee</h6>
-                        {renderTime > 0 && (
-                            <div className="performance-info" style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
-                                Page render time: {renderTime.toFixed(2)}ms
-                            </div>
-                        )}
+                        <h6 className="pageTitle">Manage Employee</h6>
                         <div className="card_tb">
                             <div className="row mb-3">
                                 <div className="col-3">
@@ -575,7 +345,7 @@ function ManageEmployee() {
                                     name="ProcessName"
                                     value={selectedEmployee.processId || ""}
                                     onChange={handleInputChange}
-                                    options={memoizedProcesses}
+                                    options={processes}
                                     placeholder="Select a Process"
                                     className="w-full md:w-14rem w-100"
                                     emptyMessage="No Process available"
