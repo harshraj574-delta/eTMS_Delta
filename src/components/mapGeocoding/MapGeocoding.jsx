@@ -1,5 +1,5 @@
 // MapGeocoding.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -7,21 +7,34 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import PlaceIcon from "@mui/icons-material/Place";
 
-import MapGeocodingService from "../services/compliance/MapGeocodingService";
-import sessionManager from "../utils/SessionManager";
-import { toastService } from "../services/toastService";
+import sessionManager from "../../utils/SessionManager";
+import { toastService } from "../../services/toastService";
 
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
-import MasterSidebar from "./Master/MasterSidebar";
-import LocationMapComponent from "./LocationMapComponent";
-import TableToolbar from "./common/TableToolbar";
-import AnimatedCounter from "./common/AnimatedCounter";
-import { CustomDataTable } from "./common/CustomDataTable";
-import ResponsiveDataTable from "./common/ResponsiveDataTable";
-import CustomPaginator from "./common/CustomPaginator";
-import ReportButton from "./common/ReportButton";
-import Loader from "./common/Loader";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
+import MasterSidebar from "../Master/MasterSidebar";
+import LocationMapComponent from "../LocationMapComponent";
+import TableToolbar from "../common/TableToolbar";
+import AnimatedCounter from "../common/AnimatedCounter";
+import { CustomDataTable } from "../common/CustomDataTable";
+import ResponsiveDataTable from "../common/ResponsiveDataTable";
+import CustomPaginator from "../common/CustomPaginator";
+import ReportButton from "../common/ReportButton";
+import Loader from "../common/Loader";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useEmpCountQuery,
+  useNotGeocodedQuery,
+  useChangeAddressCountQuery,
+  useFacilityGeoQuery,
+  useCitiesQuery,
+  useColoniesQuery,
+  fetchEmployees as fetchEmployeesQuery,
+  fetchEmpGeoDetails,
+  fetchChangeAddressGeo,
+  useSaveGeocodeMutation,
+  useSaveAddressChangeGeocodeMutation,
+} from "./hooks/useMapGeocodingQueries";
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -32,18 +45,12 @@ const MapGeocoding = () => {
   const userId = session.ID || 0;
   const facilityId = session.FacilityID || 0;
 
-  // --- State: Summary Counts ---
-  const [totalEmployeeCount, setTotalEmployeeCount] = useState(0);
-  const [notGeocodedCount, setNotGeocodedCount] = useState(0);
-  const [notGeocodedData, setNotGeocodedData] = useState([]);
-  const [changeAddressCount, setChangeAddressCount] = useState(0);
-  const [changeAddressData, setChangeAddressData] = useState([]);
+  const queryClient = useQueryClient();
 
   // --- State: Employee Search & Grid ---
   const [searchQuery, setSearchQuery] = useState("");
   const [employeeList, setEmployeeList] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [summaryLoading, setSummaryLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState(""); // For TableToolbar search
 
   // Pagination state
@@ -72,20 +79,36 @@ const MapGeocoding = () => {
     id: 0,
   });
 
-  // Dropdowns data
-  const [cityList, setCityList] = useState([]);
-  const [colonyList, setColonyList] = useState([]);
-
   // --- State: Map (Sidebar) ---
   const [showMapSidebar, setShowMapSidebar] = useState(false);
   const [mapLatitude, setMapLatitude] = useState("");
   const [mapLongitude, setMapLongitude] = useState("");
 
+  // --- Queries ---
+  const { data: empCountData = [], isLoading: empCountLoading } = useEmpCountQuery(locationId);
+  const { data: notGeocodedData = [], isLoading: notGeoLoading } = useNotGeocodedQuery(locationId);
+  const { isLoading: changeCountLoading } = useChangeAddressCountQuery(locationId);
+  const { data: facilityGeoData } = useFacilityGeoQuery(facilityId);
+  const { data: cityList = [] } = useCitiesQuery(locationId, session.ISadmin || "N");
+  const { data: colonyList = [] } = useColoniesQuery(geoDetails.City);
+  const saveGeocodeMutation = useSaveGeocodeMutation();
+  const saveAddressChangeMutation = useSaveAddressChangeGeocodeMutation();
+
+  const summaryLoading = empCountLoading || notGeoLoading || changeCountLoading;
+
+  const totalEmployeeCount = useMemo(
+    () => empCountData.reduce((acc, curr) => acc + (curr.count || curr.Count || 0), 0),
+    [empCountData]
+  );
+
   // Facility Center (Default for map if emp has no coords)
-  const [facilityGeo, setFacilityGeo] = useState({
-    lat: "28.6139",
-    lng: "77.2090",
-  });
+  const facilityGeo = useMemo(() => {
+    const row = facilityGeoData?.[0];
+    return {
+      lat: row?.geoY ? row.geoY.toString() : "28.6139",
+      lng: row?.geoX ? row.geoX.toString() : "77.2090",
+    };
+  }, [facilityGeoData]);
 
   // Responsive widths
   const getOffcanvasWidth = () => {
@@ -123,20 +146,9 @@ const MapGeocoding = () => {
   // --- Effects ---
 
   useEffect(() => {
-    console.log("Session Data:", {
-      locationId,
-      userId,
-      facilityId,
-      isAdmin: session.ISadmin,
-    });
-
-    if (locationId && locationId > 0) {
-      loadSummaryData();
-      loadFacilityGeo();
-    } else {
+    if (!locationId || locationId <= 0) {
       console.error("Invalid session: locationId is missing");
       toastService.error("Session error. Please login again.");
-      setSummaryLoading(false);
     }
   }, []);
 
@@ -144,118 +156,6 @@ const MapGeocoding = () => {
   useEffect(() => {
     setFirst(0);
   }, [globalFilter]);
-
-  // Debug effect
-  useEffect(() => {
-    console.log("Summary Data:", {
-      notGeocodedCount,
-      notGeocodedData,
-      changeAddressCount,
-      changeAddressData,
-    });
-  }, [
-    notGeocodedCount,
-    notGeocodedData,
-    changeAddressCount,
-    changeAddressData,
-  ]);
-
-  // --- Loaders ---
-
-  const loadSummaryData = async () => {
-    setSummaryLoading(true);
-    try {
-      console.log("Loading summary data for locationId:", locationId);
-
-      // 0. Total Employee Count
-      const empCountList = await MapGeocodingService.GetEmpCount({
-        locationid: locationId,
-      });
-
-      console.log("Total Employee Count Raw Response:", empCountList);
-
-      const empCountArray = Array.isArray(empCountList) ? empCountList : [];
-      const totalEmpCount = empCountArray.reduce(
-        (acc, curr) => acc + (curr.count || curr.Count || 0),
-        0
-      );
-      setTotalEmployeeCount(totalEmpCount);
-
-      console.log("Processed Total Employee Count:", totalEmpCount);
-
-      // 1. Not GeoCoded Counts
-      const notGeocodedList =
-        await MapGeocodingService.GetNotGeoCodedCount({
-          locationid: locationId,
-        });
-
-      console.log("Not Geocoded Raw Response:", notGeocodedList);
-
-      const notGeocodedArray = Array.isArray(notGeocodedList)
-        ? notGeocodedList
-        : [];
-      setNotGeocodedData(notGeocodedArray);
-
-      
-      const totalNotGeo = notGeocodedArray.reduce(
-        (acc, curr) => acc + (curr.count || curr.Count || 0),
-        0
-      );
-      setNotGeocodedCount(totalNotGeo);
-
-      console.log("Processed Not Geocoded:", {
-        array: notGeocodedArray,
-        total: totalNotGeo,
-      });
-
-
-      const changeList =
-        await MapGeocodingService.GetNonGeocodedChangeCount({
-          locationid: locationId,
-        });
-
-      console.log("Change Address Raw Response:", changeList);
-
-      const changeArray = Array.isArray(changeList) ? changeList : [];
-      setChangeAddressData(changeArray);
-
-      // Calculate total - handle case-insensitive field names
-      const totalChange = changeArray.reduce(
-        (acc, curr) => acc + (curr.count || curr.Count || 0),
-        0
-      );
-      setChangeAddressCount(totalChange);
-
-      console.log("Processed Change Address:", {
-        array: changeArray,
-        total: totalChange,
-      });
-    } catch (error) {
-      console.error("Error loading summary:", error);
-      toastService.error("Failed to load summary counts.");
-    } finally {
-      setSummaryLoading(false);
-    }
-  };
-
-  const loadFacilityGeo = async () => {
-    try {
-      console.log("Loading facility geo for facilityId:", facilityId);
-      const res = await MapGeocodingService.GetFacilityGeo({
-        facilityid: facilityId,
-      });
-      console.log("Facility Geo Response:", res);
-
-      if (res && Array.isArray(res) && res.length > 0) {
-        setFacilityGeo({
-          lat: res[0].geoY ? res[0].geoY.toString() : "28.6139",
-          lng: res[0].geoX ? res[0].geoX.toString() : "77.2090",
-        });
-      }
-    } catch (error) {
-      console.error("Error loading facility geo:", error);
-    }
-  };
 
   // --- Handlers: Search & Grids ---
 
@@ -272,33 +172,13 @@ const MapGeocoding = () => {
   const fetchEmployees = async (searchText, facId, type) => {
     setLoading(true);
     try {
-      console.log("Fetching employees:", { searchText, facId, type });
-
-      let data = [];
-      if (facId <= 0) {
-        // Manual Search
-        data = await MapGeocodingService.EmpSearch({
-          locationid: locationId,
-          empidname: searchText,
-          IsAdmin: session.ISadmin || "N",
-        });
-      } else {
-        // Filter by Facility
-        if (type === 1) {
-          data = await MapGeocodingService.GetEmployeeByFacility({
-            facilityid: facId,
-          });
-        } else {
-          data =
-            await MapGeocodingService.GetEmployeeByFacilityChangeAddress({
-              facilityid: facId,
-            });
-        }
-      }
-
-      console.log("Employee Search Response:", data);
-
-      const employeeArray = Array.isArray(data) ? data : [];
+      const employeeArray = await fetchEmployeesQuery(queryClient, {
+        locationId,
+        searchText,
+        facId,
+        type,
+        isAdmin: session.ISadmin || "N",
+      });
       setEmployeeList(employeeArray);
 
       if (employeeArray.length === 0) {
@@ -330,68 +210,27 @@ const MapGeocoding = () => {
     setSidebarLoading(true);
 
     try {
-      // 1. Fetch Cities
-      const cities = await MapGeocodingService.GetGeoCity({
-        locationid: locationId,
-        IsAdmin: session.ISadmin || "N",
-      });
-
-      console.log("Cities Response:", cities);
-
-      const citiesArray = Array.isArray(cities) ? cities : [];
-      const cityOpts = citiesArray.map((c) => ({
-        label: c.city || c.City,
-        value: c.city || c.City,
-      }));
-      setCityList(cityOpts);
-      setColonyList([]);
-
-      // 2. Fetch Employee Geo Details
+      // Fetch Employee Geo Details (cities + colonies are reactive queries)
       let details = null;
       let currentGeo = {};
 
       if (addrType === 2) {
         // Address Change Request
         const changeId = employee.ChangeID || employee.changeID;
-        console.log("Fetching change address details:", {
+        const res = await fetchChangeAddressGeo(queryClient, {
           empId: employee.Id || employee.id,
           changeId,
         });
-
-        const res = await MapGeocodingService.GetChangeAddressEmpGeo({
-          empid: employee.Id || employee.id,
-          id: changeId,
-        });
-
-        console.log("Change Address Details Response:", res);
-
-        details =
-          res && Array.isArray(res) && res.length > 0 ? res[0] : null;
+        details = res.length > 0 ? { ...res[0] } : null;
         if (details) details.changeId = changeId;
       } else {
         // Standard Geocode
-        console.log("Fetching standard geo details:", {
-          empId: employee.Id || employee.id,
-        });
-
-        const res = await MapGeocodingService.GetEmpGeoDetails({
-          empid: employee.Id || employee.id,
-          no: 1,
-        });
-
-        console.log("Standard Geo Details Response:", res);
-
-        details =
-          res && Array.isArray(res) && res.length > 0 ? res[0] : null;
+        const res = await fetchEmpGeoDetails(queryClient, employee.Id || employee.id);
+        details = res.length > 0 ? { ...res[0] } : null;
       }
 
       if (details) {
         const cityVal = details.City || details.city || "";
-
-        // If city exists, fetch colonies immediately
-        if (cityVal) {
-          await handleCityChange({ value: cityVal }, true);
-        }
 
         currentGeo = {
           empCode: details.empCode || "",
@@ -433,8 +272,6 @@ const MapGeocoding = () => {
         currentGeo.geoY = facilityGeo.lat;
       }
 
-      console.log("Final Geo Details:", currentGeo);
-
       setGeoDetails(currentGeo);
       setMapLatitude(currentGeo.geoY);
       setMapLongitude(currentGeo.geoX);
@@ -446,35 +283,13 @@ const MapGeocoding = () => {
     }
   };
 
-  const handleCityChange = async (e, isInitialLoad = false) => {
-    const selectedCity = e.value;
-    console.log("City changed:", selectedCity);
-
-    if (!isInitialLoad) {
-      setGeoDetails((prev) => ({
-        ...prev,
-        City: selectedCity,
-        Colony: "",
-      }));
-    }
-
-    try {
-      const colonies = await MapGeocodingService.GetGeoCityColony({
-        city: selectedCity,
-      });
-
-      console.log("Colonies Response:", colonies);
-
-      const coloniesArray = Array.isArray(colonies) ? colonies : [];
-      const colonyOpts = coloniesArray.map((c) => ({
-        label: c.colony || c.Colony,
-        value: c.colony || c.Colony,
-      }));
-      setColonyList(colonyOpts);
-    } catch (error) {
-      console.error("Error loading colonies:", error);
-      setColonyList([]);
-    }
+  // Colonies follow the selected city via useColoniesQuery — just set state
+  const handleCityChange = (e) => {
+    setGeoDetails((prev) => ({
+      ...prev,
+      City: e.value,
+      Colony: "",
+    }));
   };
 
   const handleSaveGeocode = async () => {
@@ -513,19 +328,18 @@ const MapGeocoding = () => {
       if (addrType === 2) {
         // Address Change
         params.Addresschange = geoDetails.changeId;
-        await MapGeocodingService.SaveAddressChangeMapGeocode(params);
+        await saveAddressChangeMutation.mutateAsync(params);
       } else {
         // Standard Save
         params.EmpID = geoDetails.id;
         params.addtype = 1;
-        await MapGeocodingService.SaveMapGeocode(params);
+        await saveGeocodeMutation.mutateAsync(params);
       }
 
       toastService.success("Geocode Saved Successfully");
       setShowGeocodeSidebar(false);
 
-      // Refresh Grids
-      loadSummaryData();
+      // Refresh grid (summary cards refresh via mutation invalidation)
       if (searchQuery) {
         handleSearch();
       } else if (filterFacId > 0) {

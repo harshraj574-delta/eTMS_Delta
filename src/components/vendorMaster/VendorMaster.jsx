@@ -403,9 +403,10 @@ const VendorMaster = () => {
               <TableToolbar
                 search={globalFilter}
                 onSearch={(e) => setGlobalFilter(e.target.value)}
-                onRefresh={() => {
+                onRefresh={async () => {
                   setGlobalFilter("");
-                  queryClient.invalidateQueries({ queryKey: vendorMasterKeys.all });
+                  await queryClient.invalidateQueries({ queryKey: vendorMasterKeys.all });
+                  toastService.success("Data refreshed successfully.");
                 }}
                 onExport={exportExcel}
                 showFilter={false}

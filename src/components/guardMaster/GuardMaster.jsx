@@ -1,26 +1,33 @@
-import React, { useState, useEffect, useRef } from "react";
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Column } from "primereact/column";
-import { CustomDataTable } from "./common/CustomDataTable";
-import TableToolbar from "./common/TableToolbar";
+import { CustomDataTable } from "../common/CustomDataTable";
+import TableToolbar from "../common/TableToolbar";
 import { InputTextarea } from "primereact/inputtextarea";
-import MasterSidebar from "./Master/MasterSidebar";
-import sessionManager from "../utils/SessionManager";
-import GuardMasterService from "../services/compliance/GuardMasterService";
-import { apiService } from "../services/api";
+import MasterSidebar from "../Master/MasterSidebar";
+import sessionManager from "../../utils/SessionManager";
 // import { Calendar } from "lucide-react";
 import { Calendar } from "primereact/calendar";
 import { Checkbox } from "primereact/checkbox";
 import { InputNumber } from "primereact/inputnumber";
-import { toastService } from "../services/toastService";
+import { toastService } from "../../services/toastService";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import CustomPaginator from "./common/CustomPaginator";
-import Loader from "./common/Loader";
+import CustomPaginator from "../common/CustomPaginator";
+import Loader from "../common/Loader";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useFacilitiesQuery,
+  useGuardsQuery,
+  useDocumentTypesQuery,
+  fetchNewGuardId,
+  useSaveGuardMutation,
+  useUpdateGuardMutation,
+} from "./hooks/useGuardMasterQueries";
 
 const GUARD_DOCS_STORAGE_KEY = "guard_docs";
 const GUARD_STATUS_KEY = "guard_status_data";
@@ -47,14 +54,10 @@ const GuardMaster = () => {
   // Add the missing selectedGuard state
   const [selectedGuard, setSelectedGuard] = useState(null);
   const userId = sessionManager.getUserSession().ID;
-  const [GuardDetails, setGuardDetails] = useState([]);
-  // Lookup states
-  const [facilities, setFacilities] = useState([]);
+  const queryClient = useQueryClient();
   // Selectted Values
   const [selFacility, setSelFacility] = useState(null);
-  const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [documentDetails, setDocumentDetails] = useState([]);
   const [guardDocs, setGuardDocs] = useState({});
   const [uploadingDocIds, setUploadingDocIds] = useState({});
   const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
@@ -69,22 +72,28 @@ const GuardMaster = () => {
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [filteredGuardData, setFilteredGuardData] = useState([]);
   const op = useRef(null);
   const filterButtonRef = useRef(null);
   const guardPicInputRef = useRef(null);
+
+  const { data: facilities = [] } = useFacilitiesQuery(userId);
+  const { data: GuardDetails = [], isLoading: guardsLoading, refetch: refetchGuards } =
+    useGuardsQuery(selFacility?.Id);
+  const { data: documentDetails = [] } = useDocumentTypesQuery();
+  const saveGuardMutation = useSaveGuardMutation();
+  const updateGuardMutation = useUpdateGuardMutation();
 
   const onPageChange = (event) => {
     setFirst(event.first);
     setRows(event.rows);
   };
 
-  useEffect(() => {
-    if (!globalFilter) { setFilteredGuardData(GuardDetails); return; }
+  const filteredGuardData = useMemo(() => {
+    if (!globalFilter) return GuardDetails;
     const lower = globalFilter.toLowerCase();
-    setFilteredGuardData(GuardDetails.filter((d) =>
+    return GuardDetails.filter((d) =>
       Object.values(d).some((v) => v && String(v).toLowerCase().includes(lower))
-    ));
+    );
   }, [GuardDetails, globalFilter]);
 
   useEffect(() => {
@@ -118,65 +127,13 @@ const exportToExcel = () => {
   const data = new Blob([excelBuffer], { type: "application/octet-stream" });
   saveAs(data, "GuardMaster.xlsx");
 };
+  // Default the facility to the user's own (or the first available), once;
+  // the guards query follows selFacility automatically.
   useEffect(() => {
-    fetchFacilities();
-    fetchDocumentDetails();
-  }, []);
-
-  useEffect(() => {
-    if (facilities.length > 0) {
-      const userFacilityId = sessionManager.getUserSession().FacilityID;
-      const defaultFacility = facilities.find(f => f.Id === userFacilityId) || facilities[0];
-      setSelFacility(defaultFacility);
-
-      // Hamesha data fetch karo, chahe user ki facility mile ya na mile
-      if (defaultFacility) {
-        fetchGuardDetails(defaultFacility.Id);
-      }
-    }
-  }, [facilities]);
-  const fetchFacilities = () => {
-    GuardMasterService.getFacilitiesByUserId(userId)
-      .then((res) => {
-        const data = JSON.parse(res.data) || [];
-
-        setFacilities(data);
-      })
-      .catch((err) => {
-        console.log("Error", err);
-      });
-  };
-
-  // Fetch Guard details from API
-  const fetchGuardDetails = async (facilityid, showSuccessToast = false) => {
-    //console.log('FacID',facilityid);
-
-    const params = {
-      FacilityID: facilityid,
-      SearchValue: search || "",
-    };
-
-    try {
-      const response = await GuardMasterService.getGuardMasterDetails(params);
-
-      // Safely parse JSON with error handling
-      try {
-        const respData = JSON.parse(response.data);
-        // console.log('respData',respData);
-
-        setGuardDetails(Array.isArray(respData) ? respData : []);
-        setFirst(0); // Reset pagination on data fetch
-        if (showSuccessToast) toastService.success("Data refreshed successfully.");
-      } catch (parseError) {
-        console.error("Error parsing guard details:", parseError);
-        setGuardDetails([]);
-      }
-    } catch (error) {
-      console.error("Error fetching guard details:", error?.message || error);
-      setGuardDetails([]);
-      toastService.error("Failed to fetch guard details.");
-    }
-  };
+    if (selFacility || !facilities.length) return;
+    const userFacilityId = sessionManager.getUserSession().FacilityID;
+    setSelFacility(facilities.find((f) => f.Id === userFacilityId) || facilities[0]);
+  }, [facilities, selFacility]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -243,7 +200,7 @@ const exportToExcel = () => {
         userid: sessionManager.getUserSession().ID,
       };
 
-      const response = await GuardMasterService.SaveGuard(params);
+      await saveGuardMutation.mutateAsync(params);
       toastService.success("Guard saved successfully.");
       if (selectedGuard?.GuardID) {
         saveGuardStatus(selectedGuard.GuardID, guardStatus);
@@ -255,13 +212,7 @@ const exportToExcel = () => {
       setAddGuardMaster(false);
       setSelectedGuard(null);
       resetGuardDocsState();
-
-      // Refresh the guard list
-      if (selFacility) {
-        fetchGuardDetails(selFacility.Id);
-      } else {
-        fetchGuardDetails(sessionManager.getUserSession().FacilityID);
-      }
+      setFirst(0);
     } catch (error) {
       console.error("Error saving guard details:", error);
       toastService.error("Error saving guard details. Please try again.");
@@ -281,14 +232,14 @@ const exportToExcel = () => {
       Type: "S",
     };
 
-    const response = await GuardMasterService.GetNewGuardID(params);
     let NewGuardID = "";
     try {
-      const respData = JSON.parse(response.data);
-      //console.log('respData',respData);
-      NewGuardID = respData[0].TempID;
-    } catch (parseError) {
-      console.error("Error parsing guard details:", parseError);
+      const respData = await fetchNewGuardId(queryClient, params);
+      NewGuardID = respData[0]?.TempID || "";
+    } catch (error) {
+      console.error("Error generating guard ID:", error);
+      toastService.error("Failed to generate a new Guard ID. Please try again.");
+      return;
     }
 
     setSelectedGuard({
@@ -369,7 +320,7 @@ const exportToExcel = () => {
         //SecondDoseDate: '',
       };
 
-      const response = await GuardMasterService.UpdateGuard(params);
+      await updateGuardMutation.mutateAsync(params);
       toastService.success("Guard updated successfully.");
       if (selectedGuard?.GuardID) {
         saveGuardStatus(selectedGuard.GuardID, guardStatus);
@@ -380,12 +331,7 @@ const exportToExcel = () => {
       setGuardDutyType(null);
       setVisibleLeft(false);
       resetGuardDocsState();
-
-      if (selFacility == null) {
-        fetchGuardDetails(sessionManager.getUserSession().FacilityID);
-      } else {
-        fetchGuardDetails(selFacility.Id);
-      }
+      setFirst(0);
     } catch (error) {
       console.error("Error saving guard details:", error);
       toastService.error("Error saving guard details. Please try again.");
@@ -394,17 +340,6 @@ const exportToExcel = () => {
     }
   };
   // ========== DOCUMENT UPLOAD HELPERS ==========
-  const fetchDocumentDetails = async () => {
-    try {
-      const response = await GuardMasterService.SPR_DocumentDetails({ type: "G" });
-      const parsed = JSON.parse(response.data);
-      const formatted = parsed.map((item) => ({ name: item.DocumentType, value: item.Id }));
-      setDocumentDetails(formatted);
-    } catch (error) {
-      console.error("Error fetching guard document details:", error);
-    }
-  };
-
   const getGuardDocKeys = (guardData) =>
     [guardData.GuardID, guardData.ID, guardData.Id].filter(Boolean).map(String);
 
@@ -635,7 +570,7 @@ const exportToExcel = () => {
 
   return (
     <>
-      <Loader isVisible={isSubmitting} fullScreen={true} />
+      <Loader isVisible={isSubmitting || guardsLoading} fullScreen={true} />
       <Header
         pageTitle="Escort Master"
         showNewButton={true}
@@ -657,11 +592,9 @@ const exportToExcel = () => {
                   </label>
                   <Dropdown
                     value={selFacility}
-                    onChange={async (e) => {
-                      setIsSubmitting(true);
+                    onChange={(e) => {
                       setSelFacility(e.value);
-                      await fetchGuardDetails(e.value.Id);
-                      setIsSubmitting(false);
+                      setFirst(0);
                     }}
                     options={facilities}
                     optionLabel="facilityName"
@@ -672,9 +605,6 @@ const exportToExcel = () => {
                 </div>
                 <div className="col-12 col-md-12 col-lg-10 mb-3">
                 </div>
-                {/* <div className="col-2">
-                                    <Button label="Submit" disabled={!selFacility} className="btn btn-dark no-label-prime" onClick={fetchGuardDetails} />
-                                </div> */}
               </div>
             </div>
           </div>
@@ -686,7 +616,12 @@ const exportToExcel = () => {
                 showFilter={false}
                 search={globalFilter}
                 onSearch={(e) => { setGlobalFilter(e.target.value); setFirst(0); }}
-                onRefresh={() => { setGlobalFilter(""); fetchGuardDetails(selFacility?.Id || sessionManager.getUserSession().FacilityID, true); }}
+                onRefresh={async () => {
+                  setGlobalFilter("");
+                  setFirst(0);
+                  await refetchGuards();
+                  toastService.success("Data refreshed successfully.");
+                }}
                 onExport={exportToExcel}
                 filterButtonRef={filterButtonRef}
                 overlayRef={op}

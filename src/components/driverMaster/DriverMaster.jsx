@@ -1,23 +1,30 @@
-import React, { useState, useEffect, useRef } from "react";
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
 import { Tooltip } from "primereact/tooltip";
 import { Calendar } from "primereact/calendar";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
-import { CustomDataTable } from "./common/CustomDataTable";
-import TableToolbar from "./common/TableToolbar";
-import CustomPaginator from "./common/CustomPaginator";
+import { CustomDataTable } from "../common/CustomDataTable";
+import TableToolbar from "../common/TableToolbar";
+import CustomPaginator from "../common/CustomPaginator";
 import { Column } from "primereact/column";
-import MasterSidebar from "./Master/MasterSidebar";
+import MasterSidebar from "../Master/MasterSidebar";
 import { Checkbox } from "primereact/checkbox";
 
-import sessionManager from "../utils/SessionManager";
-import driverMasterService from "../services/compliance/DriverMasterService";
-import ReportButton from "./common/ReportButton";
-import Loader from "./common/Loader";
-import { toastService } from "../services/toastService";
+import sessionManager from "../../utils/SessionManager";
+import parseMaybeJson from "../../services/parseMaybeJson";
+import ReportButton from "../common/ReportButton";
+import Loader from "../common/Loader";
+import { toastService } from "../../services/toastService";
+import {
+  useFacilitiesQuery,
+  useVendorsQuery,
+  useDocumentTypesQuery,
+  useDriversQuery,
+  useSaveDriverMutation,
+} from "./hooks/useDriverMasterQueries";
 
 const DRIVER_STATUS_KEY = "driver_status_data";
 const STATUS_OPTIONS = [
@@ -50,18 +57,10 @@ const DRIVER_PIC_STORAGE_KEY = "driver_picture_";
 
 const DriverMaster = () => {
   const [visibleLeft, setVisibleLeft] = useState(false);
-  const [driverDetails, setDriverDetails] = useState([]);
   const [addDriverMaster, setAddDriverMaster] = useState(false);
   const [loading, setLoading] = useState(false);
-  const locationId = sessionManager.getUserSession().locationId;
   const userId = sessionManager.getUserSession().ID;
 
-  // Lookup states
-  const [facilities, setFacilities] = useState([]);
-  const [venders, setVenders] = useState([]);
-  const [documentDetails, setDocumentDetails] = useState(
-    DEFAULT_DRIVER_DOCUMENT_OPTIONS
-  );
   const [driverDocs, setDriverDocs] = useState({});
   const [uploadingDocIds, setUploadingDocIds] = useState({});
   const [uploadProgressByDoc, setUploadProgressByDoc] = useState({});
@@ -76,6 +75,23 @@ const DriverMaster = () => {
   const [selVendor, setSelVendor] = useState(null);
   const [search, setSearch] = useState("");
 
+  // Search params frozen at Submit click — the drivers query follows these
+  const [committedParams, setCommittedParams] = useState(null);
+
+  const { data: facilities = [] } = useFacilitiesQuery(userId);
+  const { data: venders = [] } = useVendorsQuery(selFacility?.Id);
+  const { data: fetchedDocumentTypes } = useDocumentTypesQuery();
+  const documentDetails = fetchedDocumentTypes?.length
+    ? fetchedDocumentTypes
+    : DEFAULT_DRIVER_DOCUMENT_OPTIONS;
+  const {
+    data: driverDetails = [],
+    isFetching: driversFetching,
+    refetch: refetchDrivers,
+  } = useDriversQuery(committedParams);
+  const saveDriverMutation = useSaveDriverMutation();
+  const showTable = !!committedParams;
+
   // Sort Table
   const [sortField, setSortField] = useState("");
   const [sortOrder, setSortOrder] = useState(null);
@@ -83,9 +99,7 @@ const DriverMaster = () => {
   // Form state
   const [formData, setFormData] = useState(getInitialFormData());
   const [editingDriverId, setEditingDriverId] = useState(null);
-  const [showTable, setShowTable] = useState(false);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [filteredDriverData, setFilteredDriverData] = useState([]);
   const op = useRef(null);
   const filterButtonRef = useRef(null);
   const driverPicInputRef = useRef(null);
@@ -142,27 +156,11 @@ const DriverMaster = () => {
     setSortOrder(e.sortOrder);
   };
 
-  useEffect(() => {
-    fetchFacilities();
-    fetchDocumentDetails();
-  }, []);
-
-  useEffect(() => {
-    if (selFacility) {
-      fetchVenders(selFacility?.Id);
-    }
-  }, [selFacility]);
-
-  useEffect(() => {
-    if (!globalFilter) {
-      setFilteredDriverData(driverDetails);
-      return;
-    }
+  const filteredDriverData = useMemo(() => {
+    if (!globalFilter) return driverDetails;
     const lower = globalFilter.toLowerCase();
-    setFilteredDriverData(
-      driverDetails.filter((d) =>
-        Object.values(d).some((v) => v && String(v).toLowerCase().includes(lower))
-      )
+    return driverDetails.filter((d) =>
+      Object.values(d).some((v) => v && String(v).toLowerCase().includes(lower))
     );
   }, [driverDetails, globalFilter]);
 
@@ -217,54 +215,6 @@ const DriverMaster = () => {
       if (url) localStorage.setItem(DRIVER_PIC_STORAGE_KEY + driverId, url);
       else localStorage.removeItem(DRIVER_PIC_STORAGE_KEY + driverId);
     } catch (err) { console.error("Failed to save driver picture:", err); }
-  };
-
-  const fetchFacilities = () => {
-    driverMasterService
-      .getFacilitiesByUserId(userId)
-      .then((res) => {
-        const data = JSON.parse(res.data) || [];
-        console.log("Facilities", data);
-        setFacilities(data);
-      })
-      .catch((err) => {
-        console.log("Error", err);
-      });
-  };
-
-  const fetchVenders = (id) => {
-    driverMasterService
-      .getVenders({ facilityid: id })
-      .then((res) => {
-        const data = JSON.parse(res.data) || [];
-        setVenders(data);
-      })
-      .catch((err) => {
-        console.log("Error", err);
-      });
-  };
-
-  const fetchDocumentDetails = async () => {
-    try {
-      const response = await driverMasterService.getDocumentDetails({
-        type: "D",
-      });
-      const data =
-        typeof response.data === "string"
-          ? JSON.parse(response.data)
-          : response.data || [];
-
-      if (Array.isArray(data) && data.length > 0) {
-        setDocumentDetails(
-          data.map((item) => ({
-            name: item.DocumentType,
-            value: item.Id,
-          }))
-        );
-      }
-    } catch (error) {
-      console.log("Error", error);
-    }
   };
 
   const loadDriverDocs = (driverId) => {
@@ -436,8 +386,8 @@ const DriverMaster = () => {
     }
   };
 
-  // Fetch driver details from API
-  const fetchDriverDetails = async (showSuccessToast = false) => {
+  // Commit the current dropdown selections; the drivers query does the rest
+  const handleSubmit = () => {
     // Validate dropdowns before calling API
     if (!selFacility) {
       toastService.error("Please select Facility");
@@ -447,28 +397,12 @@ const DriverMaster = () => {
       toastService.error("Please select Vendor");
       return;
     }
-    const params = {
-      facilityid: selFacility?.Id || 0,
-      vendorid: selVendor?.Id || 0,
-      Search: search || "",
-    };
-
-    try {
-      setLoading(true);
-      const response = await driverMasterService.getDriverMasterDetails(
-        params
-      );
-      const respData = JSON.parse(response.data);
-      setDriverDetails(respData);
-      setShowTable(true);
-      setFirst(0);
-      if (showSuccessToast) toastService.success("Data refreshed successfully.");
-    } catch (error) {
-      console.log("Error", error);
-      toastService.error("Failed to load driver details.");
-    } finally {
-      setLoading(false);
-    }
+    setCommittedParams({
+      facilityId: selFacility.Id,
+      vendorId: selVendor.Id,
+      search: search || "",
+    });
+    setFirst(0);
   };
 
   // Open sidebar with driver data
@@ -598,12 +532,10 @@ const DriverMaster = () => {
           : "",
       };
 
-      const response = await driverMasterService.addUpdateDriverMaster(
-        submitData
-      );
+      const response = await saveDriverMutation.mutateAsync(submitData);
 
       // Handle array response from API
-      let result = JSON.parse(response.data);
+      let result = parseMaybeJson(response?.data);
       if (Array.isArray(result)) {
         result = result[0];
       }
@@ -626,7 +558,7 @@ const DriverMaster = () => {
         setVisibleLeft(false);
         setAddDriverMaster(false);
         resetDriverDocumentState();
-        fetchDriverDetails();
+        setFirst(0);
       } else {
         toastService.error(result.MSG || "Failed to save driver.");
       }
@@ -805,7 +737,7 @@ const DriverMaster = () => {
 
   return (
     <>
-      <Loader isVisible={loading} fullScreen={true} />
+      <Loader isVisible={loading || driversFetching} fullScreen={true} />
       <Header
         pageTitle="Driver Master"
         showNewButton={true}
@@ -853,7 +785,7 @@ const DriverMaster = () => {
                   <ReportButton
                     label="Submit"
                     disabled={!selFacility && !selVendor}
-                    onClick={fetchDriverDetails}
+                    onClick={handleSubmit}
                   />
                 </div>
                 <div className="col-12 col-md-12 col-lg-3 ms-auto mb-3">
@@ -900,7 +832,12 @@ const DriverMaster = () => {
                   <TableToolbar
                     search={globalFilter}
                     onSearch={(e) => setGlobalFilter(e.target.value)}
-                    onRefresh={() => { setGlobalFilter(""); fetchDriverDetails(true); }}
+                    onRefresh={async () => {
+                      setGlobalFilter("");
+                      setFirst(0);
+                      await refetchDrivers();
+                      toastService.success("Data refreshed successfully.");
+                    }}
                     onExport={exportExcel}
                     showFilter={false}
                     overlayRef={op}

@@ -1,20 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
-import sessionManager from "../utils/SessionManager.js";
-import { apiService } from "../services/api";
-import { CustomDataTable } from './common/CustomDataTable';
-import ResponsiveDataTable from './common/ResponsiveDataTable';
-import TableToolbar from './common/TableToolbar';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
+import sessionManager from "../../utils/SessionManager.js";
+import { CustomDataTable } from '../common/CustomDataTable';
+import ResponsiveDataTable from '../common/ResponsiveDataTable';
+import TableToolbar from '../common/TableToolbar';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
-import MasterSidebar from "./Master/MasterSidebar";
-import { toastService } from "../services/toastService";
+import MasterSidebar from "../Master/MasterSidebar";
+import { toastService } from "../../services/toastService";
 import { InputNumber } from 'primereact/inputnumber';
-import CustomPaginator from "./common/CustomPaginator";
-import Loader from "./common/Loader";
+import CustomPaginator from "../common/CustomPaginator";
+import Loader from "../common/Loader";
+import { useQueryClient } from "@tanstack/react-query";
+import parseMaybeJson from "../../services/parseMaybeJson";
+import {
+    vehicleTypeMasterKeys,
+    useFacilitiesQuery,
+    useVendorsQuery,
+    useVehicleTypesQuery,
+    fetchVendorScheme,
+    useInsertVehicleTypeMutation,
+    useUpdateVehicleTypeMutation,
+} from "./hooks/useVehicleTypeMasterQueries";
 
 const VEHICLE_TYPE_FUEL_KEY = "vehicle_type_fuel_data";
 
@@ -26,17 +36,14 @@ const fuelTypeOptions = [
 ];
 
 const VehicleTypeMaster = () => {
+    const queryClient = useQueryClient();
+    const session = sessionManager.getUserSession();
+
     const [selectedVendor, setSelectedVendor] = useState(0);
-    const [VendorList, setVendorList] = useState([]);
     const [visibleLeft, setVisibleLeft] = useState(false);
-    const [selectedActive, setSelectedActive] = useState(null);
-    const [VehicleTypeList, setVehicleTypeList] = useState([]);
     const [selectedVehicletype, setSelectedVehicletype] = useState(null);
     const [showOffcanvas, setShowOffcanvas] = useState(false);
     const [selectedFacility, setSelectedfacility] = useState(null);
-    // const [selectedFacilityAdd, setSelectedfacilityAdd] = useState(null);
-    const [facilityList, setfacilityList] = useState([]);
-    const [EditVendorScheme, setEditVendorScheme] = useState(null);
     const [vehicleType, setVehicleType] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [addFuelType, setAddFuelType] = useState(null);
@@ -45,9 +52,25 @@ const VehicleTypeMaster = () => {
     const [first, setFirst] = useState(0);
     const [rows, setRows] = useState(50);
     const [globalFilter, setGlobalFilter] = useState("");
-    const [filteredVehicleTypeData, setFilteredVehicleTypeData] = useState([]);
     const op = useRef(null);
     const filterButtonRef = useRef(null);
+
+    const { data: facilityList = [] } = useFacilitiesQuery(session.ID);
+    const { data: VendorList = [] } = useVendorsQuery(selectedFacility);
+    const { data: VehicleTypeList = [], isLoading: vehicleTypesLoading } =
+        useVehicleTypesQuery(selectedFacility, selectedVendor);
+    const insertVehicleTypeMutation = useInsertVehicleTypeMutation();
+    const updateVehicleTypeMutation = useUpdateVehicleTypeMutation();
+
+    // Default the facility to the user's own (or the first available), once
+    useEffect(() => {
+        if (selectedFacility || !facilityList.length) return;
+        const userFacilityId = session.FacilityID;
+        const resolved = facilityList.some((f) => f.Id === userFacilityId)
+            ? userFacilityId
+            : facilityList[0].Id;
+        setSelectedfacility(resolved);
+    }, [facilityList, selectedFacility, session.FacilityID]);
 
     const onPageChange = (event) => {
         setFirst(event.first);
@@ -80,20 +103,11 @@ const VehicleTypeMaster = () => {
         } catch (err) { console.error("Failed to save fuel type:", err); }
     };
 
-    useEffect(() => {
-        BindFacilityDDL();
-    }, []);
-
-    useEffect(() => {
-        if (!globalFilter) {
-            setFilteredVehicleTypeData(VehicleTypeList);
-            return;
-        }
+    const filteredVehicleTypeData = useMemo(() => {
+        if (!globalFilter) return VehicleTypeList;
         const lower = globalFilter.toLowerCase();
-        setFilteredVehicleTypeData(
-            VehicleTypeList.filter((v) =>
-                Object.values(v).some((val) => val && String(val).toLowerCase().includes(lower))
-            )
+        return VehicleTypeList.filter((v) =>
+            Object.values(v).some((val) => val && String(val).toLowerCase().includes(lower))
         );
     }, [VehicleTypeList, globalFilter]);
 
@@ -120,78 +134,15 @@ const VehicleTypeMaster = () => {
     //Bind Edit Vendor Scheme on Vendor Change
     const BindEditVendorScheme = async (vendorId) => {
         try {
-            const response = await apiService.GetSelectedVendor({
-                vendorid: vendorId,
-            });
+            const vendorType = await fetchVendorScheme(queryClient, vendorId);
             setSelectedVehicletype(prev => ({
                 ...prev,
-                vendorType: response[0].vendorType
+                vendorType,
             }));
         } catch (error) {
             console.error("Error fetching Scheme:", error);
         }
     };
-    //Bind facility dropdown List from API
-    const BindFacilityDDL = async () => {
-        try {
-            const response = await apiService.SelectFacility({
-                Userid: sessionManager.getUserSession().ID,
-            });
-            setfacilityList(response);
-
-            const userFacilityId = sessionManager.getUserSession().FacilityID;
-            let resolvedFacilityId = null;
-
-            if (response && response.some(f => f.Id === userFacilityId)) {
-                resolvedFacilityId = userFacilityId;
-            } else if (response && response.length > 0) {
-                resolvedFacilityId = response[0].Id;
-            }
-
-            if (resolvedFacilityId) {
-                setSelectedfacility(resolvedFacilityId);
-                await BindVendorDropdownlist(resolvedFacilityId);
-                await BindVehicleTypeList(0, resolvedFacilityId);
-            }
-        } catch (error) {
-            console.error("Error fetching locationlist:", error);
-        }
-    };
-
-    const BindVendorDropdownlist = async (facilityid) => {
-        try {
-            const response = await apiService.GetVendorByFacility({
-                facilityid: facilityid,
-            })
-            //console.log("VendorData",selectedFacility);
-            setVendorList(response);
-        }
-        catch (error) {
-            console.error("Error fetching locationlist:", error);
-        }
-    };
-
-    const handleVendorChange = async (e) => {
-        setSelectedVendor(e.value);
-        setIsSubmitting(true);
-        await BindVehicleTypeList(e.value, selectedFacility);
-        setIsSubmitting(false);
-    };
-
-    const BindVehicleTypeList = async (vendorid, facilityid) => {
-        try {
-            const response = await apiService.SelectVehicleTypeFacility({
-                vendorid: vendorid,
-                facilityid: facilityid,
-            })
-            //console.log("VehicleTypeData",response);
-            setVehicleTypeList(response);
-            setFirst(0); // Reset pagination on data fetch
-        }
-        catch (error) {
-            console.error("Error fetching locationlist:", error);
-        }
-    }
 
     // Bind GridView
     const handleVehicleType = (rowData) => {
@@ -234,7 +185,9 @@ const VehicleTypeMaster = () => {
             };
 
             // Call API to insert vehicle type - using the correct method name
-            const response = await apiService.InsertVehicleType(vehicleTypeData);
+            const response = parseMaybeJson(
+                await insertVehicleTypeMutation.mutateAsync(vehicleTypeData)
+            );
 
             // Handle API response
             if (!response || !response[0]) {
@@ -245,7 +198,7 @@ const VehicleTypeMaster = () => {
                 case 1:
                     toastService.success('Vehicle type saved successfully.');
                     saveFuelType(selectedVehicletype, addFuelType);
-                    await BindVehicleTypeList(selectedVendor, selectedFacility);
+                    setFirst(0);
                     setVehicleType(false);
                     setSelectedVehicletype(null);
                     setAddFuelType(null);
@@ -287,7 +240,7 @@ const VehicleTypeMaster = () => {
                 return;
             }
 
-            const response = await apiService.UpdateVehicleType({
+            const response = parseMaybeJson(await updateVehicleTypeMutation.mutateAsync({
                 Id: selectedVehicletype.Id,
                 vehicle: selectedVehicletype.vehicle,
                 occupancy: selectedVehicletype.occupancy,
@@ -297,14 +250,14 @@ const VehicleTypeMaster = () => {
                 cost_ac: selectedVehicletype.cost_ac || '',
                 cost_nonac: selectedVehicletype.cost_nonac || '',
                 updatedAt: new Date(),
-            });
+            }));
 
             //  console.log("UpdateVehicleType",response);
 
             if (response[0].result == 1) {
                 toastService.success('Vehicle type updated successfully.');
                 saveFuelType(selectedVehicletype, editFuelType);
-                BindVehicleTypeList(selectedVendor, selectedFacility);
+                setFirst(0);
                 setVisibleLeft(false);
                 setEditFuelType(null);
             }
@@ -322,7 +275,7 @@ const VehicleTypeMaster = () => {
 
     return (
         <>
-            <Loader isVisible={isSubmitting} fullScreen={true} />
+            <Loader isVisible={isSubmitting || vehicleTypesLoading} fullScreen={true} />
             <Header pageTitle="Vehicle Type Master" showNewButton={true} onNewButtonClick={setVehicleType} />
             <Sidebar />
             <div className="middle">
@@ -343,12 +296,10 @@ const VehicleTypeMaster = () => {
                                     </label>
                                     <Dropdown
                                         value={selectedFacility}
-                                        onChange={async (e) => {
+                                        onChange={(e) => {
                                             setSelectedfacility(e.value);
-                                            setIsSubmitting(true);
-                                            await BindVendorDropdownlist(e.value);
-                                            await BindVehicleTypeList(0, e.value);
-                                            setIsSubmitting(false);
+                                            setSelectedVendor(0);
+                                            setFirst(0);
                                         }}
                                         options={facilityList}
                                         optionLabel="facilityName"
@@ -377,7 +328,7 @@ const VehicleTypeMaster = () => {
                                         id="ddlvendor"
                                         onChange={(e) => {
                                             setSelectedVendor(e.value);
-                                            handleVendorChange(e);
+                                            setFirst(0);
                                         }}
                                     />
                                 </div>
@@ -394,7 +345,11 @@ const VehicleTypeMaster = () => {
                             <TableToolbar
                                 search={globalFilter}
                                 onSearch={(e) => setGlobalFilter(e.target.value)}
-                                onRefresh={() => setGlobalFilter("")}
+                                onRefresh={async () => {
+                                    setGlobalFilter("");
+                                    await queryClient.invalidateQueries({ queryKey: vehicleTypeMasterKeys.all });
+                                    toastService.success("Data refreshed successfully.");
+                                }}
                                 onExport={exportExcel}
                                 showFilter={false}
                                 overlayRef={op}
@@ -473,7 +428,10 @@ const VehicleTypeMaster = () => {
                                 options={VendorList}
                                 optionLabel="vendorName"
                                 optionValue="Id"
-                                onChange={(e) => setSelectedVehicletype({ ...selectedVehicletype, vendorId: e.value }, BindEditVendorScheme(e.value))}
+                                onChange={(e) => {
+                                    setSelectedVehicletype({ ...selectedVehicletype, vendorId: e.value });
+                                    BindEditVendorScheme(e.value);
+                                }}
                                 appendTo="self"
                             />
                         </div>
