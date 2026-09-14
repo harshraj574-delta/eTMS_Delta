@@ -1,30 +1,33 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
-import Loader from "./common/Loader";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
+import Loader from "../common/Loader";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
-import MasterSidebar from "./Master/MasterSidebar";
+import MasterSidebar from "../Master/MasterSidebar";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
-import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
-import sessionManager from "../utils/SessionManager";
-import CostMasterService from "../services/compliance/CostMasterService";
-import { toastService } from "../services/toastService";
-import { set } from "lodash";
-import { CustomDataTable } from "./common/CustomDataTable";
-import CustomPaginator from "./common/CustomPaginator";
-import TableToolbar from "./common/TableToolbar";
-import noReportImage from "../assets/no_report.png";
+import sessionManager from "../../utils/SessionManager";
+import { toastService } from "../../services/toastService";
+import { CustomDataTable } from "../common/CustomDataTable";
+import CustomPaginator from "../common/CustomPaginator";
+import TableToolbar from "../common/TableToolbar";
+import noReportImage from "../../assets/no_report.png";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useFacilitiesQuery,
+  useVendorsQuery,
+  useZonesQuery,
+  fetchCost,
+  useAddCostMutation,
+  useUpdateCostMutation,
+} from "./hooks/useCostMasterQueries";
 
 const CostMaster = () => {
-  // Separate states for different dropdowns
-  const [facilities, setFacilities] = useState([]);
-  const [vendors, setVendors] = useState([
-    { label: "-All Vendors-", value: 0 },
-  ]);
+  const queryClient = useQueryClient();
+
   const [acCost, setAcCost] = useState("");
   const [acCostError, setAcCostError] = useState("");
   const [nonAcCost, setNonAcCost] = useState("");
@@ -146,10 +149,7 @@ const CostMaster = () => {
     { label: "Front", value: "N" },
     { label: "Back-to-Back", value: "B" },
   ]);
-  const [zones, setZones] = useState([{ label: "-All Zones-", value: 0 }]); // Initialize costData as an empty array instead of undefined
   const [costData, setCostData] = useState([]);
-  const [vendorsNew, setVendorsNew] = useState([]);
-  const [zonesNew, setZonesNew] = useState([]);
 
   // Selected values
   const [selectedFacility, setSelectedFacility] = useState(1);
@@ -163,126 +163,38 @@ const CostMaster = () => {
   const [selectedRouteType, setSelectedRouteType] = useState(null);
   const [selectedRouteTypeNew, setSelectedRouteTypeNew] = useState(null);
   // State for loading and error handling for datatable and add new cos
-  const [loading, setLoading] = useState(true); // Start with loading true
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [AddNewCost, setAddNewCost] = useState(false);
   const [EditNewCost, setEditNewCost] = useState(false);
   const UserID = sessionStorage.getItem("ID");
 
   const dt = useRef(null);
+
+  const { data: facilities = [], isLoading: facilitiesLoading } = useFacilitiesQuery(UserID);
+  // Search bar options (with -All- entries) and Add New Cost sidebar options
+  // share the same queries, keyed on their own facility selections
+  const { data: vendorOptions = [] } = useVendorsQuery(selectedFacility);
+  const { data: zoneOptions = [] } = useZonesQuery(selectedFacility);
+  const { data: vendorsNew = [] } = useVendorsQuery(selectedFacilityNew);
+  const { data: zonesNew = [] } = useZonesQuery(selectedFacilityNew);
+  const addCostMutation = useAddCostMutation();
+  const updateCostMutation = useUpdateCostMutation();
+
+  const vendors = useMemo(
+    () => [{ label: "-All Vendors-", value: 0 }, ...vendorOptions],
+    [vendorOptions]
+  );
+  const zones = useMemo(
+    () => [{ label: "-All Zones-", value: 0 }, ...zoneOptions],
+    [zoneOptions]
+  );
+
+  // Facility change resets the vendor selection (also runs on mount, as before)
   useEffect(() => {
-    fetchFacilities();
-    fetchZones();
-    if (selectedFacility) {
-      fetchVendors();
-    }
     setSelectedVendor(null);
   }, [selectedFacility]);
-  useEffect(() => {
-    fetchZonesForNewCost(selectedFacilityNew);
-    if (selectedFacilityNew) {
-      fetchVendorsForNewCost(selectedFacilityNew); // For Add New Cost sidebar
-    }
-  }, [selectedFacilityNew]);
-  // Separate fetch function for Add New Cost sidebar
-  const fetchVendorsForNewCost = async (facilityId) => {
-    try {
-      const response = await CostMasterService.GetVendorByFac({
-        facilityid: facilityId,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.vendor || item.vendorName,
-            value: item.Id,
-          }))
-        : [];
-      setVendorsNew(formattedData); // New state for Add New Cost vendors
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
-    }
-  };
-  const fetchZonesForNewCost = async (facilityId) => {
-    try {
-      const response = await CostMasterService.SelectZoneByFac({
-        facilityid: facilityId,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.zone || item.zoneName, // Using facility or facilityName from your API response
-            value: item.id, // Using Id from your API response
-          }))
-        : [];
-      setZonesNew(formattedData); // New state for Add New Cost zones
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching zones:", error);
-    }
-  };
-  //Fetch Facilities
-  const fetchFacilities = async () => {
-    try {
-      const response = await CostMasterService.SelectFacility({
-        Userid: UserID,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.facility || item.facilityName, // Using facility or facilityName from your API response
-            value: item.Id, // Using Id from your API response
-          }))
-        : [];
-      setFacilities(formattedData);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching facilities:", error);
-    }
-  };
-  //Fetch Vendors
-  const fetchVendors = async () => {
-    try {
-      const response = await CostMasterService.GetVendorByFac({
-        facilityid: selectedFacility,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.vendor || item.vendorName, // Using facility or facilityName from your API response
-            value: item.Id, // Using Id from your API response
-          }))
-        : [];
-      setVendors([{ label: "-All Vendors-", value: 0 }, ...formattedData]); // <-- Array, not object
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
-    }
-  };
-  //Fetch Zones
-  const fetchZones = async () => {
-    try {
-      const response = await CostMasterService.SelectZoneByFac({
-        facilityid: selectedFacility,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.zone || item.zoneName, // Using facility or facilityName from your API response
-            value: item.id, // Using Id from your API response
-          }))
-        : [];
-      setZones([{ label: "-All Zones-", value: 0 }, ...formattedData]); // <-- Array, not object
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching zones:", error);
-    }
-  };
+
   // Function to handle adding new cost
   const AddNewCostHandler = () => {
     setIsSubmitting(true);
@@ -318,7 +230,8 @@ const CostMaster = () => {
       vendorid: selectedVendorNew,
       fueltype: "0",
     };
-    CostMasterService.AddNewCost(params)
+    addCostMutation
+      .mutateAsync(params)
       .then((response) => {
         //console.log("AddNewCost response:", response);
         if (response) {
@@ -368,18 +281,7 @@ const CostMaster = () => {
       fueltype: "0",
     };
     try {
-      const response = await CostMasterService.GetCost(params);
-      //console.log("GetCost", response);
-      let parsedData = [];
-      if (typeof response === "string") {
-        parsedData = JSON.parse(response);
-      } else {
-        parsedData = response;
-      }
-      // Ensure the data is an array and validate/transform if needed
-      const validatedData = Array.isArray(parsedData)
-        ? parsedData
-        : [parsedData];
+      const validatedData = await fetchCost(queryClient, params);
       setCostData(validatedData);
       setFirst(0); // Reset pagination on new data fetch
       setLoading(false);
@@ -411,7 +313,7 @@ const CostMaster = () => {
         guardcost: editGuardRate,
         fuelrate: editFuelRate,
       };
-      let res = await CostMasterService.sprUpdateCost(params);
+      let res = await updateCostMutation.mutateAsync(params);
       //console.log("sprUpdateCost response:", res);
       // If response is string, parse it
       if (typeof res === "string") {
@@ -472,7 +374,7 @@ const CostMaster = () => {
 
   return (
     <>
-      <Loader isVisible={isSubmitting || loading} fullScreen={true} />
+      <Loader isVisible={isSubmitting || loading || facilitiesLoading} fullScreen={true} />
       <Header
         pageTitle="Cost Master"
         showNewButton={true}

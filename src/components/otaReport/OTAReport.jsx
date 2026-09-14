@@ -1,27 +1,26 @@
-import React, { useState, useEffect, useRef } from "react";
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
-import Loader from "./common/Loader";
+import React, { useState, useMemo, useRef } from "react";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
+import Loader from "../common/Loader";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { CustomDataTable } from "./common/CustomDataTable";
-import CustomPaginator from "./common/CustomPaginator";
+import { CustomDataTable } from "../common/CustomDataTable";
+import CustomPaginator from "../common/CustomPaginator";
 import { Column } from "primereact/column";
 import { InputText } from "primereact/inputtext";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
-import OTAReportService from "../services/compliance/OTAReportService";
-import { toastService } from "../services/toastService";
-import noReportImage from "../assets/no_report.png";
-import calendarIcon from "../assets/calendar.png";
-import TableToolbar from "./common/TableToolbar";
+import { toastService } from "../../services/toastService";
+import noReportImage from "../../assets/no_report.png";
+import calendarIcon from "../../assets/calendar.png";
+import TableToolbar from "../common/TableToolbar";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFacilitiesQuery, useVendorsQuery, fetchReport } from "./hooks/useOTAReportQueries";
 
 const OTAReport = () => {
-  const [facilities, setFacilities] = useState([]);
-  const [vendors, setVendors] = useState([
-    { label: "-All Vendors-", value: 0 },
-  ]);
+  const queryClient = useQueryClient();
+  const UserID = sessionStorage.getItem("ID");
   const [selectedFacility, setSelectedFacility] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState(0);
   const [selectedReportType, setSelectedReportType] = useState(null);
@@ -45,7 +44,6 @@ const OTAReport = () => {
     OTA_Category: null,
   });
 
-  const UserID = sessionStorage.getItem("ID");
   const dt = useRef(null);
   const op = useRef(null);
   const filterButtonRef = useRef(null);
@@ -64,57 +62,12 @@ const OTAReport = () => {
     { label: "Vendor Wise", value: "vendorwise" },
   ];
 
-  useEffect(() => {
-    fetchFacilities();
-  }, []);
-
-  useEffect(() => {
-    if (selectedFacility) {
-      fetchVendors();
-    }
-  }, [selectedFacility]);
-
-  // Debouncing is now handled by TableToolbar onSearch so we don't need setTimeout here.
-
-  const fetchFacilities = async () => {
-    try {
-      const response = await OTAReportService.SelectFacility({
-        Userid: UserID,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.facility || item.facilityName,
-            value: item.Id,
-          }))
-        : [];
-      setFacilities(formattedData);
-    } catch (err) {
-      console.error("Error fetching facilities:", err);
-      toastService.error("Error fetching facilities");
-    }
-  };
-
-  const fetchVendors = async () => {
-    try {
-      const response = await OTAReportService.GetVendorByFacility({
-        facilityId: selectedFacility,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-            label: item.vendor || item.vendorName,
-            value: item.Id,
-          }))
-        : [];
-      setVendors([{ label: "-All Vendors-", value: 0 }, ...formattedData]);
-    } catch (err) {
-      console.error("Error fetching vendors:", err);
-      toastService.error("Error fetching vendors");
-    }
-  };
+  const { data: facilities = [] } = useFacilitiesQuery(UserID);
+  const { data: vendorOptions = [] } = useVendorsQuery(selectedFacility);
+  const vendors = useMemo(
+    () => [{ label: "-All Vendors-", value: 0 }, ...vendorOptions],
+    [vendorOptions]
+  );
 
   const formatDate = (date) => {
     if (!date) return "";
@@ -302,40 +255,12 @@ const OTAReport = () => {
         facilityId: selectedFacility,
       };
 
-      let response;
+      const reportParams =
+        selectedReportType === "detailed"
+          ? { ...params, vendorId: selectedVendor }
+          : params;
 
-      switch (selectedReportType) {
-        case "detailed":
-          response = await OTAReportService.RepOTAdetail({
-            ...params,
-            vendorId: selectedVendor,
-          });
-          break;
-        case "shiftwise":
-          response = await OTAReportService.RptArrivalShiftWise(params);
-          break;
-        case "vendorwise":
-          response = await OTAReportService.RptArrivalVendorWise(params);
-          break;
-        default:
-          throw new Error("Invalid report type");
-      }
-
-      let parsedData = [];
-      if (typeof response === "string") {
-        parsedData = JSON.parse(response);
-      } else if (response && response.data) {
-        parsedData =
-          typeof response.data === "string"
-            ? JSON.parse(response.data)
-            : response.data;
-      } else {
-        parsedData = response;
-      }
-
-      const validatedData = Array.isArray(parsedData)
-        ? parsedData
-        : [parsedData];
+      const validatedData = await fetchReport(queryClient, selectedReportType, reportParams);
 
       if (selectedReportType === "shiftwise") {
         setRawShiftData(validatedData);
@@ -350,27 +275,10 @@ const OTAReport = () => {
       }
 
       if (selectedReportType === "shiftwise") {
-        const detailResponse = await OTAReportService.RepOTAdetail({
+        const detailValidatedData = await fetchReport(queryClient, "detailed", {
           ...params,
           vendorId: 0,
         });
-
-        let detailParsedData = [];
-        if (typeof detailResponse === "string") {
-          detailParsedData = JSON.parse(detailResponse);
-        } else if (detailResponse && detailResponse.data) {
-          detailParsedData =
-            typeof detailResponse.data === "string"
-              ? JSON.parse(detailResponse.data)
-              : detailResponse.data;
-        } else {
-          detailParsedData = detailResponse;
-        }
-
-        const detailValidatedData = Array.isArray(detailParsedData)
-          ? detailParsedData
-          : [detailParsedData];
-
         setDetailedData(detailValidatedData);
       }
 

@@ -1,34 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
-import Loader from "./common/Loader";
-import ProcessMasterService from '../services/compliance/ProcessMasterService';
+import React, { useState, useMemo, useRef } from 'react';
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
+import Loader from "../common/Loader";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import sessionManager from '../utils/SessionManager';
-import TableToolbar from "./common/TableToolbar";
+import sessionManager from '../../utils/SessionManager';
+import TableToolbar from "../common/TableToolbar";
 import { MultiSelect } from "primereact/multiselect";
 import { OverlayPanel } from "primereact/overlaypanel";
-import { CustomDataTable } from "./common/CustomDataTable";
-import ResponsiveDataTable from "./common/ResponsiveDataTable";
-import CustomPaginator from "./common/CustomPaginator";
+import { CustomDataTable } from "../common/CustomDataTable";
+import ResponsiveDataTable from "../common/ResponsiveDataTable";
+import CustomPaginator from "../common/CustomPaginator";
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
-import MasterSidebar from "./Master/MasterSidebar";
+import MasterSidebar from "../Master/MasterSidebar";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  processMasterKeys,
+  useProcessesQuery,
+  useSubProcessesQuery,
+  useAddProcessMutation,
+  useUpdateProcessMutation,
+  useAddSubProcessMutation,
+  useUpdateSubProcessMutation,
+} from "./hooks/useProcessMasterQueries";
 
 const ProcessMaster = () => {
-  const [processes, setProcesses] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
-  const [subProcesses, setSubProcesses] = useState([]);
+  const queryClient = useQueryClient();
   const [selectedProcess, setSelectedProcess] = useState(null);
   const [newProcessName, setNewProcessName] = useState('');
   const [newSubProcessName, setNewSubProcessName] = useState('');
   const [editingProcess, setEditingProcess] = useState(null);
   const [editingSubProcess, setEditingSubProcess] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   // Pagination State for Main Table
   const [first, setFirst] = useState(0);
@@ -64,12 +70,23 @@ const ProcessMaster = () => {
 
   const facilityId = sessionManager.getUserSession().FacilityID;
 
-  useEffect(() => {
-    fetchProcesses();
-  }, []);
+  const { data: processes = [], isFetching: processesFetching } = useProcessesQuery(facilityId);
+  const { data: subProcesses = [], isFetching: subProcessesFetching } =
+    useSubProcessesQuery(selectedProcess?.id);
+  const addProcessMutation = useAddProcessMutation();
+  const updateProcessMutation = useUpdateProcessMutation();
+  const addSubProcessMutation = useAddSubProcessMutation();
+  const updateSubProcessMutation = useUpdateSubProcessMutation();
 
-  // Filter effect
-  useEffect(() => {
+  const loading =
+    processesFetching ||
+    subProcessesFetching ||
+    addProcessMutation.isPending ||
+    updateProcessMutation.isPending ||
+    addSubProcessMutation.isPending ||
+    updateSubProcessMutation.isPending;
+
+  const filteredData = useMemo(() => {
     let result = [...processes];
 
     // Apply advanced filters
@@ -80,13 +97,13 @@ const ProcessMaster = () => {
     // Apply global search
     if (globalFilter && globalFilter.trim() !== "") {
       const lowerFilter = globalFilter.toLowerCase();
-      result = result.filter(item => 
-        Object.values(item).some(val => 
+      result = result.filter(item =>
+        Object.values(item).some(val =>
           String(val).toLowerCase().includes(lowerFilter)
         )
       );
     }
-    setFilteredData(result);
+    return result;
   }, [processes, globalFilter, filters]);
 
   const clearAdvancedFilters = () => {
@@ -100,20 +117,9 @@ const ProcessMaster = () => {
     return [...new Set(values)].map((val) => ({ label: val, value: val }));
   };
 
-  const fetchProcesses = async () => {
-    try {
-      setLoading(true);
-      const data = await ProcessMasterService.GetProcessNew(facilityId);
-      const procesData = Array.isArray(data) ? data : [];
-      setProcesses(procesData);
-      setFilteredData(procesData);
-      setFirst(0); // Reset pagination on fetch
-    } catch (error) {
-      toast.error('Error fetching processes');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+  const refreshProcesses = async () => {
+    setFirst(0);
+    await queryClient.invalidateQueries({ queryKey: processMasterKeys.all });
   };
 
   const exportExcel = () => {
@@ -166,7 +172,7 @@ const ProcessMaster = () => {
       <TableToolbar
         search={globalFilter}
         onSearch={(e) => setGlobalFilter(e.target.value)}
-        onRefresh={() => fetchProcesses()}
+        onRefresh={() => refreshProcesses()}
         onExport={exportExcel}
         showFilter={true}
         activeFilterCount={
@@ -207,20 +213,11 @@ const ProcessMaster = () => {
     );
   };
 
-  const fetchSubProcesses = async (processId, processName) => {
-    try {
-      setLoading(true);
-      const data = await ProcessMasterService.getSubProcess(processId);
-      setSubProcesses(Array.isArray(data) ? data : []);
-      setSelectedProcess({ id: processId, name: processName });
-      setSubFirst(0); // Reset pagination on fetch
-      setShowSubProcessesSidebar(true);
-    } catch (error) {
-      toast.error('Error fetching sub-processes');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+  // The sub-process query follows selectedProcess — just point it and open
+  const fetchSubProcesses = (processId, processName) => {
+    setSelectedProcess({ id: processId, name: processName });
+    setSubFirst(0);
+    setShowSubProcessesSidebar(true);
   };
 
   const handleAddProcess = async (e) => {
@@ -230,17 +227,14 @@ const ProcessMaster = () => {
       return;
     }
     try {
-      setLoading(true);
-      await ProcessMasterService.addProcess(newProcessName, facilityId);
-      await fetchProcesses();
+      await addProcessMutation.mutateAsync({ processName: newProcessName, facilityId });
+      setFirst(0);
       setNewProcessName('');
       setShowAddProcessSidebar(false);
       toast.success('Process added successfully');
     } catch (error) {
       toast.error('Error adding process');
       console.error(error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -251,20 +245,17 @@ const ProcessMaster = () => {
       return;
     }
     try {
-      setLoading(true);
-      await ProcessMasterService.updateProcess(
-        editingProcess.Id,
-        editingProcess.processName
-      );
-      await fetchProcesses();
+      await updateProcessMutation.mutateAsync({
+        id: editingProcess.Id,
+        processName: editingProcess.processName,
+      });
+      setFirst(0);
       setEditingProcess(null);
       setShowEditProcessSidebar(false);
       toast.success('Process updated successfully');
     } catch (error) {
       toast.error('Error updating process');
       console.error(error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -275,20 +266,17 @@ const ProcessMaster = () => {
       return;
     }
     try {
-      setLoading(true);
-      await ProcessMasterService.addSubProcess(
-        selectedProcess.id,
-        newSubProcessName
-      );
-      await fetchSubProcesses(selectedProcess.id, selectedProcess.name);
+      await addSubProcessMutation.mutateAsync({
+        processId: selectedProcess.id,
+        subProcessName: newSubProcessName,
+      });
+      setSubFirst(0);
       setNewSubProcessName('');
       setShowAddSubProcessSidebar(false);
       toast.success('Sub-process added successfully');
     } catch (error) {
       toast.error('Error adding sub-process');
       console.error(error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -299,21 +287,18 @@ const ProcessMaster = () => {
       return;
     }
     try {
-      setLoading(true);
-      await ProcessMasterService.updateSubProcess(
-        selectedProcess.id,
-        editingSubProcess.subProcessName,
-        editingSubProcess.Id
-      );
-      await fetchSubProcesses(selectedProcess.id, selectedProcess.name);
+      await updateSubProcessMutation.mutateAsync({
+        processId: selectedProcess.id,
+        subProcessName: editingSubProcess.subProcessName,
+        subProcessId: editingSubProcess.Id,
+      });
+      setSubFirst(0);
       setEditingSubProcess(null);
       setShowEditSubProcessSidebar(false);
       toast.success('Sub-process updated successfully');
     } catch (error) {
       toast.error('Error updating sub-process');
       console.error(error);
-    } finally {
-      setLoading(false);
     }
   };
 

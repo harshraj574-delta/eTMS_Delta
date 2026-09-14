@@ -10,6 +10,7 @@ import { MultiSelect } from "primereact/multiselect";
 import { Checkbox } from "primereact/checkbox";
 import { Dialog as PrimeDialog } from "primereact/dialog";
 import { ProgressBar } from "primereact/progressbar";
+import { Tooltip } from "primereact/tooltip";
 import { CustomDataTable } from "../common/CustomDataTable";
 import { Column } from "primereact/column";
 import CustomPaginator from "../common/CustomPaginator";
@@ -67,7 +68,7 @@ const ReplicationException = () => {
   const allocationPollRef = useRef(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [isRouteFinalized, setIsRouteFinalized] = useState(false);
-  const [routeFinalizedMessage, setRouteFinalizedMessage] = useState("");
+  const [routeFinalizedShifts, setRouteFinalizedShifts] = useState("");
   const [globalFilter, setGlobalFilter] = useState("");
 
   // Pagination state for delete table
@@ -179,12 +180,10 @@ const ReplicationException = () => {
         finalizedResult[0].result === true
       ) {
         setIsRouteFinalized(true);
-        setRouteFinalizedMessage(
-          `Route has been finalized for ${shiftString} shift.`
-        );
+        setRouteFinalizedShifts(shiftString);
       } else {
         setIsRouteFinalized(false);
-        setRouteFinalizedMessage("");
+        setRouteFinalizedShifts("");
       }
 
       // Fetch delete + add exception data
@@ -997,15 +996,124 @@ const ReplicationException = () => {
         </div>
 
         {/* Route Finalized Warning */}
-        {isRouteFinalized && (
-          <div className="row mt-3">
-            <div className="col-12">
-              <div className="alert alert-warning mb-0">
-                {routeFinalizedMessage}
+        {isRouteFinalized && (() => {
+          const shifts = routeFinalizedShifts
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const VISIBLE = 6;
+          const visibleShifts = shifts.slice(0, VISIBLE);
+          const hiddenCount = shifts.length - visibleShifts.length;
+
+          return (
+            <div className="row mt-3">
+              <div className="col-12" style={{ minWidth: 0 }}>
+                <style>
+                  {`
+                    .rf-banner {
+                      display: flex;
+                      align-items: flex-start;
+                      gap: 12px;
+                      padding: 12px 16px;
+                      border: 1px solid #f0d68a;
+                      border-left: 4px solid #e0a800;
+                      border-radius: 8px;
+                      background: #fffaf0;
+                      overflow: hidden;
+                    }
+                    .rf-banner__icon {
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      flex-shrink: 0;
+                      width: 28px;
+                      height: 28px;
+                      border-radius: 50%;
+                      background: #fdf0cf;
+                      color: #8a6100;
+                      font-size: 0.85rem;
+                    }
+                    .rf-banner__body { min-width: 0; flex: 1; }
+                    .rf-banner__title {
+                      font-size: 0.9rem;
+                      font-weight: 600;
+                      color: #6b4c00;
+                      line-height: 1.5;
+                    }
+                    .rf-banner__meta {
+                      display: flex;
+                      align-items: center;
+                      flex-wrap: wrap;
+                      gap: 6px;
+                      margin-top: 6px;
+                    }
+                    .rf-banner__label {
+                      font-size: 0.78rem;
+                      color: #8a6d33;
+                      margin-right: 2px;
+                    }
+                    .rf-chip {
+                      display: inline-flex;
+                      align-items: center;
+                      padding: 1px 8px;
+                      border-radius: 999px;
+                      border: 1px solid #ecd9a6;
+                      background: #fff;
+                      color: #6b4c00;
+                      font-size: 0.75rem;
+                      font-variant-numeric: tabular-nums;
+                      white-space: nowrap;
+                    }
+                    .rf-chip--more {
+                      background: #f6e9c6;
+                      border-color: #e3cd91;
+                      cursor: default;
+                    }
+                  `}
+                </style>
+                <Tooltip
+                  target=".rf-chip--more"
+                  position="bottom"
+                  style={{ maxWidth: "360px" }}
+                  contentStyle={{
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                    lineHeight: 1.5,
+                    fontSize: "0.75rem",
+                  }}
+                />
+                <div className="rf-banner">
+                  <span className="rf-banner__icon">
+                    <i className="pi pi-lock" />
+                  </span>
+                  <div className="rf-banner__body">
+                    <div className="rf-banner__title">
+                      Route has been finalized for the selected date
+                    </div>
+                    <div className="rf-banner__meta">
+                      <span className="rf-banner__label">
+                        {shifts.length === 1 ? "Shift:" : `Shifts (${shifts.length}):`}
+                      </span>
+                      {visibleShifts.map((shift) => (
+                        <span key={shift} className="rf-chip">
+                          {shift}
+                        </span>
+                      ))}
+                      {hiddenCount > 0 && (
+                        <span
+                          className="rf-chip rf-chip--more"
+                          data-pr-tooltip={shifts.join(", ")}
+                        >
+                          +{hiddenCount} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Auto allocation running with the dialog dismissed — slim reopen bar */}
         {allocationJob && !showAllocationDialog && allocationJob.status === "running" && (

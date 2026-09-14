@@ -1,31 +1,26 @@
-import React, { useState, useEffect } from "react";
-import Sidebar from "./Master/SidebarMenu";
-import Header from "./Master/Header";
-import { CustomDataTable } from "./common/CustomDataTable";
-import ResponsiveDataTable from "./common/ResponsiveDataTable";
+import React, { useState } from "react";
+import Sidebar from "../Master/SidebarMenu";
+import Header from "../Master/Header";
+import { CustomDataTable } from "../common/CustomDataTable";
+import ResponsiveDataTable from "../common/ResponsiveDataTable";
 import { Column } from "primereact/column";
-import Loader from "./common/Loader";
-import { toastService } from "../services/toastService";
-import EmployeeRecordSwappingService from "../services/compliance/EmployeeRecordSwappingService";
-import sessionManager from "../utils/SessionManager";
+import Loader from "../common/Loader";
+import { toastService } from "../../services/toastService";
+import sessionManager from "../../utils/SessionManager";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useDuplicateRecordsQuery,
+  fetchEmpSearch,
+  fetchDuplicateDetail,
+  fetchEmployeeDetails,
+  fetchEmployeeShifts,
+  useUpdateDuplicateEmpMutation,
+} from "./hooks/useEmployeeRecordSwappingQueries";
 
 const userSession = sessionManager.getUserSession();
 
 const isAdmin = userSession?.IsAdmin || "1";
 const locationid = sessionStorage.getItem("locationId");
-
-const parseResponse = (data) => {
-  if (typeof data === "string") {
-    try {
-      return JSON.parse(data);
-    } catch {
-      return [];
-    }
-  }
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === "object") return data.data ?? [];
-  return [];
-};
 
 const getTodayStr = () => {
   const d = new Date();
@@ -187,11 +182,13 @@ const EmployeeRecordSwapping = () => {
   const userId = session.ID;
   const locationId = session.locationId;
 
+  const queryClient = useQueryClient();
+
   const [view, setView] = useState("list");
 
   // List-view state
-  const [duplicateRecords, setDuplicateRecords] = useState([]);
-  const [listLoading, setListLoading] = useState(false);
+  const { data: duplicateRecords = [], isFetching: listLoading } = useDuplicateRecordsQuery();
+  const updateDuplicateEmpMutation = useUpdateDuplicateEmpMutation();
   const [searchValue, setSearchValue] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -204,23 +201,6 @@ const EmployeeRecordSwapping = () => {
   const [selectedActions, setSelectedActions] = useState({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  useEffect(() => {
-    fetchDuplicateRecords();
-  }, []);
-
-  const fetchDuplicateRecords = async () => {
-    setListLoading(true);
-    try {
-      const res = await EmployeeRecordSwappingService.GetDuplicateEmpData();
-      setDuplicateRecords(parseResponse(res));
-    } catch (err) {
-      console.error("Error fetching duplicate records:", err);
-      toastService.error("Failed to fetch duplicate records");
-    } finally {
-      setListLoading(false);
-    }
-  };
-
   const handleSearch = async () => {
     if (!searchValue.trim()) {
       toastService.warn("Please enter Employee ID or Name");
@@ -229,12 +209,12 @@ const EmployeeRecordSwapping = () => {
     setSearchLoading(true);
     setHasSearched(true);
     try {
-      const res = await EmployeeRecordSwappingService.EmpSearch({
-        locationid: locationid,
-        empidname: searchValue.trim(),
-        IsAdmin: isAdmin,
+      const results = await fetchEmpSearch(queryClient, {
+        locationId: locationid,
+        text: searchValue.trim(),
+        isAdmin,
       });
-      setSearchResults(parseResponse(res));
+      setSearchResults(results);
     } catch (err) {
       console.error("EmpSearch error:", err);
       toastService.error("Failed to search employees");
@@ -261,13 +241,10 @@ const EmployeeRecordSwapping = () => {
 
   const loadShiftsForEmployee = async (empId) => {
     try {
-      const res = await EmployeeRecordSwappingService.GetHelpDeskEmployeeDetail(
-        {
-          empid: empId,
-          sDate: getTodayStr(),
-        },
-      );
-      return parseResponse(res);
+      return await fetchEmployeeShifts(queryClient, {
+        empId,
+        date: getTodayStr(),
+      });
     } catch {
       return [];
     }
@@ -278,25 +255,18 @@ const EmployeeRecordSwapping = () => {
     setDetailLoading(true);
     console.log("rowData: ", rowData);
     try {
-      const res = await EmployeeRecordSwappingService.GetDuplicateEmpDetail({
-        CommonValue: rowData.Common_Value || rowData.Common_Value,
-        CommonField: rowData.commonField || rowData.CommonField,
-        EmpList : "",
+      const empList = await fetchDuplicateDetail(queryClient, {
+        commonValue: rowData.Common_Value,
+        commonField: rowData.commonField || rowData.CommonField,
       });
-      const empList = parseResponse(res);
 
       const enriched = await Promise.all(
         empList.map(async (emp) => {
           const empId = emp.id || emp.empCode || emp.EmpId || emp.ID;
-          const [detailRes, shifts] = await Promise.all([
-            EmployeeRecordSwappingService.GetEmployeeDetails({
-              empid: empId,
-            }).catch(() => null),
+          const [detail, shifts] = await Promise.all([
+            fetchEmployeeDetails(queryClient, empId).catch(() => null),
             loadShiftsForEmployee(empId),
           ]);
-          // const shifts = await loadShiftsForEmployee(empId);
-          // return { ...emp, shifts };
-          const detail = detailRes ? parseResponse(detailRes) : null;
           const empDetail = Array.isArray(detail) ? detail[0] : detail;
           return { ...emp, ...(empDetail || {}), shifts };
         }),
@@ -321,13 +291,10 @@ const EmployeeRecordSwapping = () => {
       const enriched = await Promise.all(
         comparisonList.map(async (emp) => {
           const empId = emp.id || emp.empCode;
-          const [detailRes, shifts] = await Promise.all([
-            EmployeeRecordSwappingService.GetEmployeeDetails({
-              empid: empId,
-            }).catch(() => null),
+          const [detail, shifts] = await Promise.all([
+            fetchEmployeeDetails(queryClient, empId).catch(() => null),
             loadShiftsForEmployee(empId),
           ]);
-          const detail = detailRes ? parseResponse(detailRes) : null;
           const empDetail = Array.isArray(detail) ? detail[0] : detail;
           return { ...emp, ...(empDetail || {}), shifts };
         }),
@@ -362,7 +329,7 @@ const EmployeeRecordSwapping = () => {
         if (v === "3") rejectIds.push(empId);
       });
 
-      await EmployeeRecordSwappingService.UpdateDuplicateEmp({
+      await updateDuplicateEmpMutation.mutateAsync({
         PrimaryId: primaryIds.join(","),
         SecondaryId: secondaryIds.join(","),
         RejectId: rejectIds.join(","),
@@ -374,7 +341,6 @@ const EmployeeRecordSwapping = () => {
       setDetailEmployees([]);
       setSelectedActions({});
       setComparisonList([]);
-      fetchDuplicateRecords();
     } catch (err) {
       console.error("Submit error:", err);
       toastService.error("Failed to update records");

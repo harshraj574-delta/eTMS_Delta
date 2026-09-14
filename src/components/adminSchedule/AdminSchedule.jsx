@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import Header from "./Master/Header";
-import Sidebar from "./Master/SidebarMenu";
+import { useState } from "react";
+import Header from "../Master/Header";
+import Sidebar from "../Master/SidebarMenu";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
@@ -8,16 +8,18 @@ import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Sidebar as PrimeSidebar } from "primereact/sidebar";
 import { BiRightArrowAlt } from "react-icons/bi";
-import { get, set } from "lodash";
 import { InputTextarea } from "primereact/inputtextarea";
 import { useMemo } from "react";
-import { start } from "react-scan/dist/index";
-import ShiftTimeMasterService from "../services/compliance/ShiftTimeMaster";
-import AdminScheduleService from "../services/compliance/AdminScheduleService";
-import { toastService } from "../services/toastService";
-import { apiService } from "../services/api";
-import calendarIcon from "../assets/calendar.png";
-import ReportButton from "./common/ReportButton";
+import { toastService } from "../../services/toastService";
+import calendarIcon from "../../assets/calendar.png";
+import ReportButton from "../common/ReportButton";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useFacilitiesQuery,
+  fetchShiftsForAdmin,
+  fetchAdminSchedule as fetchAdminScheduleQuery,
+  useInsertScheduleMutation,
+} from "./hooks/useAdminScheduleQueries";
 
 // Helper to get 7 days from selectedDate
 // const month = date.toLocaleString("default", { month: "long" });
@@ -55,15 +57,15 @@ const AdminSchedule = () => {
   const [employeeIds, setEmployeeIds] = useState("");
   const weekDays = useMemo(() => getWeekDays(selectedDate), [selectedDate]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [facilities, setFacilities] = useState([]);
+  const queryClient = useQueryClient();
+  const { data: facilities = [] } = useFacilitiesQuery(UserID);
+  const insertScheduleMutation = useInsertScheduleMutation();
   const [shiftOptions, setShiftOptions] = useState([]);
   const [selectedShift, setSelectedShift] = useState(null);
   const [shiftOutOptions, setShiftOutOptions] = useState([]);
   const [selectedOutShift, setSelectedOutShift] = useState(null);
   const [selectedInFacility, setSelectedInFacility] = useState();
   const [selectedOutFacility, setSelectedOutFacility] = useState();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState();
   // const [dayWiseSchedule, setDayWiseSchedule] = useState(
   //   [...Array(7)].map(() => ({
   //     inFacility: null,
@@ -86,61 +88,21 @@ const AdminSchedule = () => {
   const [selectAll, setSelectAll] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [cachedEmployeeIds, setCachedEmployeeIds] = useState("");
-  const [employeeScheduleA, setEmployeeScheduleA] = useState([]);
   const [selectedEmployeeSchedule, setSelectedEmployeeSchedule] = useState(null);
-  const paginatedSchedule = useMemo(() => {
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    return adminSchedule.slice(start, end);
-  }, [adminSchedule, currentPage, rowsPerPage]);
+
   const fetchAdminSchedule = async (empIds) => {
     try {
       const formattedDate = selectedDate?.toISOString().split("T")[0]; // yyyy-mm-dd
-
-      const response = await AdminScheduleService.GetAdminSchedule({
-        EmpIds: empIds, // Use the employeeIds state
-        StartDate: formattedDate,
-        locationid: LocationId,
+      const parsedData = await fetchAdminScheduleQuery(queryClient, {
+        empIds,
+        startDate: formattedDate,
+        locationId: LocationId,
       });
-      console.log("Admin Schedule Data:", response);
-      let parsedData = [];
-      if (typeof response === 'string') {
-        parsedData = JSON.parse(response);
-      } else {
-        parsedData = response;
-      }
       setAdminSchedule(parsedData);
     } catch (error) {
       console.error("Error fetching admin schedule:", error);
     }
   };
-  const fetchFacilities = async () => {
-    try {
-      const response = await ShiftTimeMasterService.SelectFacility({
-        userid: UserID,
-      });
-      const parsedResponse =
-        typeof response === "string" ? JSON.parse(response) : response;
-      const formattedData = Array.isArray(parsedResponse)
-        ? parsedResponse.map((item) => ({
-          label: item.facility || item.facilityName,
-          value: item.Id,
-        }))
-        : [];
-      setFacilities(formattedData);
-      // Auto-select based on LocationId
-      // const defaultFacility = formattedData.find((f) => f.value === LocationId);
-      // if (defaultFacility) {
-      //   setSelectedFacility(defaultFacility.value); // Only set the value (Id)
-      // }
-    } catch (error) {
-      console.error("Failed to fetch facilities:", error);
-    }
-  };
-
-  // useEffect(() => {
-  //   fetchAdminSchedule();
-  // }, []);
 
   const handleUpdateVendor = async () => {
     setIsSubmitting(true); // Show loader
@@ -177,8 +139,7 @@ const AdminSchedule = () => {
       //setSelectedDate(effectiveDate);
       setCachedEmployeeIds(cleanedEmpIds); // ✅ save for reuse on refresh
 
-      await fetchFacilities();        // Fetch facilities first
-      await fetchAdminSchedule(cleanedEmpIds);     // Then fetch schedule
+      await fetchAdminSchedule(cleanedEmpIds);
       setHasSearched(true);
     } catch (error) {
       console.error("Error processing Employee IDs:", error);
@@ -189,18 +150,11 @@ const AdminSchedule = () => {
 
   const fetchShiftTime = async (facilityId) => {
     try {
-      const response = await AdminScheduleService.GetShiftForAdmin({
-        facilityId: facilityId,
+      const parsedData = await fetchShiftsForAdmin(queryClient, {
+        facilityId,
         type: "P",
         weekday: 2,
-        ProcessId: 0,
       });
-      let parsedData = [];
-      if (typeof response === 'string') {
-        parsedData = JSON.parse(response);
-      } else {
-        parsedData = response;
-      }
       setShiftOptions(parsedData);
     } catch (error) {
       console.error("Error fetching shift times:", error);
@@ -209,18 +163,11 @@ const AdminSchedule = () => {
   };
   const fetchShiftTimeO = async (facilityId) => {
     try {
-      const response = await AdminScheduleService.GetShiftForAdmin({
-        facilityId: facilityId,
+      const parsedData = await fetchShiftsForAdmin(queryClient, {
+        facilityId,
         type: "D",
         weekday: 2,
-        ProcessId: 0,
       });
-      let parsedData = [];
-      if (typeof response === 'string') {
-        parsedData = JSON.parse(response);
-      } else {
-        parsedData = response;
-      }
       setShiftOutOptions(parsedData);
     } catch (error) {
       console.error("Error fetching shift times:", error);
@@ -245,14 +192,11 @@ const AdminSchedule = () => {
   };
   const fetchDayWiseShift = async (facilityId, dayIndex, isOut = false) => {
     try {
-      const response = await AdminScheduleService.GetShiftForAdmin({
+      const parsed = await fetchShiftsForAdmin(queryClient, {
         facilityId,
         type: isOut ? "D" : "P",
         weekday: dayIndex + 1, // weekday 1-based
-        ProcessId: 0
       });
-      console.log("Day Wise Shift Data:", response);
-      const parsed = typeof response === "string" ? JSON.parse(response) : response;
 
       const updated = [...dayWiseSchedule];
       if (isOut) {
@@ -313,8 +257,7 @@ const AdminSchedule = () => {
           pickadflag: 1,
           dropadflag: 1,
         };
-        console.log("params", params);
-        promises.push(AdminScheduleService.InsertScheduleAdmin(params));
+        promises.push(insertScheduleMutation.mutateAsync(params));
       }
     }
 
@@ -369,78 +312,6 @@ const AdminSchedule = () => {
       };
     }
     setDayWiseSchedule(updatedSchedule);
-  };
-  useEffect(() => {
-    fetchEmployeeSchedule();
-  }, []);
-  const fetchEmployeeSchedule = async (employeeId) => {
-    try {
-      const fromDate = document.getElementById("fromDate").value;
-
-      // Call the API service
-      const response = await apiService.GetOneEmployeeSchedule({
-        empid: employeeId,
-        sdate: fromDate,
-      });
-
-      console.log("Fetched Employee Schedule Response:", response);
-
-      // Check if response exists and parse it if needed
-      let scheduleData = response;
-
-      // If response is a string (JSON), parse it
-      if (typeof response === "string") {
-        try {
-          scheduleData = JSON.parse(response);
-        } catch (e) {
-          console.error("Error parsing response:", e);
-        }
-      }
-
-      // Ensure we have an array to work with
-      if (!Array.isArray(scheduleData)) {
-        scheduleData = scheduleData ? [scheduleData] : [];
-      }
-
-      if (scheduleData.length > 0) {
-        // Map the response data to match the exact API structure
-        const formattedSchedule = scheduleData.map((schedule) => ({
-          employeeID: schedule.employeeID || "",
-          empCode: schedule.empCode || "",
-          empName: schedule.empName || "",
-          startDate: schedule.startDate || "",
-          startTime: schedule.startTime || "",
-          pickFacilityID: schedule.pickFacilityID || 0,
-          endDate: schedule.endDate || "",
-          endTime: schedule.endTime || "",
-          dropFacilityID: schedule.dropFacilityID || 0,
-          dropadflag: schedule.dropadflag || 0,
-          pickadflag: schedule.pickadflag || 0,
-          lastUpdatedBy: schedule.lastUpdatedBy,
-          lastUpdatedAt: schedule.lastUpdatedAt,
-          LastUpdate: schedule.LastUpdate,
-          TPTFor: schedule.TPTFor || 0,
-          Gender: schedule.Gender || "",
-        }));
-
-        setEmployeeScheduleA(formattedSchedule);
-        setSelectedEmployeeId(formattedSchedule[0].empCode);
-
-        // Log the formatted data
-        console.log("Formatted Employee Schedule:", formattedSchedule);
-
-        // Return the formatted data for immediate use if needed
-        return formattedSchedule;
-      } else {
-        setEmployeeScheduleA([]);
-        console.log("No schedule data found");
-        return [];
-      }
-    } catch (error) {
-      console.error("Error fetching employee schedule:", error);
-      setEmployeeScheduleA([]);
-      return [];
-    }
   };
   return (
     <>

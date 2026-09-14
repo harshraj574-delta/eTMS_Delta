@@ -37,7 +37,7 @@ const AdhocManagement = lazy(() => import("./components/adhocManagement/AdhocMan
 const MyAdhocRequest = lazy(() => import("./components/MyAdhocRequest"));
 const ViewMyRoutes = lazy(() => import("./components/viewMyRoutes/ViewMyRoutes"));
 const ManageRoute = lazy(() => import("./components/manageRoute/ManageRoute"));
-const CostMaster = lazy(() => import("./components/CostMaster"));
+const CostMaster = lazy(() => import("./components/costMaster/CostMaster"));
 const CostMasterPackage = lazy(() => import("./components/CostMasterPackage"));
 const VendorWiseBilling = lazy(() => import("./components/VendorWiseBilling"));
 const SummaryPackageReport = lazy(() => import("./components/SummaryPackageReport"));
@@ -50,7 +50,7 @@ const SystemSetting = lazy(() => import("./components/SystemSetting"));
 const ShiftTimeMaster = lazy(() => import("./components/ShiftTimeMaster"));
 const MyProfile = lazy(() => import("./components/MyProfile"));
 const VendorAllocation = lazy(() => import("./components/vendorAllocation/VendorAllocation"));
-const AdminSchedule = lazy(() => import("./components/AdminSchedule"));
+const AdminSchedule = lazy(() => import("./components/adminSchedule/AdminSchedule"));
 const EmpDump = lazy(() => import("./components/EmpDump"));
 const RouteDeletion = lazy(() => import("./components/RouteDeletion"));
 const ShiftTimeMasterAdhoc = lazy(() => import("./components/ShiftTimeMasterAdhoc"));
@@ -58,9 +58,9 @@ const ShiftTimeMasterAdhoc = lazy(() => import("./components/ShiftTimeMasterAdho
 // Deepak
 const Location = lazy(() => import("./components/MasterPages/Location"));
 const FacilityMaster = lazy(() => import("./components/MasterPages/FacilityMaster"));
-const ProcessMaster = lazy(() => import("./components/ProcessMaster"));
+const ProcessMaster = lazy(() => import("./components/processMaster/ProcessMaster"));
 const FeedbackMaster = lazy(() => import("./components/FeedbackMaster"));
-const OTAReport = lazy(() => import("./components/OTAReport"));
+const OTAReport = lazy(() => import("./components/otaReport/OTAReport"));
 const RepNoShow = lazy(() => import("./components/RepNoShow"));
 const RepVehUsgVen = lazy(() => import("./components/RepVehUsgVen"));
 const TrackingReport = lazy(() => import("./components/TrackingReport"));
@@ -83,7 +83,7 @@ const DummyTripSheetEntry = lazy(() => import("./components/dummyTripSheet/Dummy
 const HelpDesk = lazy(() => import("./components/helpDesk/HelpDesk"));
 const ScrollingMessages = lazy(() => import("./components/ScrollingMessages"));
 const DisclaimerMaster = lazy(() => import("./components/DisclaimerMaster"));
-const EmployeeRecordSwapping = lazy(() => import("./components/EmployeeRecordSwapping"));
+const EmployeeRecordSwapping = lazy(() => import("./components/employeeRecordSwapping/EmployeeRecordSwapping"));
 const EmpSpoc = lazy(() => import("./components/empSpoc/EmpSpoc"));
 const RoutingConfig = lazy(() => import("./components/RoutingConfig"));
 const AdhocChange = lazy(() => import("./components/AdhocChange"));
