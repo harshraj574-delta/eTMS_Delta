@@ -1,8 +1,7 @@
 import axios from "axios";
-import { apiBaseUrl } from "../apiBaseUrl";
 
 const sosApi = axios.create({
-  baseURL: apiBaseUrl,
+  baseURL: "/api/api/v1",
   headers: { "Content-Type": "application/json", Accept: "application/json" },
 });
 

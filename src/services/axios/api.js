@@ -1,7 +1,6 @@
 import axios from 'axios';
-import { apiBaseUrl } from '../apiBaseUrl';
 
-const baseUrl = apiBaseUrl;
+const baseUrl = "/api/api/v1";
 const headers = {
     "Content-Type": "application/json",
     "Accept": "application/json"
