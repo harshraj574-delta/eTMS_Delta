@@ -1,8 +1,9 @@
 import axios from "axios";
 import { map } from "lodash";
+import { apiBaseUrl } from "./apiBaseUrl";
 
 const api = axios.create({
-  baseURL: "/api/api/v1",
+  baseURL: apiBaseUrl,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
