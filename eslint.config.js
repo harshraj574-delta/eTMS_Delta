@@ -35,4 +35,10 @@ export default [
       ],
     },
   },
+  {
+    // Feature folders held to a zero-warning gate (npm run lint:routemap).
+    // Props are documented in JSDoc instead of PropTypes, like the rest of the app.
+    files: ['src/components/routeMap/**/*.{js,jsx}'],
+    rules: { 'react/prop-types': 'off' },
+  },
 ]
