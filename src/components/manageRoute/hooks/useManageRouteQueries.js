@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ManageRouteService from '../../../services/compliance/ManageRouteService';
+import { notifyRouteEdit } from '../../routeMap/editing/sync';
 
 // Query Key Factory
 // The *All keys are prefix keys for invalidation (match every params variant).
@@ -17,7 +18,38 @@ export const manageRouteKeys = {
     vendorSummary: (params) => ['manageRoute', 'vendorSummary', params],
     validateRoster: (params) => ['manageRoute', 'validateRoster', params],
     inputJson: (params) => ['manageRoute', 'inputJson', params],
+    routeGeometryAll: ['manageRoute', 'routeGeometry'],
+    routeGeometry: (routeId) => ['manageRoute', 'routeGeometry', routeId],
+    pendingRecalcAll: ['manageRoute', 'pendingRecalc'],
+    pendingRecalc: (routeIds) => ['manageRoute', 'pendingRecalc', routeIds],
 };
+
+// Shared query options so RouteMap (useQueries) and Manage Route share one cache entry per route.
+export const routeDetailsQueryOptions = (routeId) => ({
+    queryKey: manageRouteKeys.routeDetails(routeId),
+    queryFn: async () => {
+        const response = await ManageRouteService.GetRoutesDetailsnew({
+            RouteID: routeId,
+            isAdd: 0
+        });
+        return typeof response === 'string' ? JSON.parse(response) : response;
+    },
+    enabled: !!routeId,
+    staleTime: 1000 * 60, // 1 minute
+    meta: { silent: true }, // expansion renders its own error state
+});
+
+export const routeGeometryQueryOptions = (routeId) => ({
+    queryKey: manageRouteKeys.routeGeometry(routeId),
+    queryFn: async () => {
+        const response = await ManageRouteService.Get_RouteGeometry({ RouteID: routeId });
+        const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+        return Array.isArray(parsed) ? parsed[0] ?? null : parsed;
+    },
+    enabled: !!routeId,
+    staleTime: 1000 * 60 * 5, // geometry only changes on recalculation, which invalidates it
+    meta: { silent: true },
+});
 
 // --- Queries ---
 
@@ -90,18 +122,25 @@ export const useRoutesQuery = (params, enabled = false) => {
 };
 
 export const useRouteDetailsQuery = (routeId) => {
+    return useQuery(routeDetailsQueryOptions(routeId));
+};
+
+/**
+ * Read-only check: how many of these routes were edited since their last
+ * recalculation (getInputJsonByrouteids returns an engine payload for them).
+ * routeIds is a comma-joined string so the key stays stable.
+ */
+export const usePendingRecalcQuery = (routeIds) => {
     return useQuery({
-        queryKey: manageRouteKeys.routeDetails(routeId),
+        queryKey: manageRouteKeys.pendingRecalc(routeIds),
         queryFn: async () => {
-            const response = await ManageRouteService.GetRoutesDetailsnew({
-                RouteID: routeId,
-                isAdd: 0
-            });
-            return typeof response === 'string' ? JSON.parse(response) : response;
+            const response = await ManageRouteService.getInputJsonByrouteids({ routeids: routeIds });
+            const parsed = typeof response === 'string' ? JSON.parse(response) : response;
+            return parsed?.routes?.length ?? 0;
         },
-        enabled: !!routeId,
-        staleTime: 1000 * 60, // 1 minute
-        meta: { silent: true }, // expansion renders its own error state
+        enabled: !!routeIds,
+        staleTime: 0,
+        meta: { silent: true },
     });
 };
 
@@ -180,6 +219,31 @@ export async function recalculateModifiedRoutes(
         updatedBy: userId,
     });
 
+    notifyRouteEdit({ source: 'recalculate', action: 'recalculate' });
+    return true;
+}
+
+/**
+ * Same pipeline as recalculateModifiedRoutes but scoped to specific routes
+ * (used by RouteMap). Returns true when routes were recalculated.
+ */
+export async function recalculateRoutesByIds({ routeIds, shiftDate, shiftTime, facilityId, tripType, userId }) {
+    const inputJsonData = await ManageRouteService.getInputJsonByrouteids({ routeids: routeIds });
+
+    if (!inputJsonData?.routes?.length) return false;
+
+    const recalculatedRouteJson = await ManageRouteService.recalculateRoutes(inputJsonData);
+
+    await ManageRouteService.updateRouteMapbased({
+        facilityid: facilityId,
+        sDate: shiftDate,
+        triptype: tripType,
+        shifttime: shiftTime,
+        jsonstring: JSON.stringify(recalculatedRouteJson),
+        updatedBy: userId,
+    });
+
+    notifyRouteEdit({ source: 'recalculate', action: 'recalculate' });
     return true;
 }
 
@@ -245,6 +309,7 @@ export const useSplitRouteMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.SplitRoute(params),
         onSuccess: () => {
+            notifyRouteEdit({ source: 'manageRoute', action: 'split' });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
         }
     });
@@ -255,6 +320,7 @@ export const useMergeRouteMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.MergeRoute(params),
         onSuccess: () => {
+            notifyRouteEdit({ source: 'manageRoute', action: 'merge' });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
         }
     });
@@ -265,6 +331,7 @@ export const useDeleteEmployeeMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.DeleteEmployeeFromRoute(params),
         onSuccess: (_, variables) => {
+            notifyRouteEdit({ source: 'manageRoute', action: 'remove' });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.routeDetails(variables.RouteID) });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.statisticsAll });
@@ -277,6 +344,7 @@ export const useAddEmployeeMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.AddEmpToRoute(params),
         onSuccess: (_, variables) => {
+            notifyRouteEdit({ source: 'manageRoute', action: 'add' });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.routeDetails(variables.routeId) });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.statisticsAll });
@@ -289,6 +357,7 @@ export const useMoveEmployeeMutation = () => { // UpdateCutPaste
     return useMutation({
         mutationFn: (params) => ManageRouteService.UpdateCutPaste(params),
         onSuccess: (_, variables) => {
+            notifyRouteEdit({ source: 'manageRoute', action: 'move' });
             // Invalidate source and target routes (approximate)
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
         }
@@ -310,6 +379,7 @@ export const useFinalizeRouteMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.PushRouteToDashbaord(params),
         onSuccess: () => {
+            notifyRouteEdit({ source: 'manageRoute', action: 'finalize' });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
         }
     });
@@ -320,6 +390,7 @@ export const useUnlockRoutesMutation = () => {
     return useMutation({
         mutationFn: (params) => ManageRouteService.BlockTransport(params),
         onSuccess: () => {
+            notifyRouteEdit({ source: 'manageRoute', action: 'unlock' });
             queryClient.invalidateQueries({ queryKey: manageRouteKeys.routesAll });
         }
     });

@@ -15,6 +15,7 @@ import {
     useMoveEmployeeMutation,
     useUnlockRoutesMutation
 } from './useManageRouteQueries';
+import { useRouteEditListener } from '../../routeMap/editing/sync';
 
 /**
  * useManageRouteLogic
@@ -28,6 +29,11 @@ import {
 const useManageRouteLogic = () => {
     const queryClient = useQueryClient();
     const userID = sessionStorage.getItem("ID");
+
+    // Routes edited in another tab (e.g. the RouteMap editor) -> refetch here.
+    useRouteEditListener(() => {
+        queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
+    });
 
     // --- State: Filters ---
     const [filters, setFilters] = useState({

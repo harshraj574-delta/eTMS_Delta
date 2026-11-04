@@ -1740,7 +1740,9 @@ const ManageRouteDesktop = ({
                         <a
                           href={`/RouteMap?${queryParams}`}
                           target="_blank"
-                          rel="noopener noreferrer"
+                          // Same-origin page: "opener" keeps sessionStorage (user ID, routing
+                          // engine version) in the new tab, which RouteMap editing needs.
+                          rel="opener"
                           className=""
                           data-pr-tooltip="View All Routes"
                           data-pr-position="left"
