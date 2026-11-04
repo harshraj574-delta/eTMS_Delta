@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
  */
 const QUERY =
   process.env.E2E_ROUTEMAP_QUERY ||
-  'sDate=2026-11-03&FacilityID=1&TripType=P&Shifttimes=2330&Direction=ASC&Routeid=';
+  'sDate=2026-11-05&FacilityID=1&TripType=P&Shifttimes=0800&Direction=ASC&Routeid=';
 
 const WRITE_ENDPOINTS =
   /UpdateCutPaste|SplitRoute|MergeRoute|AddEmpToRoute|DeleteRoutes|updateRouteMapbased|save_routesMapBasedNew|BlockTransport|PushRouteToDashbaord|route-generation/i;
@@ -44,15 +44,18 @@ test.afterEach(async ({}, testInfo) => {
 const openMap = async (page, { signedIn = true } = {}) => {
   if (signedIn) await page.addInitScript(() => sessionStorage.setItem('ID', '1'));
   await page.goto(`/RouteMap?${QUERY}`);
-  await page.locator('.route-summary').first().waitFor();
-  await page.locator('img.leaflet-marker-icon').first().waitFor();
+  // Initial load goes to the remote API; allow for a slow backend.
+  await page.locator('.route-summary').first().waitFor({ timeout: 60_000 });
+  await page.locator('img.leaflet-marker-icon').first().waitFor({ timeout: 60_000 });
   await page.waitForTimeout(1500); // fitBounds + tile settle
 };
 
 const showAllAndEdit = async (page) => {
   await page.getByRole('switch', { name: 'Show all routes' }).click();
   await expect(page.locator('.route-summary.active')).toHaveCount(await page.locator('.route-summary').count());
-  await page.waitForTimeout(1000);
+  // Routes stream in behind a progress pill; the map re-fits once they've all arrived.
+  await expect(page.locator('.rm-load-progress')).toHaveCount(0, { timeout: 120_000 });
+  await page.waitForTimeout(1500);
   await page.getByRole('switch', { name: 'Edit mode' }).click();
   await expect(page.locator('img.leaflet-marker-draggable').first()).toBeVisible();
 };
@@ -84,7 +87,18 @@ test('is view-only without a signed-in session', async ({ page }) => {
 test('edit mode makes stops selectable and offers stop actions', async ({ page }) => {
   await openMap(page);
   await showAllAndEdit(page);
-  await page.locator('img.leaflet-marker-draggable').first().click();
+  // Splitting needs a route with 2+ stops whose id doesn't already end in "S".
+  const cards = await page.locator('.route-summary').evaluateAll((els) =>
+    els.map((c) => ({
+      id: c.querySelector('.route-name span')?.textContent.replace('Route ', '').trim(),
+      stops: Number(c.querySelectorAll('.stat-value')[1]?.textContent) || 0,
+    }))
+  );
+  const splittable = cards.findIndex((c) => c.stops >= 2 && !/S$/i.test(c.id));
+  test.skip(splittable < 0, 'needs a splittable route (2+ stops, id not ending in S)');
+  await page.locator('.route-summary').nth(splittable).getByRole('button', { name: 'Edit stops' }).click();
+  await expect(page.locator('.re-stop-list li').first()).toBeVisible();
+  await page.locator('.re-stop-list').getByRole('button', { name: /^Select .* on the map$/ }).first().click();
   const bar = page.locator('.re-action-bar');
   await expect(bar).toContainText('1 selected');
   await bar.getByRole('button', { name: 'Split' }).click();
@@ -96,14 +110,28 @@ test('dragging a stop onto another route line asks to move it there', async ({ p
   await openMap(page);
   await showAllAndEdit(page);
 
-  // A point on the first route's line and a marker belonging to a different route.
+  // A point on some route's line that is in open map (not under the sidebar or
+  // controls), and a marker belonging to a different route.
   const target = await page.evaluate(() => {
+    const blockers = ['.sidebar-react', '.leaflet-control-container', '.re-recalc-banner']
+      .flatMap((sel) => [...document.querySelectorAll(sel)])
+      .map((el) => el.getBoundingClientRect());
+    const free = (x, y) =>
+      x > 40 && y > 40 && x < innerWidth - 80 && y < innerHeight - 120 &&
+      !blockers.some((r) => x >= r.left - 20 && x <= r.right + 20 && y >= r.top - 20 && y <= r.bottom + 20);
     const paths = [...document.querySelectorAll('path.leaflet-interactive')].filter((p) => !p.getAttribute('stroke-dasharray'));
-    const p = paths[0];
-    const pt = p.getPointAtLength(p.getTotalLength() * 0.35);
-    const m = p.getScreenCTM();
-    return { stroke: p.getAttribute('stroke'), x: pt.x * m.a + pt.y * m.c + m.e, y: pt.x * m.b + pt.y * m.d + m.f };
+    for (const p of paths) {
+      const m = p.getScreenCTM();
+      for (let f = 0.1; f <= 0.9; f += 0.05) {
+        const pt = p.getPointAtLength(p.getTotalLength() * f);
+        const x = pt.x * m.a + pt.y * m.c + m.e;
+        const y = pt.x * m.b + pt.y * m.d + m.f;
+        if (free(x, y)) return { stroke: p.getAttribute('stroke'), x, y };
+      }
+    }
+    return null;
   });
+  expect(target, 'a route line visible in open map area').not.toBeNull();
   const markerIndex = await page.evaluate((stroke) => {
     const imgs = [...document.querySelectorAll('img.leaflet-marker-draggable')];
     return imgs.findIndex((img) => !atob(img.src.split(',')[1]).includes(`fill="${stroke}"`));
