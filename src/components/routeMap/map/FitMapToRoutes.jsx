@@ -1,17 +1,21 @@
 import { useEffect, useRef } from "react";
 import { useMap } from "react-leaflet";
 
-export default function FitMapToRoutes({ routes }) {
+/**
+ * Fit the viewport to the drawn routes. Refits only when the set of drawn routes
+ * changes (not when their data refetches after an edit, which would yank the view
+ * away from what the user is editing), and only once loading has settled (`ready`)
+ * so a large Show All doesn't re-fit once per arriving route.
+ */
+export default function FitMapToRoutes({ routes, ready = true }) {
   const map = useMap();
-  // Refit only when the set of drawn routes changes, not when their data refetches
-  // after an edit (that would yank the viewport away from what the user is editing).
   const fitKey = routes.map((r) => r.routeid).join(",");
   const routesRef = useRef(routes);
   routesRef.current = routes;
 
   useEffect(() => {
     const current = routesRef.current;
-    if (!current.length) return;
+    if (!ready || !current.length) return;
     let bounds = [];
     current.forEach((route) => {
       if (route.path) bounds = bounds.concat(route.path);
@@ -33,6 +37,6 @@ export default function FitMapToRoutes({ routes }) {
         maxZoom: maxZoom
       });
     }
-  }, [fitKey, map]);
+  }, [fitKey, ready, map]);
   return null;
 }

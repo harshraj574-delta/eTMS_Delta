@@ -14,6 +14,7 @@ import FitMapToRoutes from "./map/FitMapToRoutes";
 import RouteLayers from "./map/RouteLayers";
 import RouteSidebar from "./ui/RouteSidebar";
 import RecalcBanner from "./ui/RecalcBanner";
+import LoadProgress from "./ui/LoadProgress";
 import RecalculatingScreen from "./ui/RecalculatingScreen";
 import MapErrorToast from "./ui/MapErrorToast";
 import { getRouteEditAccess } from "./editing/permissions";
@@ -49,7 +50,11 @@ export default function RouteMap() {
     queryClient.invalidateQueries({ queryKey: manageRouteKeys.all });
   });
 
-  const showLoader = data.isLoadingRoutes || data.isLoadingVisible || (data.isReady && !mapTilesLoaded);
+  const { loaded, total } = data.loadProgress;
+  const isLoadingRoutes = loaded < total;
+  // Block the screen only until the first routes can be drawn; after that
+  // (e.g. Show All on a large shift) routes stream in behind a progress pill.
+  const showLoader = data.isLoadingRoutes || (total > 0 && loaded === 0) || (data.isReady && !mapTilesLoaded);
   const pendingRecalcCount = Math.max(data.pendingRecalcCount, edit.staleRouteIds.size);
 
   return (
@@ -69,12 +74,15 @@ export default function RouteMap() {
             onEditStops={sidebar.onEditStops}
           />
 
-          <RecalcBanner
-            count={pendingRecalcCount}
-            canRecalculate={access.canEdit}
-            isRecalculating={edit.isRecalculating}
-            onRecalculate={() => edit.recalculate(data.allRouteIds)}
-          />
+          <div className="rm-top-stack">
+            <LoadProgress loaded={loaded} total={total} />
+            <RecalcBanner
+              count={pendingRecalcCount}
+              canRecalculate={access.canEdit}
+              isRecalculating={edit.isRecalculating}
+              onRecalculate={() => edit.recalculate(data.allRouteIds)}
+            />
+          </div>
 
           {inspector && (
             <RouteInspector
@@ -134,7 +142,7 @@ export default function RouteMap() {
             zoomDelta={0.5}
             wheelPxPerZoomLevel={120}
           >
-            <FitMapToRoutes routes={data.routesForMap} />
+            <FitMapToRoutes routes={data.routesForMap} ready={!isLoadingRoutes} />
             <MapLibreLayer onTilesLoaded={() => setMapTilesLoaded(true)} />
             <ZoomControl position="topright" />
             {edit.isEditMode && <BoxSelect onSelect={map.onBoxSelect} />}

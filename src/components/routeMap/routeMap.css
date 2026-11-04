@@ -490,3 +490,40 @@
 .rm-switch input:checked + .rm-switch-track .rm-switch-thumb { left: 23px; }
 .rm-switch input:focus-visible + .rm-switch-track { outline: 2px solid #2563eb; outline-offset: 2px; }
 .route-summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+/* LoadProgress */
+.rm-load-progress {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+  color: #1e293b;
+  font: 600 13px 'Inter', sans-serif;
+}
+.rm-load-progress .pi { color: #4f46e5; }
+.rm-load-bar { width: 120px; height: 6px; border-radius: 3px; background: #e2e8f0; overflow: hidden; }
+.rm-load-bar span { display: block; height: 100%; background: #4f46e5; transition: width 0.2s; }
+
+/* Top-centre status stack (load progress, recalculation banner) */
+.rm-top-stack {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1002;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+.rm-top-stack > * { position: static; transform: none; pointer-events: auto; }

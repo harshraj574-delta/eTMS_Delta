@@ -101,14 +101,31 @@ const useRouteMapData = (params) => {
     const queriesVersion =
         detailQueries.map((q) => q.dataUpdatedAt).join() + '|' + geometryQueries.map((q) => q.dataUpdatedAt).join();
 
+    // Per-route cache: a route object is rebuilt only when its own meta, details
+    // or geometry changed, so memoized map layers don't all re-render each time
+    // one of ~2 requests per route arrives.
+    const routeCacheRef = useRef(new Map());
+
     /** routeId -> loaded route, for visible routes whose details have arrived. */
     const routesById = useMemo(() => {
         const metaById = Object.fromEntries(allRouteMetas.map((m) => [m.RouteID, m]));
+        const cache = routeCacheRef.current;
         const out = {};
         visibleIds.forEach((routeId, i) => {
             const details = detailQueries[i]?.data;
-            if (!Array.isArray(details) || !metaById[routeId]) return;
-            out[routeId] = toRoute(metaById[routeId], details, geometryQueries[i]?.data);
+            const geometry = geometryQueries[i]?.data;
+            const meta = metaById[routeId];
+            // Wait for geometry to settle too: drawn without it, the route would get the
+            // straight-line preview meant for routes that genuinely have no geometry yet.
+            if (!Array.isArray(details) || !meta || geometryQueries[i]?.isPending) return;
+            const hit = cache.get(routeId);
+            if (hit && hit.meta === meta && hit.details === details && hit.geometry === geometry) {
+                out[routeId] = hit.route;
+                return;
+            }
+            const route = toRoute(meta, details, geometry);
+            cache.set(routeId, { meta, details, geometry, route });
+            out[routeId] = route;
         });
         return out;
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -184,7 +201,11 @@ const useRouteMapData = (params) => {
         locationFilter,
         pendingRecalcCount: pendingRecalcQuery.data ?? 0,
         isLoadingRoutes: hasParams && routesQuery.isLoading,
-        isLoadingVisible: visibleIds.some((_, i) => detailQueries[i]?.isPending || geometryQueries[i]?.isPending),
+        /** visible routes whose details and geometry have both settled (data or error) */
+        loadProgress: {
+            loaded: visibleIds.filter((_, i) => !detailQueries[i]?.isPending && !geometryQueries[i]?.isPending).length,
+            total: visibleIds.length,
+        },
         isReady: routesQuery.isSuccess,
         error: firstError ? firstError.message || 'Error loading routes.' : null,
     };

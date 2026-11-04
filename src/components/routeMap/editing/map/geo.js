@@ -24,21 +24,28 @@ const distanceToPath = (p, points) => {
 };
 
 /**
- * The route whose line or stops are closest to the drop point, within maxPx.
- * @param {[number, number]} latlng
- * @param {{ routeId: string, path: [number, number][], stops: { lat, lng }[] }[]} routes
- * @returns {string | null}
+ * Project routes to screen pixels once (e.g. at drag start) so per-frame hit
+ * testing doesn't re-project every route line on every pointer move.
+ * @param {{ routeId: string, path: [number, number][] | null, stops: { lat, lng }[] }[]} routes
+ * @returns {{ routeId: string, path: {x, y}[], stops: {x, y}[] }[]}
  */
-export const findRouteNearPoint = (latlng, routes, project, maxPx = 30, excludeRouteIds = []) => {
-    const p = project(latlng);
+export const projectRoutes = (routes, project) =>
+    routes.map((route) => ({
+        routeId: route.routeId,
+        path: route.path?.length ? route.path.map(project) : [],
+        stops: (route.stops || []).filter((s) => !isNaN(s.lat) && !isNaN(s.lng)).map((s) => project([s.lat, s.lng])),
+    }));
+
+/** Nearest projected route (line or stop) to pixel point p within maxPx, or null. */
+export const findRouteNearProjected = (p, projectedRoutes, maxPx = 30, excludeRouteIds = []) => {
     let bestId = null;
     let bestDist = maxPx;
-    routes.forEach((route) => {
+    projectedRoutes.forEach((route) => {
         if (excludeRouteIds.includes(route.routeId)) return;
-        const candidates = [];
-        if (route.path?.length) candidates.push(distanceToPath(p, route.path.map(project)));
-        route.stops?.forEach((s) => candidates.push(dist(p, project([s.lat, s.lng]))));
-        const d = Math.min(...candidates, Infinity);
+        let d = route.path.length ? distanceToPath(p, route.path) : Infinity;
+        route.stops.forEach((s) => {
+            d = Math.min(d, dist(p, s));
+        });
         if (d <= bestDist) {
             bestDist = d;
             bestId = route.routeId;
@@ -46,6 +53,15 @@ export const findRouteNearPoint = (latlng, routes, project, maxPx = 30, excludeR
     });
     return bestId;
 };
+
+/**
+ * The route whose line or stops are closest to the drop point, within maxPx.
+ * @param {[number, number]} latlng
+ * @param {{ routeId: string, path: [number, number][], stops: { lat, lng }[] }[]} routes
+ * @returns {string | null}
+ */
+export const findRouteNearPoint = (latlng, routes, project, maxPx = 30, excludeRouteIds = []) =>
+    findRouteNearProjected(project(latlng), projectRoutes(routes, project), maxPx, excludeRouteIds);
 
 /**
  * Cheapest-insertion position (1-based stop number) for a point in an ordered
