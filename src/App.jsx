@@ -45,7 +45,7 @@ const PenaltyMaster = lazy(() => import("./components/PenaltyMaster"));
 const ComplianceCheck = lazy(() => import("./components/complianceCheck/ComplianceCheck"));
 const DetailedBillingReport = lazy(() => import("./components/DetailedBillingReport"));
 const EmployeeWiseBillingReport = lazy(() => import("./components/EmployeeWiseBillingReport"));
-const RouteMap = lazy(() => import("./components/RouteMap"));
+const RouteMap = lazy(() => import("./components/routeMap/RouteMap"));
 const SystemSetting = lazy(() => import("./components/SystemSetting"));
 const ShiftTimeMaster = lazy(() => import("./components/ShiftTimeMaster"));
 const MyProfile = lazy(() => import("./components/MyProfile"));
