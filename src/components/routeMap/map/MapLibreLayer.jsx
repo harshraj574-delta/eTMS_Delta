@@ -5,12 +5,17 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "@maplibre/maplibre-gl-leaflet";
 
+const OPENFREEMAP_ATTRIBUTION =
+  '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+
 /**
- * Vector base map (OpenFreeMap "liberty" style) rendered by MapLibre GL under
- * Leaflet, with a raster OSM fallback. Calls onTilesLoaded once the first
- * render settles (or after a 3s safety timeout).
+ * Vector base map from OpenFreeMap (free, no API key) rendered by MapLibre GL
+ * under Leaflet, with a raster OSM fallback. `style` is an OpenFreeMap style
+ * name: "liberty" (default, full colour) or "positron" (light grey, for
+ * overlays such as heatmaps). Calls onTilesLoaded once the first render
+ * settles (or after a 3s safety timeout).
  */
-export default function MapLibreLayer({ onTilesLoaded }) {
+export default function MapLibreLayer({ onTilesLoaded, style = "liberty" }) {
   const map = useMap();
   const layerRef = useRef(null);
   const glMapRef = useRef(null);
@@ -32,7 +37,8 @@ export default function MapLibreLayer({ onTilesLoaded }) {
 
     try {
       const maplibreLayer = L.maplibreGL({
-        style: 'https://tiles.openfreemap.org/styles/liberty',
+        style: `https://tiles.openfreemap.org/styles/${style}`,
+        attribution: OPENFREEMAP_ATTRIBUTION,
         interactive: false,
         maplibreOptions: {
           maxTileCacheSize: 300,
@@ -148,7 +154,7 @@ export default function MapLibreLayer({ onTilesLoaded }) {
          }
       }
     }
-  }, [map]);
+  }, [map, style]);
 
   return null;
 }
