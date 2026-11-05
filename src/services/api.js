@@ -1,14 +1,17 @@
 import axios from "axios";
 import { map } from "lodash";
+import { API_BASE, attachAuth } from "./http/apiClient";
 
 const api = axios.create({
-  baseURL: "/api/api/v1",
+  baseURL: API_BASE,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
 
+
+attachAuth(api);
 
 export const apiService = {
   //Login Validation

@@ -1,10 +1,14 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from "path"
 
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Local etms-api (NestJS gateway) for VITE_API_BASE=/legacy; see src/services/http/apiClient.js
+  const etmsApiUrl = loadEnv(mode, process.cwd(), '').ETMS_API_URL || 'http://localhost:3000';
+
+  return {
   base:'./',
   plugins: [react()],
   resolve: {
@@ -14,7 +18,12 @@ export default defineConfig({
     },
   },
   server: {
+    // Playwright writes traces/screenshots here; watching them reloads pages mid-test.
+    watch: { ignored: ['**/e2e/.results/**'] },
     proxy: {
+      // etms-api: native routes first, or the legacy '/api' rule below would match them.
+      '^/api/v1/': { target: etmsApiUrl, changeOrigin: true },
+      '/legacy': { target: etmsApiUrl, changeOrigin: true },
       '/dataPushApi': {
         target: 'https://etmsonline.in/Demo/datapush/api/v1',
         changeOrigin: true,
@@ -92,5 +101,5 @@ export default defineConfig({
      
     },
   },
+};
 });
- 
