@@ -18,17 +18,26 @@ export const USES_GATEWAY = API_BASE.startsWith("/legacy");
 /** Absolute API path for fetch() callers: apiUrl("sp_getRoutedEmpGeocode"). */
 export const apiUrl = (endpoint) => `${API_BASE}/${String(endpoint).replace(/^\/+/, "")}`;
 
-// Phase 2 registers a function returning the current access token (or null).
+// Returns the current access token (or null). Defaults to Cognito, loaded on first
+// use so Amplify is only downloaded in Cognito mode; tests can swap it out.
 let accessTokenProvider = null;
 export const setAccessTokenProvider = (provider) => {
   accessTokenProvider = provider;
 };
 
+async function currentAccessToken() {
+  if (!accessTokenProvider) {
+    const { getAccessToken } = await import("../auth/cognitoAuth");
+    accessTokenProvider = getAccessToken;
+  }
+  return accessTokenProvider();
+}
+
 /** Identity headers for the current user; empty when talking to the legacy API directly. */
 export async function getAuthHeaders() {
   if (!USES_GATEWAY) return {};
   if (AUTH_MODE === "cognito") {
-    const token = accessTokenProvider ? await accessTokenProvider() : null;
+    const token = await currentAccessToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
   const userId = sessionManager.getUserSession().ID;
