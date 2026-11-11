@@ -6,7 +6,9 @@ import { test, expect } from '@playwright/test';
  * Dialogs are always cancelled.
  *
  * Shift under test: E2E_ROUTEMAP_QUERY (needs 2+ routes, one with 3+ stops).
+ * E2E_GATEWAY=1 when the app runs with VITE_API_BASE=/legacy (through etms-api).
  */
+const GATEWAY = process.env.E2E_GATEWAY === '1';
 const QUERY =
   process.env.E2E_ROUTEMAP_QUERY ||
   'sDate=2026-11-05&FacilityID=1&TripType=P&Shifttimes=0800&Direction=ASC&Routeid=';
@@ -78,10 +80,23 @@ const openBiggestRoute = async (page) => {
   await expect(page.locator('.re-stop-list li').first()).toBeVisible();
 };
 
-test('is view-only without a signed-in session', async ({ page }) => {
+test('is view-only without a signed-in session (legacy API)', async ({ page }) => {
+  test.skip(GATEWAY, 'through the gateway a signed-out visitor gets no data at all');
   await openMap(page, { signedIn: false });
   await expect(page.getByRole('switch', { name: 'Edit mode' })).toHaveCount(0);
   await expect(page.getByText('View only')).toBeVisible();
+});
+
+test('gets no route data without a signed-in session (gateway)', async ({ page }) => {
+  test.skip(!GATEWAY, 'only meaningful through etms-api');
+  const statuses = [];
+  page.on('response', (r) => {
+    if (r.url().includes('/legacy/GetRoutesByOrder')) statuses.push(r.status());
+  });
+  await page.goto(`/RouteMap?${QUERY}`);
+  await expect.poll(() => statuses.length, { timeout: 30_000 }).toBeGreaterThan(0);
+  expect(statuses.every((s) => s === 401)).toBe(true);
+  await expect(page.locator('.route-summary')).toHaveCount(0);
 });
 
 test('edit mode makes stops selectable and offers stop actions', async ({ page }) => {

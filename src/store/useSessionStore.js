@@ -66,7 +66,14 @@ const useSessionStore = create(
                     tourPending: false,
                     tourPage: 'profile',
                 });
-                sessionStorage.clear();
+                if (import.meta.env.VITE_AUTH_MODE === 'cognito') {
+                    // Revoke the refresh token at Cognito before the local session is wiped.
+                    import('../services/auth/cognitoAuth')
+                        .then((m) => m.cognitoSignOut())
+                        .finally(() => sessionStorage.clear());
+                } else {
+                    sessionStorage.clear();
+                }
             },
 
             checkAccess: (currentPath) => {

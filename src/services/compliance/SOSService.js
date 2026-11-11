@@ -1,9 +1,12 @@
 import axios from "axios";
+import { API_BASE, attachAuth } from "../http/apiClient";
 
-const sosApi = axios.create({
-  baseURL: "/api/api/v1",
-  headers: { "Content-Type": "application/json", Accept: "application/json" },
-});
+const sosApi = attachAuth(
+  axios.create({
+    baseURL: API_BASE,
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+  })
+);
 
 export const sosService = {
   checkSOS: async () => {

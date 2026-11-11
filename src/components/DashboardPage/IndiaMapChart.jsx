@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import * as echarts from "echarts";
 import Loader from "../common/Loader";
+import { apiUrl, getAuthHeaders } from "../../services/http/apiClient";
 
 // India states with their approximate centers for data aggregation
 const INDIA_STATES = {
@@ -79,11 +80,12 @@ const IndiaMapChart = ({ filter, type = 1, height = "100%" }) => {
       setError(null);
 
       try {
-        const response = await fetch("/api/api/v1/sp_getRoutedEmpGeocode", {
+        const response = await fetch(apiUrl("sp_getRoutedEmpGeocode"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
+            ...(await getAuthHeaders()),
           },
           body: JSON.stringify({
             facilityid: filter?.facilityid,
