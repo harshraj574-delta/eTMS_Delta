@@ -10,6 +10,7 @@ import L from "leaflet";
 import "leaflet.heat";
 import "leaflet/dist/leaflet.css";
 import MapLibreLayer from "../routeMap/map/MapLibreLayer";
+import { apiUrl, getAuthHeaders } from "../../services/http/apiClient";
 
 // Employee markers at high zoom
 const EmployeeMarkers = memo(({ points, type, currentZoom }) => {
@@ -241,11 +242,12 @@ const LeafletHeatMap = ({ filter, type = 1, height = "100%", isFullscreen = fals
       setError(null);
 
       try {
-        const response = await fetch("/api/api/v1/sp_getRoutedEmpGeocode", {
+        const response = await fetch(apiUrl("sp_getRoutedEmpGeocode"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
+            ...(await getAuthHeaders()),
           },
           body: JSON.stringify(fetchBody),
         });
