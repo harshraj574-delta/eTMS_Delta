@@ -21,15 +21,18 @@ const PrivateRoute = ({ element }) => {
         setIsVerifying(false);
         return;
       }
-      if (USES_GATEWAY && access) {
-        // Through etms-api: show the page with the access we have and check the
-        // version in the background (a 304 when nothing changed). If the page was
-        // revoked, the new access re-renders this route and redirects below.
+      if (USES_GATEWAY && access && checkAccess(location.pathname)) {
+        // Through etms-api, allowed with the access we have: show the page now and
+        // check the version in the background (a 304 when nothing changed). The
+        // server checks every data call anyway; if the page was revoked, the new
+        // access re-renders this route and redirects below.
         setIsVerifying(false);
         refreshRights();
         return;
       }
-      // Legacy path, or no access loaded yet: wait for the check before deciding.
+      // Never refuse on possibly old access (e.g. the page was just granted and the
+      // app reloaded with its saved copy): wait for a fresh check first.
+      setIsVerifying(true);
       await refreshRights(USES_GATEWAY);
       setIsVerifying(false);
     };
