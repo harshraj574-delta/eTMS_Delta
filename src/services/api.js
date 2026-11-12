@@ -1,6 +1,7 @@
 import axios from "axios";
 import { map } from "lodash";
 import { API_BASE, attachAuth } from "./http/apiClient";
+import { toMenuItems } from "./auth/myAccess";
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -104,17 +105,7 @@ export const apiService = {
         rawItems = [];
       }
 
-      const menuItems = rawItems.map((item) => ({
-        MenuId: item.MenuID,
-        MenuName: item.Text,
-        MenuURL: item.NavigateUrl || "#",
-        ParentId: item.ParentID ?? 0,
-        IconClass: item.Description || "",
-        IsActive: true,
-        OrderNo: item.RowNo || 0,
-      }));
-
-      return menuItems;
+      return toMenuItems(rawItems);
     } catch (error) {
       console.error("API Error:", error);
       throw error.response?.data || error.message;

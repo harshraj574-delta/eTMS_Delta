@@ -73,6 +73,12 @@ export function attachAuth(instance) {
         } catch (e) {
           console.error("Error during logout interceptor:", e);
         }
+      } else if (error.response?.status === 403 && USES_GATEWAY) {
+        // A refusal may mean the user's rights changed: re-read them so the menus
+        // and buttons match what the server allows now.
+        import("../../store/useSessionStore")
+          .then(({ default: useSessionStore }) => useSessionStore.getState().refreshRights(true))
+          .catch((e) => console.error("Error refreshing access after 403:", e));
       }
       return Promise.reject(error);
     }

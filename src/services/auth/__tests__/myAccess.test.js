@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { canOpenPage, fetchMyAccess, hasPermission, normalisePage } from '../myAccess';
+import { canOpenPage, fetchMyAccess, fetchSession, hasPermission, normalisePage, toMenuItems } from '../myAccess';
 
 const access = (overrides = {}) => ({
     userId: 7,
@@ -60,6 +60,34 @@ describe('fetchMyAccess', () => {
     it('keeps "all" facilities for admins', async () => {
         const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ userId: 1, isAdmin: true, active: true, facilityIds: 'all', permissions: ['*'], pages: [] }) });
         expect((await fetchMyAccess(fetchImpl)).facilityIds).toBe('all');
+    });
+
+    it('returns the user details and the menu in the shape the app already uses', async () => {
+        const fetchImpl = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                userId: 1, active: true, permissions: [], pages: [],
+                user: { ID: '1', empCode: 'tmp123', ISadmin: 'Y' },
+                menu: [
+                    { MenuID: 1, Text: 'My TMS', Description: 'switch_account', ParentID: null, NavigateUrl: null, RowNo: 0 },
+                    { MenuID: 9, Text: 'My Schedule', Description: null, ParentID: 1, NavigateUrl: 'MySchedule', RowNo: 2 },
+                ],
+            }),
+        });
+        const session = await fetchSession(fetchImpl);
+        expect(session.user).toEqual({ ID: '1', empCode: 'tmp123', ISadmin: 'Y' });
+        expect(session.menuItems).toEqual([
+            { MenuId: 1, MenuName: 'My TMS', MenuURL: '#', ParentId: 0, IconClass: 'switch_account', IsActive: true, OrderNo: 0 },
+            { MenuId: 9, MenuName: 'My Schedule', MenuURL: 'MySchedule', ParentId: 1, IconClass: '', IsActive: true, OrderNo: 2 },
+        ]);
+    });
+
+    it('copes with an older server that sends no details or menu', async () => {
+        const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ userId: 1, active: true }) });
+        const session = await fetchSession(fetchImpl);
+        expect(session.user).toBeNull();
+        expect(session.menuItems).toEqual([]);
+        expect(toMenuItems(undefined)).toEqual([]);
     });
 
     it('fails loudly when the server refuses', async () => {

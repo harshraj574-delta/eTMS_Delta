@@ -7,7 +7,7 @@ import './Login.css';
 import { Form, Button, Container, Alert } from 'react-bootstrap';
 import { apiService } from '../services/api';
 import { AUTH_MODE, USES_GATEWAY } from '../services/http/apiClient';
-import { canOpenPage, fetchMyAccess } from '../services/auth/myAccess';
+import { canOpenPage, fetchSession } from '../services/auth/myAccess';
 import sessionManager from '../utils/SessionManager';
 import useSessionStore from '../store/useSessionStore';
 
@@ -89,9 +89,21 @@ const Login = () => {
   };
 
   // After the password check: load the user's details and menus, then open their first page.
+  // With Cognito, one call to etms-api (/api/v1/me) returns the details, access and
+  // menu. Otherwise the legacy calls run (dev auth needs the details first: its
+  // identity header comes from the stored session).
   const completeLogin = async () => {
-    // Store user data if needed
-    const userdetails = await apiService.Spr_GetuserId(formData);
+    let userdetails = null;
+    if (!USE_COGNITO) {
+      userdetails = await apiService.Spr_GetuserId(formData);
+      if (USES_GATEWAY && userdetails?.[0]) sessionManager.setUserSession(userdetails);
+    }
+    const session = USES_GATEWAY ? await fetchSession() : null;
+    if (session?.user) userdetails = [session.user];
+    if (!userdetails?.[0]) {
+      setSubmitError('Your account could not be loaded. Please contact your administrator.');
+      return;
+    }
     // console.log('User Details:', userdetails[0]);
 
     //localStorage.setItem('userdetails', JSON.stringify(userdetails[0]));
@@ -114,13 +126,13 @@ const Login = () => {
       //sessionStorage.setItem('userName', userdetails[0].userName);
       // Navigate to dashboard
       
-      // 👇 Fetch allowed menus for the user. Through etms-api, page access and
-      // permissions come from the server (/api/v1/me), which already includes the
-      // pages everyone may open (RouteMap, ReplicateSchedule).
-      const [menus, access] = await Promise.all([
-        apiService.Spr_GetMenuItem_V2({ userID: userdetails[0].ID }),
-        USES_GATEWAY ? fetchMyAccess() : Promise.resolve(null),
-      ]);
+      // 👇 Menus for the user. Through etms-api they came with /api/v1/me, built from
+      // the same rights as page access (which already includes RouteMap and
+      // ReplicateSchedule).
+      const menus = session
+        ? session.menuItems
+        : await apiService.Spr_GetMenuItem_V2({ userID: userdetails[0].ID });
+      const access = session?.access ?? null;
 
       if (!USES_GATEWAY) {
         // ✅ Manually push RouteMap if not already included

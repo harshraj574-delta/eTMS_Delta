@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import useSessionStore from "../store/useSessionStore";
+import useSessionStore, { ACCESS_FOCUS_AGE_MS } from "../store/useSessionStore";
+import { USES_GATEWAY } from "../services/http/apiClient";
 
 import Loader from "./common/Loader";
 
@@ -27,6 +28,17 @@ const PrivateRoute = ({ element }) => {
 
     verifyAccess();
   }, [location.pathname, isAuthenticated, refreshRights, checkAccess]);
+
+  // Through etms-api: re-read access when the user comes back to the tab, so an
+  // admin's change in Access Rights applies without a reload.
+  useEffect(() => {
+    if (!USES_GATEWAY || !isAuthenticated) return undefined;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshRights(false, ACCESS_FOCUS_AGE_MS);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [isAuthenticated, refreshRights]);
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;

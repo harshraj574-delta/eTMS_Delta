@@ -3,7 +3,12 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { apiService } from '../services/api';
 import { isEqual } from 'lodash';
 import { USES_GATEWAY } from '../services/http/apiClient';
-import { canOpenPage, fetchMyAccess, hasPermission } from '../services/auth/myAccess';
+import { canOpenPage, fetchSession, hasPermission } from '../services/auth/myAccess';
+
+/** Through etms-api: how old the user's access may get before it is re-read. */
+export const ACCESS_MAX_AGE_MS = 5 * 60 * 1000;
+/** On tab focus, re-read when the last check is older than this. */
+export const ACCESS_FOCUS_AGE_MS = 60 * 1000;
 
 const menuPaths = (menuItems) =>
     menuItems
@@ -93,14 +98,20 @@ const useSessionStore = create(
                 return allowedPaths.includes(cleanCurrentPath);
             },
 
-            refreshRights: async (force = false) => {
+            /**
+             * Re-read the user's rights. `maxAgeMs` is how old the last check may be:
+             * through etms-api one /api/v1/me call refreshes access and menu, so it runs
+             * every few minutes, when the tab regains focus, or after a 403 (force)
+             * instead of on every navigation.
+             */
+            refreshRights: async (force = false, maxAgeMs = USES_GATEWAY ? ACCESS_MAX_AGE_MS : 2000) => {
                 const { user, allowedPaths: currentAllowedPaths, lastValidationTime } = get();
 
                 if (!user) return;
 
-                // Optimization: If validated recently (e.g., within 2 seconds), skip API call unless forced
+                // Optimization: If validated recently, skip the API call unless forced
                 const now = Date.now();
-                if (!force && now - lastValidationTime < 2000) {
+                if (!force && now - lastValidationTime < maxAgeMs) {
                     return;
                 }
 
@@ -109,12 +120,9 @@ const useSessionStore = create(
                     if (!userId) return;
 
                     if (USES_GATEWAY) {
-                        // The sidebar still comes from the menu list; access from etms-api.
-                        const [menuItems, access] = await Promise.all([
-                            apiService.Spr_GetMenuItem_V2({ userID: userId }),
-                            fetchMyAccess(),
-                        ]);
-                        set({ allowedPaths: menuPaths(menuItems), menuItems, access, lastValidationTime: now });
+                        set({ lastValidationTime: now }); // one refresh at a time
+                        const { access, menuItems } = await fetchSession();
+                        set({ allowedPaths: menuPaths(menuItems), menuItems, access, lastValidationTime: Date.now() });
                         return;
                     }
 

@@ -40,17 +40,48 @@ export const canOpenPage = (access, path) => {
   return Boolean(page) && (access.pages ?? []).includes(page);
 };
 
-/** @returns {Promise<MyAccess>} */
-export async function fetchMyAccess(fetchImpl = fetch) {
+/**
+ * Menu rows (MenuID, Text, NavigateUrl, ParentID, Description, RowNo) to the shape the
+ * sidebar uses. Same mapping for the legacy menu call and /me.
+ */
+export const toMenuItems = (rows) =>
+  (Array.isArray(rows) ? rows : []).map((item) => ({
+    MenuId: item.MenuID,
+    MenuName: item.Text,
+    MenuURL: item.NavigateUrl || "#",
+    ParentId: item.ParentID ?? 0,
+    IconClass: item.Description || "",
+    IsActive: true,
+    OrderNo: item.RowNo || 0,
+  }));
+
+/**
+ * Everything the app needs to start a session, in one call:
+ *   access    - permissions, pages and facility scope
+ *   user      - the user's details, in the shape sessionManager stores (Spr_GetuserId's)
+ *   menuItems - the sidebar
+ *
+ * @returns {Promise<{ access: MyAccess, user: Record<string, unknown> | null, menuItems: object[] }>}
+ */
+export async function fetchSession(fetchImpl = fetch) {
   const response = await fetchImpl(ME_URL, { headers: await getAuthHeaders() });
   if (!response.ok) throw new Error(`Could not load your access (${response.status})`);
   const me = await response.json();
   return {
-    userId: Number(me.userId) || 0,
-    isAdmin: Boolean(me.isAdmin),
-    active: Boolean(me.active),
-    facilityIds: me.facilityIds === "all" ? "all" : (me.facilityIds ?? []).map(Number),
-    permissions: me.permissions ?? [],
-    pages: (me.pages ?? []).map(normalisePage),
+    access: {
+      userId: Number(me.userId) || 0,
+      isAdmin: Boolean(me.isAdmin),
+      active: Boolean(me.active),
+      facilityIds: me.facilityIds === "all" ? "all" : (me.facilityIds ?? []).map(Number),
+      permissions: me.permissions ?? [],
+      pages: (me.pages ?? []).map(normalisePage),
+    },
+    user: me.user ?? null,
+    menuItems: toMenuItems(me.menu),
   };
+}
+
+/** @returns {Promise<MyAccess>} */
+export async function fetchMyAccess(fetchImpl = fetch) {
+  return (await fetchSession(fetchImpl)).access;
 }
