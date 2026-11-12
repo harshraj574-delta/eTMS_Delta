@@ -18,6 +18,8 @@ import LoadProgress from "./ui/LoadProgress";
 import RecalculatingScreen from "./ui/RecalculatingScreen";
 import MapErrorToast from "./ui/MapErrorToast";
 import { getRouteEditAccess } from "./editing/permissions";
+import useSessionStore from "../../store/useSessionStore";
+import { USES_GATEWAY } from "../../services/http/apiClient";
 import { useRouteEditListener } from "./editing/sync";
 import useRouteMapEditor from "./editing/hooks/useRouteMapEditor";
 import BoxSelect from "./editing/map/BoxSelect";
@@ -35,7 +37,12 @@ const readUrlParams = () => Object.fromEntries(new URLSearchParams(window.locati
 export default function RouteMap() {
   const queryClient = useQueryClient();
   const params = useMemo(readUrlParams, []);
-  const access = useMemo(() => getRouteEditAccess(), []);
+  // Through etms-api the server's permissions decide; otherwise the rollout flag.
+  const serverAccess = useSessionStore((state) => state.access);
+  const access = useMemo(
+    () => getRouteEditAccess(USES_GATEWAY ? { access: serverAccess } : {}),
+    [serverAccess],
+  );
   const [mapTilesLoaded, setMapTilesLoaded] = useState(false);
 
   const data = useRouteMapData(params);

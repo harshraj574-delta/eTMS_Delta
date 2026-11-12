@@ -44,6 +44,16 @@ export async function getAuthHeaders() {
   return userId && userId !== "null" ? { "x-dev-user-id": String(userId) } : {};
 }
 
+/** Set by etms-api on a successful access change (lower-case, as axios reports it). */
+export const ACCESS_CHANGED_HEADER = "x-etms-access-changed";
+
+// Dynamic import avoids a circular dependency with the store.
+function refreshAccessNow(reason) {
+  import("../../store/useSessionStore")
+    .then(({ default: useSessionStore }) => useSessionStore.getState().refreshRights(true))
+    .catch((e) => console.error(`Error refreshing access ${reason}:`, e));
+}
+
 const newRequestId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
 
@@ -63,7 +73,12 @@ export function attachAuth(instance) {
   });
 
   instance.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      // etms-api marks a successful change to someone's access (Access Rights, SPOC,
+      // employee records): re-read our own access now, in case it was ours.
+      if (USES_GATEWAY && response.headers?.[ACCESS_CHANGED_HEADER]) refreshAccessNow("after an access change");
+      return response;
+    },
     async (error) => {
       if (error.response?.status === 401) {
         try {
@@ -73,6 +88,10 @@ export function attachAuth(instance) {
         } catch (e) {
           console.error("Error during logout interceptor:", e);
         }
+      } else if (error.response?.status === 403 && USES_GATEWAY) {
+        // A refusal may mean the user's rights changed: re-read them so the menus
+        // and buttons match what the server allows now.
+        refreshAccessNow("after 403");
       }
       return Promise.reject(error);
     }
