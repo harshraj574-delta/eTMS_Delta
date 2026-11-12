@@ -40,6 +40,10 @@ describe('canOpenPage', () => {
         expect(canOpenPage(access(), '/AccessRights')).toBe(false);
     });
 
+    it('treats "*" as every page (dev permissions)', () => {
+        expect(canOpenPage(access({ pages: ['*'] }), '/AdminSchedule')).toBe(true);
+    });
+
     it('refuses everything for an inactive or missing profile', () => {
         expect(canOpenPage(access({ active: false }), '/MySchedule')).toBe(false);
         expect(canOpenPage(null, '/MySchedule')).toBe(false);

@@ -37,7 +37,9 @@ export const hasPermission = (access, required) => {
 export const canOpenPage = (access, path) => {
   if (!access?.active) return false;
   const page = normalisePage(path);
-  return Boolean(page) && (access.pages ?? []).includes(page);
+  const pages = access.pages ?? [];
+  // "*" = every page (etms-api permission sources without page data, e.g. dev)
+  return Boolean(page) && (pages.includes("*") || pages.includes(page));
 };
 
 /**
