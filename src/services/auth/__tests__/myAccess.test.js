@@ -90,6 +90,29 @@ describe('fetchMyAccess', () => {
         expect(toMenuItems(undefined)).toEqual([]);
     });
 
+    it('sends the last version and reports "not modified" on a 304', async () => {
+        const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 304 });
+        expect(await fetchSession(fetchImpl, { etag: 'W/"abc"' })).toEqual({ notModified: true });
+        const [, options] = fetchImpl.mock.calls[0];
+        expect(options.headers['If-None-Match']).toBe('W/"abc"');
+        expect(options.cache).toBe('no-store');
+    });
+
+    it('returns the new version with changed access', async () => {
+        const fetchImpl = vi.fn().mockResolvedValue({
+            ok: true, status: 200,
+            headers: { get: (name) => (name === 'ETag' ? 'W/"v2"' : null) },
+            json: async () => ({ userId: 1, active: true, permissions: [], pages: [] }),
+        });
+        const session = await fetchSession(fetchImpl, { etag: 'W/"v1"' });
+        expect(session).toMatchObject({ notModified: false, etag: 'W/"v2"' });
+    });
+
+    it('marks a 401 so the app can sign the user out', async () => {
+        const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 401 });
+        await expect(fetchSession(fetchImpl)).rejects.toMatchObject({ status: 401 });
+    });
+
     it('fails loudly when the server refuses', async () => {
         const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 401 });
         await expect(fetchMyAccess(fetchImpl)).rejects.toThrow(/401/);

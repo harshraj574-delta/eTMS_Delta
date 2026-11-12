@@ -5,10 +5,17 @@ import { isEqual } from 'lodash';
 import { USES_GATEWAY } from '../services/http/apiClient';
 import { canOpenPage, fetchSession, hasPermission } from '../services/auth/myAccess';
 
-/** Through etms-api: how old the user's access may get before it is re-read. */
-export const ACCESS_MAX_AGE_MS = 5 * 60 * 1000;
-/** On tab focus, re-read when the last check is older than this. */
-export const ACCESS_FOCUS_AGE_MS = 60 * 1000;
+/**
+ * Through etms-api the app checks its access on every navigation, when the tab
+ * regains focus, after a 403, and on this interval while the tab is visible. Each
+ * check sends the last version (ETag); an unchanged answer is a tiny 304.
+ */
+export const ACCESS_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+/** Checks closer together than this are merged (navigation + focus at once). */
+const MIN_CHECK_GAP_MS = 2000;
+
+// The access check in flight, so simultaneous triggers share one request.
+let accessCheck = null;
 
 const menuPaths = (menuItems) =>
     menuItems
@@ -26,13 +33,16 @@ const useSessionStore = create(
             // Through etms-api: what the server says this user may do (GET /api/v1/me).
             // Decides page access and permission-gated buttons; null on the legacy path.
             access: null,
+            // Version (ETag) of `access`, sent back so an unchanged check is a 304.
+            accessEtag: null,
 
-            login: (userData, menuItems, access = null) => {
+            login: (userData, menuItems, access = null, accessEtag = null) => {
                 set({
                     user: userData,
                     allowedPaths: menuPaths(menuItems),
                     menuItems: menuItems,
                     access,
+                    accessEtag,
                     isAuthenticated: true,
                     lastValidationTime: Date.now(),
                 });
@@ -76,6 +86,7 @@ const useSessionStore = create(
                     allowedPaths: [],
                     menuItems: [],
                     access: null,
+                    accessEtag: null,
                     isAuthenticated: false,
                     lastValidationTime: 0,
                     tourPending: false,
@@ -99,12 +110,12 @@ const useSessionStore = create(
             },
 
             /**
-             * Re-read the user's rights. `maxAgeMs` is how old the last check may be:
-             * through etms-api one /api/v1/me call refreshes access and menu, so it runs
-             * every few minutes, when the tab regains focus, or after a 403 (force)
-             * instead of on every navigation.
+             * Re-read the user's rights (skipped if checked within the last 2 s unless
+             * forced). Through etms-api this is one /api/v1/me call carrying the last
+             * version: unchanged -> 304, changed -> new access and menu, and
+             * PrivateRoute moves the user off a page they lost.
              */
-            refreshRights: async (force = false, maxAgeMs = USES_GATEWAY ? ACCESS_MAX_AGE_MS : 2000) => {
+            refreshRights: async (force = false, maxAgeMs = MIN_CHECK_GAP_MS) => {
                 const { user, allowedPaths: currentAllowedPaths, lastValidationTime } = get();
 
                 if (!user) return;
@@ -120,10 +131,28 @@ const useSessionStore = create(
                     if (!userId) return;
 
                     if (USES_GATEWAY) {
-                        set({ lastValidationTime: now }); // one refresh at a time
-                        const { access, menuItems } = await fetchSession();
-                        set({ allowedPaths: menuPaths(menuItems), menuItems, access, lastValidationTime: Date.now() });
-                        return;
+                        if (accessCheck) return accessCheck;
+                        set({ lastValidationTime: now });
+                        accessCheck = (async () => {
+                            try {
+                                const result = await fetchSession(fetch, { etag: get().accessEtag });
+                                if (result.notModified) return;
+                                set({
+                                    allowedPaths: menuPaths(result.menuItems),
+                                    menuItems: result.menuItems,
+                                    access: result.access,
+                                    accessEtag: result.etag,
+                                    lastValidationTime: Date.now(),
+                                });
+                            } catch (error) {
+                                // The session is gone (expired or revoked): sign out.
+                                if (error?.status === 401) get().logout();
+                                else console.error("Access check failed:", error);
+                            } finally {
+                                accessCheck = null;
+                            }
+                        })();
+                        return accessCheck;
                     }
 
                     const menuItems = await apiService.Spr_GetMenuItem_V2({ userID: userId });

@@ -146,7 +146,7 @@ const Login = () => {
       }
 
       // Update store with full menus (including ReplicateSchedule for authorization)
-      login(userdetails[0], menus, access);
+      login(userdetails[0], menus, access, session?.etag ?? null);
 
       // Calculate allowed paths for navigation
       const allowedPaths = menus

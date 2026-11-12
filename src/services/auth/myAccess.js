@@ -61,13 +61,25 @@ export const toMenuItems = (rows) =>
  *   user      - the user's details, in the shape sessionManager stores (Spr_GetuserId's)
  *   menuItems - the sidebar
  *
- * @returns {Promise<{ access: MyAccess, user: Record<string, unknown> | null, menuItems: object[] }>}
+ * Pass the last `etag` to get `{ notModified: true }` when nothing changed.
+ *
+ * @returns {Promise<{ notModified: boolean, etag?: string | null, access?: MyAccess,
+ *                     user?: Record<string, unknown> | null, menuItems?: object[] }>}
  */
-export async function fetchSession(fetchImpl = fetch) {
-  const response = await fetchImpl(ME_URL, { headers: await getAuthHeaders() });
-  if (!response.ok) throw new Error(`Could not load your access (${response.status})`);
+export async function fetchSession(fetchImpl = fetch, { etag } = {}) {
+  const headers = { ...(await getAuthHeaders()), ...(etag ? { "If-None-Match": etag } : {}) };
+  // no-store: the app handles the version itself, so a 304 reaches this code.
+  const response = await fetchImpl(ME_URL, { headers, cache: "no-store" });
+  if (response.status === 304) return { notModified: true };
+  if (!response.ok) {
+    const error = new Error(`Could not load your access (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
   const me = await response.json();
   return {
+    notModified: false,
+    etag: response.headers?.get?.("ETag") ?? null,
     access: {
       userId: Number(me.userId) || 0,
       isAdmin: Boolean(me.isAdmin),
