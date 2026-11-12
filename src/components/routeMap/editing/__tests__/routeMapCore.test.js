@@ -50,6 +50,30 @@ describe('getRouteEditAccess', () => {
         // unknown values fall back to the default instead of locking everyone out
         expect(getRouteEditAccess({ env: { VITE_ROUTE_MAP_EDITING: 'yes' }, session: session({ ID: '1' }) }).canEdit).toBe(true);
     });
+
+    describe('through etms-api', () => {
+        const withPermissions = (permissions) => ({ env: {}, session: session({ ID: '7' }), access: { active: true, permissions, pages: [] } });
+
+        it('needs the Manage Route permission', () => {
+            expect(getRouteEditAccess(withPermissions(['route.view', 'route.manage'])).canEdit).toBe(true);
+            const viewer = getRouteEditAccess(withPermissions(['route.view']));
+            expect(viewer.canEdit).toBe(false);
+            expect(viewer.reason).toMatch(/Manage Route/);
+        });
+
+        it('accepts wildcard grants like the server', () => {
+            expect(getRouteEditAccess(withPermissions(['*'])).canEdit).toBe(true);
+            expect(getRouteEditAccess(withPermissions(['route.*'])).canEdit).toBe(true);
+        });
+
+        it('is view-only until the access has loaded', () => {
+            expect(getRouteEditAccess({ env: {}, session: session({ ID: '7' }), access: null }).canEdit).toBe(false);
+        });
+
+        it('ignores the admins-only flag: the server decides', () => {
+            expect(getRouteEditAccess({ ...withPermissions(['route.manage']), env: { VITE_ROUTE_MAP_EDITING: 'admins' } }).canEdit).toBe(true);
+        });
+    });
 });
 
 describe('adapters', () => {

@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { apiService } from '../services/api';
 import { isEqual } from 'lodash';
+import { USES_GATEWAY } from '../services/http/apiClient';
+import { canOpenPage, fetchMyAccess, hasPermission } from '../services/auth/myAccess';
+
+const menuPaths = (menuItems) =>
+    menuItems
+        .map((item) => (item.MenuURL || "").trim().replace(/^\/+/, ""))
+        .filter((path) => path !== "" && path !== "#");
 
 const useSessionStore = create(
     persist(
@@ -11,21 +18,23 @@ const useSessionStore = create(
             menuItems: [],
             isAuthenticated: false,
             lastValidationTime: 0,
+            // Through etms-api: what the server says this user may do (GET /api/v1/me).
+            // Decides page access and permission-gated buttons; null on the legacy path.
+            access: null,
 
-            login: (userData, menuItems) => {
-                const allowedPaths = menuItems.map(item => {
-
-                    return (item.MenuURL || "").trim().replace(/^\/+/, "");
-                }).filter(path => path !== "" && path !== "#");
-
+            login: (userData, menuItems, access = null) => {
                 set({
                     user: userData,
-                    allowedPaths: allowedPaths,
+                    allowedPaths: menuPaths(menuItems),
                     menuItems: menuItems,
+                    access,
                     isAuthenticated: true,
                     lastValidationTime: Date.now(),
                 });
             },
+
+            /** UI check only; etms-api enforces every call itself. */
+            hasPermission: (permission) => hasPermission(get().access, permission),
 
             updateDisclaimerStatus: (status) => {
                 const { user } = get();
@@ -61,6 +70,7 @@ const useSessionStore = create(
                     user: null,
                     allowedPaths: [],
                     menuItems: [],
+                    access: null,
                     isAuthenticated: false,
                     lastValidationTime: 0,
                     tourPending: false,
@@ -77,7 +87,8 @@ const useSessionStore = create(
             },
 
             checkAccess: (currentPath) => {
-                const { allowedPaths } = get();
+                const { allowedPaths, access } = get();
+                if (USES_GATEWAY) return canOpenPage(access, currentPath);
                 const cleanCurrentPath = (currentPath || "").trim().replace(/^\/+/, "");
                 return allowedPaths.includes(cleanCurrentPath);
             },
@@ -97,11 +108,19 @@ const useSessionStore = create(
                     const userId = user.ID || user.EmpId || user.UserName;
                     if (!userId) return;
 
+                    if (USES_GATEWAY) {
+                        // The sidebar still comes from the menu list; access from etms-api.
+                        const [menuItems, access] = await Promise.all([
+                            apiService.Spr_GetMenuItem_V2({ userID: userId }),
+                            fetchMyAccess(),
+                        ]);
+                        set({ allowedPaths: menuPaths(menuItems), menuItems, access, lastValidationTime: now });
+                        return;
+                    }
+
                     const menuItems = await apiService.Spr_GetMenuItem_V2({ userID: userId });
 
-                    const newAllowedPaths = menuItems.map(item => {
-                        return (item.MenuURL || "").trim().replace(/^\/+/, "");
-                    }).filter(path => path !== "" && path !== "#");
+                    const newAllowedPaths = menuPaths(menuItems);
 
                     // Only update store if paths have changed
                     if (!isEqual(newAllowedPaths.sort(), currentAllowedPaths.sort())) {

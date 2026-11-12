@@ -7,6 +7,7 @@ import './Login.css';
 import { Form, Button, Container, Alert } from 'react-bootstrap';
 import { apiService } from '../services/api';
 import { AUTH_MODE, USES_GATEWAY } from '../services/http/apiClient';
+import { canOpenPage, fetchMyAccess } from '../services/auth/myAccess';
 import sessionManager from '../utils/SessionManager';
 import useSessionStore from '../store/useSessionStore';
 
@@ -113,25 +114,33 @@ const Login = () => {
       //sessionStorage.setItem('userName', userdetails[0].userName);
       // Navigate to dashboard
       
-      // 👇 Fetch allowed menus for the user
-      const menus = await apiService.Spr_GetMenuItem_V2({ userID: userdetails[0].ID });
-    
-      // ✅ Manually push RouteMap if not already included
-      if (!menus.some(menu => menu.MenuURL === "RouteMap")) {
-        menus.push({ MenuURL: "RouteMap" });
-      }
-      // Manually add 'ReplicateSchedule' if not already included
-      if (!menus.some(menu => menu.MenuURL === "ReplicateSchedule")) {
-        menus.push({ MenuURL: "ReplicateSchedule" });
+      // 👇 Fetch allowed menus for the user. Through etms-api, page access and
+      // permissions come from the server (/api/v1/me), which already includes the
+      // pages everyone may open (RouteMap, ReplicateSchedule).
+      const [menus, access] = await Promise.all([
+        apiService.Spr_GetMenuItem_V2({ userID: userdetails[0].ID }),
+        USES_GATEWAY ? fetchMyAccess() : Promise.resolve(null),
+      ]);
+
+      if (!USES_GATEWAY) {
+        // ✅ Manually push RouteMap if not already included
+        if (!menus.some(menu => menu.MenuURL === "RouteMap")) {
+          menus.push({ MenuURL: "RouteMap" });
+        }
+        // Manually add 'ReplicateSchedule' if not already included
+        if (!menus.some(menu => menu.MenuURL === "ReplicateSchedule")) {
+          menus.push({ MenuURL: "ReplicateSchedule" });
+        }
       }
 
       // Update store with full menus (including ReplicateSchedule for authorization)
-      login(userdetails[0], menus);
+      login(userdetails[0], menus, access);
 
       // Calculate allowed paths for navigation
       const allowedPaths = menus
         .filter(item => item.MenuURL)
-        .map(item => item.MenuURL.replace(/^\/+/, "")); // Clean leading slash if any
+        .map(item => item.MenuURL.replace(/^\/+/, "")) // Clean leading slash if any
+        .filter(path => !access || canOpenPage(access, path));
 
       sessionStorage.setItem("ID", userdetails[0].ID);
 
